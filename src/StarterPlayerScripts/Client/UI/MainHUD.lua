@@ -1,0 +1,935 @@
+--[[
+	MainHUD.lua - Simplified Main HUD with Clean Design
+	Features essential stats display and menu functionality
+--]]
+
+local MainHUD = {}
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local GuiService = game:GetService("GuiService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+-- Import dependencies
+local EventManager = require(ReplicatedStorage.Shared.EventManager)
+local RewardsApi = require(ReplicatedStorage.Shared.Api.RewardsApi)
+local QuestsApi = require(ReplicatedStorage.Shared.Api.QuestsApi)
+local Config = require(ReplicatedStorage.Shared.Config)
+local GameState = require(script.Parent.Parent.Managers.GameState)
+local UIManager = require(script.Parent.Parent.Managers.UIManager)
+local PanelManager = require(script.Parent.Parent.Managers.PanelManager)
+local SoundManager = require(script.Parent.Parent.Managers.SoundManager)
+local IconManager = require(script.Parent.Parent.Managers.IconManager)
+local UIComponents = require(script.Parent.Parent.Managers.UIComponents)
+local GameState = require(script.Parent.Parent.Managers.GameState)
+local Crosshair = require(script.Parent.Crosshair)
+
+-- Services and instances
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- UI Elements
+local hudGui
+local leftSidebar
+local moneyLabel
+local gemsLabel
+
+-- UI State
+local menuButtons = {}
+local currentValues = {coins = 0, gems = 0}
+
+-- Quests badge state
+local questBadge
+local questConfigState = nil
+local playerQuestsState = nil
+local dailyBadge
+local BADGE_SIZE = 16
+local DAILY_BADGE_SIZE = 12
+local DEFAULT_ICON_SIZE = 56
+local ACTIVE_ICON_SIZE = 64
+local HOVER_ICON_SIZE = 68
+
+local function hasActiveBadgeForButton(buttonObj)
+	if not buttonObj or not buttonObj.button then return false end
+	local label = buttonObj.button:FindFirstChild("ButtonText")
+	local candidates = {
+		label and label:FindFirstChild("QuestsBadge"),
+		label and label:FindFirstChild("DailyBadge"),
+		buttonObj.button:FindFirstChild("QuestsBadge"),
+		buttonObj.button:FindFirstChild("DailyBadge")
+	}
+	for _, badge in ipairs(candidates) do
+		if badge and badge:IsA("GuiObject") and badge.Visible then
+			return true
+		end
+	end
+	return false
+end
+
+local function getBaseIconSizeForButton(buttonObj)
+	return hasActiveBadgeForButton(buttonObj) and ACTIVE_ICON_SIZE or DEFAULT_ICON_SIZE
+end
+
+local function tweenIconSize(icon, sizePx)
+	if not icon then return end
+	TweenService:Create(icon, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		Size = UDim2.new(0, sizePx, 0, sizePx)
+	}):Play()
+end
+
+local function popIcon(icon, baseSize)
+	if not icon then return end
+	local overshoot = baseSize + 6
+	local tweenUp = TweenService:Create(icon, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		Size = UDim2.new(0, overshoot, 0, overshoot)
+	})
+	local tweenDown = TweenService:Create(icon, TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		Size = UDim2.new(0, baseSize, 0, baseSize)
+	})
+	tweenUp:Play()
+	tweenUp.Completed:Connect(function()
+		tweenDown:Play()
+	end)
+end
+
+local function setIconActiveForButton(buttonObj, active)
+	if not buttonObj or not buttonObj.icon then return end
+	local target = active and ACTIVE_ICON_SIZE or DEFAULT_ICON_SIZE
+	TweenService:Create(buttonObj.icon, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		Size = UDim2.new(0, target, 0, target)
+	}):Play()
+
+	-- Replace pulse with constant wiggle rotation
+	if not activeWiggleTweens then activeWiggleTweens = {} end
+	if activeWiggleTweens[buttonObj.icon] then
+		activeWiggleTweens[buttonObj.icon]:Cancel()
+		activeWiggleTweens[buttonObj.icon] = nil
+	end
+
+	if active then
+		popIcon(buttonObj.icon, target)
+		buttonObj.icon.Rotation = -4
+		local wiggleTween = TweenService:Create(
+			buttonObj.icon,
+			TweenInfo.new(0.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true, 0),
+			{ Rotation = 4 }
+		)
+		activeWiggleTweens[buttonObj.icon] = wiggleTween
+		wiggleTween:Play()
+	else
+		buttonObj.icon.Rotation = 0
+	end
+end
+local function findQuestsButton()
+	for _, data in ipairs(menuButtons) do
+		if data.text == "Quests" and data.buttonObj then
+			return data.buttonObj
+		end
+	end
+	return nil
+end
+
+local function ensureQuestBadge()
+	if questBadge and questBadge.Parent and questBadge.Parent.Parent then return questBadge end
+	local questsButtonObj = findQuestsButton()
+	if not questsButtonObj or not questsButtonObj.button then return nil end
+
+	local parent = questsButtonObj.button:FindFirstChild("ButtonText") or questsButtonObj.button
+	local badge = Instance.new("Frame")
+	badge.Name = "QuestsBadge"
+	badge.Size = UDim2.new(0, BADGE_SIZE, 0, BADGE_SIZE)
+	badge.AnchorPoint = Vector2.new(0, 0.5)
+	badge.Position = UDim2.new(1, 6, 0.5, -4)
+	badge.BackgroundColor3 = Color3.fromRGB(220, 38, 38) -- Attention red
+	badge.BackgroundTransparency = 0
+	badge.BorderSizePixel = 0
+	badge.ZIndex = ((parent and parent:IsA("GuiObject") and parent.ZIndex) or 2) + 1
+	badge.Visible = false
+	badge.Parent = parent
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(1, 0)
+	corner.Parent = badge
+
+	-- Add 1px black stroke for clarity
+	local qStroke = Instance.new("UIStroke")
+	qStroke.Color = Color3.fromRGB(0, 0, 0)
+	qStroke.Thickness = 1
+	qStroke.Parent = badge
+
+	local label = Instance.new("TextLabel")
+	label.Name = "Label"
+	label.Size = UDim2.new(1, 0, 1, 0)
+	label.BackgroundTransparency = 1
+	label.Text = "0"
+	label.TextColor3 = Color3.fromRGB(255, 255, 255)
+	label.TextScaled = true
+	label.Font = Enum.Font.GothamBold
+	label.ZIndex = badge.ZIndex + 1
+	label.Parent = badge
+
+	questBadge = badge
+	return questBadge
+end
+
+local function setQuestsBadgeCount(count)
+	local badge = ensureQuestBadge()
+	if not badge then return end
+	local label = badge:FindFirstChild("Label")
+	if count and count > 0 then
+		badge.Visible = true
+		if label and label:IsA("TextLabel") then
+			label.Text = (count > 99) and "99" or tostring(count)
+		end
+		local btn = findQuestsButton()
+		setIconActiveForButton(btn, true)
+	else
+		badge.Visible = false
+		local btn = findQuestsButton()
+		setIconActiveForButton(btn, false)
+	end
+end
+
+local function findDailyButton()
+	for _, data in ipairs(menuButtons) do
+		if data.text == "Daily Rewards" and data.buttonObj then
+			return data.buttonObj
+		end
+	end
+	return nil
+end
+
+local function ensureDailyBadge()
+	if dailyBadge and dailyBadge.Parent and dailyBadge.Parent.Parent then return dailyBadge end
+	local dailyButtonObj = findDailyButton()
+	if not dailyButtonObj or not dailyButtonObj.button then return nil end
+
+	local parent = dailyButtonObj.button:FindFirstChild("ButtonText") or dailyButtonObj.button
+	local badge = Instance.new("Frame")
+	badge.Name = "DailyBadge"
+	badge.Size = UDim2.new(0, DAILY_BADGE_SIZE, 0, DAILY_BADGE_SIZE)
+	badge.AnchorPoint = Vector2.new(0, 0.5)
+	badge.Position = UDim2.new(1, -3, 0.5, -3)
+	badge.BackgroundColor3 = Color3.fromRGB(34, 197, 94) -- Green dot for available
+	badge.BackgroundTransparency = 0
+	badge.BorderSizePixel = 0
+	badge.ZIndex = ((parent and parent:IsA("GuiObject") and parent.ZIndex) or 2) + 1
+	badge.Visible = false
+	badge.Parent = parent
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(1, 0)
+	corner.Parent = badge
+
+	-- Add 1px black stroke for clarity
+	local dStroke = Instance.new("UIStroke")
+	dStroke.Color = Color3.fromRGB(0, 0, 0)
+	dStroke.Thickness = 1
+	dStroke.Parent = badge
+
+	dailyBadge = badge
+	return dailyBadge
+end
+
+local function setDailyBadgeAvailable(isAvailable)
+	local badge = ensureDailyBadge()
+	if not badge then return end
+	badge.Visible = isAvailable and true or false
+	local btn = findDailyButton()
+	-- Daily: do not wiggle on availability; only show size change
+	if btn and btn.icon then
+		local target = isAvailable and ACTIVE_ICON_SIZE or DEFAULT_ICON_SIZE
+		TweenService:Create(btn.icon, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Size = UDim2.new(0, target, 0, target)
+		}):Play()
+		-- Manage wiggle: start when available, stop when not
+		if not activeWiggleTweens then activeWiggleTweens = {} end
+		if activeWiggleTweens[btn.icon] then
+			activeWiggleTweens[btn.icon]:Cancel()
+			activeWiggleTweens[btn.icon] = nil
+		end
+		if isAvailable then
+			btn.icon.Rotation = -4
+			local wiggleTween = TweenService:Create(
+				btn.icon,
+				TweenInfo.new(0.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true, 0),
+				{ Rotation = 4 }
+			)
+			activeWiggleTweens[btn.icon] = wiggleTween
+			wiggleTween:Play()
+		else
+			btn.icon.Rotation = 0
+		end
+	end
+	-- No daily badge pulse on availability per spec
+end
+
+local function getClaimableQuestCount()
+	if not questConfigState or not questConfigState.Mobs then return 0 end
+	local quests = playerQuestsState or {mobs = {}}
+	local total = 0
+	for mobType, mobConfig in pairs(questConfigState.Mobs) do
+		local mobData = (quests.mobs and quests.mobs[mobType]) or {kills = 0, claimed = {}}
+		-- Determine next unclaimed milestone
+		local sortedMilestones = {}
+		for _, milestone in ipairs(mobConfig.milestones or {}) do
+			table.insert(sortedMilestones, milestone)
+		end
+		table.sort(sortedMilestones, function(a, b) return a < b end)
+		local nextMilestone = nil
+		for _, milestone in ipairs(sortedMilestones) do
+			local claimed = mobData.claimed and mobData.claimed[tostring(milestone)]
+			if not claimed then
+				nextMilestone = milestone
+				break
+			end
+		end
+		if nextMilestone then
+			local kills = mobData.kills or 0
+			if kills >= nextMilestone then
+				total = total + 1
+			end
+		end
+	end
+	return total
+end
+
+-- Constants
+local SIDEBAR_WIDTH = 76  -- 68px button + 4px padding each side (fixed width)
+local STATS_WIDTH = 280
+local STATS_HEIGHT = 100
+local BUTTON_SIZE = 68 -- Button size including frame (back to original)
+local CONTENT_PADDING = 4 -- Padding inside containers
+
+-- Simple animations for where still needed
+local RunService = game:GetService("RunService")
+local subtleTween = TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+
+
+
+--[[
+	Create the main HUD
+--]]
+function MainHUD:Create()
+	-- Create main HUD ScreenGui
+	hudGui = Instance.new("ScreenGui")
+	hudGui.Name = "MainHUD"
+	hudGui.ResetOnSpawn = false
+	hudGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+	hudGui.IgnoreGuiInset = true
+	hudGui.Parent = playerGui
+
+	-- Create components
+	self:CreateBottomLeftCurrency()
+	self:CreateLeftSidebar()
+
+	-- Center crosshair (Minecraft-style)
+	Crosshair:Create(hudGui)
+
+	-- Initialize PanelManager
+	PanelManager:Initialize()
+
+	-- Connect to game state
+	self:ConnectToGameState()
+
+	-- Listen for quest events to update the sidebar badge
+    QuestsApi.OnDataUpdated(function(payload)
+		questConfigState = payload and payload.config or questConfigState
+		playerQuestsState = payload and payload.quests or playerQuestsState
+		setQuestsBadgeCount(getClaimableQuestCount())
+    end)
+
+    QuestsApi.OnProgressUpdated(function(update)
+		if not update then return end
+		playerQuestsState = playerQuestsState or {mobs = {}}
+		playerQuestsState.mobs = playerQuestsState.mobs or {}
+		local mobType = update.mobType
+		if mobType then
+			playerQuestsState.mobs[mobType] = playerQuestsState.mobs[mobType] or {kills = 0, claimed = {}}
+			playerQuestsState.mobs[mobType].kills = update.kills or playerQuestsState.mobs[mobType].kills
+			setQuestsBadgeCount(getClaimableQuestCount())
+		end
+    end)
+
+	-- Request initial quest data so the badge can reflect claimables without opening the panel
+    QuestsApi.RequestData()
+
+	-- Daily badge: reflect availability from GameState dailyRewards
+	GameState:OnPropertyChanged("playerData.dailyRewards", function(newValue)
+		local canClaim = false
+		if newValue then
+			local today = os.date("%Y-%m-%d")
+			local claimedToday = newValue.lastClaimDate == today
+			canClaim = not claimedToday
+		end
+		setDailyBadgeAvailable(canClaim)
+	end)
+
+	-- Also listen to network events just in case they come before GameState update
+    RewardsApi.OnDailyUpdated(function(rewardData)
+		local canClaim = false
+		if rewardData then
+			local today = os.date("%Y-%m-%d")
+			local claimedToday = rewardData.lastClaimDate == today
+			canClaim = not claimedToday
+		end
+		setDailyBadgeAvailable(canClaim)
+    end)
+
+    RewardsApi.OnDailyClaimed(function(rewardData)
+		setDailyBadgeAvailable(false)
+		-- Brief pulse on claim to acknowledge success
+		local btn = findDailyButton()
+		if btn and btn.icon then
+			local base = DEFAULT_ICON_SIZE
+			local up = TweenService:Create(btn.icon, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+				Size = UDim2.new(0, base + 8, 0, base + 8)
+			})
+			local down = TweenService:Create(btn.icon, TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+				Size = UDim2.new(0, base, 0, base)
+			})
+			up:Play()
+			up.Completed:Connect(function()
+				down:Play()
+			end)
+		end
+    end)
+
+	-- Request initial daily rewards data so the badge shows on login
+    RewardsApi.RequestDaily()
+
+	print("MainHUD: Created simplified HUD with Vector Icons")
+end
+
+
+
+--[[
+	Create bottom left currency display (money and gems)
+--]]
+function MainHUD:CreateBottomLeftCurrency()
+	-- Container for currency displays in bottom left
+	local currencyContainer = Instance.new("Frame")
+	currencyContainer.Name = "BottomLeftCurrency"
+	currencyContainer.Size = UDim2.new(0, 340, 0, 140) -- Larger to accommodate 64px text
+	currencyContainer.Position = UDim2.new(0, 4, 1, -140) -- Closer to bottom with no bottom padding
+	currencyContainer.BackgroundTransparency = 1
+	currencyContainer.Parent = hudGui
+
+	-- Ultra-minimal padding with no bottom padding
+	local padding = Instance.new("UIPadding")
+	padding.PaddingTop = UDim.new(0, 1)
+	padding.PaddingBottom = UDim.new(0, 0) -- No bottom padding
+	padding.PaddingLeft = UDim.new(0, 2)
+	padding.PaddingRight = UDim.new(0, 2)
+	padding.Parent = currencyContainer
+
+	-- Vertical layout for stacking gems above money
+	local layout = Instance.new("UIListLayout")
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Padding = UDim.new(0, -5) -- Negative spacing to bring items closer
+	layout.FillDirection = Enum.FillDirection.Vertical
+	layout.VerticalAlignment = Enum.VerticalAlignment.Bottom
+	layout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+	layout.Parent = currencyContainer
+
+	-- Gems display (positioned above money)
+	local gemsContainer = Instance.new("Frame")
+	gemsContainer.Name = "GemsContainer"
+	gemsContainer.Size = UDim2.new(1, 0, 0, 70) -- Height for 64px text and icons
+	gemsContainer.BackgroundTransparency = 1
+	gemsContainer.LayoutOrder = 1
+	gemsContainer.Parent = currencyContainer
+
+	-- Horizontal layout for gem icon and value
+	local gemsLayout = Instance.new("UIListLayout")
+	gemsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	gemsLayout.Padding = UDim.new(0, 5) -- 5px spacing between icon and text
+	gemsLayout.FillDirection = Enum.FillDirection.Horizontal
+	gemsLayout.VerticalAlignment = Enum.VerticalAlignment.Center -- Center icons with text
+	gemsLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+	gemsLayout.Parent = gemsContainer
+
+	-- Create gem icon
+	local gemIcon = IconManager:CreateIcon(gemsContainer, "Currency", "Gem", {
+		size = UDim2.new(0, 48, 0, 48) -- 48px icon size
+	})
+	if gemIcon then
+		gemIcon.LayoutOrder = 1
+	end
+
+	gemsLabel = Instance.new("TextLabel")
+	gemsLabel.Name = "GemsLabel"
+	gemsLabel.Size = UDim2.new(0, 100, 1, 0) -- Fixed width for text
+	gemsLabel.BackgroundTransparency = 1
+	gemsLabel.Text = "<b><i>0</i></b>"
+	gemsLabel.RichText = true -- Enable RichText for bold+italic
+	gemsLabel.TextColor3 = Config.UI_SETTINGS.colors.semantic.game.gems -- Purple gems color
+	gemsLabel.TextSize = 64 -- Massive text size
+	gemsLabel.Font = Enum.Font.Gotham -- Base font for RichText
+	gemsLabel.TextXAlignment = Enum.TextXAlignment.Left
+	gemsLabel.TextYAlignment = Enum.TextYAlignment.Center
+	gemsLabel.TextStrokeTransparency = 0 -- Maximum opacity for thickest stroke
+	gemsLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+	gemsLabel.LayoutOrder = 2
+	gemsLabel.Parent = gemsContainer
+
+	-- Add extra thick UIStroke for gems
+	local gemsStroke = Instance.new("UIStroke")
+	gemsStroke.Color = Color3.fromRGB(0, 0, 0)
+	gemsStroke.Thickness = 2 -- Medium stroke thickness
+	gemsStroke.Parent = gemsLabel
+
+	-- Money display (positioned at bottom)
+	local moneyContainer = Instance.new("Frame")
+	moneyContainer.Name = "MoneyContainer"
+	moneyContainer.Size = UDim2.new(1, 0, 0, 70) -- Height for 64px text and icons
+	moneyContainer.BackgroundTransparency = 1
+	moneyContainer.LayoutOrder = 2
+	moneyContainer.Parent = currencyContainer
+
+	-- Horizontal layout for money icon and value
+	local moneyLayout = Instance.new("UIListLayout")
+	moneyLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	moneyLayout.Padding = UDim.new(0, 5) -- 5px spacing between icon and text
+	moneyLayout.FillDirection = Enum.FillDirection.Horizontal
+	moneyLayout.VerticalAlignment = Enum.VerticalAlignment.Center -- Center icons with text
+	moneyLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+	moneyLayout.Parent = moneyContainer
+
+	-- Create money icon
+	local moneyIcon = IconManager:CreateIcon(moneyContainer, "Currency", "Cash", {
+		size = UDim2.new(0, 48, 0, 48) -- 48px icon size
+	})
+	if moneyIcon then
+		moneyIcon.LayoutOrder = 1
+	end
+
+	moneyLabel = Instance.new("TextLabel")
+	moneyLabel.Name = "MoneyLabel"
+	moneyLabel.Size = UDim2.new(0, 100, 1, 0) -- Fixed width for text
+	moneyLabel.BackgroundTransparency = 1
+	moneyLabel.Text = "<b><i>0</i></b>"
+	moneyLabel.RichText = true -- Enable RichText for bold+italic
+	moneyLabel.TextColor3 = Color3.fromRGB(34, 197, 94) -- Green color for money
+	moneyLabel.TextSize = 64 -- Massive text size
+	moneyLabel.Font = Enum.Font.Gotham -- Base font for RichText
+	moneyLabel.TextXAlignment = Enum.TextXAlignment.Left
+	moneyLabel.TextYAlignment = Enum.TextYAlignment.Center
+		moneyLabel.TextStrokeTransparency = 0 -- Maximum opacity for thickest stroke
+	moneyLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+	moneyLabel.LayoutOrder = 2
+	moneyLabel.Parent = moneyContainer
+
+	-- Add extra thick UIStroke for money
+	local moneyStroke = Instance.new("UIStroke")
+	moneyStroke.Color = Color3.fromRGB(0, 0, 0)
+	moneyStroke.Thickness = 2 -- Medium stroke thickness
+	moneyStroke.Parent = moneyLabel
+end
+
+
+
+--[[
+	Create the left sidebar menu
+--]]
+function MainHUD:CreateLeftSidebar()
+	leftSidebar = Instance.new("Frame")
+	leftSidebar.Name = "LeftSidebar"
+	leftSidebar.Size = UDim2.new(0, SIDEBAR_WIDTH, 0, 0) -- Width fixed, height automatic
+	leftSidebar.Position = UDim2.new(0, 10, 0.5, 0) -- Centered vertically with 10px offset from left
+	leftSidebar.AnchorPoint = Vector2.new(0, 0.5) -- Center anchor point
+	leftSidebar.AutomaticSize = Enum.AutomaticSize.Y -- Auto-size height based on content
+	leftSidebar.BackgroundColor3 = Config.UI_SETTINGS.colors.backgroundGlass
+	leftSidebar.BackgroundTransparency = 1 -- Make frame invisible
+	leftSidebar.BorderSizePixel = 0
+	leftSidebar.Parent = hudGui
+
+	-- Remove corner radius since frame is invisible
+	-- local sidebarCorner = Instance.new("UICorner")
+	-- sidebarCorner.CornerRadius = UDim.new(0, Config.UI_SETTINGS.designSystem.borderRadius.lg)
+	-- sidebarCorner.Parent = leftSidebar
+
+	-- Add padding to the sidebar
+	local sidebarPadding = Instance.new("UIPadding")
+	sidebarPadding.PaddingTop = UDim.new(0, CONTENT_PADDING)
+	sidebarPadding.PaddingBottom = UDim.new(0, CONTENT_PADDING)
+	sidebarPadding.PaddingLeft = UDim.new(0, CONTENT_PADDING)
+	sidebarPadding.PaddingRight = UDim.new(0, CONTENT_PADDING)
+	sidebarPadding.Parent = leftSidebar
+
+	-- Add vertical list layout for automatic button spacing
+	local sidebarLayout = Instance.new("UIListLayout")
+	sidebarLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	sidebarLayout.Padding = UDim.new(0, CONTENT_PADDING + 6) -- Slightly reduced gap between buttons
+	sidebarLayout.FillDirection = Enum.FillDirection.Vertical
+	sidebarLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	sidebarLayout.Parent = leftSidebar
+
+	-- Create menu buttons (using Vector Icons)
+	menuButtons = {
+		{
+			iconCategory = "UI",
+			iconName = "Calendar",
+			text = "Daily Rewards",
+			buttonText = "Daily", -- Short text for button label
+			shortcut = "D",
+			callback = function()
+				-- Use PanelManager to toggle daily rewards panel
+				PanelManager:TogglePanel("daily_rewards")
+			end
+		},
+		{
+			iconCategory = "General",
+			iconName = "Heart",
+			text = "Emotes",
+			buttonText = "Emote", -- Short text for button label
+			shortcut = "E",
+			callback = function()
+				-- Use PanelManager to toggle emotes panel
+				PanelManager:TogglePanel("emotes")
+			end
+		},
+		{
+			iconCategory = "General",
+			iconName = "Trophy",
+			text = "Quests",
+			buttonText = "Quests",
+			shortcut = "Q",
+			callback = function()
+				PanelManager:TogglePanel("quests")
+			end
+		},
+		{
+			iconCategory = "General",
+			iconName = "Shop",
+			text = "Shop",
+			buttonText = "Shop",
+			shortcut = "S",
+			callback = function()
+				PanelManager:TogglePanel("shop")
+			end
+		},
+		{
+			iconCategory = "General",
+			iconName = "Settings",
+			text = "Settings",
+			buttonText = "Settings", -- Short text for button label
+			shortcut = "ESC",
+			callback = function()
+				-- Use PanelManager to toggle settings panel
+				PanelManager:TogglePanel("settings")
+			end
+		}
+	}
+
+	for i, buttonData in ipairs(menuButtons) do
+		local button = self:CreateMenuButton(buttonData)
+		-- No manual positioning needed - UIListLayout handles it automatically
+		button.borderFrame.LayoutOrder = i
+		button.borderFrame.Parent = leftSidebar -- Parent directly to sidebar (UIListLayout handles spacing)
+
+		-- Store button reference for menu toggle functionality
+		menuButtons[i].buttonObj = button
+	end
+
+	-- Prepare badge for Quests button (hidden until count > 0)
+	ensureQuestBadge()
+	-- Prepare badge for Daily button (hidden until available)
+	ensureDailyBadge()
+
+	-- Removed expand/collapse functionality for simpler design
+	-- self:SetupMenuToggle()
+end
+
+--[[
+	Create a menu button with individual background frame
+--]]
+function MainHUD:CreateMenuButton(buttonData)
+	-- Create background frame for the button
+	local buttonBackgroundFrame = Instance.new("Frame")
+	buttonBackgroundFrame.Name = "MenuButtonFrame"
+	buttonBackgroundFrame.Size = UDim2.new(0, BUTTON_SIZE, 0, BUTTON_SIZE)
+	buttonBackgroundFrame.BackgroundColor3 = Config.UI_SETTINGS.colors.semantic.hud.sidebar.border
+	buttonBackgroundFrame.BackgroundTransparency = 1 -- Fully transparent
+	buttonBackgroundFrame.BorderSizePixel = 0
+
+	local frameCorner = Instance.new("UICorner")
+	frameCorner.CornerRadius = UDim.new(0, Config.UI_SETTINGS.designSystem.borderRadius.lg)
+	frameCorner.Parent = buttonBackgroundFrame
+
+	-- Create the actual button
+	local button = Instance.new("TextButton")
+	button.Name = "MenuButton"
+	button.Size = UDim2.new(0, 60, 0, 60) -- 4px padding inside frame (back to original)
+	button.Position = UDim2.new(0, 4, 0, 4)
+	button.BackgroundColor3 = Config.UI_SETTINGS.colors.semantic.hud.sidebar.background
+	button.BackgroundTransparency = 1 -- Fully transparent
+	button.Text = ""
+	button.BorderSizePixel = 0
+	button.Parent = buttonBackgroundFrame
+
+	local buttonCorner = Instance.new("UICorner")
+	buttonCorner.CornerRadius = UDim.new(0, Config.UI_SETTINGS.designSystem.borderRadius.sm)
+	buttonCorner.Parent = button
+
+	-- No gradient overlay needed for transparent buttons
+
+	-- Create icon (positioned for text overlay)
+	local icon = IconManager:CreateIcon(button, buttonData.iconCategory, buttonData.iconName, {
+		size = UDim2.new(0, DEFAULT_ICON_SIZE, 0, DEFAULT_ICON_SIZE), -- Smaller by default
+		position = UDim2.new(0.5, 0, 0.5, 0), -- Centered in button
+		anchorPoint = Vector2.new(0.5, 0.5),
+	})
+
+	-- Create button text label overlaying the icon (using titleLabel styling)
+	local buttonTextLabel = nil
+	if buttonData.buttonText then
+		buttonTextLabel = Instance.new("TextLabel")
+		buttonTextLabel.Name = "ButtonText"
+		buttonTextLabel.Size = UDim2.new(1, -4, 0, 32) -- Full width minus padding, larger height for bigger text
+		buttonTextLabel.Position = UDim2.new(0, 2, 1, -18) -- Nudge label back up slightly per feedback
+		buttonTextLabel.BackgroundTransparency = 1
+		buttonTextLabel.Text = "<b><i>" .. buttonData.buttonText .. "</i></b>" -- Bold+italic like money/gems
+		buttonTextLabel.RichText = true -- Enable RichText for bold+italic styling
+		buttonTextLabel.TextColor3 = Config.UI_SETTINGS.titleLabel.textColor
+		buttonTextLabel.TextSize = 22 -- Scaled up font for bigger buttons
+		buttonTextLabel.Font = Enum.Font.Gotham -- Same font as money/gems
+		buttonTextLabel.TextXAlignment = Enum.TextXAlignment.Center
+		buttonTextLabel.TextYAlignment = Enum.TextYAlignment.Center
+		buttonTextLabel.TextScaled = false -- Disable scaling to use exact font size
+		buttonTextLabel.ZIndex = 2 -- Ensure text appears above icon
+		buttonTextLabel.Parent = button
+
+		-- Add UIStroke using titleLabel configuration
+		local textStroke = Instance.new("UIStroke")
+		textStroke.Color = Config.UI_SETTINGS.titleLabel.stroke.color
+		textStroke.Thickness = Config.UI_SETTINGS.titleLabel.stroke.thickness
+		textStroke.Parent = buttonTextLabel
+	end
+
+		-- Remove expanded text label functionality for cleaner design
+	local textLabel = nil -- No expanded text needed
+
+	-- Button functionality
+	button.MouseButton1Click:Connect(function()
+		if buttonData.callback then
+			buttonData.callback()
+		end
+
+		-- Micro UX: single short pulse on tap
+		local baseSize = getBaseIconSizeForButton({button = button, icon = icon})
+		popIcon(icon, baseSize)
+	end)
+
+	-- Hover effects (transparent buttons with icon scaling)
+	button.MouseEnter:Connect(function()
+		if SoundManager then
+			SoundManager:PlaySFX("buttonHover")
+		end
+		-- Scale up the icon for hover feedback
+		if icon then
+			local base = getBaseIconSizeForButton({button = button, icon = icon})
+			local target = math.max(base, HOVER_ICON_SIZE)
+			TweenService:Create(icon, TweenInfo.new(Config.UI_SETTINGS.designSystem.animation.duration.normal), {
+				Size = UDim2.new(0, target, 0, target)
+			}):Play()
+		end
+	end)
+
+	button.MouseLeave:Connect(function()
+		-- Scale down the icon
+		if icon then
+			local base = getBaseIconSizeForButton({button = button, icon = icon})
+			TweenService:Create(icon, TweenInfo.new(Config.UI_SETTINGS.designSystem.animation.duration.normal), {
+				Size = UDim2.new(0, base, 0, base)
+			}):Play()
+		end
+	end)
+
+	-- Return button object
+	return {
+		borderFrame = buttonBackgroundFrame,
+		button = button,
+		icon = icon,
+		textLabel = nil, -- No expanded text
+		buttonTextLabel = buttonTextLabel -- For button label
+	}
+end
+
+--[[
+	Removed menu toggle functionality for simpler design
+	Buttons now work independently without expand/collapse behavior
+--]]
+
+
+
+--[[
+	Start button cooldown with simple countdown
+--]]
+function MainHUD:StartButtonCooldown(buttonId, buttonObj, duration)
+	buttonCooldowns[buttonId] = true
+
+	-- Create cooldown overlay
+	local cooldownOverlay = Instance.new("Frame")
+	cooldownOverlay.Name = "CooldownOverlay"
+	cooldownOverlay.Size = UDim2.new(1, 0, 1, 0)
+	cooldownOverlay.BackgroundTransparency = 1
+	cooldownOverlay.BorderSizePixel = 0
+	cooldownOverlay.Parent = buttonObj.button
+
+	-- Countdown text
+	local countdownText = Instance.new("TextLabel")
+	countdownText.Name = "CountdownText"
+	countdownText.Size = UDim2.new(1, 0, 1, 0)
+	countdownText.Position = UDim2.new(0, 0, 0, 0)
+	countdownText.BackgroundTransparency = 1
+	countdownText.Text = tostring(duration)
+	countdownText.TextColor3 = Config.UI_SETTINGS.colors.text
+	countdownText.TextSize = Config.UI_SETTINGS.typography.sizes.body.large
+	countdownText.Font = Config.UI_SETTINGS.typography.fonts.bold
+	countdownText.TextStrokeTransparency = 0.3
+	countdownText.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+	countdownText.Parent = cooldownOverlay
+
+	-- Disable button and make icon semi-transparent
+	buttonObj:SetEnabled(false)
+	if buttonObj.icon then
+		buttonObj.icon.ImageTransparency = Config.UI_SETTINGS.designSystem.transparency.overlay
+	end
+
+	local startTime = tick()
+	local connection
+
+	connection = game:GetService("RunService").Heartbeat:Connect(function()
+		local elapsed = tick() - startTime
+		local remaining = duration - elapsed
+
+		if remaining > 0 then
+			countdownText.Text = string.format("%.0f", remaining)
+		else
+			-- Cooldown complete
+			buttonCooldowns[buttonId] = false
+			cooldownOverlay:Destroy()
+			buttonObj:SetEnabled(true)
+			-- Restore icon transparency
+			if buttonObj.icon then
+				buttonObj.icon.ImageTransparency = 0
+			end
+			connection:Disconnect()
+		end
+	end)
+end
+
+
+
+--[[
+	Connect to game state changes
+--]]
+function MainHUD:ConnectToGameState()
+	-- Update stats when player data changes
+	GameState:OnPropertyChanged("playerData", function(newData)
+		if newData then
+			self:UpdateStats(newData)
+		end
+	end)
+end
+
+--[[
+	Update player stats with count-up animations and gain/loss effects
+--]]
+function MainHUD:UpdateStats(playerData)
+	if not playerData then return end
+
+	-- Update stats with count-up animations and gain/loss effects
+	if playerData.coins then
+		local oldValue = currentValues.coins
+		local newValue = playerData.coins
+		if oldValue ~= newValue then
+			self:AnimateValueChange(moneyLabel, oldValue, newValue, "coins")
+			currentValues.coins = newValue
+		end
+	end
+
+	if playerData.gems then
+		local oldValue = currentValues.gems
+		local newValue = playerData.gems
+		if oldValue ~= newValue then
+			self:AnimateValueChange(gemsLabel, oldValue, newValue, "gems")
+			currentValues.gems = newValue
+		end
+	end
+end
+
+--[[
+	Animate value change with count-up effect
+--]]
+function MainHUD:AnimateValueChange(label, oldValue, newValue, valueType)
+	if not label then return end
+
+	local duration = 0.8 -- Animation duration
+	local startTime = tick()
+	local connection
+
+	-- No scale effects to keep size consistent
+
+	connection = game:GetService("RunService").Heartbeat:Connect(function()
+		local elapsed = tick() - startTime
+		local progress = math.min(elapsed / duration, 1)
+
+		-- Ease out animation
+		local easedProgress = 1 - math.pow(1 - progress, 3)
+		local currentValue = math.floor(oldValue + (newValue - oldValue) * easedProgress)
+
+		-- Update text based on value type with RichText formatting
+		if valueType == "coins" then
+			label.Text = "<b><i>" .. self:FormatNumber(currentValue) .. "</i></b>"
+		elseif valueType == "gems" then
+			label.Text = "<b><i>" .. self:FormatNumber(currentValue) .. "</i></b>"
+		end
+
+		if progress >= 1 then
+			connection:Disconnect()
+		end
+	end)
+end
+
+
+
+--[[
+	Format numbers with K/M/B suffixes
+--]]
+function MainHUD:FormatNumber(number)
+	if number >= 1000000000 then
+		return string.format("%.1fB", number / 1000000000)
+	elseif number >= 1000000 then
+		return string.format("%.1fM", number / 1000000)
+	elseif number >= 1000 then
+		return string.format("%.1fK", number / 1000)
+	else
+		return tostring(number)
+	end
+end
+
+--[[
+	Show/Hide HUD
+--]]
+function MainHUD:Show()
+	if hudGui then
+		hudGui.Enabled = true
+	end
+end
+
+function MainHUD:Hide()
+	if hudGui then
+		hudGui.Enabled = false
+	end
+end
+
+function MainHUD:Destroy()
+	if hudGui then
+		hudGui:Destroy()
+		hudGui = nil
+	end
+end
+
+return MainHUD

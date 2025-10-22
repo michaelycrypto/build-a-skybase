@@ -1,0 +1,59 @@
+{
+  "name": "RobloxCoreFramework",
+  "tree": {
+    "$className": "DataModel",
+
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "Shared": {
+        "$path": "src/ReplicatedStorage/Shared"
+      },
+      "Tools": {
+        "$path": "src/ReplicatedStorage/Tools"
+      },
+      "Configs": {
+        "$path": "src/ReplicatedStorage/Configs"
+      },
+      "Assets": {
+        "$path": "src/ReplicatedStorage/Assets"
+      },
+      "RemoteEvents": {
+        "$className": "Folder",
+
+        "GameRemote": {
+          "$className": "RemoteEvent"
+        },
+        "GameFunction": {
+          "$className": "RemoteFunction"
+        }
+      }
+    },
+
+    "ServerStorage": {
+      "$className": "ServerStorage",
+      "MapTiles": {
+        "$path": "src/ServerStorage/MapTiles"
+      },
+      "Mobs": {
+        "$path": "src/ServerStorage/Mobs"
+      }
+    },
+
+    "ServerScriptService": {
+      "$className": "ServerScriptService",
+      "Server": {
+        "$path": "src/ServerScriptService/Server"
+      }
+    },
+
+    "StarterPlayer": {
+      "$className": "StarterPlayer",
+      "StarterPlayerScripts": {
+        "$className": "StarterPlayerScripts",
+        "Client": {
+          "$path": "src/StarterPlayerScripts/Client"
+        }
+      }
+    }
+  }
+}

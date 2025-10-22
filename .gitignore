@@ -1,0 +1,23 @@
+# Roblox Studio Files
+*.rbxlx
+*.rbxl
+*.rbxm
+
+# Rojo Files
+build/
+*.rojo.json.lock
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# IDE Files
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Temporary Files
+temp/
+tmp/
