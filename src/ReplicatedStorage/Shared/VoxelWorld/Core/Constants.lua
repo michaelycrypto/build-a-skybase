@@ -57,7 +57,9 @@ local Constants = {
 		STONE_SLAB = 23,
 		COBBLESTONE_SLAB = 24,
 		STONE_BRICK_SLAB = 25,
-		BRICK_SLAB = 26
+		BRICK_SLAB = 26,
+		-- Fences
+		OAK_FENCE = 27
 	},
 
 	-- Mapping: Slab block ID → Full block ID (when two slabs combine)

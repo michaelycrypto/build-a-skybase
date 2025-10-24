@@ -43,6 +43,7 @@ local VALID_ITEM_IDS = {
 	[Constants.BlockType.COBBLESTONE_SLAB] = true,
 	[Constants.BlockType.STONE_BRICK_SLAB] = true,
 	[Constants.BlockType.BRICK_SLAB] = true,
+	[Constants.BlockType.OAK_FENCE] = true,
 }
 
 --[[

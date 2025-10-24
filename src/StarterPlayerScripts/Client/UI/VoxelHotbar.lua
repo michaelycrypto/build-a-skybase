@@ -62,6 +62,7 @@ local BLOCK_INFO = {
 	[24] = {name = "Cobblestone Slab", icon = "▬", category = "Building"},
 	[25] = {name = "Stone Brick Slab", icon = "▬", category = "Building"},
 	[26] = {name = "Brick Slab", icon = "▬", category = "Building"},
+	[27] = {name = "Oak Fence", icon = "#", category = "Building"},
 }
 
 function VoxelHotbar.new()

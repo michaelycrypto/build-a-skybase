@@ -163,6 +163,13 @@ BlockProperties.Properties = {
 		minToolTier = 1,
 		resistance = 6.0
 	},
+	-- Fences
+	[Constants.BlockType.OAK_FENCE] = {
+		hardness = 2.0,
+		toolType = BlockProperties.ToolType.AXE,
+		minToolTier = nil,
+		resistance = 2.0
+	},
 	[Constants.BlockType.STONE_BRICKS] = {
 		hardness = 1.5,  -- Minecraft: 1.5 seconds
 		toolType = BlockProperties.ToolType.PICKAXE,

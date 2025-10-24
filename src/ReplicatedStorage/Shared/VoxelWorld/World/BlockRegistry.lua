@@ -338,6 +338,19 @@ BlockRegistry.Blocks = {
 			all = "bricks"
 		},
 		slabShape = true
+	},
+
+	-- Fences
+	[Constants.BlockType.OAK_FENCE] = {
+		name = "Oak Fence",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(162, 114, 46),
+		textures = {
+			all = "oak_planks"
+		},
+		fenceShape = true,
+		fenceGroup = "wood_fence"
 	}
 }
 

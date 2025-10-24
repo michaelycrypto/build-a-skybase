@@ -182,7 +182,7 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 
 	-- Check if block is solid at position (for box merging)
 	-- Excludes crossShape and stairShape blocks - they're rendered in separate passes
-	local function isSolid(x, y, z)
+    local function isSolid(x, y, z)
 		if y < 0 or y >= sy then return false end
 		local id
 		if x >= 0 and x < sx and z >= 0 and z < sz then
@@ -192,7 +192,7 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 		end
 		if id == Constants.BlockType.AIR then return false end
 		local def = Blocks[id] or BlockRegistry:GetBlock(id)
-		return def and def.solid ~= false and not def.crossShape and not def.stairShape and not def.slabShape
+        return def and def.solid ~= false and not def.crossShape and not def.stairShape and not def.slabShape and not def.fenceShape
 	end
 
 	-- Check if box touches air (is exposed)
@@ -934,6 +934,173 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 
 	-- Fourth pass: cross-shaped plants (tall grass, flowers)
 	local FACE_THICKNESS = 0.01
+	-- Fence pass: optimized (merge rails and avoid duplicate textures)
+	for x = 0, Constants.CHUNK_SIZE_X - 1 do
+		for y = 0, yLimit - 1 do
+			for z = 0, Constants.CHUNK_SIZE_Z - 1 do
+				if partsBudget >= MAX_PARTS then return meshParts end
+
+				local id = chunk:GetBlock(x, y, z)
+				if id ~= Constants.BlockType.AIR then
+					local def = Blocks[id] or BlockRegistry:GetBlock(id)
+					if def and def.fenceShape then
+						local bs = Constants.BLOCK_SIZE
+						local cx = (chunk.x * Constants.CHUNK_SIZE_X + x + 0.5) * bs
+						local cz = (chunk.z * Constants.CHUNK_SIZE_Z + z + 0.5) * bs
+
+						-- Neighbor sampling (chunk-border aware)
+						local function sample(nx, ny, nz)
+							if nx >= 0 and nx < Constants.CHUNK_SIZE_X and nz >= 0 and nz < Constants.CHUNK_SIZE_Z then
+								return chunk:GetBlock(nx, ny, nz)
+							end
+							return DefaultSampleBlock(worldManager, chunk, nx, ny, nz)
+						end
+
+						local function neighborKind(dx, dz)
+							local nid = sample(x + dx, y, z + dz)
+							-- Guard against nil or AIR
+							if not nid or nid == Constants.BlockType.AIR then return "none" end
+							local ndef = BlockRegistry:GetBlock(nid)
+							-- Unknown or missing definitions should never connect
+							if not ndef or ndef.name == "Unknown" then return "none" end
+							if ndef.fenceShape then return "fence" end
+							-- Treat only true full cubes as connectable; exclude chests and other interactables
+							if ndef.solid and not ndef.crossShape and not ndef.slabShape and not ndef.stairShape and not ndef.fenceShape then
+								-- Do not connect to chests (or any explicitly interactable blocks)
+								if nid == Constants.BlockType.CHEST or ndef.interactable == true then
+									return "none"
+								end
+								return "full"
+							end
+							return "none"
+						end
+
+						local kindN = neighborKind(0, -1)
+						local kindS = neighborKind(0, 1)
+						local kindW = neighborKind(-1, 0)
+						local kindE = neighborKind(1, 0)
+
+						-- Dimensions
+						local postWidth = bs * 0.25
+						local postHeight = bs * 1.0
+						local railThickness = bs * 0.20
+						local railYOffset1 = bs * 0.35
+						local railYOffset2 = bs * 0.80
+
+						-- Center post (use face part to ensure visible geometry)
+						local post = PartPool.AcquireFacePart()
+						post.CanCollide = true
+						post.Material = getMaterialForBlock(id)
+						post.Color = def.color
+						post.Transparency = 0
+						post.Size = Vector3.new(postWidth, postHeight, postWidth)
+						post.Position = Vector3.new(snap(cx), snap((y * bs) + (postHeight * 0.5)), snap(cz))
+						post.Parent = container
+						-- Apply wood planks texture (e.g., oak planks) to fence post
+						if def and def.textures and def.textures.all then
+							local textureId = TextureManager:GetTextureId(def.textures.all)
+							if textureId then
+								for _, face in ipairs({Enum.NormalId.Top, Enum.NormalId.Bottom, Enum.NormalId.Front, Enum.NormalId.Back, Enum.NormalId.Left, Enum.NormalId.Right}) do
+										local tex = Instance.new("Texture")
+										tex.Face = face
+										tex.Texture = textureId
+										tex.StudsPerTileU = bs
+										tex.StudsPerTileV = bs
+										tex.Parent = post
+								end
+							end
+						end
+						table.insert(meshParts, post)
+						partsBudget += 1
+
+						-- Helper to emit one rail part
+						local function emitRail(centerX, centerZ, sizeX, sizeZ, yoff)
+							if partsBudget >= MAX_PARTS then return end
+							local rail = PartPool.AcquireFacePart()
+							rail.CanCollide = true
+							rail.Material = getMaterialForBlock(id)
+							rail.Color = def.color
+							rail.Transparency = 0
+							rail.Size = Vector3.new(sizeX, railThickness, sizeZ)
+							rail.Position = Vector3.new(snap(centerX), snap((y * bs) + yoff), snap(centerZ))
+							rail.Parent = container
+							-- Apply wood planks texture to rail
+							if def and def.textures and def.textures.all then
+								local textureId = TextureManager:GetTextureId(def.textures.all)
+								if textureId then
+								for _, face in ipairs({Enum.NormalId.Top, Enum.NormalId.Bottom, Enum.NormalId.Front, Enum.NormalId.Back, Enum.NormalId.Left, Enum.NormalId.Right}) do
+										local tex = Instance.new("Texture")
+										tex.Face = face
+										tex.Texture = textureId
+										tex.StudsPerTileU = bs
+										tex.StudsPerTileV = bs
+										tex.Parent = rail
+								end
+								end
+							end
+							table.insert(meshParts, rail)
+							partsBudget += 1
+						end
+
+						-- Merge rails along East (positive X) through contiguous fences
+						if kindE == "fence" and kindW ~= "fence" then
+							local run = 1
+							while true do
+								local nid = sample(x + run, y, z)
+								local ndef = BlockRegistry:GetBlock(nid)
+								if not (ndef and ndef.fenceShape) then break end
+								run += 1
+							end
+							local gaps = run - 1
+							if gaps > 0 then
+								local length = gaps * bs
+								local centerX = cx + (length * 0.5)
+								for _, yoff in ipairs({railYOffset1, railYOffset2}) do
+									emitRail(centerX, cz, length, railThickness, yoff)
+								end
+							end
+						end
+
+						-- Merge rails along South (positive Z) through contiguous fences
+						if kindS == "fence" and kindN ~= "fence" then
+							local run = 1
+							while true do
+								local nid = sample(x, y, z + run)
+								local ndef = BlockRegistry:GetBlock(nid)
+								if not (ndef and ndef.fenceShape) then break end
+								run += 1
+							end
+							local gaps = run - 1
+							if gaps > 0 then
+								local length = gaps * bs
+								local centerZ = cz + (length * 0.5)
+								for _, yoff in ipairs({railYOffset1, railYOffset2}) do
+									emitRail(cx, centerZ, railThickness, length, yoff)
+								end
+							end
+						end
+
+						-- Half-rails to connect full cubes (neighbor won't emit)
+						local halfLen = bs * 0.5
+						local function emitHalf(dx, dz)
+							local sizeX = (dx ~= 0) and halfLen or railThickness
+							local sizeZ = (dz ~= 0) and halfLen or railThickness
+							local offX = (dx ~= 0) and (dx * halfLen * 0.5) or 0
+							local offZ = (dz ~= 0) and (dz * halfLen * 0.5) or 0
+							for _, yoff in ipairs({railYOffset1, railYOffset2}) do
+								emitRail(cx + offX, cz + offZ, sizeX, sizeZ, yoff)
+							end
+						end
+
+						if kindN == "full" then emitHalf(0, -1) end
+						if kindS == "full" then emitHalf(0, 1) end
+						if kindW == "full" then emitHalf(-1, 0) end
+						if kindE == "full" then emitHalf(1, 0) end
+					end
+				end
+			end
+		end
+	end
 	for x = 0, Constants.CHUNK_SIZE_X - 1 do
 		for y = 0, yLimit - 1 do
 			for z = 0, Constants.CHUNK_SIZE_Z - 1 do

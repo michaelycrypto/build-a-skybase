@@ -325,12 +325,23 @@ function VoxelWorldService:SetBlock(x, y, z, blockId, player, metadata)
 	-- After changing a block, update nearby stair shapes
 	self:_updateNeighborStairShapes(x, y, z)
 
-	-- Mark chunk as modified
+	-- Mark chunk as modified (and neighbor edge chunks to update fence connections across borders)
 	local chunkX = math.floor(x / Constants.CHUNK_SIZE_X)
 	local chunkZ = math.floor(z / Constants.CHUNK_SIZE_Z)
-	local key = string.format("%d,%d", chunkX, chunkZ)
-	self.modifiedChunks[key] = true
-	print(string.format("🔄 Marked chunk (%d,%d) as modified (block %d at %d,%d,%d, meta:%d)", chunkX, chunkZ, blockId, x, y, z, metadata or 0))
+	local function mark(cx, cz)
+		local k = string.format("%d,%d", cx, cz)
+		self.modifiedChunks[k] = true
+	end
+	-- Always mark current chunk
+	mark(chunkX, chunkZ)
+	-- If on a chunk edge, also mark the neighbor so fence rails render across border
+	local localX = x % Constants.CHUNK_SIZE_X
+	local localZ = z % Constants.CHUNK_SIZE_Z
+	if localX == 0 then mark(chunkX - 1, chunkZ) end
+	if localX == Constants.CHUNK_SIZE_X - 1 then mark(chunkX + 1, chunkZ) end
+	if localZ == 0 then mark(chunkX, chunkZ - 1) end
+	if localZ == Constants.CHUNK_SIZE_Z - 1 then mark(chunkX, chunkZ + 1) end
+	print(string.format("🔄 Marked chunk (%d,%d) (+edges if any) as modified (block %d at %d,%d,%d, meta:%d)", chunkX, chunkZ, blockId, x, y, z, metadata or 0))
 
 	-- Notify all players
 	for otherPlayer, otherData in pairs(self.players) do

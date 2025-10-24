@@ -119,6 +119,7 @@ function ChestStorageService:InitializeStarterChest(x, y, z)
 		{id = Constants.BlockType.OAK_SLAB, count = 64},
 		{id = Constants.BlockType.STONE_SLAB, count = 64},
 		{id = Constants.BlockType.COBBLESTONE_SLAB, count = 64},
+		{id = Constants.BlockType.OAK_FENCE, count = 64},
 	}
 
 	-- Fill chest slots

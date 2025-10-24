@@ -199,6 +199,124 @@ function DroppedItemController:CreateModel(itemId, count)
 		{x = 0, y = LAYER_OFFSET_Y * 3, z = LAYER_OFFSET_XZ},
 	}
 
+	-- Special model for fence-type items: two posts with connecting rails
+	if blockInfo and blockInfo.fenceShape then
+		-- Build a compact fence section centered at origin
+		local size = 0.9 -- compact scale for dropped item
+		local postWidth = 0.25 * size
+		local postHeight = 1.0 * size
+		local railThickness = 0.16 * size
+		local sep = 0.35 * size
+
+		local function makePost(x)
+			local post = Instance.new("Part")
+			post.Name = "FencePost"
+			post.Size = Vector3.new(postWidth, postHeight, postWidth)
+			post.Material = blockInfo.material or Enum.Material.SmoothPlastic
+			post.Color = blockInfo.color or Color3.new(0.8, 0.8, 0.8)
+			post.Anchored = false
+			post.CanCollide = false
+			post.Massless = true
+			post.CFrame = CFrame.new(x, (postHeight - size) * 0.5, 0)
+			post.Parent = model
+			-- Apply wood planks texture to post
+			if blockInfo and blockInfo.textures and blockInfo.textures.all then
+				local textureId = TextureManager:GetTextureId(blockInfo.textures.all)
+				if textureId then
+					for _, face in ipairs({Enum.NormalId.Top, Enum.NormalId.Bottom, Enum.NormalId.Front, Enum.NormalId.Back, Enum.NormalId.Left, Enum.NormalId.Right}) do
+						local tex = Instance.new("Texture")
+						tex.Face = face
+						tex.Texture = textureId
+						tex.StudsPerTileU = size
+						tex.StudsPerTileV = size
+						tex.Parent = post
+					end
+				end
+			end
+			return post
+		end
+
+		local postL = makePost(-sep)
+		local postR = makePost(sep)
+
+		local span = (sep * 2) - postWidth
+		local function makeRail(y)
+			local rail = Instance.new("Part")
+			rail.Name = "FenceRail"
+			rail.Size = Vector3.new(span, railThickness, railThickness)
+			rail.Material = blockInfo.material or Enum.Material.SmoothPlastic
+			rail.Color = blockInfo.color or Color3.new(0.8, 0.8, 0.8)
+			rail.Anchored = false
+			rail.CanCollide = false
+			rail.Massless = true
+			rail.CFrame = CFrame.new(0, -0.5 * size + y, 0)
+			rail.Parent = model
+			-- Apply wood planks texture to rail
+			if blockInfo and blockInfo.textures and blockInfo.textures.all then
+				local textureId = TextureManager:GetTextureId(blockInfo.textures.all)
+				if textureId then
+					for _, face in ipairs({Enum.NormalId.Top, Enum.NormalId.Bottom, Enum.NormalId.Front, Enum.NormalId.Back, Enum.NormalId.Left, Enum.NormalId.Right}) do
+						local tex = Instance.new("Texture")
+						tex.Face = face
+						tex.Texture = textureId
+						tex.StudsPerTileU = size
+						tex.StudsPerTileV = size
+						tex.Parent = rail
+					end
+				end
+			end
+			return rail
+		end
+
+		local rail1 = makeRail(0.35 * size)
+		local rail2 = makeRail(0.80 * size)
+
+		-- Use an invisible physical root as PrimaryPart for physics
+		local root = Instance.new("Part")
+		root.Name = "ItemPart_1"
+		root.Size = Vector3.new(0.75, 0.75, 0.75)
+		root.Transparency = 1
+		root.Anchored = false
+		root.CanCollide = true
+		root.CustomPhysicalProperties = PhysicalProperties.new(0.4, 0.3, 0.4, 1, 1)
+		root.Parent = model
+		model.PrimaryPart = root
+
+		-- Weld fence parts to root
+		for _, part in ipairs({postL, postR, rail1, rail2}) do
+			local weld = Instance.new("WeldConstraint")
+			weld.Part0 = root
+			weld.Part1 = part
+			weld.Parent = part
+		end
+
+		-- Spawn particle effect on root
+		local particles = Instance.new("ParticleEmitter")
+		particles.Name = "SpawnEffect"
+		particles.Texture = "rbxasset://textures/particles/smoke_main.dds"
+		particles.Color = ColorSequence.new(blockInfo and blockInfo.color or Color3.new(1, 1, 1))
+		particles.Size = NumberSequence.new(0.4, 0.1)
+		particles.Transparency = NumberSequence.new(0.3, 1)
+		particles.Lifetime = NumberRange.new(0.4, 0.7)
+		particles.Rate = 0
+		particles.Speed = NumberRange.new(1, 3)
+		particles.SpreadAngle = Vector2.new(180, 180)
+		particles.Parent = root
+		particles:Emit(10)
+
+		model.Parent = workspace
+
+		-- Pop-in animation: scale parts in place, keep root size consistent
+		local tweenInfo = TweenInfo.new(0.15, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+		for _, p in ipairs({postL, postR, rail1, rail2}) do
+			local original = p.Size
+			p.Size = Vector3.new(0.1, 0.1, 0.1)
+			TweenService:Create(p, tweenInfo, {Size = original}):Play()
+		end
+
+		return model
+	end
+
 	-- Create layered parts - 2D sprites for plants, 3D cubes for blocks
 	for i = 1, layerCount do
 		local part = Instance.new("Part")

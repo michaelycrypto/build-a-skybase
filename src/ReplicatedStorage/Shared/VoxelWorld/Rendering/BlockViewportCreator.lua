@@ -174,6 +174,87 @@ local function createBlockPart(blockId)
 		return model
 	end
 
+	-- Handle fence blocks
+	if def.fenceShape then
+		local model = Instance.new("Model")
+		model.Name = "FenceBlock"
+
+		local size = 1 -- 1 stud size for viewport
+		local postWidth = 0.25 * size
+		local postHeight = 1.0 * size
+		local railThickness = 0.18 * size
+		local sep = 0.35 * size -- left/right post offset from center
+
+		local function makePost(x)
+			local post = Instance.new("Part")
+			post.Name = "Post"
+			post.Size = Vector3.new(postWidth, postHeight, postWidth)
+			post.Anchored = true
+			post.CanCollide = false
+			post.Material = Enum.Material.SmoothPlastic
+			post.Color = def.color
+			post.TopSurface = Enum.SurfaceType.Smooth
+			post.BottomSurface = Enum.SurfaceType.Smooth
+			post.CFrame = CFrame.new(x, (postHeight - size) * 0.5, 0)
+			post.Parent = model
+			-- Apply wood planks texture to post
+			if def.textures and def.textures.all then
+				local textureId = TextureManager:GetTextureId(def.textures.all)
+				if textureId then
+					for _, face in ipairs({Enum.NormalId.Top, Enum.NormalId.Bottom, Enum.NormalId.Front, Enum.NormalId.Back, Enum.NormalId.Left, Enum.NormalId.Right}) do
+						local texture = Instance.new("Texture")
+						texture.Face = face
+						texture.Texture = textureId
+						texture.StudsPerTileU = size
+						texture.StudsPerTileV = size
+						texture.Parent = post
+					end
+				end
+			end
+			return post
+		end
+
+		local postL = makePost(-sep)
+		local postR = makePost(sep)
+
+		-- two horizontal rails connecting posts
+		local span = (sep * 2) - postWidth
+		local function makeRail(y)
+			local rail = Instance.new("Part")
+			rail.Name = "Rail"
+			rail.Size = Vector3.new(span, railThickness, railThickness)
+			rail.Anchored = true
+			rail.CanCollide = false
+			rail.Material = Enum.Material.SmoothPlastic
+			rail.Color = def.color
+			rail.TopSurface = Enum.SurfaceType.Smooth
+			rail.BottomSurface = Enum.SurfaceType.Smooth
+			rail.CFrame = CFrame.new(0, -0.5 * size + y, 0)
+			rail.Parent = model
+			-- Apply wood planks texture to rail
+			if def.textures and def.textures.all then
+				local textureId = TextureManager:GetTextureId(def.textures.all)
+				if textureId then
+					for _, face in ipairs({Enum.NormalId.Top, Enum.NormalId.Bottom, Enum.NormalId.Front, Enum.NormalId.Back, Enum.NormalId.Left, Enum.NormalId.Right}) do
+						local texture = Instance.new("Texture")
+						texture.Face = face
+						texture.Texture = textureId
+						texture.StudsPerTileU = size
+						texture.StudsPerTileV = size
+						texture.Parent = rail
+					end
+				end
+			end
+			return rail
+		end
+
+		makeRail(0.35 * size)
+		makeRail(0.80 * size)
+
+		model.PrimaryPart = postL
+		return model
+	end
+
 	-- Handle slab blocks
 	if def.slabShape then
 		local size = 1 -- 1 stud size for viewport
