@@ -14,6 +14,7 @@
 
 local Constants = require(script.Parent.Parent.Core.Constants)
 local TextureManager = require(script.Parent.TextureManager)
+local BlockRegistry = require(script.Parent.Parent.World.BlockRegistry)
 
 local TextureApplicator = {}
 
@@ -157,8 +158,11 @@ function TextureApplicator:ApplyBoxTextures(
 			-- Texture is opaque (Part.Transparency controls overall visibility)
 			texture.Transparency = 0
 
-			-- Optional: Set texture color to match part color for tinting
-			-- texture.Color3 = part.Color
+			-- Optional tint: only for blocks flagged with greyscale textures (e.g., leaves variants)
+			local def = BlockRegistry:GetBlock(blockId)
+			if def and def.greyscaleTexture then
+				texture.Color3 = def.color or part.Color
+			end
 
 			texture.Parent = part
 			texturesApplied = texturesApplied + 1

@@ -323,6 +323,13 @@ local Client = {
 	Complete initialization after loading screen
 --]]
 local function completeInitialization(EmoteManager)
+	-- Initialize UIScaler first (before any UI is created)
+	local UIScaler = require(script.Parent.Managers.UIScaler)
+	if UIScaler.Initialize then
+		UIScaler:Initialize()
+	end
+	Client.managers.UIScaler = UIScaler
+
 	-- Initialize ToastManager now that loading is complete
 	local ToastManager = require(script.Parent.Managers.ToastManager)
 	if ToastManager.Initialize then
@@ -413,9 +420,28 @@ local function completeInitialization(EmoteManager)
 
 	-- Initialize Dropped Item Controller (rendering dropped items)
 	local DroppedItemController = require(script.Parent.Controllers.DroppedItemController)
-	DroppedItemController:Initialize()
+	DroppedItemController:Initialize(voxelWorldHandle)
 	Client.droppedItemController = DroppedItemController
 	print("💎 Dropped Item Controller initialized")
+
+	-- Initialize Tool Visual Controller (attach placeholder handle for equipped tools)
+	local ToolVisualController = require(script.Parent.Controllers.ToolVisualController)
+	ToolVisualController:Initialize()
+	Client.toolVisualController = ToolVisualController
+	print("🛠️ Tool Visual Controller initialized")
+
+	-- Initialize Tool Animation Controller (play R15 swing when sword equipped)
+	local ToolAnimationController = require(script.Parent.Controllers.ToolAnimationController)
+	ToolAnimationController:Initialize()
+	Client.toolAnimationController = ToolAnimationController
+	Client.managers.ToolAnimationController = ToolAnimationController
+	print("🎬 Tool Animation Controller initialized")
+
+	-- Initialize Combat Controller (PvP)
+	local CombatController = require(script.Parent.Controllers.CombatController)
+	CombatController:Initialize()
+	Client.combatController = CombatController
+	print("⚔️ Combat Controller initialized")
 
 	-- Initialize Camera Controller (3rd person camera locked 2 studs above head)
 	local CameraController = require(script.Parent.Controllers.CameraController)
@@ -438,15 +464,20 @@ local function completeInitialization(EmoteManager)
 
 	print("📦 Chest UI initialized")
 
-	-- Re-register event handlers with complete managers (including ToastManager)
+	-- Re-register event handlers with complete managers (including ToastManager and ToolAnimationController)
 	local completeEventConfig = EventManager:CreateClientEventConfig(Client.managers)
 	EventManager:RegisterEvents(completeEventConfig)
-	print("🔌 Complete event handlers registered (with ToastManager)")
+	print("🔌 Complete event handlers registered (with ToastManager and ToolAnimationController)")
 
 	-- Create main HUD
 	local MainHUD = require(script.Parent.UI.MainHUD)
 	if MainHUD.Create then
 		MainHUD:Create()
+	end
+
+	-- Link inventory to MainHUD for button access
+	if MainHUD.SetInventoryReference and inventory then
+		MainHUD:SetInventoryReference(inventory)
 	end
 
 	-- Initialize UI panels
@@ -664,6 +695,15 @@ local REMESH_DEBOUNCE_TIME = 0.15 -- Wait 150ms after last edit before remeshing
 		if Client.blockBreakProgress and data.playerUserId == player.UserId then
 			Client.blockBreakProgress:Reset()
 		end
+
+		-- Stop client breaking loop immediately if the broken block matches current
+		local BI = Client.blockInteraction
+		if BI and BI._getBreakingBlock and type(BI._getBreakingBlock) == "function" then
+			local bb = BI:_getBreakingBlock()
+			if bb and data.x == bb.X and data.y == bb.Y and data.z == bb.Z then
+				BI:_forceStopBreaking()
+			end
+		end
 	end)
 
 	-- Handle inventory synchronization from server
@@ -672,6 +712,7 @@ local REMESH_DEBOUNCE_TIME = 0.15 -- Wait 150ms after last edit before remeshing
 	if Client.inventoryManager then
 		Client.inventoryManager:OnInventoryChanged(function(slotIndex)
 			if Client.voxelInventory and Client.voxelInventory.isOpen then
+				-- Granular update: only update the specific inventory slot that changed
 				Client.voxelInventory:UpdateInventorySlotDisplay(slotIndex)
 			end
 			if Client.chestUI and Client.chestUI.isOpen then
@@ -681,8 +722,8 @@ local REMESH_DEBOUNCE_TIME = 0.15 -- Wait 150ms after last edit before remeshing
 
 		Client.inventoryManager:OnHotbarChanged(function(slotIndex)
 			if Client.voxelInventory and Client.voxelInventory.isOpen then
-				-- Update hotbar display in inventory panel
-				Client.voxelInventory:UpdateAllDisplays()
+				-- Granular update: only update the specific hotbar slot that changed
+				Client.voxelInventory:UpdateSpecificSlots(nil, {slotIndex})
 			end
 		end)
 
@@ -868,11 +909,11 @@ local REMESH_DEBOUNCE_TIME = 0.15 -- Wait 150ms after last edit before remeshing
 				-- Loading progress update
 			end,
 			function(loadedCount, failedCount)
-				-- Completion callback
+				-- Completion callback (called after fade-out)
 				print("Asset loading complete:", loadedCount, "loaded,", failedCount, "failed")
-				print("Calling completeInitialization...")
-
-				-- Continue with rest of initialization
+			end,
+			function()
+				-- Run heavy UI initialization while loading screen is still visible
 				completeInitialization(EmoteManager)
 			end
 		)
@@ -951,3 +992,16 @@ safeInitialize()
 
 -- Export for debugging
 Client.IconManager = IconManager
+-- Hook LMB hold/release for combat using ContextActionService
+local ContextActionService = game:GetService("ContextActionService")
+local function handleCombat(actionName, inputState, inputObject)
+	if actionName ~= "CombatLMB" then return end
+	if not Client or not Client.combatController then return end
+	if inputState == Enum.UserInputState.Begin then
+		Client.combatController:SetHolding(true)
+	elseif inputState == Enum.UserInputState.End then
+		Client.combatController:SetHolding(false)
+	end
+    return Enum.ContextActionResult.Pass
+end
+ContextActionService:BindAction("CombatLMB", handleCombat, false, Enum.UserInputType.MouseButton1)

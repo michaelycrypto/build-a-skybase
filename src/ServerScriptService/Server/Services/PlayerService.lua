@@ -153,11 +153,11 @@ function PlayerService:OnPlayerAdded(player)
 	}
 
 	-- IMPORTANT: Create inventory structure FIRST (before loading data)
-	self._logger.Info("DEBUG: About to create inventory. Deps exists?", self.Deps ~= nil)
-	self._logger.Info("DEBUG: PlayerInventoryService exists?", self.Deps and self.Deps.PlayerInventoryService ~= nil)
+	self._logger.Debug("About to create inventory. Deps exists?", self.Deps ~= nil)
+	self._logger.Debug("PlayerInventoryService exists?", self.Deps and self.Deps.PlayerInventoryService ~= nil)
 
 	if self.Deps and self.Deps.PlayerInventoryService then
-		self._logger.Info("DEBUG: Creating inventory for", player.Name)
+		self._logger.Debug("Creating inventory for", player.Name)
 		-- This creates the empty inventory structure
 		self.Deps.PlayerInventoryService:OnPlayerAdded(player)
 
@@ -275,7 +275,7 @@ function PlayerService:SendPlayerData(player)
 		self.Deps.DungeonService:SendSpawnerInventory(player)
 	end
 
-	self._logger.Info("Sent player data", {playerName = player.Name})
+	self._logger.Debug("Sent player data", {playerName = player.Name})
 end
 
 --[[
@@ -384,7 +384,7 @@ function PlayerService:SavePlayerData(player)
 		self.Deps.PlayerDataStoreService:SavePlayerData(player)
 	end
 
-	self._logger.Info("Saved player data", {playerName = player.Name})
+	self._logger.Debug("Saved player data", {playerName = player.Name})
 end
 
 --[[

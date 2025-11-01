@@ -39,6 +39,24 @@ function WorldManager:GetChunkCoords(key: string): (number, number)
 	return tonumber(x) or 0, tonumber(z) or 0
 end
 
+-- Quick test: is this chunk known-empty according to the generator?
+function WorldManager:IsChunkEmpty(x: number, z: number): boolean
+    local key = self:GetChunkKey(x, z)
+    local loaded = self.chunks[key]
+    if loaded and loaded.IsEmpty and (not loaded:IsEmpty()) then
+        return false
+    end
+    -- If we have cached serialized data for this chunk, it contains blocks
+    if self.chunkDataCache[key] ~= nil then
+        return false
+    end
+    if self.generator and self.generator.IsChunkEmpty then
+        return self.generator:IsChunkEmpty(x, z)
+    end
+    -- Unknown generator: assume not empty to be safe
+    return false
+end
+
 -- Get or create chunk at coordinates
 function WorldManager:GetChunk(x: number, z: number)
 	if not x or not z then

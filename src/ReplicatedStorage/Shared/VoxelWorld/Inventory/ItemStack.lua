@@ -4,6 +4,9 @@
 	Max stack size: 64 for most blocks
 ]]
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
+
 local ItemStack = {}
 ItemStack.__index = ItemStack
 
@@ -15,14 +18,31 @@ local MAX_STACK_SIZES = {
 }
 
 function ItemStack.new(itemId, count, maxStack)
-	local self = setmetatable({}, ItemStack)
+    local self = setmetatable({}, ItemStack)
 
-	self.itemId = itemId or 0
-	self.count = count or 1
-	self.maxStack = maxStack or MAX_STACK_SIZES[itemId] or DEFAULT_MAX_STACK
-	self.metadata = {} -- For future use (durability, enchantments, etc)
+    self.itemId = itemId or 0
+    self.count = count or 1
 
-	return self
+    -- Tools are non-stackable (max 1). Otherwise use configured/default max.
+    local resolvedMax = maxStack
+    if not resolvedMax then
+        if ToolConfig.IsTool(self.itemId) then
+            resolvedMax = 1
+        else
+            resolvedMax = MAX_STACK_SIZES[self.itemId] or DEFAULT_MAX_STACK
+        end
+    end
+    self.maxStack = resolvedMax
+
+    self.metadata = {} -- For future use (durability, enchantments, etc)
+
+    -- Clamp count to maxStack and clear if zero
+    self.count = math.clamp(self.count, 0, self.maxStack)
+    if self.count <= 0 then
+        self:Clear()
+    end
+
+    return self
 end
 
 function ItemStack:IsEmpty()
@@ -62,7 +82,12 @@ end
 
 function ItemStack:CanStack(other)
 	if not other or other:IsEmpty() then return false end
-	return self.itemId == other.itemId
+	if self.itemId ~= other.itemId then return false end
+
+	-- Tools cannot stack (Minecraft parity)
+	if ToolConfig.IsTool(self.itemId) then return false end
+
+	return true
 end
 
 function ItemStack:GetRemainingSpace()
@@ -130,11 +155,19 @@ function ItemStack:Serialize()
 end
 
 function ItemStack.Deserialize(data)
-	if not data then return ItemStack.new(0, 0) end
+    if not data then return ItemStack.new(0, 0) end
 
-	local stack = ItemStack.new(data.itemId, data.count, data.maxStack)
-	stack.metadata = data.metadata or {}
-	return stack
+    -- Re-resolve maxStack based on current config to avoid persisting wrong max values
+    local resolvedMax
+    if ToolConfig.IsTool(data.itemId) then
+        resolvedMax = 1
+    else
+        resolvedMax = MAX_STACK_SIZES[data.itemId] or DEFAULT_MAX_STACK
+    end
+
+    local stack = ItemStack.new(data.itemId, data.count, resolvedMax)
+    stack.metadata = data.metadata or {}
+    return stack
 end
 
 return ItemStack

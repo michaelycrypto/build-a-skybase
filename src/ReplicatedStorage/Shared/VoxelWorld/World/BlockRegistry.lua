@@ -92,12 +92,13 @@ BlockRegistry.Blocks = {
 	[Constants.BlockType.LEAVES] = {
 		name = "Oak Leaves",
 		solid = true,
-		transparent = false,
+		transparent = true,
 		color = Color3.fromRGB(108, 161, 63),
 		textures = {
-			all = "leaves"
+			all = "rbxassetid://109214997392631"
 		},
-		crossShape = false
+		crossShape = false,
+		greyscaleTexture = true
 	},
 
 	[Constants.BlockType.TALL_GRASS] = {
@@ -351,6 +352,498 @@ BlockRegistry.Blocks = {
 		},
 		fenceShape = true,
 		fenceGroup = "wood_fence"
+	},
+
+	-- Crafting materials
+	[Constants.BlockType.STICK] = {
+		name = "Stick",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(139, 90, 43),
+		textures = {
+			all = "rbxassetid://99291598802145"
+		},
+		crossShape = true,  -- Render like flowers/tall grass
+		craftingMaterial = true  -- Special flag for crafting-only items
+	},
+
+	-- Ores
+	[Constants.BlockType.COAL_ORE] = {
+		name = "Coal Ore",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(67, 67, 67),
+		textures = {
+			all = "rbxassetid://118777349989858"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.IRON_ORE] = {
+		name = "Iron Ore",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(216, 175, 147),
+		textures = {
+			all = "rbxassetid://138483550577203"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.DIAMOND_ORE] = {
+		name = "Diamond Ore",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(92, 219, 213),
+		textures = {
+			all = "rbxassetid://136130618299236"
+		},
+		crossShape = false
+	},
+
+	-- Refined materials
+	[Constants.BlockType.COAL] = {
+		name = "Coal",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(40, 40, 40),
+		textures = {
+			all = "rbxassetid://86641031324394"
+		},
+		crossShape = true,
+		craftingMaterial = true
+	},
+
+	[Constants.BlockType.IRON_INGOT] = {
+		name = "Iron Ingot",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(220, 220, 220),
+		textures = {
+			all = "rbxassetid://113304461668716"
+		},
+		crossShape = true,
+		craftingMaterial = true
+	},
+
+	[Constants.BlockType.DIAMOND] = {
+		name = "Diamond",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(92, 219, 213),
+		textures = {
+			all = "rbxassetid://115923690467793"
+		},
+		crossShape = true,
+		craftingMaterial = true
+	},
+
+	-- Utility blocks
+	[Constants.BlockType.FURNACE] = {
+		name = "Furnace",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(127, 127, 127),
+		textures = {
+			top = "rbxassetid://128506415856113",
+			side = "rbxassetid://86512770974162",
+			front = "rbxassetid://103685363568790",
+			back = "rbxassetid://86512770974162",
+			bottom = "rbxassetid://128506415856113",
+			all = "rbxassetid://86512770974162"
+		},
+		crossShape = false,
+		hasRotation = true,
+		interactable = true
+	},
+
+	[Constants.BlockType.GLASS] = {
+		name = "Glass",
+		solid = true,
+		transparent = true,
+		color = Color3.fromRGB(255, 255, 255),
+		textures = {
+			all = "rbxassetid://125273472115959"
+		},
+		crossShape = false
+	}
+,
+
+	[Constants.BlockType.APPLE] = {
+		name = "Apple",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(255, 0, 0),
+		textures = {
+			all = "rbxassetid://107743228743622"
+		},
+		crossShape = true,
+		craftingMaterial = true
+	},
+
+	-- Spruce wood set
+	[Constants.BlockType.SPRUCE_LOG] = {
+		name = "Spruce Log",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(120, 91, 60),
+		textures = {
+			top = "spruce_log_top",
+			side = "spruce_log_side",
+			bottom = "spruce_log_top"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.SPRUCE_PLANKS] = {
+		name = "Spruce Planks",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(114, 84, 56),
+		textures = {
+			all = "spruce_planks"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.SPRUCE_SAPLING] = {
+		name = "Spruce Sapling",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(70, 120, 70),
+		textures = {
+			all = "spruce_sapling"
+		},
+		crossShape = true
+	},
+
+	[Constants.BlockType.SPRUCE_STAIRS] = {
+		name = "Spruce Stairs",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(114, 84, 56),
+		textures = {
+			all = "spruce_planks"
+		},
+		stairShape = true,
+		hasRotation = true
+	},
+
+	[Constants.BlockType.SPRUCE_SLAB] = {
+		name = "Spruce Slab",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(114, 84, 56),
+		textures = {
+			all = "spruce_planks"
+		},
+		slabShape = true
+	},
+
+	-- Jungle wood set
+	[Constants.BlockType.JUNGLE_LOG] = {
+		name = "Jungle Log",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(151, 112, 80),
+		textures = {
+			top = "jungle_log_top",
+			side = "jungle_log_side",
+			bottom = "jungle_log_top"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.JUNGLE_PLANKS] = {
+		name = "Jungle Planks",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(170, 128, 95),
+		textures = {
+			all = "jungle_planks"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.JUNGLE_SAPLING] = {
+		name = "Jungle Sapling",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(70, 130, 70),
+		textures = {
+			all = "jungle_sapling"
+		},
+		crossShape = true
+	},
+
+	[Constants.BlockType.JUNGLE_STAIRS] = {
+		name = "Jungle Stairs",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(170, 128, 95),
+		textures = {
+			all = "jungle_planks"
+		},
+		stairShape = true,
+		hasRotation = true
+	},
+
+	[Constants.BlockType.JUNGLE_SLAB] = {
+		name = "Jungle Slab",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(170, 128, 95),
+		textures = {
+			all = "jungle_planks"
+		},
+		slabShape = true
+	},
+
+	-- Dark Oak wood set
+	[Constants.BlockType.DARK_OAK_LOG] = {
+		name = "Dark Oak Log",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(85, 62, 42),
+		textures = {
+			top = "dark_oak_log_top",
+			side = "dark_oak_log_side",
+			bottom = "dark_oak_log_top"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.DARK_OAK_PLANKS] = {
+		name = "Dark Oak Planks",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(88, 66, 46),
+		textures = {
+			all = "dark_oak_planks"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.DARK_OAK_SAPLING] = {
+		name = "Dark Oak Sapling",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(60, 100, 60),
+		textures = {
+			all = "dark_oak_sapling"
+		},
+		crossShape = true
+	},
+
+	[Constants.BlockType.DARK_OAK_STAIRS] = {
+		name = "Dark Oak Stairs",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(88, 66, 46),
+		textures = {
+			all = "dark_oak_planks"
+		},
+		stairShape = true,
+		hasRotation = true
+	},
+
+	[Constants.BlockType.DARK_OAK_SLAB] = {
+		name = "Dark Oak Slab",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(88, 66, 46),
+		textures = {
+			all = "dark_oak_planks"
+		},
+		slabShape = true
+	},
+
+	-- Birch wood set
+	[Constants.BlockType.BIRCH_LOG] = {
+		name = "Birch Log",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(200, 200, 180),
+		textures = {
+			top = "birch_log_top",
+			side = "birch_log_side",
+			bottom = "birch_log_top"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.BIRCH_PLANKS] = {
+		name = "Birch Planks",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(205, 190, 145),
+		textures = {
+			all = "birch_planks"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.BIRCH_SAPLING] = {
+		name = "Birch Sapling",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(80, 140, 80),
+		textures = {
+			all = "birch_sapling"
+		},
+		crossShape = true
+	},
+
+	[Constants.BlockType.BIRCH_STAIRS] = {
+		name = "Birch Stairs",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(205, 190, 145),
+		textures = {
+			all = "birch_planks"
+		},
+		stairShape = true,
+		hasRotation = true
+	},
+
+	[Constants.BlockType.BIRCH_SLAB] = {
+		name = "Birch Slab",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(205, 190, 145),
+		textures = {
+			all = "birch_planks"
+		},
+		slabShape = true
+	},
+
+	-- Acacia wood set
+	[Constants.BlockType.ACACIA_LOG] = {
+		name = "Acacia Log",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(170, 92, 55),
+		textures = {
+			top = "acacia_log_top",
+			side = "acacia_log_side",
+			bottom = "acacia_log_top"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.ACACIA_PLANKS] = {
+		name = "Acacia Planks",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(184, 106, 72),
+		textures = {
+			all = "acacia_planks"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.ACACIA_SAPLING] = {
+		name = "Acacia Sapling",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(85, 130, 85),
+		textures = {
+			all = "acacia_sapling"
+		},
+		crossShape = true
+	},
+
+	[Constants.BlockType.ACACIA_STAIRS] = {
+		name = "Acacia Stairs",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(184, 106, 72),
+		textures = {
+			all = "acacia_planks"
+		},
+		stairShape = true,
+		hasRotation = true
+	},
+
+	[Constants.BlockType.ACACIA_SLAB] = {
+		name = "Acacia Slab",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(184, 106, 72),
+		textures = {
+			all = "acacia_planks"
+		},
+		slabShape = true
+	},
+
+	-- Leaf variants
+	[Constants.BlockType.OAK_LEAVES] = {
+		name = "Oak Leaves",
+		solid = true,
+		transparent = true,
+		color = Color3.fromRGB(108, 161, 63), -- tint over greyscale
+		textures = {
+			all = "rbxassetid://109214997392631"
+		},
+		crossShape = false,
+		greyscaleTexture = true
+	},
+
+	[Constants.BlockType.SPRUCE_LEAVES] = {
+		name = "Spruce Leaves",
+		solid = true,
+		transparent = true,
+		color = Color3.fromRGB(80, 120, 80),
+		textures = {
+			all = "rbxassetid://72044338024402"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.JUNGLE_LEAVES] = {
+		name = "Jungle Leaves",
+		solid = true,
+		transparent = true,
+		color = Color3.fromRGB(100, 150, 90), -- tint over greyscale
+		textures = {
+			all = "rbxassetid://84783548880636"
+		},
+		crossShape = false,
+		greyscaleTexture = true
+	},
+
+	[Constants.BlockType.DARK_OAK_LEAVES] = {
+		name = "Dark Oak Leaves",
+		solid = true,
+		transparent = true,
+		color = Color3.fromRGB(70, 100, 70), -- tint over greyscale
+		textures = {
+			all = "rbxassetid://107093950967991"
+		},
+		crossShape = false,
+		greyscaleTexture = true
+	},
+
+	[Constants.BlockType.BIRCH_LEAVES] = {
+		name = "Birch Leaves",
+		solid = true,
+		transparent = true,
+		color = Color3.fromRGB(150, 190, 120),
+		textures = {
+			all = "rbxassetid://80285390003829"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.ACACIA_LEAVES] = {
+		name = "Acacia Leaves",
+		solid = true,
+		transparent = true,
+		color = Color3.fromRGB(120, 150, 90),
+		textures = {
+			all = "rbxassetid://120614493977362"
+		},
+		crossShape = false
 	}
 }
 
@@ -405,6 +898,21 @@ end
 function BlockRegistry:HasStorage(blockId: number): boolean
 	local block = self:GetBlock(blockId)
 	return block.storage == true
+end
+
+-- Check if block is a liquid
+function BlockRegistry:IsLiquid(blockId: number): boolean
+	local block = self:GetBlock(blockId)
+	return block.liquid == true
+end
+
+-- Check if block is replaceable (air, etc)
+function BlockRegistry:IsReplaceable(blockId: number): boolean
+	if blockId == Constants.BlockType.AIR then
+		return true
+	end
+	local block = self:GetBlock(blockId)
+	return block.replaceable == true
 end
 
 return BlockRegistry

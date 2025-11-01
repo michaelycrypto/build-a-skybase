@@ -331,12 +331,12 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 
 						-- Create merged box Part
 						local p = PartPool.AcquireColliderPart()
-						p.CanCollide = true
-						p.Material = getMaterialForBlock(id)
-						p.Color = def and def.color or Color3.fromRGB(255, 255, 255)
-						p.Transparency = (def and def.transparent) and 0.2 or 0
-						p.Size = size
-						p.Position = Vector3.new(snap(cxw), snap(cyw), snap(czw))
+					p.CanCollide = true
+					p.Material = getMaterialForBlock(id)
+					p.Color = def and def.color or Color3.fromRGB(255, 255, 255)
+					p.Transparency = (def and def.transparent) and 0.8 or 0
+					p.Size = size
+					p.Position = Vector3.new(snap(cxw), snap(cyw), snap(czw))
 
 						-- Get metadata for rotation (if applicable)
 						local metadata = chunk:GetMetadata(x, y, z)
@@ -984,12 +984,66 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 						local postWidth = bs * 0.25
 						local postHeight = bs * 1.0
 						local railThickness = bs * 0.20
-						local railYOffset1 = bs * 0.35
-						local railYOffset2 = bs * 0.80
+						-- Symmetric rail positions: 0.25 bottom, 0.5 middle gap, 0.25 top
+						-- When stacked vertically, this creates perfect repeating pattern
+						local railYOffset1 = bs * 0.25
+						local railYOffset2 = bs * 0.75
 
-						-- Center post (use face part to ensure visible geometry)
+						-- Invisible collider (1.25 blocks high)
+						-- Extends 0.25 blocks above visual post, spans rail width
+						local colliderHeight = bs * 1.25
+						local hasNorth = (kindN ~= "none")
+						local hasSouth = (kindS ~= "none")
+						local hasWest = (kindW ~= "none")
+						local hasEast = (kindE ~= "none")
+
+						-- Calculate collider bounds based on connections
+						local minX, maxX, minZ, maxZ
+						if hasWest and hasEast then
+							-- Rails extend both X directions: full block width
+							minX, maxX = cx - bs/2, cx + bs/2
+						elseif hasWest then
+							-- Rail extends west: from center to left edge
+							minX, maxX = cx - bs/2, cx + postWidth/2
+						elseif hasEast then
+							-- Rail extends east: from center to right edge
+							minX, maxX = cx - postWidth/2, cx + bs/2
+						else
+							-- No X rails: just post width
+							minX, maxX = cx - postWidth/2, cx + postWidth/2
+						end
+
+						if hasNorth and hasSouth then
+							-- Rails extend both Z directions: full block depth
+							minZ, maxZ = cz - bs/2, cz + bs/2
+						elseif hasNorth then
+							-- Rail extends north: from center to front edge
+							minZ, maxZ = cz - bs/2, cz + postWidth/2
+						elseif hasSouth then
+							-- Rail extends south: from center to back edge
+							minZ, maxZ = cz - postWidth/2, cz + bs/2
+						else
+							-- No Z rails: just post depth
+							minZ, maxZ = cz - postWidth/2, cz + postWidth/2
+						end
+
+						local colliderSizeX = maxX - minX
+						local colliderSizeZ = maxZ - minZ
+						local colliderCenterX = (minX + maxX) / 2
+						local colliderCenterZ = (minZ + maxZ) / 2
+
+						local collider = PartPool.AcquireColliderPart()
+						collider.CanCollide = true
+						collider.Transparency = 1
+						collider.Size = Vector3.new(snap(colliderSizeX), snap(colliderHeight), snap(colliderSizeZ))
+						collider.Position = Vector3.new(snap(colliderCenterX), snap((y * bs) + (colliderHeight * 0.5)), snap(colliderCenterZ))
+						collider.Parent = container
+						table.insert(meshParts, collider)
+						partsBudget += 1
+
+						-- Center post (visual only, non-collidable)
 						local post = PartPool.AcquireFacePart()
-						post.CanCollide = true
+						post.CanCollide = false
 						post.Material = getMaterialForBlock(id)
 						post.Color = def.color
 						post.Transparency = 0
@@ -1013,11 +1067,11 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 						table.insert(meshParts, post)
 						partsBudget += 1
 
-						-- Helper to emit one rail part
+						-- Helper to emit one rail part (visual only, non-collidable)
 						local function emitRail(centerX, centerZ, sizeX, sizeZ, yoff)
 							if partsBudget >= MAX_PARTS then return end
 							local rail = PartPool.AcquireFacePart()
-							rail.CanCollide = true
+							rail.CanCollide = false
 							rail.Material = getMaterialForBlock(id)
 							rail.Color = def.color
 							rail.Transparency = 0

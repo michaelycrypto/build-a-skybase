@@ -12,6 +12,8 @@
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
+local GuiService = game:GetService("GuiService")
+local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
@@ -19,7 +21,9 @@ local RunService = game:GetService("RunService")
 local GameState = require(script.Parent.Parent.Managers.GameState)
 local ItemStack = require(ReplicatedStorage.Shared.VoxelWorld.Inventory.ItemStack)
 local BlockViewportCreator = require(ReplicatedStorage.Shared.VoxelWorld.Rendering.BlockViewportCreator)
+local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
 local EventManager = require(ReplicatedStorage.Shared.EventManager)
+local GameConfig = require(ReplicatedStorage.Configs.GameConfig)
 
 local VoxelInventoryPanel = {}
 VoxelInventoryPanel.__index = VoxelInventoryPanel
@@ -74,6 +78,14 @@ function VoxelInventoryPanel:Initialize()
 	self.gui.Enabled = false
 	self.gui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
 
+	-- Add responsive scaling (100% = original size)
+	local uiScale = Instance.new("UIScale")
+	uiScale.Name = "ResponsiveScale"
+	uiScale:SetAttribute("base_resolution", Vector2.new(1920, 1080)) -- 1920x1080 for 100% original size
+	uiScale.Parent = self.gui
+	CollectionService:AddTag(uiScale, "scale_component")
+	print("📐 VoxelInventoryPanel: Added UIScale with base resolution 1920x1080 (100% original size)")
+
 	-- Create panels
 	self:CreatePanel()
 	self:CreateCursorItem()
@@ -90,8 +102,15 @@ function VoxelInventoryPanel:CreatePanel()
 	local storageHeight = INVENTORY_CONFIG.SLOT_SIZE * INVENTORY_CONFIG.ROWS +
 	                      INVENTORY_CONFIG.SLOT_SPACING * (INVENTORY_CONFIG.ROWS - 1)
 	local hotbarHeight = INVENTORY_CONFIG.SLOT_SIZE
-	local totalHeight = storageHeight + INVENTORY_CONFIG.SECTION_SPACING + hotbarHeight +
-	                    INVENTORY_CONFIG.PADDING * 2 + 50
+
+	-- Calculate proper height accounting for all elements:
+	-- Title (50) + Inv Label (25) + Storage (164) + Spacing (20) + Hotbar Label (25) + Hotbar (52) + Bottom Padding (20)
+	local totalHeight = 50 + 25 + storageHeight + INVENTORY_CONFIG.SECTION_SPACING + 25 + hotbarHeight + 20
+
+	-- Crafting section dimensions
+	local CRAFTING_WIDTH = 260  -- Slightly wider for better layout
+	local CRAFTING_GAP = 25  -- Smaller gap, cleaner look
+	local totalWidth = slotWidth + CRAFTING_GAP + CRAFTING_WIDTH + INVENTORY_CONFIG.PADDING * 2
 
 	-- Background overlay
 	local overlay = Instance.new("Frame")
@@ -102,10 +121,10 @@ function VoxelInventoryPanel:CreatePanel()
 	overlay.BorderSizePixel = 0
 	overlay.Parent = self.gui
 
-	-- Main panel
+	-- Main panel (expanded for crafting)
 	self.panel = Instance.new("Frame")
 	self.panel.Name = "InventoryPanel"
-	self.panel.Size = UDim2.new(0, slotWidth + INVENTORY_CONFIG.PADDING * 2, 0, totalHeight)
+	self.panel.Size = UDim2.new(0, totalWidth, 0, totalHeight)
 	self.panel.Position = UDim2.new(0.5, 0, 0.5, 0)
 	self.panel.AnchorPoint = Vector2.new(0.5, 0.5)
 	self.panel.BackgroundColor3 = INVENTORY_CONFIG.BG_COLOR
@@ -204,6 +223,29 @@ function VoxelInventoryPanel:CreatePanel()
 		local x = INVENTORY_CONFIG.PADDING + col * (INVENTORY_CONFIG.SLOT_SIZE + INVENTORY_CONFIG.SLOT_SPACING)
 		self:CreateHotbarSlot(col + 1, x, yOffset)
 	end
+
+	-- Crafting section (right side)
+	local craftingSection = Instance.new("Frame")
+	craftingSection.Name = "CraftingSection"
+	craftingSection.Size = UDim2.new(0, CRAFTING_WIDTH, 0, totalHeight - 80)
+	craftingSection.Position = UDim2.new(0, slotWidth + INVENTORY_CONFIG.PADDING + CRAFTING_GAP, 0, 55)
+	craftingSection.BackgroundTransparency = 1
+	craftingSection.Parent = self.panel
+
+	-- Create vertical divider line
+	local divider = Instance.new("Frame")
+	divider.Name = "Divider"
+	divider.Size = UDim2.new(0, 2, 0, totalHeight - 70)
+	divider.Position = UDim2.new(0, slotWidth + INVENTORY_CONFIG.PADDING + CRAFTING_GAP/2 - 1, 0, 55)
+	divider.BackgroundColor3 = INVENTORY_CONFIG.BORDER_COLOR
+	divider.BackgroundTransparency = 0.5
+	divider.BorderSizePixel = 0
+	divider.Parent = self.panel
+
+	-- Initialize crafting panel
+	local CraftingPanel = require(script.Parent.CraftingPanel)
+	self.craftingPanel = CraftingPanel.new(self.inventoryManager, self, craftingSection)
+	self.craftingPanel:Initialize()
 
 end
 
@@ -395,6 +437,7 @@ function VoxelInventoryPanel:CreateCursorItem()
 	self.cursorFrame = Instance.new("Frame")
 	self.cursorFrame.Name = "CursorItem"
 	self.cursorFrame.Size = UDim2.new(0, INVENTORY_CONFIG.SLOT_SIZE, 0, INVENTORY_CONFIG.SLOT_SIZE)
+	self.cursorFrame.AnchorPoint = Vector2.new(0.5, 0.5)  -- Center on cursor
 	self.cursorFrame.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 	self.cursorFrame.BackgroundTransparency = 0.2
 	self.cursorFrame.BorderSizePixel = 0
@@ -437,28 +480,61 @@ function VoxelInventoryPanel:UpdateInventorySlotDisplay(index)
 	if not slotFrame then return end
 
 	local stack = self.inventoryManager:GetInventorySlot(index)
+	local currentItemId = slotFrame.currentItemId  -- slotFrame is a table, use table property
+
 	if stack and not stack:IsEmpty() then
-		-- Get or create viewport container
-		local viewportContainer = slotFrame.iconContainer:FindFirstChild("ViewportContainer")
-		if viewportContainer then
-			-- Update existing viewport
-			BlockViewportCreator.UpdateBlockViewport(viewportContainer, stack:GetItemId())
-		else
-			-- Create new viewport
-			BlockViewportCreator.CreateBlockViewport(
-				slotFrame.iconContainer,
-				stack:GetItemId(),
-				UDim2.new(1, 0, 1, 0)
-			)
+		local itemId = stack:GetItemId()
+		local isTool = ToolConfig.IsTool(itemId)
+
+		-- Only recreate viewport/image if item type changed (performance optimization)
+		if currentItemId ~= itemId then
+			-- Clear cached ID FIRST to prevent race conditions
+			slotFrame.currentItemId = nil
+
+			-- Clear ALL existing visuals (ViewportContainer, ToolImage, ImageLabel, etc.)
+			for _, child in ipairs(slotFrame.iconContainer:GetChildren()) do
+				if not child:IsA("UILayout") and not child:IsA("UIPadding") and not child:IsA("UICorner") then
+					child:Destroy()
+				end
+			end
+
+			if isTool then
+				local info = ToolConfig.GetToolInfo(itemId)
+				local image = Instance.new("ImageLabel")
+				image.Name = "ToolImage"
+				image.Size = UDim2.new(1, -6, 1, -6)
+				image.Position = UDim2.new(0.5, 0, 0.5, 0)
+				image.AnchorPoint = Vector2.new(0.5, 0.5)
+				image.BackgroundTransparency = 1
+				image.Image = info and info.image or ""
+				image.ScaleType = Enum.ScaleType.Fit
+				image.Parent = slotFrame.iconContainer
+			else
+				BlockViewportCreator.CreateBlockViewport(
+					slotFrame.iconContainer,
+					itemId,
+					UDim2.new(1, 0, 1, 0)
+				)
+			end
+
+			-- Set new item ID AFTER creating visuals
+			slotFrame.currentItemId = itemId  -- slotFrame is a table
 		end
+
+		-- Always update count (cheap operation)
 		slotFrame.countLabel.Text = stack:GetCount() > 1 and tostring(stack:GetCount()) or ""
 	else
-		-- Clear viewport container
-		local viewportContainer = slotFrame.iconContainer:FindFirstChild("ViewportContainer")
-		if viewportContainer then
-			viewportContainer:Destroy()
-		end
+		-- Slot is empty - clear cached ID IMMEDIATELY to prevent race conditions
+		slotFrame.currentItemId = nil
 		slotFrame.countLabel.Text = ""
+
+		-- Then clear ALL visual children (ViewportContainer, ToolImage, ImageLabel, etc.)
+		for _, child in ipairs(slotFrame.iconContainer:GetChildren()) do
+			-- Keep only UI layout objects, destroy everything else
+			if not child:IsA("UILayout") and not child:IsA("UIPadding") and not child:IsA("UICorner") then
+				child:Destroy()
+			end
+		end
 	end
 end
 
@@ -466,28 +542,60 @@ function VoxelInventoryPanel:UpdateHotbarSlotDisplay(index, slot, iconContainer,
 	if not self.hotbar then return end
 
 	local stack = self.hotbar:GetSlot(index)
+	local currentItemId = slot:GetAttribute("CurrentItemId")  -- slot is an Instance, use attributes
+
 	if stack and not stack:IsEmpty() then
-		-- Get or create viewport container
-		local viewportContainer = iconContainer:FindFirstChild("ViewportContainer")
-		if viewportContainer then
-			-- Update existing viewport
-			BlockViewportCreator.UpdateBlockViewport(viewportContainer, stack:GetItemId())
-		else
-			-- Create new viewport
-			BlockViewportCreator.CreateBlockViewport(
-				iconContainer,
-				stack:GetItemId(),
-				UDim2.new(1, 0, 1, 0)
-			)
+		local itemId = stack:GetItemId()
+		local isTool = ToolConfig.IsTool(itemId)
+
+		-- Only recreate viewport/image if item type changed (performance optimization)
+		if currentItemId ~= itemId then
+			-- Clear attribute FIRST to prevent race conditions
+			slot:SetAttribute("CurrentItemId", nil)
+
+			-- Clear ALL existing visuals (ViewportContainer, ToolImage, ImageLabel, etc.)
+			for _, child in ipairs(iconContainer:GetChildren()) do
+				if not child:IsA("UILayout") and not child:IsA("UIPadding") and not child:IsA("UICorner") then
+					child:Destroy()
+				end
+			end
+
+			if isTool then
+				local info = ToolConfig.GetToolInfo(itemId)
+				local image = Instance.new("ImageLabel")
+				image.Name = "ToolImage"
+				image.Size = UDim2.new(1, -6, 1, -6)
+				image.Position = UDim2.new(0.5, 0, 0.5, 0)
+				image.AnchorPoint = Vector2.new(0.5, 0.5)
+				image.BackgroundTransparency = 1
+				image.Image = info and info.image or ""
+				image.ScaleType = Enum.ScaleType.Fit
+				image.Parent = iconContainer
+			else
+				BlockViewportCreator.CreateBlockViewport(
+					iconContainer,
+					itemId,
+					UDim2.new(1, 0, 1, 0)
+				)
+			end
+
+			-- Set new item ID AFTER creating visuals
+			slot:SetAttribute("CurrentItemId", itemId)  -- slot is an Instance, use attributes
 		end
+
+		-- Always update count (cheap operation)
 		countLabel.Text = stack:GetCount() > 1 and tostring(stack:GetCount()) or ""
 	else
-		-- Clear viewport container
-		local viewportContainer = iconContainer:FindFirstChild("ViewportContainer")
-		if viewportContainer then
-			viewportContainer:Destroy()
-		end
+		-- Slot is empty - clear attribute IMMEDIATELY to prevent race conditions
+		slot:SetAttribute("CurrentItemId", nil)
 		countLabel.Text = ""
+
+		-- Then clear ALL visual children (ViewportContainer, ToolImage, ImageLabel, etc.)
+		for _, child in ipairs(iconContainer:GetChildren()) do
+			if not child:IsA("UILayout") and not child:IsA("UIPadding") and not child:IsA("UICorner") then
+				child:Destroy()
+			end
+		end
 	end
 
 	-- Highlight if this is the selected hotbar slot
@@ -520,32 +628,138 @@ function VoxelInventoryPanel:UpdateAllDisplays()
 	self:UpdateCursorDisplay()
 end
 
+-- Smart update - check what actually changed and only update those slots
+function VoxelInventoryPanel:UpdateChangedSlots()
+	-- Check inventory slots (compare cached vs actual)
+	for i = 1, 27 do
+		local slotFrame = self.inventorySlotFrames[i]
+		if slotFrame then
+			local stack = self.inventoryManager:GetInventorySlot(i)
+			local cachedItemId = slotFrame.currentItemId
+			local actualItemId = stack and not stack:IsEmpty() and stack:GetItemId() or nil
+
+			-- Update if item ID changed
+			if cachedItemId ~= actualItemId then
+				-- Item changed (including nil -> item, item -> nil, or item A -> item B)
+				self:UpdateInventorySlotDisplay(i)
+			elseif actualItemId and stack then
+				-- Same item, just update count (cheap operation)
+				slotFrame.countLabel.Text = stack:GetCount() > 1 and tostring(stack:GetCount()) or ""
+			end
+		end
+	end
+
+	-- Check hotbar slots
+	if self.hotbar then
+		for i = 1, 9 do
+			local slotName = "HotbarSlot" .. i
+			local slot = self.panel:FindFirstChild(slotName)
+			if slot then
+				local iconContainer = slot:FindFirstChild("IconContainer")
+				local countLabel = slot:FindFirstChild("CountLabel")
+				local stack = self.hotbar:GetSlot(i)
+				local cachedItemId = slot:GetAttribute("CurrentItemId")
+				local actualItemId = stack and not stack:IsEmpty() and stack:GetItemId() or nil
+
+				-- Update if item ID changed
+				if cachedItemId ~= actualItemId then
+					-- Item changed (including nil -> item, item -> nil, or item A -> item B)
+					local selectionBorder = slot:FindFirstChild("Selection")
+					self:UpdateHotbarSlotDisplay(i, slot, iconContainer, countLabel, selectionBorder)
+				elseif actualItemId and stack then
+					-- Same item, just update count (cheap operation)
+					if countLabel then
+						countLabel.Text = stack:GetCount() > 1 and tostring(stack:GetCount()) or ""
+					end
+					-- Also update selection border in case selection changed
+					local selectionBorder = slot:FindFirstChild("Selection")
+					if selectionBorder then
+						if self.hotbar.selectedSlot == i then
+							selectionBorder.Transparency = 0
+						else
+							selectionBorder.Transparency = 1
+						end
+					end
+				end
+			end
+		end
+	end
+
+	-- Always update cursor
+	self:UpdateCursorDisplay()
+end
+
 function VoxelInventoryPanel:UpdateCursorDisplay()
 	if self.cursorStack:IsEmpty() then
+		-- Clear attribute IMMEDIATELY to prevent race conditions
+		self.cursorFrame:SetAttribute("CurrentItemId", nil)
 		self.cursorFrame.Visible = false
+
+		-- Clear visuals
+		local iconContainer = self.cursorFrame:FindFirstChild("IconContainer")
+		if iconContainer then
+			for _, child in ipairs(iconContainer:GetChildren()) do
+				if not child:IsA("UILayout") and not child:IsA("UIPadding") and not child:IsA("UICorner") then
+					child:Destroy()
+				end
+			end
+		end
 	else
 		self.cursorFrame.Visible = true
 		local iconContainer = self.cursorFrame:FindFirstChild("IconContainer")
 		local countLabel = self.cursorFrame:FindFirstChild("CountLabel")
 
 		if iconContainer then
-			-- Get or create viewport container
-			local viewportContainer = iconContainer:FindFirstChild("ViewportContainer")
-			if viewportContainer then
-				-- Update existing viewport
-				BlockViewportCreator.UpdateBlockViewport(viewportContainer, self.cursorStack:GetItemId())
-			else
-				-- Create new viewport
-				BlockViewportCreator.CreateBlockViewport(
-					iconContainer,
-					self.cursorStack:GetItemId(),
-					UDim2.new(1, 0, 1, 0)
-				)
+			local itemId = self.cursorStack:GetItemId()
+			local isTool = ToolConfig.IsTool(itemId)
+			local currentItemId = self.cursorFrame:GetAttribute("CurrentItemId")  -- cursorFrame is an Instance
+
+			-- Only recreate viewport/image if item type changed (performance optimization)
+			if currentItemId ~= itemId then
+				-- Clear attribute FIRST to prevent race conditions
+				self.cursorFrame:SetAttribute("CurrentItemId", nil)
+
+				-- Clear ALL existing visuals
+				for _, child in ipairs(iconContainer:GetChildren()) do
+					if not child:IsA("UILayout") and not child:IsA("UIPadding") and not child:IsA("UICorner") then
+						child:Destroy()
+					end
+				end
+
+				if isTool then
+					local info = ToolConfig.GetToolInfo(itemId)
+					local image = Instance.new("ImageLabel")
+					image.Name = "ToolImage"
+					image.Size = UDim2.new(1, -6, 1, -6)
+					image.Position = UDim2.new(0.5, 0, 0.5, 0)
+					image.AnchorPoint = Vector2.new(0.5, 0.5)
+					image.BackgroundTransparency = 1
+					image.Image = info and info.image or ""
+					image.ScaleType = Enum.ScaleType.Fit
+					image.ZIndex = 1001
+					image.Parent = iconContainer
+				else
+					BlockViewportCreator.CreateBlockViewport(
+						iconContainer,
+						itemId,
+						UDim2.new(1, 0, 1, 0)
+					)
+				end
+
+				-- Set new item ID AFTER creating visuals
+				self.cursorFrame:SetAttribute("CurrentItemId", itemId)  -- cursorFrame is an Instance
 			end
 		end
+
+		-- Always update count (cheap operation)
 		if countLabel then
 			countLabel.Text = self.cursorStack:GetCount() > 1 and tostring(self.cursorStack:GetCount()) or ""
 		end
+	end
+
+	-- Notify crafting panel of cursor change
+	if self.craftingPanel then
+		self.craftingPanel:OnCursorChanged()
 	end
 end
 
@@ -571,7 +785,7 @@ function VoxelInventoryPanel:OnInventorySlotLeftClick(index)
 			self.cursorStack = ItemStack.new(0, 0)
 		elseif self.cursorStack:CanStack(slotStack) then
 			-- Same item: Merge stacks
-			local added = slotStack:Merge(self.cursorStack)
+			slotStack:Merge(self.cursorStack)
 			self.inventoryManager:SetInventorySlot(index, slotStack)
 			if self.cursorStack:IsEmpty() then
 				self.cursorStack = ItemStack.new(0, 0)
@@ -584,8 +798,15 @@ function VoxelInventoryPanel:OnInventorySlotLeftClick(index)
 		end
 	end
 
-	self:UpdateAllDisplays()
-	self.inventoryManager:SendUpdateToServer()
+	-- Update cursor immediately; slot visuals refresh via manager events
+	self:UpdateCursorDisplay()
+
+	-- Ensure clicked slot redraws immediately (avoid relying solely on async events)
+	self:UpdateInventorySlotDisplay(index)
+	-- Only send to server when action is complete (cursor not holding mid-transaction)
+	if self.cursorStack:IsEmpty() then
+		self.inventoryManager:SendUpdateToServer()
+	end
 end
 
 -- Minecraft mechanics: Right click on inventory slot
@@ -616,8 +837,14 @@ function VoxelInventoryPanel:OnInventorySlotRightClick(index)
 		-- Different item: Do nothing (Minecraft behavior)
 	end
 
-	self:UpdateAllDisplays()
-	self.inventoryManager:SendUpdateToServer()
+	-- Update cursor immediately; slot visuals refresh via manager events
+	self:UpdateCursorDisplay()
+
+	-- Ensure clicked slot redraws immediately
+	self:UpdateInventorySlotDisplay(index)
+	if self.cursorStack:IsEmpty() then
+		self.inventoryManager:SendUpdateToServer()
+	end
 end
 
 -- Hotbar slot clicks (similar logic but updates hotbar)
@@ -636,7 +863,7 @@ function VoxelInventoryPanel:OnHotbarSlotLeftClick(index)
 			self.inventoryManager:SetHotbarSlot(index, self.cursorStack:Clone())
 			self.cursorStack = ItemStack.new(0, 0)
 		elseif self.cursorStack:CanStack(slotStack) then
-			local added = slotStack:Merge(self.cursorStack)
+			slotStack:Merge(self.cursorStack)
 			self.inventoryManager:SetHotbarSlot(index, slotStack)
 			if self.cursorStack:IsEmpty() then
 				self.cursorStack = ItemStack.new(0, 0)
@@ -648,8 +875,21 @@ function VoxelInventoryPanel:OnHotbarSlotLeftClick(index)
 		end
 	end
 
-	self:UpdateAllDisplays()
-	self.inventoryManager:SendUpdateToServer()
+	-- Update cursor immediately; slot visuals refresh via manager events
+	self:UpdateCursorDisplay()
+
+	-- Ensure clicked hotbar slot redraws immediately
+	local slotNameL = "HotbarSlot" .. index
+	local slotL = self.panel and self.panel:FindFirstChild(slotNameL)
+	if slotL then
+		local iconContainer = slotL:FindFirstChild("IconContainer")
+		local countLabel = slotL:FindFirstChild("CountLabel")
+		local selectionBorder = slotL:FindFirstChild("Selection")
+		self:UpdateHotbarSlotDisplay(index, slotL, iconContainer, countLabel, selectionBorder)
+	end
+	if self.cursorStack:IsEmpty() then
+		self.inventoryManager:SendUpdateToServer()
+	end
 end
 
 function VoxelInventoryPanel:OnHotbarSlotRightClick(index)
@@ -676,8 +916,21 @@ function VoxelInventoryPanel:OnHotbarSlotRightClick(index)
 		end
 	end
 
-	self:UpdateAllDisplays()
-	self.inventoryManager:SendUpdateToServer()
+	-- Update cursor immediately; slot visuals refresh via manager events
+	self:UpdateCursorDisplay()
+
+	-- Ensure clicked hotbar slot redraws immediately
+	local slotNameR = "HotbarSlot" .. index
+	local slotR = self.panel and self.panel:FindFirstChild(slotNameR)
+	if slotR then
+		local iconContainer = slotR:FindFirstChild("IconContainer")
+		local countLabel = slotR:FindFirstChild("CountLabel")
+		local selectionBorder = slotR:FindFirstChild("Selection")
+		self:UpdateHotbarSlotDisplay(index, slotR, iconContainer, countLabel, selectionBorder)
+	end
+	if self.cursorStack:IsEmpty() then
+		self.inventoryManager:SendUpdateToServer()
+	end
 end
 
 -- Send inventory update to server (deprecated - use inventoryManager)
@@ -689,8 +942,11 @@ end
 function VoxelInventoryPanel:UpdateCursorPosition()
 	if not self.cursorFrame.Visible then return end
 
-	local mouse = Players.LocalPlayer:GetMouse()
-	self.cursorFrame.Position = UDim2.new(0, mouse.X - INVENTORY_CONFIG.SLOT_SIZE/2, 0, mouse.Y - INVENTORY_CONFIG.SLOT_SIZE/2)
+	local mousePos = UserInputService:GetMouseLocation()
+	local guiInset = GuiService:GetGuiInset()
+
+	-- Adjust for GUI insets (top bar, etc.)
+	self.cursorFrame.Position = UDim2.new(0, mousePos.X, 0, mousePos.Y - guiInset.Y)
 end
 
 function VoxelInventoryPanel:BindInput()
@@ -719,8 +975,17 @@ function VoxelInventoryPanel:BindInput()
 		                  mouse.Y < panelPos.Y or mouse.Y > (panelPos.Y + panelSize.Y)
 
 		if isOutside and not self.cursorStack:IsEmpty() then
-			-- Drop/delete item (Minecraft drops it as entity, but we'll just delete for now)
-			print("Dropped:", self.hotbar:GetBlockInfo(self.cursorStack:GetItemId()).name, "x" .. self.cursorStack:GetCount())
+			-- Spawn a world drop for the cursor item via server
+			local itemId = self.cursorStack:GetItemId()
+			local count = self.cursorStack:GetCount()
+			pcall(function()
+				EventManager:SendToServer("RequestDropItem", {
+					itemId = itemId,
+					count = count,
+					fromCursor = true
+				})
+			end)
+			-- Clear cursor locally
 			self.cursorStack = ItemStack.new(0, 0)
 			self:UpdateCursorDisplay()
 		end
@@ -790,7 +1055,16 @@ function VoxelInventoryPanel:Close()
 		end
 
 		if not placed then
-			print("Inventory full! Dropped:", self.hotbar:GetBlockInfo(self.cursorStack:GetItemId()).name)
+			-- Inventory full: drop the cursor item into the world
+			local itemId = self.cursorStack:GetItemId()
+			local count = self.cursorStack:GetCount()
+			pcall(function()
+				EventManager:SendToServer("RequestDropItem", {
+					itemId = itemId,
+					count = count,
+					fromCursor = true
+				})
+			end)
 		end
 
 		self.cursorStack = ItemStack.new(0, 0)
@@ -811,9 +1085,8 @@ function VoxelInventoryPanel:Close()
 	-- Signal to character controller to resume mouse locking
 	GameState:Set("voxelWorld.inventoryOpen", false)
 
-	-- Re-lock mouse when closing UI
-	UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
-	UserInputService.MouseIconEnabled = false
+	-- Note: CameraController now manages mouse lock dynamically based on camera mode
+	-- (first person = locked, third person = free)
 
 	-- Animate out
 	local tween = TweenService:Create(self.panel, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {

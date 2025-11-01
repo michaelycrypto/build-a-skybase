@@ -2,7 +2,7 @@
 	CameraController.lua
 	Manages camera settings and mouse lock behavior
 	- Uses Roblox's native camera system
-	- Camera offset: 2 studs above normal
+	- Starts in First Person mode by default
 	- Forced mouse lock (unlocks for UI)
 	- V key to toggle First/Third person
 ]]
@@ -10,8 +10,13 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local GameState = require(script.Parent.Parent.Managers.GameState)
+local GameConfig = require(ReplicatedStorage.Configs.GameConfig)
+
+-- Feature flags
+local MOUSE_LOCK_ENABLED = GameConfig.IsFeatureEnabled and GameConfig.IsFeatureEnabled("MouseLock")
 
 local CameraController = {}
 
@@ -23,10 +28,12 @@ local humanoid = nil
 
 -- Settings
 local CAMERA_HEIGHT_OFFSET = 1 -- Studs above normal camera height
-local THIRD_PERSON_DISTANCE = 15
+local THIRD_PERSON_DISTANCE = 9 -- Default zoom distance for third person
+local THIRD_PERSON_MAX_ZOOM = 9 -- Maximum zoom out distance
+local THIRD_PERSON_MIN_ZOOM = 9 -- Minimum zoom in distance (can zoom to first person)
 local FIRST_PERSON_DISTANCE = 0.5 -- Roblox's default first-person distance
 local FIRST_PERSON_FOV = 90 -- Minecraft-style wide FOV
-local THIRD_PERSON_FOV = 70 -- Standard Roblox FOV
+local THIRD_PERSON_FOV = 90 -- Standard Roblox FOV
 local MOUSE_SENSITIVITY = 0.6 -- Lower = less sensitive (0.6 = 60% of normal speed)
 
 -- Camera bobbing settings (Minecraft-style)
@@ -38,7 +45,7 @@ local BOB_HORIZONTAL_SCALE = 1.2 -- Side-to-side bobbing (slightly more than ver
 local NORMAL_WALKSPEED = 14 -- Must match SprintController
 
 -- State
-local isFirstPerson = false
+local isFirstPerson = true -- Players always start in first person
 local bobbingTime = 0
 
 local function setupCamera(char)
@@ -51,19 +58,27 @@ local function setupCamera(char)
 	camera.CameraType = Enum.CameraType.Custom
 	camera.CameraSubject = hum
 
-	-- Set camera mode and settings based on current state
-	if isFirstPerson then
-		player.CameraMode = Enum.CameraMode.LockFirstPerson
-		player.CameraMaxZoomDistance = FIRST_PERSON_DISTANCE
-		player.CameraMinZoomDistance = FIRST_PERSON_DISTANCE
-		hum.CameraOffset = Vector3.new(0, 0, 0)
-		camera.FieldOfView = FIRST_PERSON_FOV -- Minecraft-style wide FOV
+	-- Set camera mode and settings based on feature flag
+	if MOUSE_LOCK_ENABLED then
+		-- Custom first/third person behavior
+		if isFirstPerson then
+			player.CameraMode = Enum.CameraMode.LockFirstPerson
+			player.CameraMaxZoomDistance = FIRST_PERSON_DISTANCE
+			player.CameraMinZoomDistance = FIRST_PERSON_DISTANCE
+			hum.CameraOffset = Vector3.new(0, 0, 0)
+			camera.FieldOfView = FIRST_PERSON_FOV
+		else
+			-- Third person: Fixed zoom at 16 studs (no zooming)
+			player.CameraMode = Enum.CameraMode.Classic
+			player.CameraMaxZoomDistance = THIRD_PERSON_DISTANCE
+			player.CameraMinZoomDistance = THIRD_PERSON_DISTANCE
+			hum.CameraOffset = Vector3.new(0, CAMERA_HEIGHT_OFFSET, 0)
+			camera.FieldOfView = THIRD_PERSON_FOV
+		end
 	else
+		-- Native Roblox camera behavior (do not lock first person or force zoom/FOV)
 		player.CameraMode = Enum.CameraMode.Classic
-		player.CameraMaxZoomDistance = THIRD_PERSON_DISTANCE
-		player.CameraMinZoomDistance = THIRD_PERSON_DISTANCE
-		hum.CameraOffset = Vector3.new(0, CAMERA_HEIGHT_OFFSET, 0)
-		camera.FieldOfView = THIRD_PERSON_FOV -- Standard FOV
+		hum.CameraOffset = Vector3.new(0, 0, 0)
 	end
 
 	print("📷 Camera setup: Mode =", player.CameraMode, "Offset =", hum.CameraOffset, "Distance =", player.CameraMaxZoomDistance)
@@ -76,127 +91,140 @@ function CameraController:Initialize()
 	character = player.Character or player.CharacterAdded:Wait()
 	humanoid = setupCamera(character)
 
-	-- Set mouse sensitivity
-	UserInputService.MouseDeltaSensitivity = MOUSE_SENSITIVITY
+	-- Initialize camera mode state
+	GameState:Set("camera.isFirstPerson", isFirstPerson)
+
+	-- Set initial mouse settings based on camera mode
+	if MOUSE_LOCK_ENABLED then
+		if isFirstPerson then
+			UserInputService.MouseDeltaSensitivity = MOUSE_SENSITIVITY
+			UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
+			UserInputService.MouseIconEnabled = false
+		else
+			-- Third person: Free mouse and visible cursor
+			UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+			UserInputService.MouseIconEnabled = true
+		end
+	else
+		-- Ensure free cursor/camera initially
+		UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+		UserInputService.MouseIconEnabled = true
+	end
 
 	-- Handle respawn
 	player.CharacterAdded:Connect(function(newCharacter)
 		character = newCharacter
-		isFirstPerson = false
+		isFirstPerson = true -- Keep first person on respawn
 		bobbingTime = 0
 		humanoid = setupCamera(newCharacter)
+		GameState:Set("camera.isFirstPerson", isFirstPerson)
 	end)
 
-	-- Continuously enforce camera settings every frame
-	RunService.RenderStepped:Connect(function(deltaTime)
-		if not character or not humanoid then return end
+	-- Continuously enforce camera settings every frame (only when enabled)
+	if MOUSE_LOCK_ENABLED then
+		RunService.RenderStepped:Connect(function(deltaTime)
+			if not character or not humanoid then return end
 
-		-- Enforce camera mode
-		local targetMode = isFirstPerson and Enum.CameraMode.LockFirstPerson or Enum.CameraMode.Classic
-		if player.CameraMode ~= targetMode then
-			player.CameraMode = targetMode
-		end
+			-- FIRST PERSON MODE: Enforce all camera settings
+			if isFirstPerson then
+				-- Enforce first person camera mode
+				if player.CameraMode ~= Enum.CameraMode.LockFirstPerson then
+					player.CameraMode = Enum.CameraMode.LockFirstPerson
+				end
 
-		-- Enforce camera zoom distance (prevents scroll)
-		local targetDistance = isFirstPerson and FIRST_PERSON_DISTANCE or THIRD_PERSON_DISTANCE
-		if player.CameraMaxZoomDistance ~= targetDistance then
-			player.CameraMaxZoomDistance = targetDistance
-			player.CameraMinZoomDistance = targetDistance
-		end
+				-- Enforce first person zoom lock (prevents scroll)
+				if player.CameraMaxZoomDistance ~= FIRST_PERSON_DISTANCE then
+					player.CameraMaxZoomDistance = FIRST_PERSON_DISTANCE
+					player.CameraMinZoomDistance = FIRST_PERSON_DISTANCE
+				end
 
-		-- Camera bobbing in first person mode when moving
-		local baseOffset = Vector3.new(0, 0, 0)
-		if isFirstPerson then
-			-- Check if player is moving
-			local moveDirection = humanoid.MoveDirection
-			local isMoving = moveDirection.Magnitude > 0.1
+				-- Camera bobbing when moving
+				local baseOffset = Vector3.new(0, 0, 0)
+				local moveDirection = humanoid.MoveDirection
+				local isMoving = moveDirection.Magnitude > 0.1
 
-			if isMoving then
-				-- Detect if sprinting (check walkspeed)
-				local isSprinting = humanoid.WalkSpeed > NORMAL_WALKSPEED
+				if isMoving then
+					-- Detect if sprinting (check walkspeed)
+					local isSprinting = humanoid.WalkSpeed > NORMAL_WALKSPEED
 
-				-- Use different bobbing parameters based on sprint state
-				local frequency = isSprinting and SPRINT_BOB_FREQUENCY or WALK_BOB_FREQUENCY
-				local amplitude = isSprinting and SPRINT_BOB_AMPLITUDE or WALK_BOB_AMPLITUDE
+					-- Use different bobbing parameters based on sprint state
+					local frequency = isSprinting and SPRINT_BOB_FREQUENCY or WALK_BOB_FREQUENCY
+					local amplitude = isSprinting and SPRINT_BOB_AMPLITUDE or WALK_BOB_AMPLITUDE
 
-				-- Update bobbing time
-				bobbingTime = bobbingTime + deltaTime * frequency
+					-- Update bobbing time
+					bobbingTime = bobbingTime + deltaTime * frequency
 
-				-- Minecraft-style bobbing:
-				-- Vertical: smooth bounce using sin squared for natural up/down motion
-				-- Horizontal: alternating sway at same frequency
-				local verticalBob = (math.sin(bobbingTime * math.pi * 2) ^ 2) * amplitude
-				local horizontalBob = math.sin(bobbingTime * math.pi * 2) * amplitude * BOB_HORIZONTAL_SCALE
+					-- Minecraft-style bobbing:
+					local verticalBob = (math.sin(bobbingTime * math.pi * 2) ^ 2) * amplitude
+					local horizontalBob = math.sin(bobbingTime * math.pi * 2) * amplitude * BOB_HORIZONTAL_SCALE
 
-				-- Apply bobbing to camera offset
-				baseOffset = Vector3.new(horizontalBob, verticalBob, 0)
-			else
-				-- Smoothly decay bobbing time when not moving (prevents jarring stop)
-				if bobbingTime > 0 then
-					bobbingTime = math.max(0, bobbingTime - deltaTime * 2)
+					-- Apply bobbing to camera offset
+					baseOffset = Vector3.new(horizontalBob, verticalBob, 0)
+				else
+					-- Smoothly decay bobbing time when not moving
+					if bobbingTime > 0 then
+						bobbingTime = math.max(0, bobbingTime - deltaTime * 2)
+					end
+				end
+
+				-- Apply bobbing and settings
+				humanoid.CameraOffset = baseOffset
+
+				-- Enforce FOV
+				if camera.FieldOfView ~= FIRST_PERSON_FOV then
+					camera.FieldOfView = FIRST_PERSON_FOV
+				end
+
+				-- Enforce mouse sensitivity
+				if UserInputService.MouseDeltaSensitivity ~= MOUSE_SENSITIVITY then
+					UserInputService.MouseDeltaSensitivity = MOUSE_SENSITIVITY
 				end
 			end
-		end
+			-- THIRD PERSON MODE: No camera updates (let Roblox handle everything)
+			-- We don't touch any camera properties to avoid interfering
 
-		-- Enforce camera offset based on mode (with bobbing in first person)
-		local targetOffset = isFirstPerson and baseOffset or Vector3.new(0, CAMERA_HEIGHT_OFFSET, 0)
-		humanoid.CameraOffset = targetOffset
+			-- Mouse lock handling ONLY for first person mode
+			-- Third person: Don't touch mouse at all (let Roblox camera have full control)
+			if isFirstPerson then
+				local inventoryOpen = GameState:Get("voxelWorld.inventoryOpen")
 
-		-- Enforce FOV based on mode
-		local targetFOV = isFirstPerson and FIRST_PERSON_FOV or THIRD_PERSON_FOV
-		if camera.FieldOfView ~= targetFOV then
-			camera.FieldOfView = targetFOV
-		end
-
-		-- Rotate character to follow camera in third person mode
-		-- (First person mode handles this automatically via LockFirstPerson)
-		if not isFirstPerson then
-			local rootPart = character:FindFirstChild("HumanoidRootPart")
-			if rootPart then
-				-- Get camera's horizontal direction
-				local cameraCFrame = camera.CFrame
-				local lookVector = cameraCFrame.LookVector
-				-- Project to horizontal plane (ignore Y component)
-				local horizontalLook = Vector3.new(lookVector.X, 0, lookVector.Z)
-				if horizontalLook.Magnitude > 0.001 then
-					horizontalLook = horizontalLook.Unit
-					-- Create CFrame facing the camera direction
-					local targetCFrame = CFrame.new(rootPart.Position, rootPart.Position + horizontalLook)
-					-- Apply rotation (keep position the same)
-					rootPart.CFrame = targetCFrame
+				if not inventoryOpen then
+					-- Lock mouse during first person gameplay
+					if UserInputService.MouseBehavior ~= Enum.MouseBehavior.LockCenter then
+						UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
+					end
+					if UserInputService.MouseIconEnabled then
+						UserInputService.MouseIconEnabled = false
+					end
+				else
+					-- Free mouse for UI in first person
+					if UserInputService.MouseBehavior ~= Enum.MouseBehavior.Default then
+						UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+					end
+					if not UserInputService.MouseIconEnabled then
+						UserInputService.MouseIconEnabled = true
+					end
 				end
 			end
-		end
+			-- Third person: ZERO mouse behavior changes (Roblox handles it completely)
+		end)
+	else
+		-- When disabled, ensure defaults every frame are not overridden elsewhere
+		UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+		UserInputService.MouseIconEnabled = true
+	end
 
-		-- Enforce mouse lock based on UI state
-		local inventoryOpen = GameState:Get("voxelWorld.inventoryOpen")
+	-- V key: Toggle First/Third person (only when enabled)
+	if MOUSE_LOCK_ENABLED then
+		UserInputService.InputBegan:Connect(function(input, gameProcessed)
+			if gameProcessed then return end
 
-		if not inventoryOpen then
-			-- Lock mouse during gameplay
-			if UserInputService.MouseBehavior ~= Enum.MouseBehavior.LockCenter then
-				UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
-			end
-			if UserInputService.MouseIconEnabled then
-				UserInputService.MouseIconEnabled = false
-			end
-		else
-			-- Free mouse for UI
-			if UserInputService.MouseBehavior ~= Enum.MouseBehavior.Default then
-				UserInputService.MouseBehavior = Enum.MouseBehavior.Default
-			end
-			if not UserInputService.MouseIconEnabled then
-				UserInputService.MouseIconEnabled = true
-			end
-		end
-	end)
+			if input.KeyCode == Enum.KeyCode.V then
+				isFirstPerson = not isFirstPerson
+				bobbingTime = 0 -- Reset bobbing when toggling camera
 
-	-- V key: Toggle First/Third person
-	UserInputService.InputBegan:Connect(function(input, gameProcessed)
-		if gameProcessed then return end
-
-		if input.KeyCode == Enum.KeyCode.V then
-			isFirstPerson = not isFirstPerson
-			bobbingTime = 0 -- Reset bobbing when toggling camera
+				-- Update GameState so other modules can react
+				GameState:Set("camera.isFirstPerson", isFirstPerson)
 
 			if isFirstPerson then
 				-- First person: Zoom to 0.5 studs (Roblox standard), no offset, wide FOV
@@ -205,20 +233,29 @@ function CameraController:Initialize()
 				player.CameraMinZoomDistance = FIRST_PERSON_DISTANCE
 				humanoid.CameraOffset = Vector3.new(0, 0, 0)
 				camera.FieldOfView = FIRST_PERSON_FOV
+				UserInputService.MouseDeltaSensitivity = MOUSE_SENSITIVITY
 				print("📷 First Person Mode - FOV:", FIRST_PERSON_FOV)
 			else
-				-- Third person: Standard camera mode with offset
+				-- Third person: Fixed zoom at 16 studs (no zooming)
 				player.CameraMode = Enum.CameraMode.Classic
 				player.CameraMaxZoomDistance = THIRD_PERSON_DISTANCE
 				player.CameraMinZoomDistance = THIRD_PERSON_DISTANCE
 				humanoid.CameraOffset = Vector3.new(0, CAMERA_HEIGHT_OFFSET, 0)
 				camera.FieldOfView = THIRD_PERSON_FOV
-				print("📷 Third Person Mode - FOV:", THIRD_PERSON_FOV)
+				-- Free mouse and make cursor visible
+				UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+				UserInputService.MouseIconEnabled = true
+				print("📷 Third Person Mode - FOV:", THIRD_PERSON_FOV, "Fixed Zoom:", THIRD_PERSON_DISTANCE)
 			end
-		end
-	end)
+			end
+		end)
+	end
 
-	print("✅ CameraController: Initialized (Camera 1 stud above character, Press V to toggle)")
+	if MOUSE_LOCK_ENABLED then
+		print("✅ CameraController: Initialized (First Person enabled, Press V to toggle)")
+	else
+		print("✅ CameraController: Initialized (MouseLock disabled - native Roblox camera)")
+	end
 end
 
 return CameraController

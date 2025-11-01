@@ -38,7 +38,7 @@ local function snap(value)
 end
 
 local function getMaterialForBlock(blockId)
-	if blockId == Constants.BlockType.GRASS then
+    if blockId == Constants.BlockType.GRASS then
 		return Enum.Material.Grass
 	elseif blockId == Constants.BlockType.DIRT then
 		return Enum.Material.Ground
@@ -46,7 +46,13 @@ local function getMaterialForBlock(blockId)
 		return Enum.Material.Slate
 	elseif blockId == Constants.BlockType.WOOD then
 		return Enum.Material.Wood
-	elseif blockId == Constants.BlockType.LEAVES then
+    elseif blockId == Constants.BlockType.LEAVES
+        or blockId == Constants.BlockType.OAK_LEAVES
+        or blockId == Constants.BlockType.SPRUCE_LEAVES
+        or blockId == Constants.BlockType.JUNGLE_LEAVES
+        or blockId == Constants.BlockType.DARK_OAK_LEAVES
+        or blockId == Constants.BlockType.BIRCH_LEAVES
+        or blockId == Constants.BlockType.ACACIA_LEAVES then
 		return Enum.Material.Glass
 	else
 		return Enum.Material.SmoothPlastic
@@ -400,7 +406,7 @@ function GreedyMesher:GenerateMesh(chunk, worldManager, options)
                             p.CanCollide = true
                             p.Material = getMaterialForBlock(id)
                             p.Color = def and def.color or Color3.fromRGB(255,255,255)
-                            p.Transparency = (def and def.transparent) and 0.2 or 0
+                            p.Transparency = (def and def.transparent) and 0.8 or 0
                             p.Size = size
                             p.Position = Vector3.new(snap(cxw), snap(cyw), snap(czw))
 
@@ -514,7 +520,7 @@ function GreedyMesher:GenerateMesh(chunk, worldManager, options)
                             if FULL_THICKNESS or (SURFACE_SLABS and face.y > 0) then
 								-- Full-thickness slab part with collision
 								part = PartPool.AcquireColliderPart()
-								part.Transparency = block.transparent and 0.2 or 0
+								part.Transparency = block.transparent and 0.8 or 0
 								part.CanCollide = true
 								part.Material = getMaterialForBlock(blockId)
 								part.Color = block.color
@@ -522,7 +528,7 @@ function GreedyMesher:GenerateMesh(chunk, worldManager, options)
 								part = PartPool.AcquireFacePart()
 								part.Material = getMaterialForBlock(blockId)
 								part.Color = block.color
-								part.Transparency = block.transparent and 0.5 or 0
+								part.Transparency = block.transparent and 0.8 or 0
 							end
 						end
 

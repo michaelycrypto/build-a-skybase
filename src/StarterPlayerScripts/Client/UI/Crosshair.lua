@@ -3,9 +3,16 @@
 	Creates a simple, crisp crosshair centered on the screen using UI Frames.
 	The crosshair is composed of a vertical and horizontal bar in light grey,
 	flat, matching Minecraft's minimal aesthetic.
+
+	NOTE: This crosshair is only shown in FIRST PERSON mode.
 --]]
 
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local GameState = require(script.Parent.Parent.Managers.GameState)
 
 local Crosshair = {}
 
@@ -65,6 +72,24 @@ function Crosshair:Create(parentHudGui)
 	-- Create horizontal and vertical bars
 	createBar(crosshairContainer, true)
 	createBar(crosshairContainer, false)
+
+	-- Update visibility based on camera mode
+	task.spawn(function()
+		while true do
+			task.wait(0.1)
+
+			if crosshairContainer then
+				local isFirstPerson = GameState:Get("camera.isFirstPerson")
+				local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+
+				-- Show crosshair:
+				-- - Always in first person mode
+				-- - On mobile devices (for tap targeting)
+				local shouldShow = (isFirstPerson ~= false) or isMobile
+				crosshairContainer.Visible = shouldShow
+			end
+		end
+	end)
 end
 
 function Crosshair:SetVisible(isVisible)

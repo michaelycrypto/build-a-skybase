@@ -17,7 +17,7 @@ local Constants = {
 	MIN_HEIGHT = 0,
 
 	-- Block size in studs
-	BLOCK_SIZE = 3.5,
+	BLOCK_SIZE = 3,
 
 	-- Chunk states
 	ChunkState = {
@@ -59,7 +59,61 @@ local Constants = {
 		STONE_BRICK_SLAB = 25,
 		BRICK_SLAB = 26,
 		-- Fences
-		OAK_FENCE = 27
+		OAK_FENCE = 27,
+		-- Crafting materials
+		STICK = 28,
+		-- Ores
+		COAL_ORE = 29,
+		IRON_ORE = 30,
+		DIAMOND_ORE = 31,
+		-- Refined materials
+		COAL = 32,
+		IRON_INGOT = 33,
+		DIAMOND = 34,
+		-- Utility blocks
+		FURNACE = 35,
+		GLASS = 36,
+		APPLE = 37,
+
+		-- New wood families
+		SPRUCE_LOG = 38,
+		SPRUCE_PLANKS = 39,
+		SPRUCE_SAPLING = 40,
+		SPRUCE_STAIRS = 41,
+		SPRUCE_SLAB = 42,
+
+		JUNGLE_LOG = 43,
+		JUNGLE_PLANKS = 44,
+		JUNGLE_SAPLING = 45,
+		JUNGLE_STAIRS = 46,
+		JUNGLE_SLAB = 47,
+
+		DARK_OAK_LOG = 48,
+		DARK_OAK_PLANKS = 49,
+		DARK_OAK_SAPLING = 50,
+		DARK_OAK_STAIRS = 51,
+		DARK_OAK_SLAB = 52,
+
+		BIRCH_LOG = 53,
+		BIRCH_PLANKS = 54,
+		BIRCH_SAPLING = 55,
+		BIRCH_STAIRS = 56,
+		BIRCH_SLAB = 57,
+
+		ACACIA_LOG = 58,
+		ACACIA_PLANKS = 59,
+		ACACIA_SAPLING = 60,
+		ACACIA_STAIRS = 61,
+		ACACIA_SLAB = 62
+		,
+
+		-- Leaf variants per wood family
+		OAK_LEAVES = 63,
+		SPRUCE_LEAVES = 64,
+		JUNGLE_LEAVES = 65,
+		DARK_OAK_LEAVES = 66,
+		BIRCH_LEAVES = 67,
+		ACACIA_LEAVES = 68
 	},
 
 	-- Mapping: Slab block ID → Full block ID (when two slabs combine)
@@ -69,6 +123,11 @@ local Constants = {
 		[24] = 14,  -- COBBLESTONE_SLAB → COBBLESTONE
 		[25] = 11,  -- STONE_BRICK_SLAB → STONE_BRICKS
 		[26] = 15,  -- BRICK_SLAB → BRICKS
+		[42] = 39,  -- SPRUCE_SLAB → SPRUCE_PLANKS
+		[47] = 44,  -- JUNGLE_SLAB → JUNGLE_PLANKS
+		[52] = 49,  -- DARK_OAK_SLAB → DARK_OAK_PLANKS
+		[57] = 54,  -- BIRCH_SLAB → BIRCH_PLANKS
+		[62] = 59,  -- ACACIA_SLAB → ACACIA_PLANKS
 	},
 
 	-- Reverse mapping: Full block ID → Slab ID (what to drop when broken)
@@ -78,6 +137,18 @@ local Constants = {
 		[14] = 24,  -- COBBLESTONE → COBBLESTONE_SLAB
 		[11] = 25,  -- STONE_BRICKS → STONE_BRICK_SLAB
 		[15] = 26,  -- BRICKS → BRICK_SLAB
+		[39] = 42,  -- SPRUCE_PLANKS → SPRUCE_SLAB
+		[44] = 47,  -- JUNGLE_PLANKS → JUNGLE_SLAB
+		[49] = 52,  -- DARK_OAK_PLANKS → DARK_OAK_SLAB
+		[54] = 57,  -- BIRCH_PLANKS → BIRCH_SLAB
+		[59] = 62,  -- ACACIA_PLANKS → ACACIA_SLAB
+	},
+
+	-- Mapping: Ore block ID → Material item ID (what to drop when mined)
+	OreToMaterial = {
+		[29] = 32,  -- COAL_ORE → COAL
+		[30] = 30,  -- IRON_ORE → IRON_ORE (needs smelting, drops ore block)
+		[31] = 34,  -- DIAMOND_ORE → DIAMOND
 	},
 
 	-- Block metadata format (single byte: 0-255)
@@ -205,6 +276,16 @@ function Constants.CanSlabsCombine(existingSlabId, existingMetadata, newSlabId, 
 	-- They can combine!
 	local fullBlockId = Constants.GetFullBlockFromSlab(existingSlabId)
 	return true, fullBlockId
+end
+
+-- Check if a block ID is an ore that should drop material instead
+function Constants.IsOreBlock(blockId)
+	return Constants.OreToMaterial[blockId] ~= nil
+end
+
+-- Get the material item that an ore block should drop
+function Constants.GetOreMaterialDrop(oreBlockId)
+	return Constants.OreToMaterial[oreBlockId]
 end
 
 return Constants

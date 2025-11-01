@@ -33,10 +33,17 @@ local Manifest = {
 		ToolbarModeChanged = {"any"},
 		ToolActivated = {"any"},
 
+		-- Voxel tool equip (Minecraft-style)
+		EquipTool = {"any"}, -- {slotIndex}
+		UnequipTool = {},
+
 		-- Voxel server-authoritative edit requests
 		VoxelRequestBlockPlace = {"any"},
 		VoxelRequestRenderDistance = {"any"},
 		PlayerPunch = {"any"},  -- Block breaking via punch system
+		CancelBlockBreak = {"any"}, -- Immediate cancel of break progress for a block
+		-- PvP melee
+		PlayerMeleeHit = {"any"}, -- {targetUserId, swingTimeMs}
 
 		-- Chest interactions
 		RequestOpenChest = {"any"}, -- {x, y, z} - Request to open chest at position
@@ -90,6 +97,7 @@ local Manifest = {
 		-- Inventory events
 		InventorySync = {"any"},
 		HotbarSlotUpdate = {"any"},
+		InventorySlotUpdate = {"any"},  -- Granular inventory slot sync
 		-- Chest events
 		ChestOpened = {"any"}, -- {x, y, z, contents} - Chest opened successfully
 		ChestClosed = {"any"}, -- {x, y, z} - Chest closed
@@ -108,6 +116,9 @@ local Manifest = {
 		PlayerCorrection = {"any"},
 		-- Broadcast when a player punches so others can play punch anim
 		PlayerPunched = {"any"},
+		-- PvP feedback
+		PlayerDamaged = {"any"}, -- {attackerUserId, victimUserId, amount}
+		PlayerSwordSwing = {"any"}, -- {userId}
 		-- Broadcast when a player toggles sneak
 		PlayerSneak = {"any"},
 		-- World ownership info

@@ -44,6 +44,7 @@ local TEXTURE_ASSETS = {
 	["tall_grass"] = "rbxassetid://0",   -- Tall grass blade texture
 	["flower"] = "rbxassetid://0",       -- Flower texture
 	["oak_sapling"] = "rbxassetid://87985508905533",  -- Oak sapling texture
+	["stick"] = "rbxassetid://0",        -- Stick texture (crafting material)
 
 	-- Sand texture
 	["sand"] = "rbxassetid://135011741792825",  -- Sand texture (all faces)
@@ -53,6 +54,36 @@ local TEXTURE_ASSETS = {
 
 	-- Oak Planks texture
 	["oak_planks"] = "rbxassetid://97906205267703",  -- Oak planks texture (all faces)
+
+	-- Spruce textures
+	["spruce_sapling"] = "rbxassetid://114598273516558",
+	["spruce_planks"] = "rbxassetid://105755940066085",
+	["spruce_log_top"] = "rbxassetid://72028606598650",
+	["spruce_log_side"] = "rbxassetid://137442233699907",
+
+	-- Jungle textures
+	["jungle_sapling"] = "rbxassetid://74526907413316",
+	["jungle_planks"] = "rbxassetid://129276345517813",
+	["jungle_log_top"] = "rbxassetid://110736818391988",
+	["jungle_log_side"] = "rbxassetid://134270574628736",
+
+	-- Dark Oak textures
+	["dark_oak_sapling"] = "rbxassetid://79970815232509",
+	["dark_oak_planks"] = "rbxassetid://73932476747091",
+	["dark_oak_log_top"] = "rbxassetid://136417573996102",
+	["dark_oak_log_side"] = "rbxassetid://84761900511766",
+
+	-- Birch textures
+	["birch_sapling"] = "rbxassetid://92064362873503",
+	["birch_planks"] = "rbxassetid://136512317998173",
+	["birch_log_top"] = "rbxassetid://95413916416058",
+	["birch_log_side"] = "rbxassetid://110526248592215",
+
+	-- Acacia textures
+	["acacia_sapling"] = "rbxassetid://71757022067162",
+	["acacia_planks"] = "rbxassetid://85841942704300",
+	["acacia_log_top"] = "rbxassetid://136532380257460",
+	["acacia_log_side"] = "rbxassetid://101311361454505",
 
 	-- Crafting Table textures
 	["crafting_table_top"] = "rbxassetid://118160148189576",     -- Crafting table top/bottom texture
@@ -70,14 +101,24 @@ local TEXTURE_ASSETS = {
 local TEXTURES_ENABLED = true
 
 --[[
-	Get texture asset ID by texture name
-	@param textureName: Texture name (e.g., "grass_top", "dirt", "stone")
+	Get texture asset ID by texture name or pass through raw asset IDs
+	@param textureName: Texture name (e.g., "grass_top", "dirt", "stone") OR raw asset ID ("rbxassetid://...")
 	@return: Asset ID string or nil if texture not found
 ]]
 function TextureManager:GetTextureId(textureName: string): string?
 	if not TEXTURES_ENABLED then return nil end
 	if not textureName then return nil end
 
+	-- If it's already a raw asset ID, pass it through
+	if string.match(textureName, "^rbxassetid://") then
+		-- Don't return if it's the placeholder "rbxassetid://0"
+		if textureName == "rbxassetid://0" then
+			return nil
+		end
+		return textureName
+	end
+
+	-- Otherwise look it up in the texture assets table
 	local assetId = TEXTURE_ASSETS[textureName]
 
 	-- Return nil if texture not configured (ID is 0) or missing
@@ -135,12 +176,42 @@ end
 
 --[[
 	Check if a texture is configured (has a valid asset ID)
-	@param textureName: Texture name to check
+	@param textureName: Texture name or raw asset ID to check
 	@return: Boolean indicating if texture is configured
 ]]
 function TextureManager:IsTextureConfigured(textureName: string): boolean
+	-- If it's already a raw asset ID, check if it's valid
+	if string.match(textureName, "^rbxassetid://") then
+		return textureName ~= "rbxassetid://0"
+	end
+
+	-- Otherwise look it up in the texture assets table
 	local assetId = TEXTURE_ASSETS[textureName]
 	return assetId ~= nil and assetId ~= "rbxassetid://0"
+end
+
+--[[
+	Collect all texture asset IDs referenced by BlockRegistry (including raw IDs)
+	@return: Array of unique asset ID strings (rbxassetid://...)
+]]
+function TextureManager:GetAllBlockTextureAssetIds(): {string}
+	local results = {}
+	local seen = {}
+
+	for _, def in pairs(BlockRegistry.Blocks or {}) do
+		local tx = def and def.textures
+		if tx then
+			for _, textureName in pairs(tx) do
+				local assetId = self:GetTextureId(textureName)
+				if assetId and not seen[assetId] then
+					seen[assetId] = true
+					table.insert(results, assetId)
+				end
+			end
+		end
+	end
+
+	return results
 end
 
 return TextureManager

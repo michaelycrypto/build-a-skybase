@@ -15,7 +15,7 @@ local WorldOwnershipService = setmetatable({}, BaseService)
 WorldOwnershipService.__index = WorldOwnershipService
 
 -- DataStore for world ownership
-local WORLD_DATA_STORE_NAME = "PlayerOwnedWorlds_v17"  -- Changed to v4 to reset all data
+local WORLD_DATA_STORE_NAME = "PlayerOwnedWorlds_v33"  -- Changed to v4 to reset all data
 
 function WorldOwnershipService.new()
 	local self = setmetatable(BaseService.new(), WorldOwnershipService)

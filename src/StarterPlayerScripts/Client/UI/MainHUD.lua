@@ -8,6 +8,7 @@ local MainHUD = {}
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local GuiService = game:GetService("GuiService")
+local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 -- Import dependencies
@@ -37,6 +38,14 @@ local gemsLabel
 -- UI State
 local menuButtons = {}
 local currentValues = {coins = 0, gems = 0}
+
+-- References to other UI components
+local voxelInventoryRef = nil
+
+-- Public function to set inventory reference
+function MainHUD:SetInventoryReference(inventoryPanel)
+	voxelInventoryRef = inventoryPanel
+end
 
 -- Quests badge state
 local questBadge
@@ -319,6 +328,14 @@ function MainHUD:Create()
 	hudGui.IgnoreGuiInset = true
 	hudGui.Parent = playerGui
 
+	-- Add responsive scaling (100% = original size)
+	local uiScale = Instance.new("UIScale")
+	uiScale.Name = "ResponsiveScale"
+	uiScale:SetAttribute("base_resolution", Vector2.new(1920, 1080)) -- 1920x1080 for 100% original size
+	uiScale.Parent = hudGui
+	CollectionService:AddTag(uiScale, "scale_component")
+	print("📐 MainHUD: Added UIScale with base resolution 1920x1080 (100% original size)")
+
 	-- Create components
 	self:CreateBottomLeftCurrency()
 	self:CreateLeftSidebar()
@@ -332,71 +349,7 @@ function MainHUD:Create()
 	-- Connect to game state
 	self:ConnectToGameState()
 
-	-- Listen for quest events to update the sidebar badge
-    QuestsApi.OnDataUpdated(function(payload)
-		questConfigState = payload and payload.config or questConfigState
-		playerQuestsState = payload and payload.quests or playerQuestsState
-		setQuestsBadgeCount(getClaimableQuestCount())
-    end)
-
-    QuestsApi.OnProgressUpdated(function(update)
-		if not update then return end
-		playerQuestsState = playerQuestsState or {mobs = {}}
-		playerQuestsState.mobs = playerQuestsState.mobs or {}
-		local mobType = update.mobType
-		if mobType then
-			playerQuestsState.mobs[mobType] = playerQuestsState.mobs[mobType] or {kills = 0, claimed = {}}
-			playerQuestsState.mobs[mobType].kills = update.kills or playerQuestsState.mobs[mobType].kills
-			setQuestsBadgeCount(getClaimableQuestCount())
-		end
-    end)
-
-	-- Request initial quest data so the badge can reflect claimables without opening the panel
-    QuestsApi.RequestData()
-
-	-- Daily badge: reflect availability from GameState dailyRewards
-	GameState:OnPropertyChanged("playerData.dailyRewards", function(newValue)
-		local canClaim = false
-		if newValue then
-			local today = os.date("%Y-%m-%d")
-			local claimedToday = newValue.lastClaimDate == today
-			canClaim = not claimedToday
-		end
-		setDailyBadgeAvailable(canClaim)
-	end)
-
-	-- Also listen to network events just in case they come before GameState update
-    RewardsApi.OnDailyUpdated(function(rewardData)
-		local canClaim = false
-		if rewardData then
-			local today = os.date("%Y-%m-%d")
-			local claimedToday = rewardData.lastClaimDate == today
-			canClaim = not claimedToday
-		end
-		setDailyBadgeAvailable(canClaim)
-    end)
-
-    RewardsApi.OnDailyClaimed(function(rewardData)
-		setDailyBadgeAvailable(false)
-		-- Brief pulse on claim to acknowledge success
-		local btn = findDailyButton()
-		if btn and btn.icon then
-			local base = DEFAULT_ICON_SIZE
-			local up = TweenService:Create(btn.icon, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-				Size = UDim2.new(0, base + 8, 0, base + 8)
-			})
-			local down = TweenService:Create(btn.icon, TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-				Size = UDim2.new(0, base, 0, base)
-			})
-			up:Play()
-			up.Completed:Connect(function()
-				down:Play()
-			end)
-		end
-    end)
-
-	-- Request initial daily rewards data so the badge shows on login
-    RewardsApi.RequestDaily()
+	-- Badge and quest/daily tracking removed for simplified mobile UI
 
 	print("MainHUD: Created simplified HUD with Vector Icons")
 end
@@ -565,55 +518,28 @@ function MainHUD:CreateLeftSidebar()
 	sidebarLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 	sidebarLayout.Parent = leftSidebar
 
-	-- Create menu buttons (using Vector Icons)
+	-- Create menu buttons (using Vector Icons) - Simplified for mobile
 	menuButtons = {
 		{
-			iconCategory = "UI",
-			iconName = "Calendar",
-			text = "Daily Rewards",
-			buttonText = "Daily", -- Short text for button label
-			shortcut = "D",
-			callback = function()
-				-- Use PanelManager to toggle daily rewards panel
-				PanelManager:TogglePanel("daily_rewards")
-			end
-		},
-		{
-			iconCategory = "General",
-			iconName = "Heart",
-			text = "Emotes",
-			buttonText = "Emote", -- Short text for button label
+			iconCategory = "Clothing",
+			iconName = "Backpack",
+			text = "Inventory",
+			buttonText = "Inventory",
 			shortcut = "E",
 			callback = function()
-				-- Use PanelManager to toggle emotes panel
-				PanelManager:TogglePanel("emotes")
-			end
-		},
-		{
-			iconCategory = "General",
-			iconName = "Trophy",
-			text = "Quests",
-			buttonText = "Quests",
-			shortcut = "Q",
-			callback = function()
-				PanelManager:TogglePanel("quests")
-			end
-		},
-		{
-			iconCategory = "General",
-			iconName = "Shop",
-			text = "Shop",
-			buttonText = "Shop",
-			shortcut = "S",
-			callback = function()
-				PanelManager:TogglePanel("shop")
+				-- Toggle voxel inventory
+				if voxelInventoryRef then
+					voxelInventoryRef:Toggle()
+				else
+					warn("Inventory reference not set in MainHUD")
+				end
 			end
 		},
 		{
 			iconCategory = "General",
 			iconName = "Settings",
 			text = "Settings",
-			buttonText = "Settings", -- Short text for button label
+			buttonText = "Settings",
 			shortcut = "ESC",
 			callback = function()
 				-- Use PanelManager to toggle settings panel
@@ -632,10 +558,7 @@ function MainHUD:CreateLeftSidebar()
 		menuButtons[i].buttonObj = button
 	end
 
-	-- Prepare badge for Quests button (hidden until count > 0)
-	ensureQuestBadge()
-	-- Prepare badge for Daily button (hidden until available)
-	ensureDailyBadge()
+	-- Badges removed (quests and daily buttons removed for simplified mobile UI)
 
 	-- Removed expand/collapse functionality for simpler design
 	-- self:SetupMenuToggle()

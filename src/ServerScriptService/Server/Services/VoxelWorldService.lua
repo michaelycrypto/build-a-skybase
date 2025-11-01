@@ -9,6 +9,7 @@ local RunService = game:GetService("RunService")
 
 -- Core voxel modules
 local VoxelWorld = require(ReplicatedStorage.Shared.VoxelWorld)
+local Logger = require(ReplicatedStorage.Shared.Logger)
 local EventManager = require(ReplicatedStorage.Shared.EventManager)
 local Constants = require(ReplicatedStorage.Shared.VoxelWorld.Core.Constants)
 local Config = require(ReplicatedStorage.Shared.VoxelWorld.Core.Config)
@@ -16,10 +17,33 @@ local ChunkCompressor = require(ReplicatedStorage.Shared.VoxelWorld.Memory.Chunk
 local BlockProperties = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockProperties)
 local BlockBreakTracker = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockBreakTracker)
 local BlockPlacementRules = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockPlacementRules)
+local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
+local CombatConfig = require(ReplicatedStorage.Configs.CombatConfig)
+local SaplingConfig = require(ReplicatedStorage.Configs.SaplingConfig)
 
 local VoxelWorldService = {
 	Name = "VoxelWorldService"
 }
+
+-- Standardize and gate module-local prints through Logger at DEBUG level
+local _logger = Logger:CreateContext("VoxelWorldService")
+local function _toString(v)
+    return tostring(v)
+end
+local function _concatArgs(...)
+    local n = select("#", ...)
+    local parts = table.create(n)
+    for i = 1, n do
+        parts[i] = _toString(select(i, ...))
+    end
+    return table.concat(parts, " ")
+end
+local print = function(...)
+    _logger.Debug(_concatArgs(...))
+end
+local warn = function(...)
+    _logger.Warn(_concatArgs(...))
+end
 
 -- Initialize service
 function VoxelWorldService:Init()
@@ -52,6 +76,141 @@ function VoxelWorldService:Init()
 	self.modifiedChunks = {} -- Set of chunk keys that need saving
 
 	print("VoxelWorldService: Initialized (single player-owned world)")
+end
+
+-- Handle player melee hit request (PvP)
+function VoxelWorldService:HandlePlayerMeleeHit(player: Player, data)
+    if not data or not data.targetUserId then return end
+    local now = os.clock()
+
+    -- Rate limit by swing cooldown
+    local rl = self.rateLimits[player]
+    if not rl then
+        rl = {chunkWindowStart = now, chunksSent = 0, modWindowStart = now, mods = 0}
+        self.rateLimits[player] = rl
+    end
+    rl.lastMelee = rl.lastMelee or 0
+    if (now - rl.lastMelee) < (CombatConfig.SWING_COOLDOWN or 0.35) then
+        return
+    end
+    rl.lastMelee = now
+
+    -- Validate attacker character
+    local attackerChar = player.Character
+    if not attackerChar then return end
+    local attackerRoot = attackerChar:FindFirstChild("HumanoidRootPart")
+    if not attackerRoot then return end
+
+    -- Validate victim
+    local victim = nil
+    for _, plr in ipairs(game.Players:GetPlayers()) do
+        if plr.UserId == data.targetUserId then
+            victim = plr
+            break
+        end
+    end
+    if not victim or victim == player then return end
+    local victimChar = victim.Character
+    if not victimChar then return end
+    local victimRoot = victimChar:FindFirstChild("HumanoidRootPart")
+    local victimHum = victimChar:FindFirstChildOfClass("Humanoid")
+    if not victimRoot or not victimHum or victimHum.Health <= 0 then return end
+
+    -- Determine attacker tool (sword or empty hand)
+    local toolType, toolTier
+    do
+        local playerData = self.players[player]
+        if playerData and playerData.tool and playerData.tool.slotIndex and self.Deps and self.Deps.PlayerInventoryService then
+            local slotIndex = playerData.tool.slotIndex
+            local stack = self.Deps.PlayerInventoryService:GetHotbarSlot(player, slotIndex)
+            if stack and not stack:IsEmpty() then
+                local itemId = stack:GetItemId()
+                if ToolConfig.IsTool(itemId) then
+                    local tType, tTier = ToolConfig.GetBlockProps(itemId)
+                    toolType, toolTier = tType, tTier
+                end
+            end
+        end
+        -- If no tool or non-sword, treat as empty hand punch
+    end
+
+    -- Distance check
+    local reach = CombatConfig.REACH_STUDS or 10
+    if (attackerRoot.Position - victimRoot.Position).Magnitude > reach then
+        return
+    end
+
+    -- FOV check
+    local fov = (CombatConfig.FOV_DEGREES or 60)
+    local forward = attackerRoot.CFrame.LookVector
+    local dir = (victimRoot.Position - attackerRoot.Position).Unit
+    local dot = forward:Dot(dir)
+    local angle = math.deg(math.acos(math.clamp(dot, -1, 1)))
+    if angle > fov then return end
+
+    -- Optional: simple line-of-sight raycast
+    local rayParams = RaycastParams.new()
+    rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+    rayParams.FilterDescendantsInstances = {attackerChar}
+    local result = workspace:Raycast(attackerRoot.Position, (victimRoot.Position - attackerRoot.Position), rayParams)
+    if result and result.Instance and result.Instance:IsDescendantOf(victimChar) == false then
+        -- Hit something else first
+        -- allow slight occlusion tolerance; skip rejection for now to reduce false negatives
+    end
+
+    -- Compute damage (sword -> table by tier; otherwise hand damage)
+    local dmg
+    if toolType == require(ReplicatedStorage.Shared.VoxelWorld.World.BlockProperties).ToolType.SWORD and toolTier then
+        dmg = CombatConfig.SWORD_DAMAGE_BY_TIER[toolTier] or 4
+    else
+        dmg = CombatConfig.HAND_DAMAGE or 2
+    end
+    victimHum:TakeDamage(dmg)
+
+    -- Optional knockback
+    local kb = CombatConfig.KNOCKBACK_STRENGTH or 0
+    if kb > 0 then
+        local bodyVel = Instance.new("BodyVelocity")
+        bodyVel.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+        bodyVel.Velocity = dir * kb + Vector3.new(0, kb * 0.25, 0)
+        bodyVel.Parent = victimRoot
+        game:GetService("Debris"):AddItem(bodyVel, 0.2)
+    end
+
+    -- Broadcast damage event for feedback
+    pcall(function()
+        require(ReplicatedStorage.Shared.EventManager):FireEventToAll("PlayerDamaged", {
+            attackerUserId = player.UserId,
+            victimUserId = victim.UserId,
+            amount = dmg
+        })
+        require(ReplicatedStorage.Shared.EventManager):FireEventToAll("PlayerSwordSwing", {
+            userId = player.UserId
+        })
+    end)
+end
+
+-- Cancel block breaking immediately for a specific block
+function VoxelWorldService:CancelBlockBreak(player, data)
+    if not data or data.x == nil or data.y == nil or data.z == nil then return end
+    if not self.blockBreakTracker then return end
+
+    -- Optional: validate reach similar to punch to avoid remote abuse
+    local character = player.Character
+    if not character then return end
+    local head = character:FindFirstChild("Head")
+    if not head then return end
+    local x, y, z = data.x, data.y, data.z
+    local blockCenter = Vector3.new(
+        x * Constants.BLOCK_SIZE + Constants.BLOCK_SIZE * 0.5,
+        y * Constants.BLOCK_SIZE + Constants.BLOCK_SIZE * 0.5,
+        z * Constants.BLOCK_SIZE + Constants.BLOCK_SIZE * 0.5
+    )
+    local distance3D = (blockCenter - head.Position).Magnitude
+    local maxReach = 4.5 * Constants.BLOCK_SIZE + 2
+    if distance3D > maxReach then return end
+
+    self.blockBreakTracker:Cancel(x, y, z)
 end
 
 -- Check if world is ready for players to spawn
@@ -124,18 +283,38 @@ function VoxelWorldService:StreamChunkToPlayer(player, chunkX, chunkZ)
 
 	local key = string.format("%d,%d", chunkX, chunkZ)
 
+	-- Skip known-empty chunks (Skyblock/void worlds)
+	if self.worldManager and self.worldManager.IsChunkEmpty and self.worldManager:IsChunkEmpty(chunkX, chunkZ) then
+		return false
+	end
+
 	-- Get or create chunk
 	local chunk = self.worldManager:GetChunk(chunkX, chunkZ)
 	if not chunk then return false end
 
-	-- Serialize and send via EventManager
-	local startTime = os.clock()
-    local linear = chunk:SerializeLinear()
-    local compressed = ChunkCompressor.CompressForNetwork(linear)
-    compressed.x = linear.x
-    compressed.z = linear.z
-    compressed.state = linear.state
-	local compressionTime = (os.clock() - startTime) * 1000
+    -- Serialize and send via EventManager (with caching)
+    local startTime = os.clock()
+
+    -- Avoid duplicate work if another call is already compressing this chunk
+    if chunk._compressing then
+        return false
+    end
+
+    local compressed = chunk._netCache
+    if not compressed or chunk.isDirty then
+        chunk._compressing = true
+        local linear = chunk:SerializeLinear()
+        compressed = ChunkCompressor.CompressForNetwork(linear)
+        compressed.x = linear.x
+        compressed.z = linear.z
+        compressed.state = linear.state
+        chunk._netCache = compressed
+        -- Mark network cache clean; saving still uses WorldManager.modifiedChunks
+        chunk.isDirty = false
+        chunk._compressing = nil
+    end
+
+    local compressionTime = (os.clock() - startTime) * 1000
 
 	EventManager:FireEvent("ChunkDataStreamed", player, {
 		chunk = compressed,
@@ -149,6 +328,12 @@ function VoxelWorldService:StreamChunkToPlayer(player, chunkX, chunkZ)
 	-- Track viewing reference
 	self:_addViewer(player, key)
 	self.chunkLastAccess[key] = os.clock()
+
+	-- Notify SaplingService to scan this chunk once (for offline growth / registration)
+	local saplingService = self.Deps and self.Deps.SaplingService
+	if saplingService and saplingService.OnChunkStreamed then
+		saplingService:OnChunkStreamed(chunkX, chunkZ)
+	end
 
 	-- Enforce per-player chunk cap
 	local perPlayerCap = (Config.PERFORMANCE and Config.PERFORMANCE.MAX_CHUNKS_PER_PLAYER) or 200
@@ -239,6 +424,10 @@ function VoxelWorldService:StreamChunksToPlayer(player, playerState)
 				local key = string.format("%d,%d", cx, cz)
 
 				if not state.chunks[key] then
+					-- Skip known-empty chunks in sparse worlds (e.g., Skyblock)
+					if self.worldManager and self.worldManager.IsChunkEmpty and self.worldManager:IsChunkEmpty(cx, cz) then
+						-- continue
+					else
 					local score = dist2
 					if hasForward then
 						local len = math.sqrt(ox*ox + oz*oz)
@@ -251,7 +440,8 @@ function VoxelWorldService:StreamChunksToPlayer(player, playerState)
 							end
 						end
 					end
-					table.insert(candidates, { cx = cx, cz = cz, key = key, score = score })
+						table.insert(candidates, { cx = cx, cz = cz, key = key, score = score })
+					end
 				end
 			end
 		end
@@ -314,12 +504,40 @@ function VoxelWorldService:SetBlock(x, y, z, blockId, player, metadata)
 	if not self.worldManager then return false end
 
 	-- Set block
-	local success = self.worldManager:SetBlock(x, y, z, blockId)
+    local prevBlockId = self.worldManager:GetBlock(x, y, z)
+    local success = self.worldManager:SetBlock(x, y, z, blockId)
 	if not success then return false end
 
-	-- Set metadata if provided
-	if metadata and metadata ~= 0 then
-		self.worldManager:SetBlockMetadata(x, y, z, metadata)
+	-- If block type changed and no explicit metadata provided, clear old metadata
+	if prevBlockId ~= blockId and (metadata == nil) then
+		self.worldManager:SetBlockMetadata(x, y, z, 0)
+	end
+
+	-- Leaves persistence: player-placed leaves are persistent and should not decay
+	local BLOCK = require(ReplicatedStorage.Shared.VoxelWorld.Core.Constants).BlockType
+	if blockId == BLOCK.LEAVES then
+		local metaToSet = metadata
+		-- If placed by a player, set persistent bit (bit 3)
+		if player then
+			local existing = self.worldManager:GetBlockMetadata(x, y, z) or 0
+			metaToSet = bit32.bor(metaToSet or existing, 0x8)
+		end
+		-- Apply metadata if non-nil (even if zero from explicit input)
+		if metaToSet ~= nil then
+			self.worldManager:SetBlockMetadata(x, y, z, metaToSet)
+		end
+	else
+		-- Non-leaf blocks: set metadata if provided explicitly (e.g., slabs/stairs orientation)
+		if metadata and metadata ~= 0 then
+			self.worldManager:SetBlockMetadata(x, y, z, metadata)
+		end
+	end
+
+	-- Notify SaplingService about block change (for sapling growth/leaf decay)
+	local saplingService = self.Deps and self.Deps.SaplingService
+	if saplingService and saplingService.OnBlockChanged then
+		local metaNow = metadata or self.worldManager:GetBlockMetadata(x, y, z) or 0
+        saplingService:OnBlockChanged(x, y, z, blockId, metaNow, prevBlockId)
 	end
 
 	-- After changing a block, update nearby stair shapes
@@ -375,6 +593,7 @@ function VoxelWorldService:RejectBlockChange(player, data, reason)
 		reason = reason
 	})
 end
+
 
 -- Handle player punch (block breaking)
 function VoxelWorldService:HandlePlayerPunch(player, punchData)
@@ -433,9 +652,32 @@ function VoxelWorldService:HandlePlayerPunch(player, punchData)
 		return
 	end
 
-	-- Get tool info
-	local toolType = (playerData.tool and playerData.tool.type) or BlockProperties.ToolType.NONE
-	local toolTier = (playerData.tool and playerData.tool.tier) or BlockProperties.ToolTier.NONE
+	-- Get tool info (validate equipped tool still in hotbar slot)
+	local toolType = BlockProperties.ToolType.NONE
+	local toolTier = BlockProperties.ToolTier.NONE
+	if playerData.tool and playerData.tool.slotIndex and self.Deps and self.Deps.PlayerInventoryService then
+		local slotIndex = playerData.tool.slotIndex
+		local stack = self.Deps.PlayerInventoryService:GetHotbarSlot(player, slotIndex)
+		if stack and not stack:IsEmpty() then
+			local itemId = stack:GetItemId()
+			local ToolConfig = require(game.ReplicatedStorage.Configs.ToolConfig)
+			if ToolConfig.IsTool(itemId) then
+				local tType, tTier = ToolConfig.GetBlockProps(itemId)
+				toolType = tType
+				toolTier = tTier
+			else
+				-- Slot no longer holds a tool; clear equipped state
+				playerData.tool = nil
+			end
+		else
+			-- Empty slot; clear equipped state
+			playerData.tool = nil
+		end
+	else
+		-- Fallback to any previously stored type/tier (legacy) if present
+		toolType = (playerData.tool and playerData.tool.type) or BlockProperties.ToolType.NONE
+		toolTier = (playerData.tool and playerData.tool.tier) or BlockProperties.ToolTier.NONE
+	end
 
 	-- Calculate break time
 	local breakTime, canBreak = BlockProperties:GetBreakTime(blockId, toolType, toolTier)
@@ -483,8 +725,63 @@ function VoxelWorldService:HandlePlayerPunch(player, punchData)
 			canHarvest = canHarvest
 		})
 
-		-- Spawn dropped item if player can harvest the block
-		if canHarvest and self.Deps and self.Deps.DroppedItemService then
+        -- Spawn dropped items
+		if self.Deps and self.Deps.DroppedItemService then
+            -- Special-case leaves (all variants): drop saplings/apples by chance, not the leaf block itself
+            local isLeaf = (
+                blockId == Constants.BlockType.LEAVES or
+                blockId == Constants.BlockType.OAK_LEAVES or
+                blockId == Constants.BlockType.SPRUCE_LEAVES or
+                blockId == Constants.BlockType.JUNGLE_LEAVES or
+                blockId == Constants.BlockType.DARK_OAK_LEAVES or
+                blockId == Constants.BlockType.BIRCH_LEAVES or
+                blockId == Constants.BlockType.ACACIA_LEAVES
+            )
+
+			if isLeaf then
+				local saplingChance = (SaplingConfig.LEAF_DECAY and SaplingConfig.LEAF_DECAY.SAPLING_DROP_CHANCE) or 0.05
+				local appleChance = (SaplingConfig.LEAF_DECAY and SaplingConfig.LEAF_DECAY.APPLE_DROP_CHANCE) or 0.005
+
+				-- Map leaf → sapling
+				local saplingId
+				if blockId == Constants.BlockType.OAK_LEAVES then saplingId = Constants.BlockType.OAK_SAPLING end
+				if blockId == Constants.BlockType.SPRUCE_LEAVES then saplingId = Constants.BlockType.SPRUCE_SAPLING end
+				if blockId == Constants.BlockType.JUNGLE_LEAVES then saplingId = Constants.BlockType.JUNGLE_SAPLING end
+				if blockId == Constants.BlockType.DARK_OAK_LEAVES then saplingId = Constants.BlockType.DARK_OAK_SAPLING end
+				if blockId == Constants.BlockType.BIRCH_LEAVES then saplingId = Constants.BlockType.BIRCH_SAPLING end
+				if blockId == Constants.BlockType.ACACIA_LEAVES then saplingId = Constants.BlockType.ACACIA_SAPLING end
+
+				-- If leaf was the legacy generic kind, infer species from nearest trunk
+				if (not saplingId) and blockId == Constants.BlockType.LEAVES then
+					local radius = (SaplingConfig.LEAF_DECAY and SaplingConfig.LEAF_DECAY.RADIUS) or 6
+					local best
+					for dy = -radius, radius do
+						for dx = -radius, radius do
+							for dz = -radius, radius do
+								local bid = self.worldManager and self.worldManager:GetBlock(x + dx, y + dy, z + dz)
+								if bid == Constants.BlockType.WOOD then best = Constants.BlockType.OAK_SAPLING break end
+								if bid == Constants.BlockType.SPRUCE_LOG then best = Constants.BlockType.SPRUCE_SAPLING break end
+								if bid == Constants.BlockType.JUNGLE_LOG then best = Constants.BlockType.JUNGLE_SAPLING break end
+								if bid == Constants.BlockType.DARK_OAK_LOG then best = Constants.BlockType.DARK_OAK_SAPLING break end
+								if bid == Constants.BlockType.BIRCH_LOG then best = Constants.BlockType.BIRCH_SAPLING break end
+								if bid == Constants.BlockType.ACACIA_LOG then best = Constants.BlockType.ACACIA_SAPLING break end
+							end
+							if best then break end
+						end
+						if best then break end
+					end
+					saplingId = best or Constants.BlockType.OAK_SAPLING
+				end
+
+				if saplingId and (math.random() < saplingChance) then
+					self.Deps.DroppedItemService:SpawnItem(saplingId, 1, Vector3.new(x, y, z), Vector3.new(0,0,0), true)
+				end
+				-- Only oak leaves drop apples (no generic fallback)
+				if (blockId == Constants.BlockType.OAK_LEAVES) and (math.random() < appleChance) then
+					self.Deps.DroppedItemService:SpawnItem(Constants.BlockType.APPLE, 1, Vector3.new(x, y, z), Vector3.new(0,0,0), true)
+				end
+			-- Otherwise, default drop path (only if harvestable)
+			elseif canHarvest then
 			-- Check if this full block should drop as 2 slabs instead
 			local dropItemId = blockId
 			local dropCount = 1
@@ -494,6 +791,11 @@ function VoxelWorldService:HandlePlayerPunch(player, punchData)
 				dropItemId = Constants.GetSlabFromFullBlock(blockId)
 				dropCount = 2
 				print(string.format("📦 Block %d drops as 2x slab %d", blockId, dropItemId))
+			elseif Constants.IsOreBlock(blockId) then
+				-- Ore blocks drop their refined material instead of the ore block
+				dropItemId = Constants.GetOreMaterialDrop(blockId)
+				dropCount = 1
+				print(string.format("⛏️ Ore block %d drops as material %d", blockId, dropItemId))
 			end
 
 			-- Minimal velocity - just let it drop naturally
@@ -509,6 +811,7 @@ function VoxelWorldService:HandlePlayerPunch(player, punchData)
 				popVelocity,
 				true -- Is block coordinates
 			)
+		end
 		end
 	else
 		EventManager:FireEventToAll("BlockBreakProgress", {
@@ -1126,7 +1429,8 @@ function VoxelWorldService:OnPlayerAdded(player)
 	self.players[player] = {
 		position = Vector3.new(0, 0, 0),
 		chunks = {},
-		lastUpdate = os.clock()
+		lastUpdate = os.clock(),
+		tool = nil
 	}
 
 	-- Get spawn position from generator (Skyblock island)
@@ -1182,6 +1486,49 @@ function VoxelWorldService:OnPlayerAdded(player)
 		EventManager:FireEvent("PlayerEntitySpawned", player, {
 			character = player.Character
 		})
+	end
+end
+
+-- Equip a tool from hotbar slot (client sends slot index); server validates
+function VoxelWorldService:OnEquipTool(player, data)
+	if not data or type(data.slotIndex) ~= "number" then return end
+	local slotIndex = data.slotIndex
+	if slotIndex < 1 or slotIndex > 9 then return end
+
+	if not self.Deps or not self.Deps.PlayerInventoryService then return end
+	local invService = self.Deps.PlayerInventoryService
+	local stack = invService:GetHotbarSlot(player, slotIndex)
+	if not stack or stack:IsEmpty() then
+		-- Empty slot -> treat as unequip
+		local state = self.players[player]
+		if state then state.tool = nil end
+		return
+	end
+
+	local itemId = stack:GetItemId()
+	if not ToolConfig.IsTool(itemId) then
+		-- Not a tool
+		return
+	end
+
+	local toolType, toolTier = ToolConfig.GetBlockProps(itemId)
+	local state = self.players[player]
+	if state then
+		state.tool = {
+			type = toolType,
+			tier = toolTier,
+			slotIndex = slotIndex
+		}
+		print(string.format("[VoxelWorldService] %s equipped %s tier %d in slot %d", player.Name, tostring(toolType), toolTier, slotIndex))
+	end
+end
+
+-- Unequip current tool (fallback to hand)
+function VoxelWorldService:OnUnequipTool(player)
+	local state = self.players[player]
+	if state and state.tool then
+		state.tool = nil
+		-- Debug print removed to reduce console spam
 	end
 end
 

@@ -353,6 +353,182 @@ function BlockAPI:GetTargetedBlockFace(origin: Vector3, direction: Vector3, maxD
         return false, nil, nil
     end
 
+    -- Helper function: test ray against fence composite AABBs (post + rails based on neighbors)
+    -- Returns: (intersects:boolean, tEnter:number|nil, faceNormal:Vector3|nil)
+    local function testFenceIntersection(blockX, blockY, blockZ, blockId, metadata)
+        local def = BlockRegistry:GetBlock(blockId)
+        if not (def and def.fenceShape) then
+            return true, nil, nil -- not a fence; treat as full block by caller
+        end
+
+        local bs = Constants.BLOCK_SIZE
+        local baseX = blockX * bs
+        local baseY = blockY * bs
+        local baseZ = blockZ * bs
+
+        -- Sample neighbors to determine which rails should exist
+        local function sampleNeighbor(dx, dz)
+            local nid = self:GetBlock(blockX + dx, blockY, blockZ + dz)
+            if not nid or nid == Constants.BlockType.AIR then return "none" end
+            local ndef = BlockRegistry:GetBlock(nid)
+            if not ndef or ndef.name == "Unknown" then return "none" end
+            if ndef.fenceShape then return "fence" end
+            -- Connect to full solid blocks (excluding special shapes and interactables)
+            if ndef.solid and not ndef.crossShape and not ndef.slabShape and not ndef.stairShape and not ndef.fenceShape then
+                if nid == Constants.BlockType.CHEST or ndef.interactable == true then
+                    return "none"
+                end
+                return "full"
+            end
+            return "none"
+        end
+
+        local kindN = sampleNeighbor(0, -1)
+        local kindS = sampleNeighbor(0, 1)
+        local kindW = sampleNeighbor(-1, 0)
+        local kindE = sampleNeighbor(1, 0)
+
+        -- Build AABBs for fence geometry
+        local boxes = {}
+        local function addBox(minX, maxX, minY, maxY, minZ, maxZ)
+            boxes[#boxes + 1] = {minX = minX, maxX = maxX, minY = minY, maxY = maxY, minZ = minZ, maxZ = maxZ}
+        end
+
+        -- Center post (always present): 0.25 wide, full height, centered
+        local postWidth = bs * 0.25
+        local postHeight = bs * 1.0
+        local postHalf = postWidth / 2
+        addBox(
+            baseX + bs/2 - postHalf, baseX + bs/2 + postHalf,
+            baseY, baseY + postHeight,
+            baseZ + bs/2 - postHalf, baseZ + bs/2 + postHalf
+        )
+
+        -- Rail dimensions
+        local railThickness = bs * 0.20
+        local railHalf = railThickness / 2
+        -- Symmetric rail positions: 0.25 bottom, 0.5 middle gap, 0.25 top
+        -- When stacked vertically, this creates perfect repeating pattern
+        local railYOffset1 = bs * 0.25
+        local railYOffset2 = bs * 0.75
+
+        -- Helper to add rails in a direction
+        local function addRails(dx, dz, kind)
+            if kind == "none" then return end
+
+            local length, railMinX, railMaxX, railMinZ, railMaxZ
+
+            if dz ~= 0 then
+                -- North/South rails (extend along Z)
+                railMinX = baseX + bs/2 - railHalf
+                railMaxX = baseX + bs/2 + railHalf
+                if kind == "full" then
+                    -- Half-rail to solid block
+                    if dz < 0 then
+                        -- North: extend from center to block edge
+                        railMinZ = baseZ
+                        railMaxZ = baseZ + bs/2
+                    else
+                        -- South: extend from center to block edge
+                        railMinZ = baseZ + bs/2
+                        railMaxZ = baseZ + bs
+                    end
+                else
+                    -- Full rail to neighboring fence
+                    if dz < 0 then
+                        railMinZ = baseZ
+                        railMaxZ = baseZ + bs/2
+                    else
+                        railMinZ = baseZ + bs/2
+                        railMaxZ = baseZ + bs
+                    end
+                end
+            else
+                -- East/West rails (extend along X)
+                railMinZ = baseZ + bs/2 - railHalf
+                railMaxZ = baseZ + bs/2 + railHalf
+                if kind == "full" then
+                    -- Half-rail to solid block
+                    if dx < 0 then
+                        -- West: extend from center to block edge
+                        railMinX = baseX
+                        railMaxX = baseX + bs/2
+                    else
+                        -- East: extend from center to block edge
+                        railMinX = baseX + bs/2
+                        railMaxX = baseX + bs
+                    end
+                else
+                    -- Full rail to neighboring fence
+                    if dx < 0 then
+                        railMinX = baseX
+                        railMaxX = baseX + bs/2
+                    else
+                        railMinX = baseX + bs/2
+                        railMaxX = baseX + bs
+                    end
+                end
+            end
+
+            -- Add two rails (upper and lower)
+            addBox(railMinX, railMaxX, baseY + railYOffset1 - railHalf, baseY + railYOffset1 + railHalf, railMinZ, railMaxZ)
+            addBox(railMinX, railMaxX, baseY + railYOffset2 - railHalf, baseY + railYOffset2 + railHalf, railMinZ, railMaxZ)
+        end
+
+        -- Add rails for each direction that connects
+        addRails(0, -1, kindN) -- North
+        addRails(0, 1, kindS)  -- South
+        addRails(-1, 0, kindW) -- West
+        addRails(1, 0, kindE)  -- East
+
+        -- Ray-AABB intersection across all AABBs: choose nearest positive entry
+        local function axisEntryExit(minV, maxV, o, d)
+            if math.abs(d) < 0.001 then
+                if o < minV or o > maxV then
+                    return math.huge, -math.huge
+                else
+                    return -math.huge, math.huge
+                end
+            end
+            local t1 = (minV - o) / d
+            local t2 = (maxV - o) / d
+            if t1 > t2 then t1, t2 = t2, t1 end
+            return t1, t2
+        end
+
+        local bestT = math.huge
+        local bestFace = nil
+        for i = 1, #boxes do
+            local b = boxes[i]
+            local tx1, tx2 = axisEntryExit(b.minX, b.maxX, rayOrigin.X, rayDirection.X)
+            local ty1, ty2 = axisEntryExit(b.minY, b.maxY, rayOrigin.Y, rayDirection.Y)
+            local tz1, tz2 = axisEntryExit(b.minZ, b.maxZ, rayOrigin.Z, rayDirection.Z)
+            local tEnter = math.max(tx1, math.max(ty1, tz1))
+            local tExit  = math.min(tx2, math.min(ty2, tz2))
+            if tEnter <= tExit and tExit >= 0 then
+                -- Determine face at entry
+                local face
+                if tEnter == tx1 then
+                    face = Vector3.new(rayDirection.X > 0 and -1 or 1, 0, 0)
+                elseif tEnter == ty1 then
+                    face = Vector3.new(0, rayDirection.Y > 0 and -1 or 1, 0)
+                else
+                    face = Vector3.new(0, 0, rayDirection.Z > 0 and -1 or 1)
+                end
+                if tEnter < 0 then tEnter = 0 end
+                if tEnter < bestT then
+                    bestT = tEnter
+                    bestFace = face
+                end
+            end
+        end
+
+        if bestFace then
+            return true, bestT, bestFace
+        end
+        return false, nil, nil
+    end
+
 	-- Step through blocks until we hit something
 	while true do
 		local block = self:GetBlock(currentX, currentY, currentZ)
@@ -367,6 +543,8 @@ function BlockAPI:GetTargetedBlockFace(origin: Vector3, direction: Vector3, maxD
                 intersects, tHit, hitFace = testSlabIntersection(currentX, currentY, currentZ, block, metadata)
             elseif def and def.stairShape then
                 intersects, tHit, hitFace = testStairIntersection(currentX, currentY, currentZ, block, metadata)
+            elseif def and def.fenceShape then
+                intersects, tHit, hitFace = testFenceIntersection(currentX, currentY, currentZ, block, metadata)
             else
                 intersects = true -- treat as full block
             end

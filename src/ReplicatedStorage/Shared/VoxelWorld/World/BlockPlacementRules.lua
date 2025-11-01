@@ -4,6 +4,7 @@
 ]]
 
 local Constants = require(script.Parent.Parent.Core.Constants)
+local BlockRegistry = require(script.Parent.BlockRegistry)
 
 local BlockPlacementRules = {}
 
@@ -37,9 +38,9 @@ function BlockPlacementRules:CanPlace(worldManager, x: number, y: number, z: num
 		return false, "cannot_place_bedrock"
 	end
 
-	-- Check if target position is currently air
+	-- Check if target position is replaceable (air or water)
 	local currentBlock = worldManager:GetBlock(x, y, z)
-	if currentBlock ~= Constants.BlockType.AIR then
+	if not BlockRegistry:IsReplaceable(currentBlock) then
 		return false, "space_occupied"
 	end
 

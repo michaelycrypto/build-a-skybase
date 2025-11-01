@@ -10,6 +10,8 @@ local Players = game:GetService("Players")
 local BaseService = require(script.Parent.BaseService)
 local Logger = require(game.ReplicatedStorage.Shared.Logger)
 local ItemStack = require(ReplicatedStorage.Shared.VoxelWorld.Inventory.ItemStack)
+local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
+local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
 local EventManager = require(ReplicatedStorage.Shared.EventManager)
 local InventoryValidator = require(ReplicatedStorage.Shared.VoxelWorld.Inventory.InventoryValidator)
 
@@ -21,6 +23,10 @@ function PlayerInventoryService.new()
 
 	self._logger = Logger:CreateContext("PlayerInventoryService")
 	self.inventories = {} -- {[player] = {hotbar = {}, inventory = {}}}
+
+	-- Granular sync optimization: track modified slots
+	self.pendingSyncs = {} -- {[player] = {hotbar = {[slot] = true}, inventory = {[slot] = true}}}
+	self.syncScheduled = {} -- {[player] = true/false}
 
 	return self
 end
@@ -42,7 +48,7 @@ function PlayerInventoryService:Start()
 	end
 
 	BaseService.Start(self)
-	self._logger.Info("PlayerInventoryService started")
+	self._logger.Debug("PlayerInventoryService started")
 end
 
 function PlayerInventoryService:OnPlayerAdded(player: Player)
@@ -52,29 +58,19 @@ function PlayerInventoryService:OnPlayerAdded(player: Player)
 		return
 	end
 
-	self._logger.Info("Initializing new inventory", {player = player.Name})
+	self._logger.Debug("Initializing new inventory", {player = player.Name})
 
-	-- Initialize player inventory with starter blocks
+	-- Initialize player inventory - starting with empty inventory
 	local hotbar = {}
 	local inventory = {}
 
-	-- Hotbar starter blocks (same as client defaults)
-	hotbar[1] = ItemStack.new(1, 64)  -- Grass
-	hotbar[2] = ItemStack.new(2, 64)  -- Dirt
-	hotbar[3] = ItemStack.new(3, 64)  -- Stone
-	hotbar[4] = ItemStack.new(5, 64)  -- Oak Log
-	hotbar[5] = ItemStack.new(6, 64)  -- Leaves
-	hotbar[6] = ItemStack.new(7, 64)  -- Tall Grass
-	hotbar[7] = ItemStack.new(9, 1)   -- Chest
-	hotbar[8] = ItemStack.new(10, 64) -- Sand
-	hotbar[9] = ItemStack.new(12, 64) -- Oak Planks
+	-- Empty hotbar (9 slots)
+	for i = 1, 9 do
+		hotbar[i] = ItemStack.new(0, 0)
+	end
 
-	-- Initialize inventory with starter items
-	inventory[1] = ItemStack.new(13, 1)  -- Crafting Table
-	inventory[2] = ItemStack.new(15, 64) -- Bricks
-
-	-- Fill remaining inventory slots
-	for i = 3, 27 do
+	-- Empty inventory (27 slots)
+	for i = 1, 27 do
 		inventory[i] = ItemStack.new(0, 0)
 	end
 
@@ -84,16 +80,12 @@ function PlayerInventoryService:OnPlayerAdded(player: Player)
 	}
 
 	-- Debug: Log what we created
-	self._logger.Info("Created inventory with starter items", {player = player.Name})
-	for i = 1, 5 do
-		local stack = hotbar[i]
-		self._logger.Debug(string.format("  Hotbar[%d]: ItemID=%d, Count=%d", i, stack:GetItemId(), stack:GetCount()))
-	end
+	self._logger.Debug("Created empty starter inventory", {player = player.Name})
 
 	-- Send initial inventory to client
 	self:SyncInventoryToClient(player)
 
-	self._logger.Info("Initialized inventory", {player = player.Name})
+	self._logger.Debug("Initialized empty inventory", {player = player.Name})
 end
 
 function PlayerInventoryService:OnPlayerRemoved(player: Player)
@@ -106,7 +98,9 @@ function PlayerInventoryService:OnPlayerRemoved(player: Player)
 	end
 
 	self.inventories[player] = nil
-	self._logger.Info("Removed inventory", {player = player.Name})
+	self.pendingSyncs[player] = nil
+	self.syncScheduled[player] = nil
+	self._logger.Debug("Removed inventory", {player = player.Name})
 end
 
 -- Check if player has at least one of an item in hotbar
@@ -217,57 +211,80 @@ function PlayerInventoryService:AddItem(player: Player, itemId: number, count: n
 
 	local remaining = count
 
+	-- Tools are non-stackable: place one per empty slot; never merge counts > 1
+	if ToolConfig.IsTool(itemId) then
+		for i, stack in ipairs(playerInv.hotbar) do
+			if remaining <= 0 then break end
+			if stack:IsEmpty() then
+				stack.itemId = itemId
+				stack:SetCount(1)
+				remaining -= 1
+				self:TrackSlotChange(player, "hotbar", i)
+			end
+		end
+		for i, stack in ipairs(playerInv.inventory) do
+			if remaining <= 0 then break end
+			if stack:IsEmpty() then
+				stack.itemId = itemId
+				stack:SetCount(1)
+				remaining -= 1
+				self:TrackSlotChange(player, "inventory", i)
+			end
+		end
+
+		return remaining < count
+	end
+
 	-- Try to stack with existing items first
-	for _, stack in ipairs(playerInv.hotbar) do
+	for i, stack in ipairs(playerInv.hotbar) do
 		if remaining <= 0 then break end
 		if stack:GetItemId() == itemId and not stack:IsFull() then
 			local space = stack:GetRemainingSpace()
 			local toAdd = math.min(space, remaining)
 			stack:AddCount(toAdd)
 			remaining = remaining - toAdd
+			self:TrackSlotChange(player, "hotbar", i)
 		end
 	end
 
-	for _, stack in ipairs(playerInv.inventory) do
+	for i, stack in ipairs(playerInv.inventory) do
 		if remaining <= 0 then break end
 		if stack:GetItemId() == itemId and not stack:IsFull() then
 			local space = stack:GetRemainingSpace()
 			local toAdd = math.min(space, remaining)
 			stack:AddCount(toAdd)
 			remaining = remaining - toAdd
+			self:TrackSlotChange(player, "inventory", i)
 		end
 	end
 
 	-- Put in empty slots if any remaining
 	if remaining > 0 then
-		for _, stack in ipairs(playerInv.hotbar) do
+		for i, stack in ipairs(playerInv.hotbar) do
 			if remaining <= 0 then break end
 			if stack:IsEmpty() then
 				local toAdd = math.min(64, remaining)
 				stack.itemId = itemId
 				stack:SetCount(toAdd)
 				remaining = remaining - toAdd
+				self:TrackSlotChange(player, "hotbar", i)
 			end
 		end
 
-		for _, stack in ipairs(playerInv.inventory) do
+		for i, stack in ipairs(playerInv.inventory) do
 			if remaining <= 0 then break end
 			if stack:IsEmpty() then
 				local toAdd = math.min(64, remaining)
 				stack.itemId = itemId
 				stack:SetCount(toAdd)
 				remaining = remaining - toAdd
+				self:TrackSlotChange(player, "inventory", i)
 			end
 		end
 	end
 
-	-- Sync entire inventory if anything was added
-	if remaining < count then
-		self:SyncInventoryToClient(player)
-		return true
-	end
-
-	return false
+	-- Granular sync will be triggered automatically by TrackSlotChange
+	return remaining < count
 end
 
 -- Remove item from inventory (removes from any slot)
@@ -283,30 +300,51 @@ function PlayerInventoryService:RemoveItem(player: Player, itemId: number, count
 
 	local remaining = count
 
-	-- Remove from hotbar first
-	for _, stack in ipairs(playerInv.hotbar) do
+	-- Remove from hotbar first (track which slots changed)
+	for i, stack in ipairs(playerInv.hotbar) do
 		if remaining <= 0 then break end
 		if stack:GetItemId() == itemId then
 			local toRemove = math.min(stack:GetCount(), remaining)
 			stack:RemoveCount(toRemove)
 			remaining = remaining - toRemove
+			-- Track this slot for granular sync
+			self:TrackSlotChange(player, "hotbar", i)
 		end
 	end
 
-	-- Remove from inventory if still needed
-	for _, stack in ipairs(playerInv.inventory) do
+	-- Remove from inventory if still needed (track which slots changed)
+	for i, stack in ipairs(playerInv.inventory) do
 		if remaining <= 0 then break end
 		if stack:GetItemId() == itemId then
 			local toRemove = math.min(stack:GetCount(), remaining)
 			stack:RemoveCount(toRemove)
 			remaining = remaining - toRemove
+			-- Track this slot for granular sync
+			self:TrackSlotChange(player, "inventory", i)
 		end
 	end
 
-	-- Sync entire inventory
-	self:SyncInventoryToClient(player)
+	-- Granular sync will be triggered automatically by TrackSlotChange
+	-- (syncs only the modified slots, not the entire inventory)
 
 	return remaining == 0
+end
+
+-- Remove item from a specific hotbar slot
+function PlayerInventoryService:RemoveItemFromHotbarSlot(player: Player, slotIndex: number, count: number): boolean
+	local playerInv = self.inventories[player]
+	if not playerInv or slotIndex < 1 or slotIndex > 9 then return false end
+
+	local stack = playerInv.hotbar[slotIndex]
+	if stack:IsEmpty() or stack:GetCount() < count then
+		return false -- Not enough items in this slot
+	end
+
+	stack:RemoveCount(count)
+	-- Track this slot for granular sync
+	self:TrackSlotChange(player, "hotbar", slotIndex)
+
+	return true
 end
 
 -- Update hotbar slot from client request (with validation)
@@ -317,8 +355,22 @@ function PlayerInventoryService:UpdateHotbarSlot(player: Player, slotIndex: numb
 	-- TODO: Add anti-cheat validation here
 	-- For now, trust client (creative mode style)
 
-	local stack = ItemStack.Deserialize(itemStack)
-	playerInv.hotbar[slotIndex] = stack
+	local oldStack = playerInv.hotbar[slotIndex]
+	local newStack = ItemStack.Deserialize(itemStack)
+
+	-- Only track and sync if the slot actually changed
+	if oldStack:GetItemId() ~= newStack:GetItemId() or oldStack:GetCount() ~= newStack:GetCount() then
+		self._logger.Debug("Hotbar slot changed", {
+			player = player.Name,
+			slot = slotIndex,
+			oldItem = oldStack:GetItemId(),
+			oldCount = oldStack:GetCount(),
+			newItem = newStack:GetItemId(),
+			newCount = newStack:GetCount()
+		})
+		playerInv.hotbar[slotIndex] = newStack
+		self:TrackSlotChange(player, "hotbar", slotIndex)
+	end
 
 	-- Broadcast to other players? (for now, no - inventory is private)
 end
@@ -330,8 +382,22 @@ function PlayerInventoryService:UpdateInventorySlot(player: Player, slotIndex: n
 
 	-- TODO: Add anti-cheat validation
 
-	local stack = ItemStack.Deserialize(itemStack)
-	playerInv.inventory[slotIndex] = stack
+	local oldStack = playerInv.inventory[slotIndex]
+	local newStack = ItemStack.Deserialize(itemStack)
+
+	-- Only track and sync if the slot actually changed
+	if oldStack:GetItemId() ~= newStack:GetItemId() or oldStack:GetCount() ~= newStack:GetCount() then
+		self._logger.Debug("Inventory slot changed", {
+			player = player.Name,
+			slot = slotIndex,
+			oldItem = oldStack:GetItemId(),
+			oldCount = oldStack:GetCount(),
+			newItem = newStack:GetItemId(),
+			newCount = newStack:GetCount()
+		})
+		playerInv.inventory[slotIndex] = newStack
+		self:TrackSlotChange(player, "inventory", slotIndex)
+	end
 end
 
 -- Sync entire inventory to client
@@ -366,6 +432,101 @@ function PlayerInventoryService:SyncHotbarSlotToClient(player: Player, slotIndex
 	})
 end
 
+-- Sync single inventory slot to client (granular sync)
+function PlayerInventoryService:SyncInventorySlotToClient(player: Player, slotIndex: number)
+	local playerInv = self.inventories[player]
+	if not playerInv or slotIndex < 1 or slotIndex > 27 then return end
+
+	EventManager:FireEvent("InventorySlotUpdate", player, {
+		slotIndex = slotIndex,
+		stack = playerInv.inventory[slotIndex]:Serialize()
+	})
+end
+
+-- Track slot change for batched sync
+function PlayerInventoryService:TrackSlotChange(player: Player, slotType: string, slotIndex: number)
+	if not self.pendingSyncs[player] then
+		self.pendingSyncs[player] = {hotbar = {}, inventory = {}}
+	end
+
+	if slotType == "hotbar" and slotIndex >= 1 and slotIndex <= 9 then
+		self.pendingSyncs[player].hotbar[slotIndex] = true
+		self._logger.Debug("Tracked hotbar slot change", {
+			player = player.Name,
+			slot = slotIndex
+		})
+	elseif slotType == "inventory" and slotIndex >= 1 and slotIndex <= 27 then
+		self.pendingSyncs[player].inventory[slotIndex] = true
+		self._logger.Debug("Tracked inventory slot change", {
+			player = player.Name,
+			slot = slotIndex
+		})
+	end
+
+	-- Schedule sync if not already scheduled
+	if not self.syncScheduled[player] then
+		self:ScheduleGranularSync(player)
+	end
+end
+
+-- Schedule a batched sync of modified slots
+function PlayerInventoryService:ScheduleGranularSync(player: Player)
+	self.syncScheduled[player] = true
+
+	-- Use RunService.Heartbeat for next-frame sync (batches changes within same frame)
+	task.defer(function()
+		if not self.syncScheduled[player] then return end
+
+		self:ExecuteGranularSync(player)
+		self.syncScheduled[player] = false
+	end)
+end
+
+-- Execute sync of only modified slots
+function PlayerInventoryService:ExecuteGranularSync(player: Player)
+	local pending = self.pendingSyncs[player]
+	if not pending then return end
+
+	local playerInv = self.inventories[player]
+	if not playerInv then return end
+
+	local hotbarCount = 0
+	local inventoryCount = 0
+
+	-- Count modified slots
+	for _ in pairs(pending.hotbar) do hotbarCount += 1 end
+	for _ in pairs(pending.inventory) do inventoryCount += 1 end
+
+	local totalModified = hotbarCount + inventoryCount
+
+	-- If too many slots changed (>50% of inventory), do full sync instead
+	if totalModified > 18 then
+		self._logger.Debug("Many slots modified, using full sync", {
+			player = player.Name,
+			count = totalModified
+		})
+		self:SyncInventoryToClient(player)
+	else
+		-- Send individual slot updates (more efficient)
+		for slot, _ in pairs(pending.hotbar) do
+			self:SyncHotbarSlotToClient(player, slot)
+		end
+
+		for slot, _ in pairs(pending.inventory) do
+			self:SyncInventorySlotToClient(player, slot)
+		end
+
+		self._logger.Debug("Granular sync completed", {
+			player = player.Name,
+			hotbarSlots = hotbarCount,
+			inventorySlots = inventoryCount
+		})
+	end
+
+	-- Clear pending syncs
+	self.pendingSyncs[player] = {hotbar = {}, inventory = {}}
+end
+
 -- Handle inventory update from client (for drag-and-drop sync)
 function PlayerInventoryService:HandleInventoryUpdate(player: Player, updateData: any)
 	if not updateData then
@@ -379,35 +540,55 @@ function PlayerInventoryService:HandleInventoryUpdate(player: Player, updateData
 		return
 	end
 
-	-- VALIDATION: Validate inventory array structure
-	if updateData.inventory then
-		local valid, reason = InventoryValidator:ValidateInventoryArray(updateData.inventory, 27)
-		if not valid then
-			self._logger.Warn("Invalid inventory array", {player = player.Name, reason = reason})
-			-- Resync correct state to client
-			self:SyncInventoryToClient(player)
-			return
-		end
-	end
+    -- SANITIZE: Clamp and correct minor issues (tools non-stackable, counts, ids)
+    local newInventory = updateData.inventory
+    local newHotbar = updateData.hotbar
 
-	-- VALIDATION: Validate hotbar array structure
-	if updateData.hotbar then
-		local valid, reason = InventoryValidator:ValidateInventoryArray(updateData.hotbar, 9)
-		if not valid then
-			self._logger.Warn("Invalid hotbar array", {player = player.Name, reason = reason})
-			-- Resync correct state to client
-			self:SyncInventoryToClient(player)
-			return
-		end
-	end
+    if newInventory then
+        local sanitizedInv, modifiedInv = InventoryValidator:SanitizeInventoryData(newInventory, 27)
+        if modifiedInv then
+            self._logger.Debug("Sanitized incoming inventory array", {player = player.Name})
+        end
+        newInventory = sanitizedInv
+    end
+
+    if newHotbar then
+        local sanitizedHot, modifiedHot = InventoryValidator:SanitizeInventoryData(newHotbar, 9)
+        if modifiedHot then
+            self._logger.Debug("Sanitized incoming hotbar array", {player = player.Name})
+        end
+        newHotbar = sanitizedHot
+    end
+
+    -- VALIDATION: Validate inventory array structure (post-sanitize)
+    if newInventory then
+        local valid, reason = InventoryValidator:ValidateInventoryArray(newInventory, 27)
+        if not valid then
+            self._logger.Warn("Invalid inventory array", {player = player.Name, reason = reason})
+            -- Resync correct state to client
+            self:SyncInventoryToClient(player)
+            return
+        end
+    end
+
+    -- VALIDATION: Validate hotbar array structure (post-sanitize)
+    if newHotbar then
+        local valid, reason = InventoryValidator:ValidateInventoryArray(newHotbar, 9)
+        if not valid then
+            self._logger.Warn("Invalid hotbar array", {player = player.Name, reason = reason})
+            -- Resync correct state to client
+            self:SyncInventoryToClient(player)
+            return
+        end
+    end
 
 	-- VALIDATION: Check for item duplication (compare old vs new totals)
-	local valid, reason = InventoryValidator:ValidateInventoryTransaction(
-		playerInv.inventory,
-		playerInv.hotbar,
-		updateData.inventory,
-		updateData.hotbar
-	)
+    local valid, reason = InventoryValidator:ValidateInventoryTransaction(
+        playerInv.inventory,
+        playerInv.hotbar,
+        newInventory,
+        newHotbar
+    )
 
 	if not valid then
 		self._logger.Warn("Transaction validation failed - potential exploit attempt", {
@@ -420,23 +601,31 @@ function PlayerInventoryService:HandleInventoryUpdate(player: Player, updateData
 	end
 
 	-- Validation passed - apply changes
-	if updateData.hotbar then
-		for i, stackData in pairs(updateData.hotbar) do
+    if newHotbar then
+        for i, stackData in pairs(newHotbar) do
 			-- Convert to number if needed
 			local slotIndex = tonumber(i) or i
 			self:UpdateHotbarSlot(player, slotIndex, stackData)
 		end
 	end
 
-	if updateData.inventory then
-		for i, stackData in pairs(updateData.inventory) do
+    if newInventory then
+        for i, stackData in pairs(newInventory) do
 			-- Convert to number if needed
 			local slotIndex = tonumber(i) or i
 			self:UpdateInventorySlot(player, slotIndex, stackData)
 		end
 	end
 
-	self._logger.Debug("Validated and applied inventory update", {player = player.Name})
+	-- Clear pending syncs for this player - don't echo back changes they just sent
+	if self.pendingSyncs[player] then
+		self.pendingSyncs[player] = nil
+	end
+	if self.syncScheduled[player] then
+		self.syncScheduled[player] = nil
+	end
+
+	self._logger.Debug("Validated and applied inventory update (no echo)", {player = player.Name})
 end
 
 -- Get hotbar slot for validation
@@ -507,7 +696,7 @@ function PlayerInventoryService:LoadInventory(player: Player, data: any)
 	end
 
 	self:SyncInventoryToClient(player)
-	self._logger.Info("Loaded inventory from DataStore", {player = player.Name})
+	self._logger.Debug("Loaded inventory from DataStore", {player = player.Name})
 end
 
 function PlayerInventoryService:Destroy()

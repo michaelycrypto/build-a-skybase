@@ -231,18 +231,28 @@ end
 function LoadingScreen:LoadBlockTextures(onProgress, onComplete)
 	local assetsToLoad = {}
 	local totalAssets = 0
+	local seen = {}
 
-	-- Get all texture names from TextureManager
+	-- 1) From TextureManager registry (named textures)
 	local textureNames = TextureManager:GetAllTextureNames()
-
-	-- Prepare asset URLs for configured textures only
 	for _, textureName in ipairs(textureNames) do
 		if TextureManager:IsTextureConfigured(textureName) then
 			local assetUrl = TextureManager:GetTextureId(textureName)
-			if assetUrl then
+			if assetUrl and not seen[assetUrl] then
+				seen[assetUrl] = true
 				table.insert(assetsToLoad, {name = textureName, url = assetUrl})
 				totalAssets = totalAssets + 1
 			end
+		end
+	end
+
+	-- 2) From BlockRegistry (raw IDs and names on each block's textures)
+	local registryAssets = TextureManager:GetAllBlockTextureAssetIds()
+	for _, assetUrl in ipairs(registryAssets) do
+		if assetUrl and not seen[assetUrl] then
+			seen[assetUrl] = true
+			table.insert(assetsToLoad, {name = assetUrl, url = assetUrl})
+			totalAssets = totalAssets + 1
 		end
 	end
 
@@ -388,7 +398,7 @@ end
 --[[
 	Load both block textures and icons (sequential for reliability)
 --]]
-function LoadingScreen:LoadAllAssets(onProgress, onComplete)
+function LoadingScreen:LoadAllAssets(onProgress, onComplete, onBeforeFadeOut)
 	if isLoading then
 		warn("LoadingScreen: Already loading")
 		return
@@ -416,12 +426,8 @@ function LoadingScreen:LoadAllAssets(onProgress, onComplete)
 	-- Loading assets
 
 	if totalAssets == 0 then
-		-- No assets to load
-		isLoading = false
-		loadingComplete = true
-		if onComplete then
-			task.defer(onComplete, 0, 0)
-		end
+		-- No assets to load; complete immediately via common path
+		self:CompleteAllAssetLoading(0, 0, onComplete, onBeforeFadeOut)
 		return
 	end
 
@@ -454,13 +460,13 @@ function LoadingScreen:LoadAllAssets(onProgress, onComplete)
 					-- Block textures loaded
 
 					-- Now load icons
-					self:LoadIconsAfterTextures(totalIcons, loaded, failed, totalAssets, onProgress, onComplete)
+					self:LoadIconsAfterTextures(totalIcons, loaded, failed, totalAssets, onProgress, onComplete, onBeforeFadeOut)
 				end
 			)
 		else
 			-- No textures, go straight to icons
 			-- No textures, loading icons directly
-			self:LoadIconsAfterTextures(totalIcons, 0, 0, totalAssets, onProgress, onComplete)
+			self:LoadIconsAfterTextures(totalIcons, 0, 0, totalAssets, onProgress, onComplete, onBeforeFadeOut)
 		end
 	end)
 end
@@ -468,7 +474,7 @@ end
 --[[
 	Helper function to load icons after block textures are done
 --]]
-function LoadingScreen:LoadIconsAfterTextures(totalIcons, texturesLoaded, texturesFailed, totalAssets, onProgress, onComplete)
+function LoadingScreen:LoadIconsAfterTextures(totalIcons, texturesLoaded, texturesFailed, totalAssets, onProgress, onComplete, onBeforeFadeOut)
 	if totalIcons > 0 then
 		statusLabel.Text = "Loading icons..."
 
@@ -498,20 +504,20 @@ function LoadingScreen:LoadIconsAfterTextures(totalIcons, texturesLoaded, textur
 				-- Icons loaded, total assets loaded
 
 				-- Complete loading
-				self:CompleteAllAssetLoading(totalLoaded, totalFailed, onComplete)
+				self:CompleteAllAssetLoading(totalLoaded, totalFailed, onComplete, onBeforeFadeOut)
 			end
 		)
 	else
 		-- No icons to load, complete immediately
 		-- No icons to load
-		self:CompleteAllAssetLoading(texturesLoaded, texturesFailed, onComplete)
+		self:CompleteAllAssetLoading(texturesLoaded, texturesFailed, onComplete, onBeforeFadeOut)
 	end
 end
 
 --[[
 	Complete the asset loading process
 --]]
-function LoadingScreen:CompleteAllAssetLoading(totalLoaded, totalFailed, onComplete)
+function LoadingScreen:CompleteAllAssetLoading(totalLoaded, totalFailed, onComplete, onBeforeFadeOut)
 	loadingComplete = true
 	isLoading = false
 
@@ -524,6 +530,11 @@ function LoadingScreen:CompleteAllAssetLoading(totalLoaded, totalFailed, onCompl
 
 	-- Brief pause to show completion
 	task.wait(0.5)
+
+	-- Allow heavy initialization to run while the loading screen is still visible
+	if onBeforeFadeOut then
+		pcall(onBeforeFadeOut)
+	end
 
 	-- Fade out and call completion callback
 	self:FadeOut(function()

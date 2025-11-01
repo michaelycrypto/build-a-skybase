@@ -447,10 +447,10 @@ function ShopService:InitializeStock()
 		end
 	end
 
-	self._logger.Info("Initialized stock structure for " .. #self._shopData.items .. " items (all starting at 0)")
+	self._logger.Debug("Initialized stock structure for " .. #self._shopData.items .. " items (all starting at 0)")
 
 	-- Run initial restock to populate stock based on luck system
-	self._logger.Info("Running initial restock to populate shop...")
+	self._logger.Debug("Running initial restock to populate shop...")
 	self:ReplenishStock()
 
 	-- Debug: Log total stock entries
@@ -458,7 +458,7 @@ function ShopService:InitializeStock()
 	for _ in pairs(self._stockData.stock) do
 		stockCount = stockCount + 1
 	end
-	self._logger.Info("Total stock entries created: " .. stockCount)
+	self._logger.Debug("Total stock entries created: " .. stockCount)
 end
 
 --[[
@@ -474,34 +474,34 @@ end
 	Start the stock replenishment loop
 --]]
 function ShopService:StartStockReplenishment()
-	self._logger.Info("=== STARTING STOCK REPLENISHMENT LOOP ===")
-	self._logger.Info("Replenishment interval: " .. self._stockData.replenishmentInterval .. " seconds")
-	self._logger.Info("Service started: " .. tostring(self._started))
-	self._logger.Info("Service destroyed: " .. tostring(self._destroyed))
+	self._logger.Debug("=== STARTING STOCK REPLENISHMENT LOOP ===")
+	self._logger.Debug("Replenishment interval: " .. self._stockData.replenishmentInterval .. " seconds")
+	self._logger.Debug("Service started: " .. tostring(self._started))
+	self._logger.Debug("Service destroyed: " .. tostring(self._destroyed))
 
 	task.spawn(function()
-		self._logger.Info("Replenishment loop spawned, starting wait cycle...")
+		self._logger.Debug("Replenishment loop spawned, starting wait cycle...")
 		while self._started and not self._destroyed do
-			self._logger.Info("Waiting " .. self._stockData.replenishmentInterval .. " seconds before next replenishment...")
+			self._logger.Debug("Waiting " .. self._stockData.replenishmentInterval .. " seconds before next replenishment...")
 			task.wait(self._stockData.replenishmentInterval)
 
 			if self._started and not self._destroyed then
-				self._logger.Info("Triggering replenishment cycle...")
+				self._logger.Debug("Triggering replenishment cycle...")
 				self:ReplenishStock()
 			else
-				self._logger.Info("Service stopped or destroyed, ending replenishment loop")
+				self._logger.Debug("Service stopped or destroyed, ending replenishment loop")
 				break
 			end
 		end
-		self._logger.Info("Replenishment loop ended")
+	self._logger.Debug("Replenishment loop ended")
 	end)
 
-	self._logger.Info("Started stock replenishment loop (every " .. self._stockData.replenishmentInterval .. " seconds)")
+	self._logger.Debug("Started stock replenishment loop (every " .. self._stockData.replenishmentInterval .. " seconds)")
 
 	-- Debug: Log initial stock state
-	self._logger.Info("Initial stock state:")
+	self._logger.Debug("Initial stock state:")
 	for itemId, stockInfo in pairs(self._stockData.stock) do
-		self._logger.Info("  " .. itemId .. ": " .. stockInfo.current .. "/" .. stockInfo.max)
+		self._logger.Debug("  " .. itemId .. ": " .. stockInfo.current .. "/" .. stockInfo.max)
 	end
 end
 
@@ -512,9 +512,9 @@ function ShopService:ReplenishStock()
 	local currentTime = tick()
 	local replenishedCount = 0
 
-	self._logger.Info("=== STARTING STOCK REPLENISHMENT CYCLE ===")
-	self._logger.Info("Current time: " .. currentTime)
-	self._logger.Info("Total items to check: " .. (function()
+	self._logger.Debug("=== STARTING STOCK REPLENISHMENT CYCLE ===")
+	self._logger.Debug("Current time: " .. currentTime)
+	self._logger.Debug("Total items to check: " .. (function()
 		local count = 0
 		for _ in pairs(self._stockData.stock) do count = count + 1 end
 		return count
@@ -550,7 +550,7 @@ function ShopService:ReplenishStock()
 			local shouldRestock = false
 			if guaranteedRestock and itemsRestocked == 0 then
 				shouldRestock = true
-				self._logger.Info("GUARANTEED RESTOCK for " .. itemId .. " (first item)")
+				self._logger.Debug("GUARANTEED RESTOCK for " .. itemId .. " (first item)")
 			else
 				shouldRestock = math.random() < finalLuck
 			end
@@ -562,23 +562,23 @@ function ShopService:ReplenishStock()
 
 				-- Log the restock
 				if newStock > oldStock then
-					self._logger.Info("REPLENISHING " .. itemId .. " from " .. oldStock .. " to " .. newStock .. " (luck: " .. string.format("%.1f%%", finalLuck * 100) .. ")")
+					self._logger.Debug("REPLENISHING " .. itemId .. " from " .. oldStock .. " to " .. newStock .. " (luck: " .. string.format("%.1f%%", finalLuck * 100) .. ")")
 					replenishedCount = replenishedCount + 1
 					itemsRestocked = itemsRestocked + 1
 				elseif newStock < oldStock then
-					self._logger.Info("STOCK DECREASED " .. itemId .. " from " .. oldStock .. " to " .. newStock .. " (rare item scarcity, luck: " .. string.format("%.1f%%", finalLuck * 100) .. ")")
+					self._logger.Debug("STOCK DECREASED " .. itemId .. " from " .. oldStock .. " to " .. newStock .. " (rare item scarcity, luck: " .. string.format("%.1f%%", finalLuck * 100) .. ")")
 				else
-					self._logger.Info("STOCK UNCHANGED " .. itemId .. " at " .. newStock .. " (rare item scarcity, luck: " .. string.format("%.1f%%", finalLuck * 100) .. ")")
+					self._logger.Debug("STOCK UNCHANGED " .. itemId .. " at " .. newStock .. " (rare item scarcity, luck: " .. string.format("%.1f%%", finalLuck * 100) .. ")")
 				end
 
 				-- Update stock to the rolled amount
 				stockInfo.current = newStock
 				stockInfo.lastRestocked = currentTime
 			else
-				self._logger.Info("Item " .. itemId .. " failed restock roll (luck: " .. string.format("%.1f%%", finalLuck * 100) .. ")")
+				self._logger.Debug("Item " .. itemId .. " failed restock roll (luck: " .. string.format("%.1f%%", finalLuck * 100) .. ")")
 			end
 		else
-			self._logger.Info("Item " .. itemId .. " already at max stock (" .. (stockInfo and stockInfo.current or 0) .. "/" .. (stockInfo and stockInfo.max or 0) .. ")")
+			self._logger.Debug("Item " .. itemId .. " already at max stock (" .. (stockInfo and stockInfo.current or 0) .. "/" .. (stockInfo and stockInfo.max or 0) .. ")")
 		end
 	end
 
@@ -589,7 +589,7 @@ function ShopService:ReplenishStock()
 	-- Always notify clients about restock cycle (even if no items needed restocking)
 	-- This keeps client timers synchronized
 	if self._eventManager then
-		self._logger.Info("Broadcasting stock update to all clients after restock cycle")
+		self._logger.Debug("Broadcasting stock update to all clients after restock cycle")
 		local success, error = pcall(function()
 			self._eventManager:FireEventToAll("ShopStockUpdated", {
 				stock = self._stockData.stock,
@@ -600,14 +600,14 @@ function ShopService:ReplenishStock()
 		if not success then
 			self._logger.Error("Failed to fire ShopStockUpdated event:", error)
 		else
-			self._logger.Info("Successfully fired ShopStockUpdated event")
+			self._logger.Debug("Successfully fired ShopStockUpdated event")
 		end
 	else
 		self._logger.Error("EventManager not available for ShopStockUpdated")
 	end
 
 	-- Always show replenishment notification (even if no items needed restocking)
-	self._logger.Info("Shop replenishment cycle completed. Items replenished: " .. replenishedCount)
+	self._logger.Debug("Shop replenishment cycle completed. Items replenished: " .. replenishedCount)
 
 end
 

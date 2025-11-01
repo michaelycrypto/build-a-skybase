@@ -7,6 +7,8 @@
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
+local GuiService = game:GetService("GuiService")
+local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
@@ -14,7 +16,11 @@ local RunService = game:GetService("RunService")
 local GameState = require(script.Parent.Parent.Managers.GameState)
 local ItemStack = require(ReplicatedStorage.Shared.VoxelWorld.Inventory.ItemStack)
 local BlockViewportCreator = require(ReplicatedStorage.Shared.VoxelWorld.Rendering.BlockViewportCreator)
+local BlockRegistry = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockRegistry)
+local TextureManager = require(ReplicatedStorage.Shared.VoxelWorld.Rendering.TextureManager)
+local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
 local EventManager = require(ReplicatedStorage.Shared.EventManager)
+local GameConfig = require(ReplicatedStorage.Configs.GameConfig)
 
 local ChestUI = {}
 ChestUI.__index = ChestUI
@@ -80,6 +86,13 @@ function ChestUI:Initialize()
 	self.gui.IgnoreGuiInset = true
 	self.gui.Enabled = false
 	self.gui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
+
+	-- Add responsive scaling (100% = original size)
+	local uiScale = Instance.new("UIScale")
+	uiScale.Name = "ResponsiveScale"
+	uiScale:SetAttribute("base_resolution", Vector2.new(1920, 1080)) -- 1920x1080 for 100% original size
+	uiScale.Parent = self.gui
+	CollectionService:AddTag(uiScale, "scale_component")
 
 	-- Create panels
 	self:CreatePanel()
@@ -380,6 +393,7 @@ function ChestUI:CreateCursorItem()
 	self.cursorFrame = Instance.new("Frame")
 	self.cursorFrame.Name = "CursorItem"
 	self.cursorFrame.Size = UDim2.new(0, CHEST_CONFIG.SLOT_SIZE, 0, CHEST_CONFIG.SLOT_SIZE)
+	self.cursorFrame.AnchorPoint = Vector2.new(0.5, 0.5)  -- Center on cursor
 	self.cursorFrame.BackgroundTransparency = 1
 	self.cursorFrame.Visible = false
 	self.cursorFrame.ZIndex = 1000
@@ -416,17 +430,85 @@ function ChestUI:UpdateChestSlotDisplay(index)
 	local stack = self.chestSlots[index]
 	local iconContainer = slotData.iconContainer
 	local countLabel = slotData.countLabel
-
-	-- Clear old viewport
-	for _, child in ipairs(iconContainer:GetChildren()) do
-		child:Destroy()
-	end
+	local currentItemId = iconContainer:GetAttribute("CurrentItemId")
 
 	if stack and not stack:IsEmpty() then
-		BlockViewportCreator.CreateBlockViewport(iconContainer, stack:GetItemId(), UDim2.new(1, 0, 1, 0))
+		local itemId = stack:GetItemId()
+		local isTool = ToolConfig.IsTool(itemId)
+
+		-- Only update visuals if item type changed
+		if currentItemId ~= itemId then
+			if isTool then
+				local info = ToolConfig.GetToolInfo(itemId)
+				local image = iconContainer:FindFirstChild("ToolImage")
+				if image and image:IsA("ImageLabel") then
+					image.Image = info and info.image or ""
+				else
+					-- Fallback: rebuild
+					for _, child in ipairs(iconContainer:GetChildren()) do
+						if not child:IsA("UILayout") and not child:IsA("UIPadding") and not child:IsA("UICorner") then
+							child:Destroy()
+						end
+					end
+					local newImage = Instance.new("ImageLabel")
+					newImage.Name = "ToolImage"
+					newImage.Size = UDim2.new(1, -6, 1, -6)
+					newImage.Position = UDim2.new(0.5, 0, 0.5, 0)
+					newImage.AnchorPoint = Vector2.new(0.5, 0.5)
+					newImage.BackgroundTransparency = 1
+					newImage.Image = info and info.image or ""
+					newImage.ScaleType = Enum.ScaleType.Fit
+					newImage.Parent = iconContainer
+				end
+			else
+				-- Decide between flat image vs 3D block and rebuild on type mismatch
+				local blockDef = BlockRegistry.Blocks[itemId]
+				local shouldBeFlatImage = false
+				if blockDef and blockDef.textures and blockDef.textures.all then
+					shouldBeFlatImage = blockDef.craftingMaterial or blockDef.crossShape
+				end
+
+				if shouldBeFlatImage then
+					-- Ensure ImageLabel exists; rebuild if needed
+					for _, child in ipairs(iconContainer:GetChildren()) do
+						if not child:IsA("UILayout") and not child:IsA("UIPadding") and not child:IsA("UICorner") then
+							child:Destroy()
+						end
+					end
+					BlockViewportCreator.CreateBlockViewport(iconContainer, itemId, UDim2.new(1, 0, 1, 0))
+				else
+					-- Try to update existing viewport instead of rebuilding
+					local container = iconContainer:FindFirstChild("ViewportContainer")
+					local viewport = iconContainer:FindFirstChild("BlockViewport")
+					local target = container or viewport
+					if target then
+						BlockViewportCreator.UpdateBlockViewport(target, itemId)
+					else
+						for _, child in ipairs(iconContainer:GetChildren()) do
+							if not child:IsA("UILayout") and not child:IsA("UIPadding") and not child:IsA("UICorner") then
+								child:Destroy()
+							end
+						end
+						BlockViewportCreator.CreateBlockViewport(iconContainer, itemId, UDim2.new(1, 0, 1, 0))
+					end
+				end
+			end
+			iconContainer:SetAttribute("CurrentItemId", itemId)
+		end
+
+		-- Always update count (cheap operation)
 		countLabel.Text = stack:GetCount() > 1 and tostring(stack:GetCount()) or ""
 	else
+		-- Slot is empty - clear attribute IMMEDIATELY to prevent race conditions
+		iconContainer:SetAttribute("CurrentItemId", nil)
 		countLabel.Text = ""
+
+		-- Then clear ALL visual children (ViewportContainer, ToolImage, ImageLabel, etc.)
+		for _, child in ipairs(iconContainer:GetChildren()) do
+			if not child:IsA("UILayout") and not child:IsA("UIPadding") and not child:IsA("UICorner") then
+				child:Destroy()
+			end
+		end
 	end
 end
 
@@ -437,20 +519,132 @@ function ChestUI:UpdateInventorySlotDisplay(index)
 	local stack = self.inventoryManager:GetInventorySlot(index)
 	local iconContainer = slotData.iconContainer
 	local countLabel = slotData.countLabel
-
-	-- Clear old viewport
-	for _, child in ipairs(iconContainer:GetChildren()) do
-		child:Destroy()
-	end
+	local currentItemId = iconContainer:GetAttribute("CurrentItemId")
 
 	if stack and not stack:IsEmpty() then
-		BlockViewportCreator.CreateBlockViewport(iconContainer, stack:GetItemId(), UDim2.new(1, 0, 1, 0))
+		local itemId = stack:GetItemId()
+		local isTool = ToolConfig.IsTool(itemId)
+
+		-- Only update visuals if item type changed
+		if currentItemId ~= itemId then
+			if isTool then
+				local info = ToolConfig.GetToolInfo(itemId)
+				local image = iconContainer:FindFirstChild("ToolImage")
+				if image and image:IsA("ImageLabel") then
+					image.Image = info and info.image or ""
+				else
+					for _, child in ipairs(iconContainer:GetChildren()) do
+						if not child:IsA("UILayout") and not child:IsA("UIPadding") and not child:IsA("UICorner") then
+							child:Destroy()
+						end
+					end
+					local newImage = Instance.new("ImageLabel")
+					newImage.Name = "ToolImage"
+					newImage.Size = UDim2.new(1, -6, 1, -6)
+					newImage.Position = UDim2.new(0.5, 0, 0.5, 0)
+					newImage.AnchorPoint = Vector2.new(0.5, 0.5)
+					newImage.BackgroundTransparency = 1
+					newImage.Image = info and info.image or ""
+					newImage.ScaleType = Enum.ScaleType.Fit
+					newImage.Parent = iconContainer
+				end
+			else
+				-- Decide between flat image vs 3D block and rebuild on type mismatch
+				local blockDef = BlockRegistry.Blocks[itemId]
+				local shouldBeFlatImage = false
+				if blockDef and blockDef.textures and blockDef.textures.all then
+					shouldBeFlatImage = blockDef.craftingMaterial or blockDef.crossShape
+				end
+
+				if shouldBeFlatImage then
+					-- Ensure ImageLabel exists; rebuild if needed
+					for _, child in ipairs(iconContainer:GetChildren()) do
+						if not child:IsA("UILayout") and not child:IsA("UIPadding") and not child:IsA("UICorner") then
+							child:Destroy()
+						end
+					end
+					BlockViewportCreator.CreateBlockViewport(iconContainer, itemId, UDim2.new(1, 0, 1, 0))
+				else
+					local container = iconContainer:FindFirstChild("ViewportContainer")
+					local viewport = iconContainer:FindFirstChild("BlockViewport")
+					local target = container or viewport
+					if target then
+						BlockViewportCreator.UpdateBlockViewport(target, itemId)
+					else
+						for _, child in ipairs(iconContainer:GetChildren()) do
+							if not child:IsA("UILayout") and not child:IsA("UIPadding") and not child:IsA("UICorner") then
+								child:Destroy()
+							end
+						end
+						BlockViewportCreator.CreateBlockViewport(iconContainer, itemId, UDim2.new(1, 0, 1, 0))
+					end
+				end
+			end
+			iconContainer:SetAttribute("CurrentItemId", itemId)
+		end
+
+		-- Always update count (cheap operation)
 		countLabel.Text = stack:GetCount() > 1 and tostring(stack:GetCount()) or ""
 	else
+		-- Slot is empty - clear attribute IMMEDIATELY to prevent race conditions
+		iconContainer:SetAttribute("CurrentItemId", nil)
 		countLabel.Text = ""
+
+		-- Then clear ALL visual children (ViewportContainer, ToolImage, ImageLabel, etc.)
+		for _, child in ipairs(iconContainer:GetChildren()) do
+			if not child:IsA("UILayout") and not child:IsA("UIPadding") and not child:IsA("UICorner") then
+				child:Destroy()
+			end
+		end
 	end
 end
 
+-- Smart update - check what actually changed and only update those slots
+-- Works for both local actions and remote player updates
+function ChestUI:UpdateChangedSlots()
+	-- Check chest slots (compare cached vs actual)
+	for i = 1, 27 do
+		local slotData = self.chestSlotFrames[i]
+		if slotData then
+			local stack = self.chestSlots[i]
+			local cachedItemId = slotData.iconContainer:GetAttribute("CurrentItemId")
+			local actualItemId = stack and not stack:IsEmpty() and stack:GetItemId() or nil
+
+			-- Update if item ID changed OR if visuals/labels are out of sync
+			if cachedItemId ~= actualItemId then
+				-- Item changed (including nil -> item, item -> nil, or item A -> item B)
+				self:UpdateChestSlotDisplay(i)
+			elseif actualItemId and stack then
+				-- Same item, just update count (cheap operation)
+				slotData.countLabel.Text = stack:GetCount() > 1 and tostring(stack:GetCount()) or ""
+			end
+		end
+	end
+
+	-- Check inventory slots (compare cached vs actual)
+	for i = 1, 27 do
+		local slotData = self.inventorySlotFrames[i]
+		if slotData then
+			local stack = self.inventoryManager:GetInventorySlot(i)
+			local cachedItemId = slotData.iconContainer:GetAttribute("CurrentItemId")
+			local actualItemId = stack and not stack:IsEmpty() and stack:GetItemId() or nil
+
+			-- Update if item ID changed OR if visuals/labels are out of sync
+			if cachedItemId ~= actualItemId then
+				-- Item changed (including nil -> item, item -> nil, or item A -> item B)
+				self:UpdateInventorySlotDisplay(i)
+			elseif actualItemId and stack then
+				-- Same item, just update count (cheap operation)
+				slotData.countLabel.Text = stack:GetCount() > 1 and tostring(stack:GetCount()) or ""
+			end
+		end
+	end
+
+	-- Always update cursor
+	self:UpdateCursorDisplay()
+end
+
+-- Legacy function for full refresh (used on open)
 function ChestUI:UpdateAllDisplays()
 	-- Update chest slots
 	for i = 1, 27 do
@@ -475,26 +669,128 @@ function ChestUI:UpdateCursorDisplay()
 	local countLabel = self.cursorFrame:FindFirstChild("CountLabel")
 	if not iconContainer or not countLabel then return end
 
-	-- Clear old viewport
-	for _, child in ipairs(iconContainer:GetChildren()) do
-		child:Destroy()
-	end
+	local currentItemId = self.cursorFrame:GetAttribute("CurrentItemId")
 
 	if self.cursorStack and not self.cursorStack:IsEmpty() then
-		BlockViewportCreator.CreateBlockViewport(iconContainer, self.cursorStack:GetItemId(), UDim2.new(1, 0, 1, 0))
+		local itemId = self.cursorStack:GetItemId()
+		local isTool = ToolConfig.IsTool(itemId)
+
+		-- Only recreate viewport/image if item type changed (performance optimization)
+		if currentItemId ~= itemId then
+			-- Clear attribute FIRST to prevent race conditions
+			self.cursorFrame:SetAttribute("CurrentItemId", nil)
+
+			-- Clear ALL existing visuals
+			for _, child in ipairs(iconContainer:GetChildren()) do
+				if not child:IsA("UILayout") and not child:IsA("UIPadding") and not child:IsA("UICorner") then
+					child:Destroy()
+				end
+			end
+
+			if isTool then
+				local info = ToolConfig.GetToolInfo(itemId)
+				local image = Instance.new("ImageLabel")
+				image.Name = "ToolImage"
+				image.Size = UDim2.new(1, -6, 1, -6)
+				image.Position = UDim2.new(0.5, 0, 0.5, 0)
+				image.AnchorPoint = Vector2.new(0.5, 0.5)
+				image.BackgroundTransparency = 1
+				image.Image = info and info.image or ""
+				image.ScaleType = Enum.ScaleType.Fit
+				image.ZIndex = 1001
+				image.Parent = iconContainer
+			else
+				BlockViewportCreator.CreateBlockViewport(iconContainer, itemId, UDim2.new(1, 0, 1, 0))
+			end
+
+			-- Set new item ID AFTER creating visuals
+			self.cursorFrame:SetAttribute("CurrentItemId", itemId)
+		end
+
+		-- Always update count (cheap operation)
 		countLabel.Text = self.cursorStack:GetCount() > 1 and tostring(self.cursorStack:GetCount()) or ""
 		self.cursorFrame.Visible = true
 	else
-		self.cursorFrame.Visible = false
+		-- Clear attribute IMMEDIATELY to prevent race conditions
+		self.cursorFrame:SetAttribute("CurrentItemId", nil)
 		countLabel.Text = ""
+		self.cursorFrame.Visible = false
+
+		-- Clear ALL visuals
+		for _, child in ipairs(iconContainer:GetChildren()) do
+			if not child:IsA("UILayout") and not child:IsA("UIPadding") and not child:IsA("UICorner") then
+				child:Destroy()
+			end
+		end
 	end
 end
 
 -- === CLICK HANDLERS ===
 
+-- Local helper: simulate Minecraft-style click on a slot
+function ChestUI:_simulateSlotClick(slotStack, cursorStack, clickType)
+	-- Work on clones to avoid mutating originals before applying
+	local slot = (slotStack and slotStack:Clone()) or ItemStack.new(0, 0)
+	local cursor = (cursorStack and cursorStack:Clone()) or ItemStack.new(0, 0)
+
+	if clickType == "left" then
+		if cursor:IsEmpty() then
+			-- Pick up entire stack
+			if not slot:IsEmpty() then
+				cursor = slot:Clone()
+				slot = ItemStack.new(0, 0)
+			end
+		else
+			-- Place entire stack / merge / swap
+			if slot:IsEmpty() then
+				slot = cursor:Clone()
+				cursor = ItemStack.new(0, 0)
+			elseif cursor:CanStack(slot) then
+				-- Merge as much as possible
+				slot:Merge(cursor)
+				if cursor:IsEmpty() then
+					cursor = ItemStack.new(0, 0)
+				end
+			else
+				-- Swap stacks
+				local temp = slot:Clone()
+				slot = cursor:Clone()
+				cursor = temp
+			end
+		end
+	elseif clickType == "right" then
+		if cursor:IsEmpty() then
+			-- Pick up half (round up)
+			if not slot:IsEmpty() then
+				cursor = slot:SplitHalf()
+			end
+		else
+			-- Place one / add one to stack
+			if slot:IsEmpty() then
+				local oneItem = cursor:TakeOne()
+				slot = oneItem
+			elseif cursor:CanStack(slot) and not slot:IsFull() then
+				slot:AddCount(1)
+				cursor:RemoveCount(1)
+			end
+		end
+	end
+
+	return slot, cursor
+end
+
 function ChestUI:OnChestSlotLeftClick(index)
-	-- NEW SYSTEM: Send click event to server, don't update local state
-	-- Server will validate and send back authoritative state
+	-- Predictive visual update for instant feedback
+	local currentSlot = self.chestSlots[index]
+	local newSlot, newCursor = self:_simulateSlotClick(currentSlot, self.cursorStack, "left")
+
+	-- Apply visuals immediately
+	self.chestSlots[index] = newSlot
+	self:UpdateChestSlotDisplay(index)
+	self.cursorStack = newCursor
+	self:UpdateCursorDisplay()
+
+	-- Send authoritative click to server
 	EventManager:SendToServer("ChestSlotClick", {
 		chestPosition = self.chestPosition,
 		slotIndex = index,
@@ -504,8 +800,17 @@ function ChestUI:OnChestSlotLeftClick(index)
 end
 
 function ChestUI:OnChestSlotRightClick(index)
-	-- NEW SYSTEM: Send click event to server, don't update local state
-	-- Server will validate and send back authoritative state
+	-- Predictive visual update for instant feedback
+	local currentSlot = self.chestSlots[index]
+	local newSlot, newCursor = self:_simulateSlotClick(currentSlot, self.cursorStack, "right")
+
+	-- Apply visuals immediately
+	self.chestSlots[index] = newSlot
+	self:UpdateChestSlotDisplay(index)
+	self.cursorStack = newCursor
+	self:UpdateCursorDisplay()
+
+	-- Send authoritative click to server
 	EventManager:SendToServer("ChestSlotClick", {
 		chestPosition = self.chestPosition,
 		slotIndex = index,
@@ -515,8 +820,17 @@ function ChestUI:OnChestSlotRightClick(index)
 end
 
 function ChestUI:OnInventorySlotLeftClick(index)
-	-- NEW SYSTEM: Send click event to server, don't update local state
-	-- Server will validate and send back authoritative state
+	-- Predictive visual update for instant feedback (player inventory slot)
+	local currentSlot = self.inventoryManager:GetInventorySlot(index)
+	local newSlot, newCursor = self:_simulateSlotClick(currentSlot, self.cursorStack, "left")
+
+	-- Apply visuals immediately to player's inventory
+	self.inventoryManager:SetInventorySlot(index, newSlot)
+	self:UpdateInventorySlotDisplay(index)
+	self.cursorStack = newCursor
+	self:UpdateCursorDisplay()
+
+	-- Send authoritative click to server
 	EventManager:SendToServer("ChestSlotClick", {
 		chestPosition = self.chestPosition,
 		slotIndex = index,
@@ -526,8 +840,17 @@ function ChestUI:OnInventorySlotLeftClick(index)
 end
 
 function ChestUI:OnInventorySlotRightClick(index)
-	-- NEW SYSTEM: Send click event to server, don't update local state
-	-- Server will validate and send back authoritative state
+	-- Predictive visual update for instant feedback (player inventory slot)
+	local currentSlot = self.inventoryManager:GetInventorySlot(index)
+	local newSlot, newCursor = self:_simulateSlotClick(currentSlot, self.cursorStack, "right")
+
+	-- Apply visuals immediately to player's inventory
+	self.inventoryManager:SetInventorySlot(index, newSlot)
+	self:UpdateInventorySlotDisplay(index)
+	self.cursorStack = newCursor
+	self:UpdateCursorDisplay()
+
+	-- Send authoritative click to server
 	EventManager:SendToServer("ChestSlotClick", {
 		chestPosition = self.chestPosition,
 		slotIndex = index,
@@ -586,11 +909,6 @@ end
 -- === LIFECYCLE ===
 
 function ChestUI:Open(chestPos, chestContents, playerInventory)
-	print("📦 ChestUI:Open called!")
-	print("  - chestPos:", chestPos)
-	print("  - self.gui exists:", self.gui ~= nil)
-	print("  - self.panel exists:", self.panel ~= nil)
-
 	if not self.gui then
 		warn("ChestUI:Open - self.gui is nil! ChestUI not properly initialized!")
 		return
@@ -601,18 +919,13 @@ function ChestUI:Open(chestPos, chestContents, playerInventory)
 		return
 	end
 
-	print("  - Setting isOpen to true...")
 	self.isOpen = true
 	self.chestPosition = chestPos
 
 	-- Close inventory panel if open (mutual exclusion)
 	if self.inventoryPanel and self.inventoryPanel.isOpen then
-		print("  - Closing inventory panel...")
 		self.inventoryPanel:Close()
 	end
-
-	-- Load chest contents
-	print(string.format("  - chestContents type: %s", type(chestContents)))
 
 	-- First, initialize all slots as empty
 	for i = 1, 27 do
@@ -621,45 +934,21 @@ function ChestUI:Open(chestPos, chestContents, playerInventory)
 
 	-- Then apply chest contents from server (now a dense array of all 27 slots)
 	if chestContents then
-		local chestItemCount = 0
 		for i = 1, 27 do
 			if chestContents[i] then
 				local deserialized = ItemStack.Deserialize(chestContents[i])
-				if deserialized and not deserialized:IsEmpty() then
-					chestItemCount = chestItemCount + 1
-					print(string.format("  - Loading chest slot %d: itemId=%d, count=%d",
-						i, deserialized:GetItemId(), deserialized:GetCount()))
-				end
 				self.chestSlots[i] = deserialized or ItemStack.new(0, 0)
 			else
 				self.chestSlots[i] = ItemStack.new(0, 0)
 			end
 		end
-		print(string.format("  - Loaded %d chest items from server", chestItemCount))
-	else
-		print("  - No chest contents provided by server (chestContents is nil)")
 	end
-
-	-- Load player inventory from manager (already synced from server)
-	print("  - Using inventory from ClientInventoryManager...")
-	local count = 0
-	for i = 1, 27 do
-		local stack = self.inventoryManager:GetInventorySlot(i)
-		if stack:GetItemId() > 0 then
-			count = count + 1
-			print(string.format("    Slot %d: Item %d x%d", i, stack:GetItemId(), stack:GetCount()))
-		end
-	end
-	print(string.format("  - Found %d inventory items", count))
 
 	-- Update all displays
-	print("  - Updating all displays...")
 	self:UpdateAllDisplays()
 
 	-- Show UI
-	print("  - Enabling GUI (self.gui.Enabled = true)...")
 	self.gui.Enabled = true
-	print("  - GUI enabled! Visible:", self.gui.Enabled)
 	GameState:Set("voxelWorld.inventoryOpen", true)
 
 	-- Unlock mouse - force it!
@@ -681,8 +970,6 @@ function ChestUI:Open(chestPos, chestContents, playerInventory)
 		end
 		self:UpdateCursorPosition()
 	end)
-
-	print(string.format("✅ ChestUI: Successfully opened chest at (%d, %d, %d)", chestPos.x, chestPos.y, chestPos.z))
 end
 
 function ChestUI:Close()
@@ -740,18 +1027,18 @@ function ChestUI:Close()
 	self.gui.Enabled = false
 	GameState:Set("voxelWorld.inventoryOpen", false)
 
-	-- Re-lock mouse when closing UI
-	UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
-	UserInputService.MouseIconEnabled = false
-
-	print("ChestUI: Closed")
+	-- Note: CameraController now manages mouse lock dynamically based on camera mode
+	-- (first person = locked, third person = free)
 end
 
 function ChestUI:UpdateCursorPosition()
 	if not self.cursorFrame or not self.cursorFrame.Visible then return end
 
 	local mousePos = UserInputService:GetMouseLocation()
-	self.cursorFrame.Position = UDim2.new(0, mousePos.X - CHEST_CONFIG.SLOT_SIZE/2, 0, mousePos.Y - CHEST_CONFIG.SLOT_SIZE/2)
+	local guiInset = GuiService:GetGuiInset()
+
+	-- Adjust for GUI insets (top bar, etc.)
+	self.cursorFrame.Position = UDim2.new(0, mousePos.X, 0, mousePos.Y - guiInset.Y)
 end
 
 function ChestUI:BindInput()
@@ -767,21 +1054,17 @@ function ChestUI:BindInput()
 end
 
 function ChestUI:RegisterEvents()
-	print("ChestUI: Registering events...")
 	self.connections[#self.connections + 1] = EventManager:RegisterEvent("ChestOpened", function(data)
-		print("🎉 ChestUI: Received ChestOpened event!", data)
 		if not data then
 			warn("ChestUI: ChestOpened event data is nil!")
 			return
 		end
-		print(string.format("ChestUI: Opening chest at (%d, %d, %d)", data.x, data.y, data.z))
 		self:Open(
 			{x = data.x, y = data.y, z = data.z},
 			data.contents or {},
 			data.playerInventory or {}
 		)
 	end)
-	print("ChestUI: ChestOpened event registered")
 
 	self.connections[#self.connections + 1] = EventManager:RegisterEvent("ChestClosed", function(data)
 		if self.chestPosition and
@@ -799,38 +1082,48 @@ function ChestUI:RegisterEvents()
 			return
 		end
 
-		-- Update chest contents (now dense array from server)
+		-- Targeted update: compute changes and only redraw changed indices
 		if data.contents then
 			for i = 1, 27 do
-				if data.contents[i] then
-					local deserialized = ItemStack.Deserialize(data.contents[i])
-					self.chestSlots[i] = deserialized or ItemStack.new(0, 0)
+				local incoming = data.contents[i]
+				local old = self.chestSlots[i]
+				local newStack = incoming and ItemStack.Deserialize(incoming) or ItemStack.new(0, 0)
+				local oldId = old and not old:IsEmpty() and old:GetItemId() or 0
+				local oldCount = old and old:GetCount() or 0
+				local newId = not newStack:IsEmpty() and newStack:GetItemId() or 0
+				local newCount = newStack:GetCount()
+				if oldId ~= newId or oldCount ~= newCount then
+					self.chestSlots[i] = newStack
+					self:UpdateChestSlotDisplay(i)
 				else
-					self.chestSlots[i] = ItemStack.new(0, 0)
+					self.chestSlots[i] = newStack
 				end
-				self:UpdateChestSlotDisplay(i)
 			end
 		end
 
-		-- Player inventory is managed by inventoryManager (now dense array from server)
+		-- Player inventory is managed by inventoryManager (dense array from server)
 		if data.playerInventory then
 			self.inventoryManager._syncingFromServer = true
-
 			for i = 1, 27 do
-				if data.playerInventory[i] then
-					local deserialized = ItemStack.Deserialize(data.playerInventory[i])
-					self.inventoryManager:SetInventorySlot(i, deserialized or ItemStack.new(0, 0))
+				local incoming = data.playerInventory[i]
+				local newStack = incoming and ItemStack.Deserialize(incoming) or ItemStack.new(0, 0)
+				local old = self.inventoryManager:GetInventorySlot(i)
+				local oldId = old and not old:IsEmpty() and old:GetItemId() or 0
+				local oldCount = old and old:GetCount() or 0
+				local newId = not newStack:IsEmpty() and newStack:GetItemId() or 0
+				local newCount = newStack:GetCount()
+				if oldId ~= newId or oldCount ~= newCount then
+					self.inventoryManager:SetInventorySlot(i, newStack)
+					self:UpdateInventorySlotDisplay(i)
 				else
-					self.inventoryManager:SetInventorySlot(i, ItemStack.new(0, 0))
+					self.inventoryManager:SetInventorySlot(i, newStack)
 				end
-				self:UpdateInventorySlotDisplay(i)
 			end
-
 			self.inventoryManager._syncingFromServer = false
 		end
 	end)
 
-	-- NEW SYSTEM: Handle server-authoritative click results
+	-- NEW SYSTEM: Handle server-authoritative click results (now delta-based)
 	self.connections[#self.connections + 1] = EventManager:RegisterEvent("ChestActionResult", function(data)
 		if not self.isOpen then return end
 		if not self.chestPosition then return end
@@ -841,58 +1134,47 @@ function ChestUI:RegisterEvents()
 			return
 		end
 
-		print("[ChestUI] Received ChestActionResult")
-		print(string.format("[ChestUI] Cursor item: %s", data.cursorItem and "has item" or "empty"))
-		print(string.format("[ChestUI] chestContents type: %s", type(data.chestContents)))
-
-		if data.chestContents then
-			-- Debug: print what slots have data
-			for k, v in pairs(data.chestContents) do
-				print(string.format("[ChestUI] chestContents[%s] = %s (itemId=%s, count=%s)",
-					tostring(k), tostring(v), tostring(v.itemId), tostring(v.count)))
-			end
-		end
-
-		-- Apply authoritative chest contents from server
-		-- Server now sends dense array (all 27 slots)
-		if data.chestContents then
-			local itemCount = 0
-
-			-- Apply all 27 slots from server (now a dense array)
-			for i = 1, 27 do
-				if data.chestContents[i] then
-					local deserialized = ItemStack.Deserialize(data.chestContents[i])
-					self.chestSlots[i] = deserialized or ItemStack.new(0, 0)
-					if not deserialized:IsEmpty() then
-						itemCount = itemCount + 1
-						print(string.format("[ChestUI] Chest slot %d: Item %d x%d",
-							i, deserialized:GetItemId(), deserialized:GetCount()))
-					end
-				else
-					self.chestSlots[i] = ItemStack.new(0, 0)
+		-- Apply authoritative chest deltas (preferred)
+		if data.chestDelta then
+			for k, stackData in pairs(data.chestDelta) do
+				local i = tonumber(k) or k
+				if type(i) == "number" and i >= 1 and i <= 27 then
+					local newStack = stackData and ItemStack.Deserialize(stackData) or ItemStack.new(0, 0)
+					self.chestSlots[i] = newStack
+					self:UpdateChestSlotDisplay(i)
 				end
+			end
+		elseif data.chestContents then
+			-- Backward compatibility: dense array
+			for i = 1, 27 do
+				local incoming = data.chestContents[i]
+				local newStack = incoming and ItemStack.Deserialize(incoming) or ItemStack.new(0, 0)
+				self.chestSlots[i] = newStack
 				self:UpdateChestSlotDisplay(i)
 			end
-
-			print(string.format("[ChestUI] Applied %d chest items", itemCount))
 		end
 
-		-- Apply authoritative inventory from server
-		-- Server now sends dense array (all 27 slots)
-		if data.playerInventory then
+		-- Apply authoritative player inventory deltas (preferred)
+		if data.inventoryDelta then
 			self.inventoryManager._syncingFromServer = true
-
-			-- Apply all 27 slots from server (now a dense array)
-			for i = 1, 27 do
-				if data.playerInventory[i] then
-					local deserialized = ItemStack.Deserialize(data.playerInventory[i])
-					self.inventoryManager:SetInventorySlot(i, deserialized or ItemStack.new(0, 0))
-				else
-					self.inventoryManager:SetInventorySlot(i, ItemStack.new(0, 0))
+			for k, stackData in pairs(data.inventoryDelta) do
+				local i = tonumber(k) or k
+				if type(i) == "number" and i >= 1 and i <= 27 then
+					local newStack = stackData and ItemStack.Deserialize(stackData) or ItemStack.new(0, 0)
+					self.inventoryManager:SetInventorySlot(i, newStack)
+					self:UpdateInventorySlotDisplay(i)
 				end
+			end
+			self.inventoryManager._syncingFromServer = false
+		elseif data.playerInventory then
+			-- Backward compatibility: dense array
+			self.inventoryManager._syncingFromServer = true
+			for i = 1, 27 do
+				local incoming = data.playerInventory[i]
+				local newStack = incoming and ItemStack.Deserialize(incoming) or ItemStack.new(0, 0)
+				self.inventoryManager:SetInventorySlot(i, newStack)
 				self:UpdateInventorySlotDisplay(i)
 			end
-
 			self.inventoryManager._syncingFromServer = false
 		end
 
@@ -921,8 +1203,6 @@ function ChestUI:Cleanup()
 		self.gui:Destroy()
 		self.gui = nil
 	end
-
-	print("ChestUI: Cleaned up")
 end
 
 return ChestUI

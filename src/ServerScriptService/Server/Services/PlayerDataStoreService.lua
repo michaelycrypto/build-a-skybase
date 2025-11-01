@@ -22,7 +22,7 @@ local PlayerDataStoreService = setmetatable({}, BaseService)
 PlayerDataStoreService.__index = PlayerDataStoreService
 
 -- DataStore configuration
-local DATA_STORE_NAME = "PlayerData_v6"  -- Changed to v5 to reset all data
+local DATA_STORE_NAME = "PlayerData_v16"  -- Changed to v5 to reset all data
 local DATA_VERSION = 5
 
 -- Retry configuration for DataStore operations
@@ -127,7 +127,7 @@ function PlayerDataStoreService:Start()
 		return
 	end
 
-	self._logger.Info("Starting PlayerDataStoreService...")
+	self._logger.Debug("Starting PlayerDataStoreService...")
 
 	-- Start auto-save loop
 	self:_startAutoSave()
@@ -138,7 +138,7 @@ function PlayerDataStoreService:Start()
 	end)
 
 	BaseService.Start(self)
-	self._logger.Info("PlayerDataStoreService started")
+	self._logger.Debug("PlayerDataStoreService started")
 end
 
 --[[

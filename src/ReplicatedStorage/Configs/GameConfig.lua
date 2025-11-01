@@ -101,7 +101,7 @@ local GameConfig = {
 	Shop = {
 		-- Stock management
 		stock = {
-			replenishmentInterval = 10, -- Seconds between restocks
+			replenishmentInterval = 120, -- Seconds between restocks
 			maxStock = 10,
 			minStock = 1
 		},
@@ -174,6 +174,11 @@ local GameConfig = {
 		CleanupOnShutdown = true
 	},
 
+	-- Dropped items settings
+	DroppedItems = {
+		HitboxSize = Vector3.new(0.9, 0.9, 0.9)
+	},
+
 	-- Features (simple toggles)
 	Features = {
 		Currency = true,
@@ -187,7 +192,9 @@ local GameConfig = {
 		WorldSystem = true,
 		DailyRewards = true,
 		Statistics = true,
-		SoundSystem = true
+		SoundSystem = true,
+		-- Enable/disable mouse lock (centering the cursor during gameplay)
+		MouseLock = true
 	},
 
 	-- Server configuration
@@ -270,6 +277,21 @@ local GameConfig = {
 		logLevel = "Info", -- Debug, Info, Warn, Error
 		enableFileLogging = false,
 		enableConsoleLogging = true
+	},
+
+	-- Performance debug toggles (server/client)
+	PERF_DEBUG = {
+		-- Set true to skip server dropped item merges (keeps despawn)
+		DISABLE_DROPPED_ITEM_MERGE = true,
+		-- Override interval (seconds) for dropped item loop; nil = default (1)
+		DROPPED_ITEM_LOOP_INTERVAL = nil,
+
+		-- Set true to skip sapling leaf-tick processing (decay/random ticks)
+		DISABLE_SAPLING_LEAF_TICK = false,
+		-- Override leaf tick interval (seconds); nil = SaplingConfig default
+		LEAF_TICK_INTERVAL = nil,
+		-- Optional cap per tick (if supported by service); nil = SaplingConfig default
+		LEAF_PROCESS_PER_TICK = nil
 	},
 
 	-- UI Settings for UIComponents

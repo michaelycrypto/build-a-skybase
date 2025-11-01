@@ -1,7 +1,9 @@
 --[[
 	BlockViewportCreator.lua
-	Creates 3D ViewportFrame models of blocks for inventory/hotbar display
-	Similar to Minecraft's 3D item rendering
+	Creates 3D ViewportFrame models of blocks OR 2D ImageLabels for items
+	- Blocks: Rendered as 3D viewports (similar to Minecraft's 3D item rendering)
+	- Tools: Displayed as flat 2D images from ToolConfig
+	- Items (saplings, materials, etc.): Displayed as flat 2D images from textures
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -9,11 +11,28 @@ local Constants = require(script.Parent.Parent.Core.Constants)
 local BlockRegistry = require(script.Parent.Parent.World.BlockRegistry)
 local TextureApplicator = require(script.Parent.TextureApplicator)
 local TextureManager = require(script.Parent.TextureManager)
+local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
 
 local BlockViewportCreator = {}
 
 -- Cache for viewport models to avoid recreating them
 local viewportModelCache = {}
+
+-- Centers a model or part so its bounding box center is at the origin
+local function centerViewportInstance(inst)
+	if inst == nil then return end
+	if inst:IsA("Model") then
+		-- Get bounding box center in world space
+		local bboxCFrame, bboxSize = inst:GetBoundingBox()
+		-- Calculate offset from current pivot to bbox center
+		local currentPivot = inst:GetPivot()
+		local offset = currentPivot:PointToObjectSpace(bboxCFrame.Position)
+		-- Move model so bbox center is at origin
+		inst:PivotTo(CFrame.new(-offset))
+	elseif inst:IsA("BasePart") then
+		inst.CFrame = CFrame.new(0, 0, 0)
+	end
+end
 
 --[[
 	Creates a 3D block part with textures
@@ -117,6 +136,7 @@ local function createBlockPart(blockId)
 		local size = 1 -- 1 stud size for viewport
 
 		-- Bottom slab (full size, half height)
+		-- Position so the stair sits from Y=-0.5 to Y=0.5 (full block height)
 		local bottomPart = Instance.new("Part")
 		bottomPart.Name = "BottomSlab"
 		bottomPart.Size = Vector3.new(size, size / 2, size)
@@ -126,7 +146,7 @@ local function createBlockPart(blockId)
 		bottomPart.Color = def.color
 		bottomPart.TopSurface = Enum.SurfaceType.Smooth
 		bottomPart.BottomSurface = Enum.SurfaceType.Smooth
-		bottomPart.CFrame = CFrame.new(0, -size / 4, 0) -- Position at bottom
+		bottomPart.CFrame = CFrame.new(0, -size / 4, 0) -- Bottom slab at lower half
 		bottomPart.Parent = model
 
 		-- Top step (half depth, half height) - facing SOUTH for UI display
@@ -139,7 +159,7 @@ local function createBlockPart(blockId)
 		topPart.Color = def.color
 		topPart.TopSurface = Enum.SurfaceType.Smooth
 		topPart.BottomSurface = Enum.SurfaceType.Smooth
-		topPart.CFrame = CFrame.new(0, size / 4, -size / 4) -- Position at top-back
+		topPart.CFrame = CFrame.new(0, size / 4, -size / 4) -- Top step at upper half
 		topPart.Parent = model
 
 		-- Apply textures if available
@@ -195,7 +215,7 @@ local function createBlockPart(blockId)
 			post.Color = def.color
 			post.TopSurface = Enum.SurfaceType.Smooth
 			post.BottomSurface = Enum.SurfaceType.Smooth
-			post.CFrame = CFrame.new(x, (postHeight - size) * 0.5, 0)
+			post.CFrame = CFrame.new(x, 0, 0) -- Center post vertically
 			post.Parent = model
 			-- Apply wood planks texture to post
 			if def.textures and def.textures.all then
@@ -219,7 +239,7 @@ local function createBlockPart(blockId)
 
 		-- two horizontal rails connecting posts
 		local span = (sep * 2) - postWidth
-		local function makeRail(y)
+		local function makeRail(yOffset)
 			local rail = Instance.new("Part")
 			rail.Name = "Rail"
 			rail.Size = Vector3.new(span, railThickness, railThickness)
@@ -229,7 +249,7 @@ local function createBlockPart(blockId)
 			rail.Color = def.color
 			rail.TopSurface = Enum.SurfaceType.Smooth
 			rail.BottomSurface = Enum.SurfaceType.Smooth
-			rail.CFrame = CFrame.new(0, -0.5 * size + y, 0)
+			rail.CFrame = CFrame.new(0, yOffset - 0.5 * size, 0) -- Position relative to center
 			rail.Parent = model
 			-- Apply wood planks texture to rail
 			if def.textures and def.textures.all then
@@ -248,10 +268,13 @@ local function createBlockPart(blockId)
 			return rail
 		end
 
-		makeRail(0.35 * size)
-		makeRail(0.80 * size)
+		-- Symmetric rail positions for perfect vertical stacking
+		local rail1 = makeRail(0.25 * size)
+		local rail2 = makeRail(0.75 * size)
 
-		model.PrimaryPart = postL
+		-- Use a rail as PrimaryPart since it's centered at X=0
+		-- This ensures the model pivots around the center, not the left post
+		model.PrimaryPart = rail1
 		return model
 	end
 
@@ -298,6 +321,7 @@ local function createBlockPart(blockId)
 	part.CanCollide = false
 	part.Material = Enum.Material.SmoothPlastic
 	part.Color = def.color
+	part.Transparency = def.transparent and 0.8 or 0
 	part.TopSurface = Enum.SurfaceType.Smooth
 	part.BottomSurface = Enum.SurfaceType.Smooth
 
@@ -310,15 +334,60 @@ local function createBlockPart(blockId)
 end
 
 --[[
-	Creates a ViewportFrame with a 3D block model inside
+	Creates a ViewportFrame with a 3D block model OR an ImageLabel for items/tools
 	@param parent: GuiObject - Parent GUI element
-	@param blockId: number - Block type ID
-	@param size: UDim2 - Size of the ViewportFrame (optional, defaults to full parent size)
-	@param position: UDim2 - Position of the ViewportFrame (optional)
+	@param blockId: number - Block/Item type ID
+	@param size: UDim2 - Size of the ViewportFrame/ImageLabel (optional, defaults to full parent size)
+	@param position: UDim2 - Position of the ViewportFrame/ImageLabel (optional)
 	@param anchorPoint: Vector2 - Anchor point (optional)
-	@return ViewportFrame - The created viewport
+	@return Frame|ImageLabel - The created viewport container or image label
 ]]
 function BlockViewportCreator.CreateBlockViewport(parent, blockId, size, position, anchorPoint)
+	-- Check if this is a tool or item with an image asset
+	local toolInfo = ToolConfig.GetToolInfo(blockId)
+	if toolInfo and toolInfo.image then
+		-- Create an ImageLabel for tools
+		local imageLabel = Instance.new("ImageLabel")
+		imageLabel.Name = "ItemImage"
+		imageLabel.Size = size or UDim2.new(1, 0, 1, 0)
+		imageLabel.Position = position or UDim2.new(0, 0, 0, 0)
+		imageLabel.AnchorPoint = anchorPoint or Vector2.new(0, 0)
+		imageLabel.BackgroundTransparency = 1
+		imageLabel.BorderSizePixel = 0
+		imageLabel.Image = toolInfo.image
+		imageLabel.ScaleType = Enum.ScaleType.Fit
+		imageLabel.Parent = parent
+		return imageLabel
+	end
+
+	-- Check if this is an item (not a block) that should be displayed as a flat 2D image
+	-- This includes: crafting materials, saplings, flowers, tall grass, etc.
+	local blockDef = BlockRegistry.Blocks[blockId]
+	if blockDef and blockDef.textures and blockDef.textures.all then
+		-- Items that should be flat 2D images:
+		-- 1. Has craftingMaterial flag (Stick, Coal, Iron Ingot, Diamond)
+		-- 2. Has crossShape (would normally be X-shaped but looks better as flat image in inventory)
+		local shouldBeFlatImage = blockDef.craftingMaterial or blockDef.crossShape
+
+		if shouldBeFlatImage then
+			-- Get the texture ID and use it as an image
+			local textureId = TextureManager:GetTextureId(blockDef.textures.all)
+			if textureId then
+				local imageLabel = Instance.new("ImageLabel")
+				imageLabel.Name = "ItemImage"
+				imageLabel.Size = size or UDim2.new(1, 0, 1, 0)
+				imageLabel.Position = position or UDim2.new(0, 0, 0, 0)
+				imageLabel.AnchorPoint = anchorPoint or Vector2.new(0, 0)
+				imageLabel.BackgroundTransparency = 1
+				imageLabel.BorderSizePixel = 0
+				imageLabel.Image = textureId
+				imageLabel.ScaleType = Enum.ScaleType.Fit
+				imageLabel.Parent = parent
+				return imageLabel
+			end
+		end
+	end
+
 	-- Check cache first
 	local cacheKey = "viewport_" .. tostring(blockId)
 
@@ -380,14 +449,9 @@ function BlockViewportCreator.CreateBlockViewport(parent, blockId, size, positio
 		blockModel.Anchored = true
 	end
 
-	-- Position block at origin
-	if blockModel:IsA("Model") then
-		blockModel:PivotTo(CFrame.new(0, 0, 0))
-	else
-		blockModel.CFrame = CFrame.new(0, 0, 0)
-	end
-
+	-- Parent and center by bounding box so visuals are consistent for all shapes
 	blockModel.Parent = viewport
+	centerViewportInstance(blockModel)
 
 	-- Position camera for nice isometric view (Minecraft-style)
 	-- View from top-right-front angle
@@ -408,6 +472,40 @@ end
 function BlockViewportCreator.UpdateBlockViewport(container, blockId)
 	if not container then
 		return
+	end
+
+	-- Check if this is a tool or item with an image asset
+	local toolInfo = ToolConfig.GetToolInfo(blockId)
+	if toolInfo and toolInfo.image then
+		-- If container is an ImageLabel, just update the image
+		if container:IsA("ImageLabel") then
+			container.Image = toolInfo.image
+			return
+		end
+		-- Otherwise, we need to replace the viewport with an ImageLabel
+		-- This shouldn't happen in normal use, but handle it gracefully
+		warn("UpdateBlockViewport: Cannot update non-ImageLabel container to tool item")
+		return
+	end
+
+	-- Check if this is an item (not a block) that should be displayed as a flat 2D image
+	local blockDef = BlockRegistry.Blocks[blockId]
+	if blockDef and blockDef.textures and blockDef.textures.all then
+		local shouldBeFlatImage = blockDef.craftingMaterial or blockDef.crossShape
+
+		if shouldBeFlatImage then
+			local textureId = TextureManager:GetTextureId(blockDef.textures.all)
+			if textureId then
+				-- If container is an ImageLabel, just update the image
+				if container:IsA("ImageLabel") then
+					container.Image = textureId
+					return
+				end
+				-- Otherwise, we need to replace the viewport with an ImageLabel
+				warn("UpdateBlockViewport: Cannot update non-ImageLabel container to flat image item")
+				return
+			end
+		end
 	end
 
 	-- Handle both container Frame and direct ViewportFrame for backwards compatibility
@@ -444,14 +542,9 @@ function BlockViewportCreator.UpdateBlockViewport(container, blockId)
 		return
 	end
 
-	-- Position block at origin
-	if blockModel:IsA("Model") then
-		blockModel:PivotTo(CFrame.new(0, 0, 0))
-	else
-		blockModel.CFrame = CFrame.new(0, 0, 0)
-	end
-
+	-- Parent and center by bounding box so visuals are consistent for all shapes
 	blockModel.Parent = viewport
+	centerViewportInstance(blockModel)
 end
 
 --[[

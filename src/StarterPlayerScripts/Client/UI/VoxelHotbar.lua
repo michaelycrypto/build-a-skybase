@@ -7,12 +7,15 @@
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
+local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
 local GameState = require(script.Parent.Parent.Managers.GameState)
 local ItemStack = require(ReplicatedStorage.Shared.VoxelWorld.Inventory.ItemStack)
 local BlockViewportCreator = require(ReplicatedStorage.Shared.VoxelWorld.Rendering.BlockViewportCreator)
+local EventManager = require(ReplicatedStorage.Shared.EventManager)
+local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
 
 local VoxelHotbar = {}
 VoxelHotbar.__index = VoxelHotbar
@@ -22,7 +25,7 @@ local HOTBAR_CONFIG = {
 	SLOT_COUNT = 9,
 	SLOT_SIZE = 58,
 	SLOT_SPACING = 4,
-	BOTTOM_OFFSET = 20,
+	BOTTOM_OFFSET = 5,
 	BORDER_WIDTH = 3,
 
 	-- Colors (Minecraft-inspired)
@@ -63,6 +66,15 @@ local BLOCK_INFO = {
 	[25] = {name = "Stone Brick Slab", icon = "▬", category = "Building"},
 	[26] = {name = "Brick Slab", icon = "▬", category = "Building"},
 	[27] = {name = "Oak Fence", icon = "#", category = "Building"},
+	[28] = {name = "Stick", icon = "|", category = "Materials"},
+	[29] = {name = "Coal Ore", icon = "⚫", category = "Ores"},
+	[30] = {name = "Iron Ore", icon = "🔵", category = "Ores"},
+	[31] = {name = "Diamond Ore", icon = "💎", category = "Ores"},
+	[32] = {name = "Coal", icon = "⚫", category = "Materials"},
+	[33] = {name = "Iron Ingot", icon = "⚪", category = "Materials"},
+	[34] = {name = "Diamond", icon = "💠", category = "Materials"},
+	[35] = {name = "Furnace", icon = "🔥", category = "Utility"},
+	[36] = {name = "Glass", icon = "🪟", category = "Building"},
 }
 
 function VoxelHotbar.new()
@@ -91,6 +103,14 @@ function VoxelHotbar:Initialize()
 	self.gui.DisplayOrder = 50
 	self.gui.IgnoreGuiInset = true
 	self.gui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
+
+	-- Add responsive scaling (100% = original size)
+	local uiScale = Instance.new("UIScale")
+	uiScale.Name = "ResponsiveScale"
+	uiScale:SetAttribute("base_resolution", Vector2.new(1920, 1080)) -- 1920x1080 for 100% original size
+	uiScale.Parent = self.gui
+	CollectionService:AddTag(uiScale, "scale_component")
+	print("📐 VoxelHotbar: Added UIScale with base resolution 1920x1080 (100% original size)")
 
 	-- Create main hotbar container
 	self:CreateHotbar()
@@ -237,6 +257,11 @@ function VoxelHotbar:CreateSlotUI(index)
 		countLabel = countLabel
 	}
 
+	-- Add click/tap handler to select slot
+	slot.Activated:Connect(function()
+		self:SelectSlot(index)
+	end)
+
 	-- Update display
 	self:UpdateSlotDisplay(index)
 end
@@ -246,33 +271,59 @@ function VoxelHotbar:UpdateSlotDisplay(index)
 	if not slotFrame then return end
 
 	local stack = self.slots[index]
+	local currentItemId = slotFrame.currentItemId  -- Store in table, not as attribute
+
 	if stack and not stack:IsEmpty() then
-		-- Get or create viewport container
-		local viewportContainer = slotFrame.iconContainer:FindFirstChild("ViewportContainer")
-		if viewportContainer then
-			-- Update existing viewport
-			BlockViewportCreator.UpdateBlockViewport(viewportContainer, stack:GetItemId())
-		else
-			-- Create new viewport
-			BlockViewportCreator.CreateBlockViewport(
-				slotFrame.iconContainer,
-				stack:GetItemId(),
-				UDim2.new(1, 0, 1, 0)
-			)
+		local itemId = stack:GetItemId()
+		local isTool = ToolConfig.IsTool(itemId)
+
+		-- Only recreate viewport/image if item type changed (huge performance win)
+		if currentItemId ~= itemId then
+			-- Clear ALL existing visuals (ViewportContainer, ToolImage, ImageLabel, etc.)
+			for _, child in ipairs(slotFrame.iconContainer:GetChildren()) do
+				if not child:IsA("UILayout") and not child:IsA("UIPadding") and not child:IsA("UICorner") then
+					child:Destroy()
+				end
+			end
+
+			if isTool then
+				-- Render tool image
+				local info = ToolConfig.GetToolInfo(itemId)
+				local image = Instance.new("ImageLabel")
+				image.Name = "ToolImage"
+				image.Size = UDim2.new(1, -8, 1, -8)
+				image.Position = UDim2.new(0.5, 0, 0.5, 0)
+				image.AnchorPoint = Vector2.new(0.5, 0.5)
+				image.BackgroundTransparency = 1
+				image.Image = info and info.image or ""
+				image.ScaleType = Enum.ScaleType.Fit
+				image.Parent = slotFrame.iconContainer
+			else
+				-- Render block viewport
+				BlockViewportCreator.CreateBlockViewport(
+					slotFrame.iconContainer,
+					itemId,
+					UDim2.new(1, 0, 1, 0)
+				)
+			end
+
+			slotFrame.currentItemId = itemId  -- Store in table
 		end
 
-		-- Show count if > 1
+		-- Always update count (cheap operation)
 		if stack:GetCount() > 1 then
 			slotFrame.countLabel.Text = tostring(stack:GetCount())
 		else
 			slotFrame.countLabel.Text = ""
 		end
 	else
-		-- Clear viewport container
-		local viewportContainer = slotFrame.iconContainer:FindFirstChild("ViewportContainer")
-		if viewportContainer then
-			viewportContainer:Destroy()
+		-- Slot is empty - clear ALL visual children (ViewportContainer, ToolImage, ImageLabel, etc.)
+		for _, child in ipairs(slotFrame.iconContainer:GetChildren()) do
+			if not child:IsA("UILayout") and not child:IsA("UIPadding") and not child:IsA("UICorner") then
+				child:Destroy()
+			end
 		end
+		slotFrame.currentItemId = nil
 		slotFrame.countLabel.Text = ""
 	end
 end
@@ -337,19 +388,44 @@ function VoxelHotbar:OnSlotSelected()
 	-- Store selected slot index for server requests
 	GameState:Set("voxelWorld.selectedSlot", self.selectedSlot)
 
-	if stack and not stack:IsEmpty() then
-		local blockInfo = BLOCK_INFO[stack:GetItemId()] or BLOCK_INFO[0]
-		GameState:Set("voxelWorld.selectedBlock", {
-			id = stack:GetItemId(),
-			name = blockInfo.name,
-			icon = blockInfo.icon,
-			count = stack:GetCount()
-		})
-		GameState:Set("voxelWorld.isHoldingItem", true)
-	else
+    if stack and not stack:IsEmpty() then
+        local itemId = stack:GetItemId()
+        -- If this is a tool, equip it (no durability)
+        if ToolConfig.IsTool(itemId) then
+            -- Clear block selection and equip tool
+            GameState:Set("voxelWorld.selectedBlock", nil)
+            GameState:Set("voxelWorld.isHoldingItem", false)
+            -- Set tool equip state for client-side visuals (R15 handle, etc.)
+            GameState:Set("voxelWorld.selectedToolItemId", itemId)
+            GameState:Set("voxelWorld.isHoldingTool", true)
+            GameState:Set("voxelWorld.selectedToolSlotIndex", self.selectedSlot)
+            EventManager:SendToServer("EquipTool", { slotIndex = self.selectedSlot })
+        else
+            -- Treat as block selection
+            local blockInfo = BLOCK_INFO[itemId] or BLOCK_INFO[0]
+            GameState:Set("voxelWorld.selectedBlock", {
+                id = itemId,
+                name = blockInfo.name,
+                icon = blockInfo.icon,
+                count = stack:GetCount()
+            })
+            GameState:Set("voxelWorld.isHoldingItem", true)
+            -- Clear tool equip state
+            GameState:Set("voxelWorld.selectedToolItemId", nil)
+            GameState:Set("voxelWorld.isHoldingTool", false)
+            GameState:Set("voxelWorld.selectedToolSlotIndex", nil)
+            -- Ensure no tool is equipped
+            EventManager:SendToServer("UnequipTool")
+        end
+    else
 		-- Empty hand
 		GameState:Set("voxelWorld.selectedBlock", nil)
 		GameState:Set("voxelWorld.isHoldingItem", false)
+            -- Clear tool equip state
+            GameState:Set("voxelWorld.selectedToolItemId", nil)
+            GameState:Set("voxelWorld.isHoldingTool", false)
+            GameState:Set("voxelWorld.selectedToolSlotIndex", nil)
+        EventManager:SendToServer("UnequipTool")
 	end
 end
 

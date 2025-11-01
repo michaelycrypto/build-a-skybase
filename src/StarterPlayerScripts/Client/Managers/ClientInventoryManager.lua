@@ -62,7 +62,17 @@ end
 function ClientInventoryManager:SetInventorySlot(index, stack)
 	if index < 1 or index > 27 then return end
 
-	self.inventory[index] = stack or ItemStack.new(0, 0)
+    -- Normalize tools to be non-stackable and ensure correct max stack
+    local normalized = stack or ItemStack.new(0, 0)
+    if normalized and not normalized:IsEmpty() then
+        local itemId = normalized:GetItemId()
+        local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
+        if ToolConfig.IsTool(itemId) then
+            normalized = ItemStack.new(itemId, math.min(normalized:GetCount(), 1), 1)
+        end
+    end
+
+    self.inventory[index] = normalized
 	self:NotifyInventoryChanged(index)
 end
 
@@ -76,7 +86,17 @@ end
 function ClientInventoryManager:SetHotbarSlot(index, stack)
 	if not self.hotbar then return end
 
-	self.hotbar:SetSlot(index, stack)
+    -- Normalize tools to be non-stackable and ensure correct max stack
+    local normalized = stack or ItemStack.new(0, 0)
+    if normalized and not normalized:IsEmpty() then
+        local itemId = normalized:GetItemId()
+        local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
+        if ToolConfig.IsTool(itemId) then
+            normalized = ItemStack.new(itemId, math.min(normalized:GetCount(), 1), 1)
+        end
+    end
+
+    self.hotbar:SetSlot(index, normalized)
 	self:NotifyHotbarChanged(index)
 end
 
@@ -105,7 +125,15 @@ end
 function ClientInventoryManager:SerializeInventory()
 	local serialized = {}
 	for i = 1, 27 do
-		serialized[i] = self.inventory[i]:Serialize()
+        local stack = self.inventory[i]
+        local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
+        if stack and not stack:IsEmpty() and ToolConfig.IsTool(stack:GetItemId()) then
+            if stack:GetCount() > 1 then
+                stack:SetCount(1)
+                self.inventory[i] = stack
+            end
+        end
+        serialized[i] = stack:Serialize()
 	end
 	return serialized
 end
@@ -116,6 +144,13 @@ function ClientInventoryManager:SerializeHotbar()
 	local serialized = {}
 	for i = 1, 9 do
 		local stack = self.hotbar:GetSlot(i)
+        local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
+        if stack and not stack:IsEmpty() and ToolConfig.IsTool(stack:GetItemId()) then
+            if stack:GetCount() > 1 then
+                stack:SetCount(1)
+                self.hotbar:SetSlot(i, stack)
+            end
+        end
 		serialized[i] = stack:Serialize()
 	end
 	return serialized
@@ -129,12 +164,13 @@ function ClientInventoryManager:SendUpdateToServer()
 		return
 	end
 
-	EventManager:SendToServer("InventoryUpdate", {
-		inventory = self:SerializeInventory(),
-		hotbar = self:SerializeHotbar()
-	})
+	local hotbarData = self:SerializeHotbar()
+	local inventoryData = self:SerializeInventory()
 
-	print("ClientInventoryManager: Sent inventory update to server")
+	EventManager:SendToServer("InventoryUpdate", {
+		inventory = inventoryData,
+		hotbar = hotbarData
+	})
 end
 
 function ClientInventoryManager:SyncFromServer(inventoryData, hotbarData)
@@ -166,11 +202,11 @@ function ClientInventoryManager:SyncFromServer(inventoryData, hotbarData)
 	-- Notify all listeners
 	self:NotifyAllChanged()
 
-	-- Clear sync flag after a short delay
-	task.wait(0.1)
-	self._syncingFromServer = false
 
-	print("ClientInventoryManager: Synced from server")
+	-- Clear sync flag after a short delay (non-blocking)
+	task.delay(0.15, function()
+		self._syncingFromServer = false
+	end)
 end
 
 -- === EVENT CALLBACKS ===
@@ -215,17 +251,172 @@ function ClientInventoryManager:RegisterServerEvents()
 		self:SyncFromServer(data.inventory, data.hotbar)
 	end)
 
-	-- Single hotbar slot update from server
+	-- Single hotbar slot update from server (server won't echo our own changes)
 	self.connections[#self.connections + 1] = EventManager:RegisterEvent("HotbarSlotUpdate", function(data)
 		if data.slotIndex and data.stack and self.hotbar then
 			local stack = ItemStack.Deserialize(data.stack)
 			self.hotbar:SetSlot(data.slotIndex, stack)
 			self:NotifyHotbarChanged(data.slotIndex)
-			print("ClientInventoryManager: Hotbar slot", data.slotIndex, "updated from server")
+		end
+	end)
+
+	-- Single inventory slot update from server (server won't echo our own changes)
+	self.connections[#self.connections + 1] = EventManager:RegisterEvent("InventorySlotUpdate", function(data)
+		if data.slotIndex and data.stack then
+			if data.slotIndex >= 1 and data.slotIndex <= 27 then
+				self.inventory[data.slotIndex] = ItemStack.Deserialize(data.stack)
+				self:NotifyInventoryChanged(data.slotIndex)
+			end
 		end
 	end)
 
 	print("ClientInventoryManager: Registered server events")
+end
+
+-- === CRAFTING HELPER METHODS ===
+
+--[[
+	Count total amount of an item across inventory and hotbar
+	@param itemId: number - Item ID to count
+	@return: number - Total count
+]]
+function ClientInventoryManager:CountItem(itemId)
+	local count = 0
+
+	-- Count in inventory (27 slots)
+	for i = 1, 27 do
+		local stack = self:GetInventorySlot(i)
+		if stack:GetItemId() == itemId then
+			count = count + stack:GetCount()
+		end
+	end
+
+	-- Count in hotbar (9 slots)
+	for i = 1, 9 do
+		local stack = self:GetHotbarSlot(i)
+		if stack:GetItemId() == itemId then
+			count = count + stack:GetCount()
+		end
+	end
+
+	return count
+end
+
+--[[
+	Remove item from inventory/hotbar (smart removal from any slot)
+	@param itemId: number - Item ID to remove
+	@param amount: number - Amount to remove
+	@return: boolean - True if all removed successfully
+]]
+function ClientInventoryManager:RemoveItem(itemId, amount)
+	local remaining = amount
+
+	-- Remove from inventory first
+	for i = 1, 27 do
+		if remaining <= 0 then break end
+
+		local stack = self:GetInventorySlot(i)
+		if stack:GetItemId() == itemId then
+			local toRemove = math.min(remaining, stack:GetCount())
+			stack:RemoveCount(toRemove)
+			self:SetInventorySlot(i, stack)
+			remaining = remaining - toRemove
+		end
+	end
+
+	-- Remove from hotbar if needed
+	for i = 1, 9 do
+		if remaining <= 0 then break end
+
+		local stack = self:GetHotbarSlot(i)
+		if stack:GetItemId() == itemId then
+			local toRemove = math.min(remaining, stack:GetCount())
+			stack:RemoveCount(toRemove)
+			self:SetHotbarSlot(i, stack)
+			remaining = remaining - toRemove
+		end
+	end
+
+	return remaining == 0  -- Returns true if all removed successfully
+end
+
+--[[
+	Add item to inventory/hotbar (smart stacking)
+	@param itemId: number - Item ID to add
+	@param amount: number - Amount to add
+	@return: boolean - True if all added successfully
+]]
+function ClientInventoryManager:AddItem(itemId, amount)
+	local remaining = amount
+
+    local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
+    local isTool = ToolConfig.IsTool(itemId)
+
+    -- Try to add to existing stacks first (inventory) - skip for tools
+    if not isTool then
+        for i = 1, 27 do
+            if remaining <= 0 then break end
+
+            local stack = self:GetInventorySlot(i)
+            if stack:GetItemId() == itemId and not stack:IsFull() then
+                local spaceLeft = stack:GetRemainingSpace()
+                local toAdd = math.min(remaining, spaceLeft)
+                stack:AddCount(toAdd)
+                self:SetInventorySlot(i, stack)
+                remaining = remaining - toAdd
+            end
+        end
+    end
+
+    -- Try to add to existing stacks in hotbar - skip for tools
+    if not isTool then
+        for i = 1, 9 do
+            if remaining <= 0 then break end
+
+            local stack = self:GetHotbarSlot(i)
+            if stack:GetItemId() == itemId and not stack:IsFull() then
+                local spaceLeft = stack:GetRemainingSpace()
+                local toAdd = math.min(remaining, spaceLeft)
+                stack:AddCount(toAdd)
+                self:SetHotbarSlot(i, stack)
+                remaining = remaining - toAdd
+            end
+        end
+    end
+
+	-- Create new stacks in empty slots (inventory)
+	for i = 1, 27 do
+		if remaining <= 0 then break end
+
+		local stack = self:GetInventorySlot(i)
+		if stack:IsEmpty() then
+            local maxStack = ItemStack.new(itemId, 1):GetMaxStack()
+			local toAdd = math.min(remaining, maxStack)
+			self:SetInventorySlot(i, ItemStack.new(itemId, toAdd))
+			remaining = remaining - toAdd
+		end
+	end
+
+	-- Create new stacks in empty slots (hotbar)
+	for i = 1, 9 do
+		if remaining <= 0 then break end
+
+		local stack = self:GetHotbarSlot(i)
+		if stack:IsEmpty() then
+            local maxStack = ItemStack.new(itemId, 1):GetMaxStack()
+			local toAdd = math.min(remaining, maxStack)
+			self:SetHotbarSlot(i, ItemStack.new(itemId, toAdd))
+			remaining = remaining - toAdd
+		end
+	end
+
+	-- If we couldn't add everything, inventory is full
+	if remaining > 0 then
+		warn("ClientInventoryManager: Inventory full, couldn't add", remaining, "of item", itemId)
+		-- TODO: Could drop items to world here
+	end
+
+	return remaining == 0  -- Returns true if all added successfully
 end
 
 -- === CLEANUP ===

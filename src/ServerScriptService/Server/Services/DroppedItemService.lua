@@ -8,8 +8,11 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 
 local BaseService = require(script.Parent.BaseService)
+local Logger = require(ReplicatedStorage.Shared.Logger)
 local EventManager = require(ReplicatedStorage.Shared.EventManager)
 local Constants = require(ReplicatedStorage.Shared.VoxelWorld.Core.Constants)
+local ItemConfig = require(ReplicatedStorage.Configs.ItemConfig)
+local GameConfig = require(ReplicatedStorage.Configs.GameConfig)
 
 local DroppedItemService = setmetatable({}, BaseService)
 DroppedItemService.__index = DroppedItemService
@@ -18,9 +21,43 @@ local BLOCK_SIZE = Constants.BLOCK_SIZE -- 3.5 studs
 local LIFETIME = 300 -- 5 minutes
 local MERGE_DISTANCE = BLOCK_SIZE -- Merge items within one block distance
 local PICKUP_DISTANCE = 2
-local PICKUP_COOLDOWN = 0.5 -- Prevent spam-picking the same item
+local PICKUP_COOLDOWN = 0 -- No cooldown on pickup
+local PICKUP_DELAY = 0.5 -- 0.5s pickup delay like Minecraft (10 ticks)
 
 local nextItemId = 1
+-- Helper: determine if an itemId is a placeable block (numeric and not craftingMaterial)
+local function _isBlockItemId(itemId)
+    if typeof(itemId) == "number" then
+        local BlockRegistry = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockRegistry)
+        local raw = BlockRegistry.Blocks and BlockRegistry.Blocks[itemId]
+        if raw ~= nil then
+            return raw.craftingMaterial ~= true
+        end
+        return false
+    end
+    return false
+end
+
+
+-- Standardize and gate module-local prints through Logger at DEBUG level
+local _logger = Logger:CreateContext("DroppedItemService")
+local function _toString(v)
+    return tostring(v)
+end
+local function _concatArgs(...)
+    local n = select("#", ...)
+    local parts = table.create(n)
+    for i = 1, n do
+        parts[i] = _toString(select(i, ...))
+    end
+    return table.concat(parts, " ")
+end
+local print = function(...)
+    _logger.Debug(_concatArgs(...))
+end
+local warn = function(...)
+    _logger.Warn(_concatArgs(...))
+end
 
 function DroppedItemService.new()
 	local self = setmetatable(BaseService.new(), DroppedItemService)
@@ -56,9 +93,17 @@ function DroppedItemService:Start()
 	-- Cleanup loop (check despawns and merges every second)
 	task.spawn(function()
 		while true do
-			task.wait(1)
+			local interval = (GameConfig.PERF_DEBUG and GameConfig.PERF_DEBUG.DROPPED_ITEM_LOOP_INTERVAL) or 1
+			task.wait(interval)
+			local t0 = os.clock()
 			self:CheckDespawns()
-			self:CheckMerges()
+			if not (GameConfig.PERF_DEBUG and GameConfig.PERF_DEBUG.DISABLE_DROPPED_ITEM_MERGE) then
+				self:CheckMerges()
+			end
+			local dtMs = (os.clock() - t0) * 1000
+			if dtMs > 10 then
+				warn(string.format("DroppedItemService loop took %.1f ms", dtMs))
+			end
 		end
 	end)
 
@@ -75,21 +120,22 @@ function DroppedItemService:SpawnItem(itemId, count, position, velocity, isBlock
 
 	-- Convert block coords to world
 	local startPos = position
-	if isBlockCoords then
-		-- Spawn at the center of the broken block
-		startPos = Vector3.new(
-			position.X * BS + BS/2,
-			position.Y * BS + BS/2,
-			position.Z * BS + BS/2
-		)
-	end
+    if isBlockCoords then
+        -- Spawn in center of block, higher up to prevent floor clipping
+        startPos = Vector3.new(
+            position.X * BS + BS/2,
+            position.Y * BS + BS/2, -- Center of block to prevent tunneling
+            position.Z * BS + BS/2
+        )
+    end
 
 	-- Calculate initial velocity if not provided
-	local initialVel = velocity or Vector3.new(
-		math.random(-3, 3),
-		math.random(8, 12),
-		math.random(-3, 3)
-	)
+	-- Ensure minimum upward velocity to prevent immediate floor clipping
+    local initialVel = velocity or Vector3.new(
+        math.random(-2, 2),
+        math.random(2, 4), -- Minimum 2 studs/sec upward to prevent tunneling
+        math.random(-2, 2)
+    )
 
 	-- Check if we should merge with nearby items
 	local mergeTargetId = nil
@@ -97,7 +143,7 @@ function DroppedItemService:SpawnItem(itemId, count, position, velocity, isBlock
 	for id, item in pairs(self.items) do
 		if item.itemId == itemId then
 			local dist = (item.position - startPos).Magnitude
-			if dist < MERGE_DISTANCE and item.count + count <= 64 then
+			if dist <= MERGE_DISTANCE and item.count + count <= 64 then
 				-- Found merge target - will spawn visual item that merges
 				mergeTargetId = id
 				mergeTargetPos = item.position
@@ -136,13 +182,14 @@ function DroppedItemService:SpawnItem(itemId, count, position, velocity, isBlock
 	local id = nextItemId
 	nextItemId = nextItemId + 1
 
-	local item = {
+    local item = {
 		id = id,
 		itemId = itemId,
 		count = count,
 		position = startPos,
 		spawnTime = os.clock(),
-		beingPickedUp = false -- Anti-duplication flag
+        pickupAvailableAt = os.clock() + PICKUP_DELAY,
+        beingPickedUp = false -- Anti-duplication flag
 	}
 
 	self.items[id] = item
@@ -156,8 +203,14 @@ function DroppedItemService:SpawnItem(itemId, count, position, velocity, isBlock
 		velocity = {initialVel.X, initialVel.Y, initialVel.Z}
 	})
 
-	local blockInfo = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockRegistry):GetBlock(itemId)
-	local itemName = blockInfo and blockInfo.name or tostring(itemId)
+    local blockInfo = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockRegistry):GetBlock(typeof(itemId) == "number" and itemId or nil)
+    local itemName
+    if _isBlockItemId(itemId) then
+        itemName = blockInfo and blockInfo.name or tostring(itemId)
+    else
+        local def = ItemConfig and ItemConfig.GetItemDefinition and ItemConfig.GetItemDefinition(itemId)
+        itemName = (def and def.name) or tostring(itemId)
+    end
 	print(string.format("📦 Item #%d spawned: %s at (%.1f, %.1f, %.1f)",
 		id, itemName, startPos.X, startPos.Y, startPos.Z))
 
@@ -190,7 +243,7 @@ function DroppedItemService:CheckMerges()
 				local b = itemList[j]
 				if self.items[b.id] and a.itemId == b.itemId then
 					local dist = (a.position - b.position).Magnitude
-					if dist < MERGE_DISTANCE and a.count + b.count <= 64 then
+					if dist <= MERGE_DISTANCE and a.count + b.count <= 64 then
 						a.count = a.count + b.count
 						self:RemoveItem(b.id)
 
@@ -254,17 +307,20 @@ function DroppedItemService:HandlePickupRequest(player, data)
 		self.playerPickupCooldowns[playerId] = {}
 	end
 
-	local lastPickup = self.playerPickupCooldowns[playerId][itemId]
-	local now = os.clock()
-	if lastPickup and (now - lastPickup) < PICKUP_COOLDOWN then
-		return -- Still on cooldown
-	end
+    local lastPickup = self.playerPickupCooldowns[playerId][itemId]
+    local now = os.clock()
+    -- No cooldown: always allow request
 
-	-- Mark item as being picked up immediately (prevents race conditions)
+    -- Enforce pickup delay (server-authoritative)
+    if now < (item.pickupAvailableAt or 0) then
+        return
+    end
+
+    -- Mark item as being picked up immediately (prevents race conditions)
 	item.beingPickedUp = true
 	self.playerPickupCooldowns[playerId][itemId] = now
 
-	-- Validate distance (generous radius since physics may move items)
+	-- Validate distance (use reported client item position if provided; fallback to stored spawn position)
 	local char = player.Character
 	local root = char and char:FindFirstChild("HumanoidRootPart")
 	if not root then
@@ -272,8 +328,20 @@ function DroppedItemService:HandlePickupRequest(player, data)
 		return
 	end
 
-	-- Use generous distance check (15 studs) since items use physics and may settle far from spawn
-	local dist = (item.position - root.Position).Magnitude
+	local posForCheck = item.position
+	local reportedPos = nil
+	if data.pos and type(data.pos) == "table" and #data.pos >= 3 then
+		reportedPos = Vector3.new(tonumber(data.pos[1]) or 0, tonumber(data.pos[2]) or 0, tonumber(data.pos[3]) or 0)
+		-- Basic sanity: only accept if within 100 studs of stored position to avoid teleports
+		if (reportedPos - item.position).Magnitude <= 100 then
+			posForCheck = reportedPos
+			-- Also update server's tracked position so merges use a fresher location
+			item.position = reportedPos
+		end
+	end
+
+	-- Generous radius since physics is client-simulated
+	local dist = (posForCheck - root.Position).Magnitude
 	if dist > 15 then
 		item.beingPickedUp = false -- Unlock if too far
 		return
@@ -316,20 +384,33 @@ function DroppedItemService:HandleDropRequest(player, data)
 	local head = char:FindFirstChild("Head")
 	if not head then return end
 
-	-- ANTI-DUPLICATION: Remove from inventory FIRST before spawning
 	local inv = self.Deps and self.Deps.PlayerInventoryService
 	if not inv then return end
 
-	-- Attempt to remove the items from inventory
-	local removed = inv:RemoveItem(player, data.itemId, data.count)
-	if not removed then
-		-- Failed to remove (player doesn't have enough), don't spawn anything
-		warn(string.format("Player %s tried to drop %d x itemId %d but doesn't have enough",
-			player.Name, data.count, data.itemId))
-		return
+	-- If dropping from cursor, items were already removed server-side when moved to cursor
+	-- In that case, skip inventory removal and just spawn the item
+	local fromCursor = data.fromCursor == true
+	if not fromCursor then
+		local removed = false
+
+		-- If dropping from a specific hotbar slot, remove from that slot
+		-- This ensures the correct slot is cleared visually on the client
+		if data.slotIndex and data.slotIndex >= 1 and data.slotIndex <= 9 then
+			removed = inv:RemoveItemFromHotbarSlot(player, data.slotIndex, data.count)
+		else
+			-- Otherwise, remove from any slot (for inventory drops)
+			removed = inv:RemoveItem(player, data.itemId, data.count)
+		end
+
+		if not removed then
+			-- Failed to remove (player doesn't have enough), don't spawn anything
+			warn(string.format("Player %s tried to drop %d x itemId %d but doesn't have enough",
+				player.Name, data.count, data.itemId))
+			return
+		end
 	end
 
-	-- Drop in front of player (only after successful inventory removal)
+	-- Drop in front of player
 	local dropPos = head.Position + head.CFrame.LookVector * 3
 	local dropVel = head.CFrame.LookVector * 8 + Vector3.new(0, 4, 0)
 

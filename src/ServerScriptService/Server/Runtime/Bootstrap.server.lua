@@ -6,6 +6,8 @@
 --]]
 
 local RunService = game:GetService("RunService")
+local PhysicsService = game:GetService("PhysicsService")
+local Players = game:GetService("Players")
 
 local Injector = require(script.Parent.Parent.Injector)
 local Logger = require(game.ReplicatedStorage.Shared.Logger)
@@ -42,6 +44,12 @@ Injector:Bind("PlayerInventoryService", script.Parent.Parent.Services.PlayerInve
 	mixins = {}
 })
 
+-- CraftingService - server-authoritative crafting system
+Injector:Bind("CraftingService", script.Parent.Parent.Services.CraftingService, {
+	dependencies = {"PlayerInventoryService"},
+	mixins = {}
+})
+
 -- PlayerService - core service for player management
 Injector:Bind("PlayerService", script.Parent.Parent.Services.PlayerService, {
 	dependencies = {"PlayerDataStoreService", "PlayerInventoryService"},
@@ -74,6 +82,12 @@ Injector:Bind("VoxelWorldService", script.Parent.Parent.Services.VoxelWorldServi
 	mixins = {}
 })
 
+-- Bind SaplingService (depends on voxel world to set/get blocks)
+Injector:Bind("SaplingService", script.Parent.Parent.Services.SaplingService, {
+	dependencies = {"VoxelWorldService", "WorldOwnershipService"},
+	mixins = {}
+})
+
 -- Bind ChestStorageService (manages chest inventories)
 Injector:Bind("ChestStorageService", script.Parent.Parent.Services.ChestStorageService, {
 	dependencies = {"VoxelWorldService", "PlayerInventoryService"},
@@ -97,7 +111,9 @@ local playerService = Injector:Resolve("PlayerService")
 local shopService = Injector:Resolve("ShopService")
 local questService = Injector:Resolve("QuestService")
 local playerInventoryService = Injector:Resolve("PlayerInventoryService")
+local craftingService = Injector:Resolve("CraftingService")
 local voxelWorldService = Injector:Resolve("VoxelWorldService")
+local saplingService = Injector:Resolve("SaplingService")
 local worldOwnershipService = Injector:Resolve("WorldOwnershipService")
 local chestStorageService = Injector:Resolve("ChestStorageService")
 local droppedItemService = Injector:Resolve("DroppedItemService")
@@ -108,6 +124,9 @@ voxelWorldService.Deps.ChestStorageService = chestStorageService
 -- Manually inject DroppedItemService into VoxelWorldService
 voxelWorldService.Deps.DroppedItemService = droppedItemService
 
+-- Manually inject SaplingService into VoxelWorldService for block-change notifications
+voxelWorldService.Deps.SaplingService = saplingService
+
 -- Create services table for EventManager
 local servicesTable = {
 	PlayerDataStoreService = playerDataStoreService,
@@ -115,6 +134,7 @@ local servicesTable = {
 	ShopService = shopService,
     QuestService = questService,
 	PlayerInventoryService = playerInventoryService,
+	CraftingService = craftingService,
 	VoxelWorldService = voxelWorldService,
 	WorldOwnershipService = worldOwnershipService,
 	ChestStorageService = chestStorageService,
@@ -259,6 +279,54 @@ local vwCoreConfig = require(game.ReplicatedStorage.Shared.VoxelWorld.Core.Confi
 local CHUNK_STREAM_INTERVAL = 1/math.max(1, (vwCoreConfig.NETWORK and vwCoreConfig.NETWORK.CHUNK_STREAM_RATE) or 12)
 local lastStreamTime = 0
 
+-- Collision groups setup (server-side; also configured on client)
+local function ensureGroup(name)
+	local groups = {}
+	pcall(function()
+		if PhysicsService.GetRegisteredCollisionGroups then
+			groups = PhysicsService:GetRegisteredCollisionGroups()
+		else
+			groups = PhysicsService:GetCollisionGroups()
+		end
+	end)
+	for _, g in ipairs(groups) do
+		if g.name == name then return end
+	end
+	pcall(function() PhysicsService:CreateCollisionGroup(name) end)
+end
+
+ensureGroup("DroppedItem")
+ensureGroup("Character")
+pcall(function()
+	PhysicsService:CollisionGroupSetCollidable("DroppedItem", "DroppedItem", false)
+	PhysicsService:CollisionGroupSetCollidable("DroppedItem", "Character", false)
+	PhysicsService:CollisionGroupSetCollidable("DroppedItem", "Default", true)
+end)
+
+-- Assign character parts to Character group
+local function setCharGroup(char)
+	if not char then return end
+	for _, d in ipairs(char:GetDescendants()) do
+		if d:IsA("BasePart") then
+			pcall(function() d.CollisionGroup = "Character" end)
+		end
+	end
+	char.DescendantAdded:Connect(function(desc)
+		if desc:IsA("BasePart") then
+			pcall(function() desc.CollisionGroup = "Character" end)
+		end
+	end)
+end
+
+for _, plr in ipairs(Players:GetPlayers()) do
+	setCharGroup(plr.Character)
+	plr.CharacterAdded:Connect(setCharGroup)
+end
+
+Players.PlayerAdded:Connect(function(plr)
+	plr.CharacterAdded:Connect(setCharGroup)
+end)
+
 RunService.Heartbeat:Connect(function()
 	local now = os.clock()
 	if now - lastStreamTime >= CHUNK_STREAM_INTERVAL then
@@ -293,8 +361,8 @@ Players.PlayerAdded:Connect(function(player)
 		local seed = worldOwnershipService:GetWorldSeed()
 		local worldData = worldOwnershipService:GetWorldData()
 
-		-- Initialize world ONCE with correct seed
-		voxelWorldService:InitializeWorld(seed, 4)
+		-- Initialize world ONCE with correct seed (smaller render distance for Skyblock/sparse worlds)
+		voxelWorldService:InitializeWorld(seed, 3)
 		logger.Info("🌍 World initialized with owner's seed:", seed)
 
 		-- Load owner's saved world data (chunks and chests) if they have any
@@ -377,6 +445,8 @@ Players.PlayerRemoving:Connect(function(player)
 	voxelWorldService:OnPlayerRemoved(player)
 	-- Clean up player inventory
 	playerInventoryService:OnPlayerRemoved(player)
+	-- Clean up crafting service
+	craftingService:OnPlayerRemoving(player)
 end)
 
 -- Initialize existing players (important for Studio testing when server reloads)
@@ -397,8 +467,8 @@ for i, player in ipairs(existingPlayers) do
 		local seed = worldOwnershipService:GetWorldSeed()
 		local worldData = worldOwnershipService:GetWorldData()
 
-		-- Initialize world ONCE with correct seed
-		voxelWorldService:InitializeWorld(seed, 4)
+		-- Initialize world ONCE with correct seed (smaller render distance for Skyblock/sparse worlds)
+		voxelWorldService:InitializeWorld(seed, 3)
 		logger.Info("🌍 World initialized with owner's seed:", seed)
 
 		-- Load owner's saved world data (chunks and chests) if they have any

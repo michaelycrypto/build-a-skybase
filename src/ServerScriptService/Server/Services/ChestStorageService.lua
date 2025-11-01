@@ -5,12 +5,33 @@
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Logger = require(ReplicatedStorage.Shared.Logger)
 local EventManager = require(ReplicatedStorage.Shared.EventManager)
 local InventoryValidator = require(ReplicatedStorage.Shared.VoxelWorld.Inventory.InventoryValidator)
 
 local ChestStorageService = {
 	Name = "ChestStorageService"
 }
+
+-- Standardize and gate module-local prints through Logger at DEBUG level
+local _logger = Logger:CreateContext("ChestStorageService")
+local function _toString(v)
+    return tostring(v)
+end
+local function _concatArgs(...)
+    local n = select("#", ...)
+    local parts = table.create(n)
+    for i = 1, n do
+        parts[i] = _toString(select(i, ...))
+    end
+    return table.concat(parts, " ")
+end
+local print = function(...)
+    _logger.Debug(_concatArgs(...))
+end
+local warn = function(...)
+    _logger.Warn(_concatArgs(...))
+end
 
 -- Chest data structure: { x, y, z -> { slots = {}, viewers = {} } }
 local CHEST_SLOTS = 27 -- Standard single chest size
@@ -96,30 +117,48 @@ function ChestStorageService:InitializeStarterChest(x, y, z)
 		return
 	end
 
-	-- Add stack of each block type (skip AIR = 0)
+	-- Starter chest items tuned for testing new wood families and recipes
+	-- Baseline essentials
 	local blockTypes = {
-		{id = Constants.BlockType.GRASS, count = 64},
-		{id = Constants.BlockType.DIRT, count = 64},
-		{id = Constants.BlockType.STONE, count = 64},
-		{id = Constants.BlockType.BEDROCK, count = 64},
-		{id = Constants.BlockType.WOOD, count = 64},
-		{id = Constants.BlockType.LEAVES, count = 64},
-		{id = Constants.BlockType.TALL_GRASS, count = 64},
-		{id = Constants.BlockType.FLOWER, count = 64},
-		{id = Constants.BlockType.CHEST, count = 64},
-		{id = Constants.BlockType.SAND, count = 64},
-		{id = Constants.BlockType.STONE_BRICKS, count = 64},
-		{id = Constants.BlockType.OAK_PLANKS, count = 64},
-		{id = Constants.BlockType.CRAFTING_TABLE, count = 64},
-		{id = Constants.BlockType.COBBLESTONE, count = 64},
-		{id = Constants.BlockType.BRICKS, count = 64},
-		{id = Constants.BlockType.OAK_SAPLING, count = 3},
-		{id = Constants.BlockType.COBBLESTONE_STAIRS, count = 32},
-		{id = Constants.BlockType.OAK_STAIRS, count = 32},
-		{id = Constants.BlockType.OAK_SLAB, count = 64},
-		{id = Constants.BlockType.STONE_SLAB, count = 64},
-		{id = Constants.BlockType.COBBLESTONE_SLAB, count = 64},
-		{id = Constants.BlockType.OAK_FENCE, count = 64},
+		{id = Constants.BlockType.GRASS, count = 64},           -- 1 stack grass blocks
+		{id = Constants.BlockType.OAK_SAPLING, count = 8},      -- Oak saplings
+		{id = Constants.BlockType.WOOD, count = 64},            -- Oak logs
+		{id = Constants.BlockType.OAK_PLANKS, count = 64},      -- Oak planks
+		{id = Constants.BlockType.STONE_BRICKS, count = 64},    -- Building block: Stone Bricks
+		{id = Constants.BlockType.COBBLESTONE, count = 64},     -- Building block: Cobblestone
+		{id = Constants.BlockType.BRICKS, count = 64},          -- Building block: Bricks
+
+		-- Spruce samples
+		{id = Constants.BlockType.SPRUCE_SAPLING, count = 8},
+		{id = Constants.BlockType.SPRUCE_LOG, count = 32},
+		{id = Constants.BlockType.SPRUCE_PLANKS, count = 32},
+
+		-- Jungle samples
+		{id = Constants.BlockType.JUNGLE_SAPLING, count = 8},
+		{id = Constants.BlockType.JUNGLE_LOG, count = 32},
+		{id = Constants.BlockType.JUNGLE_PLANKS, count = 32},
+
+		-- Dark Oak samples
+		{id = Constants.BlockType.DARK_OAK_SAPLING, count = 8},
+		{id = Constants.BlockType.DARK_OAK_LOG, count = 32},
+		{id = Constants.BlockType.DARK_OAK_PLANKS, count = 32},
+
+		-- Birch samples
+		{id = Constants.BlockType.BIRCH_SAPLING, count = 8},
+		{id = Constants.BlockType.BIRCH_LOG, count = 32},
+		{id = Constants.BlockType.BIRCH_PLANKS, count = 32},
+
+		-- Acacia samples
+		{id = Constants.BlockType.ACACIA_SAPLING, count = 8},
+		{id = Constants.BlockType.ACACIA_LOG, count = 32},
+		{id = Constants.BlockType.ACACIA_PLANKS, count = 32},
+
+		-- Pre-crafted stairs for quick placement tests (one per family)
+		{id = Constants.BlockType.SPRUCE_STAIRS, count = 16},
+		{id = Constants.BlockType.JUNGLE_STAIRS, count = 16},
+		{id = Constants.BlockType.DARK_OAK_STAIRS, count = 16},
+		{id = Constants.BlockType.BIRCH_STAIRS, count = 16},
+		{id = Constants.BlockType.ACACIA_STAIRS, count = 16},
 	}
 
 	-- Fill chest slots
@@ -359,39 +398,31 @@ function ChestStorageService:HandleChestSlotClick(player, data)
 	print(string.format("[ChestClick] New cursor: %s", newCursor:IsEmpty() and "empty" or
 		string.format("Item %d x%d", newCursor:GetItemId(), newCursor:GetCount())))
 
-	-- Send authoritative state back to player
-	-- IMPORTANT: Send ALL 27 slots (even empty) to keep array dense
-	-- This prevents Roblox from converting numeric keys to strings over network
-	local emptySlot = ItemStack.new(0, 0):Serialize()
+    -- Send authoritative state back to player (delta-based)
+    local emptySlot = ItemStack.new(0, 0):Serialize()
 
-	local chestContents = {}
-	for i = 1, 27 do
-		chestContents[i] = chest.slots[i] or emptySlot
-		if chest.slots[i] and i == data.slotIndex and data.isChestSlot then
-			print(string.format("[ChestClick] Chest slot %d now has: Item %d x%d",
-				i, chest.slots[i].itemId or 0, chest.slots[i].count or 0))
-		end
-	end
+    local chestDelta = {}
+    if data.isChestSlot then
+        local serialized = (chest.slots[data.slotIndex] or emptySlot)
+        chestDelta[data.slotIndex] = serialized
+        if serialized then
+            print(string.format("[ChestClick] Chest slot %d now has: Item %d x%d",
+                data.slotIndex, serialized.itemId or 0, serialized.count or 0))
+        end
+    end
 
-	print(string.format("[ChestClick] Sending result with %d chest items",
-		(function() local count = 0; for _, slot in ipairs(chestContents) do if slot.itemId and slot.itemId > 0 then count = count + 1 end end return count end)()))
+    local inventoryDelta = {}
+    if shouldUpdateInventory then
+        local stack = invData.inventory[data.slotIndex] or ItemStack.new(0, 0)
+        inventoryDelta[data.slotIndex] = stack:Serialize()
+    end
 
-	local playerInventory = {}
-	for i = 1, 27 do
-		local stack = invData.inventory[i]
-		if stack and stack:GetItemId() > 0 then
-			playerInventory[i] = stack:Serialize()
-		else
-			playerInventory[i] = emptySlot
-		end
-	end
-
-	EventManager:FireEvent("ChestActionResult", player, {
-		chestPosition = {x = x, y = y, z = z},
-		chestContents = chestContents,
-		playerInventory = playerInventory,
-		cursorItem = newCursor:IsEmpty() and nil or newCursor:Serialize()
-	})
+    EventManager:FireEvent("ChestActionResult", player, {
+        chestPosition = {x = x, y = y, z = z},
+        chestDelta = chestDelta,
+        inventoryDelta = inventoryDelta,
+        cursorItem = newCursor:IsEmpty() and nil or newCursor:Serialize()
+    })
 end
 
 -- Execute click logic (works for both chest and inventory slots)

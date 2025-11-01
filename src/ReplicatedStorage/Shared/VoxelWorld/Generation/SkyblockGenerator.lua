@@ -13,6 +13,7 @@
 ]]
 
 local Constants = require(script.Parent.Parent.Core.Constants)
+local Logger = require(game:GetService("ReplicatedStorage").Shared.Logger)
 
 local SkyblockGenerator = {}
 SkyblockGenerator.__index = SkyblockGenerator
@@ -33,7 +34,31 @@ function SkyblockGenerator.new(seed: number)
 		rng = Random.new(seed or 0)
 	}, SkyblockGenerator)
 
+	-- Logger context
+	self._logger = Logger:CreateContext("SkyblockGenerator")
+
 	return self
+end
+
+-- Determine quickly if a chunk at (chunkX, chunkZ) contains any non-air blocks
+function SkyblockGenerator:IsChunkEmpty(chunkX: number, chunkZ: number): boolean
+    local cs = Constants.CHUNK_SIZE_X -- 16
+    local centerX = SKYBLOCK_CONFIG.ISLAND_CENTER_X -- 7
+    local centerZ = SKYBLOCK_CONFIG.ISLAND_CENTER_Z -- 7
+    local minX = chunkX * cs
+    local maxX = minX + cs - 1
+    local minZ = chunkZ * cs
+    local maxZ = minZ + cs - 1
+
+    -- Distance from point to rectangle (axis-aligned)
+    local dx = 0
+    if centerX < minX then dx = minX - centerX elseif centerX > maxX then dx = centerX - maxX end
+    local dz = 0
+    if centerZ < minZ then dz = minZ - centerZ elseif centerZ > maxZ then dz = centerZ - maxZ end
+
+    -- Use the maximum horizontal radius of island footprint (slight cushion)
+    local r = 4 -- blocks
+    return (dx * dx + dz * dz) > (r * r)
 end
 
 -- Check if a world position is part of the island
@@ -142,23 +167,24 @@ function SkyblockGenerator:GenerateChunk(chunk)
 	if chestLocalX >= 0 and chestLocalX < Constants.CHUNK_SIZE_X and
 	   chestLocalZ >= 0 and chestLocalZ < Constants.CHUNK_SIZE_Z then
 		chunk:SetBlock(chestLocalX, SKYBLOCK_CONFIG.ISLAND_Y + 1, chestLocalZ, Constants.BlockType.CHEST)
-		print(string.format("Placed starter chest at world (%d, %d, %d)", chestWorldX, SKYBLOCK_CONFIG.ISLAND_Y + 1, chestWorldZ))
+		self._logger.Debug(string.format("Placed starter chest at world (%d, %d, %d)", chestWorldX, SKYBLOCK_CONFIG.ISLAND_Y + 1, chestWorldZ))
 	end
 
 	chunk.state = Constants.ChunkState.READY
 end
 
--- Place a Minecraft-style oak tree with 5x5 canopy
-function SkyblockGenerator:PlaceTree(chunk, lx: number, ly: number, lz: number)
+-- Place a Minecraft-style tree with 5x5 canopy; trunk block can be overridden
+function SkyblockGenerator:PlaceTree(chunk, lx: number, ly: number, lz: number, logBlockId: number?)
 	-- Validate position is within chunk bounds
 	if lx < 0 or lx >= Constants.CHUNK_SIZE_X or lz < 0 or lz >= Constants.CHUNK_SIZE_Z then
 		return
 	end
 
 	-- Tree trunk (5 blocks tall)
+	local trunkId = logBlockId or Constants.BlockType.WOOD
 	for y = 0, 4 do
 		if ly + y < Constants.WORLD_HEIGHT then
-			chunk:SetBlock(lx, ly + y, lz, Constants.BlockType.WOOD)
+			chunk:SetBlock(lx, ly + y, lz, trunkId)
 		end
 	end
 
@@ -171,7 +197,13 @@ function SkyblockGenerator:PlaceTree(chunk, lx: number, ly: number, lz: number)
 		if leafX >= 0 and leafX < Constants.CHUNK_SIZE_X and
 		   leafZ >= 0 and leafZ < Constants.CHUNK_SIZE_Z and
 		   leafY < Constants.WORLD_HEIGHT then
-			chunk:SetBlock(leafX, leafY, leafZ, Constants.BlockType.LEAVES)
+			local leafId = Constants.BlockType.OAK_LEAVES
+			if logBlockId == Constants.BlockType.SPRUCE_LOG then leafId = Constants.BlockType.SPRUCE_LEAVES end
+			if logBlockId == Constants.BlockType.JUNGLE_LOG then leafId = Constants.BlockType.JUNGLE_LEAVES end
+			if logBlockId == Constants.BlockType.DARK_OAK_LOG then leafId = Constants.BlockType.DARK_OAK_LEAVES end
+			if logBlockId == Constants.BlockType.BIRCH_LOG then leafId = Constants.BlockType.BIRCH_LEAVES end
+			if logBlockId == Constants.BlockType.ACACIA_LOG then leafId = Constants.BlockType.ACACIA_LEAVES end
+			chunk:SetBlock(leafX, leafY, leafZ, leafId)
 		end
 	end
 

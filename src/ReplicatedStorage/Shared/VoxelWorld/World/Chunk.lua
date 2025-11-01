@@ -162,6 +162,11 @@ function Chunk:SetMetadata(x: number, y: number, z: number, meta: number)
     self:setMetadata(x, y, z, meta)
 end
 
+-- Fast check for emptiness (no non-air blocks)
+function Chunk:IsEmpty(): boolean
+    return (self.numNonAirBlocks or 0) == 0
+end
+
 -- Set block at local coordinates
 function Chunk:setBlock(x: number, y: number, z: number, blockId: number)
     if x < 0 or x >= Constants.CHUNK_SIZE_X or y < 0 or y >= Constants.CHUNK_SIZE_Y or z < 0 or z >= Constants.CHUNK_SIZE_Z then
@@ -177,6 +182,13 @@ function Chunk:setBlock(x: number, y: number, z: number, blockId: number)
     local oldBlockId = self.blocks[x][y][z]
     self.blocks[x][y][z] = blockId
     self.isDirty = true
+
+    -- Maintain non-air count
+    if oldBlockId == Constants.BlockType.AIR and blockId ~= Constants.BlockType.AIR then
+        self.numNonAirBlocks = (self.numNonAirBlocks or 0) + 1
+    elseif oldBlockId ~= Constants.BlockType.AIR and blockId == Constants.BlockType.AIR then
+        self.numNonAirBlocks = math.max(0, (self.numNonAirBlocks or 0) - 1)
+    end
 
     -- Maintain heightMap (highest non-air y for column)
     local idx = x + z * Constants.CHUNK_SIZE_X
@@ -259,7 +271,8 @@ function Chunk:deserialize(data)
 	self.state = data.state
 	self.isDirty = true
 
-    -- Rebuild heightMap for convenience
+    -- Rebuild heightMap and non-air count
+    local count = 0
     for lx = 0, Constants.CHUNK_SIZE_X - 1 do
         for lz = 0, Constants.CHUNK_SIZE_Z - 1 do
             local highest = 0
@@ -270,9 +283,17 @@ function Chunk:deserialize(data)
                     break
                 end
             end
+            -- Count full column non-air by scanning upward (cheap, small columns)
+            for ly2 = 0, highest do
+                local b = (self.blocks[lx] and self.blocks[lx][ly2] and self.blocks[lx][ly2][lz]) or Constants.BlockType.AIR
+                if b ~= Constants.BlockType.AIR then
+                    count += 1
+                end
+            end
             self.heightMap[lx + lz * Constants.CHUNK_SIZE_X] = highest
         end
     end
+    self.numNonAirBlocks = count
 end
 
 -- Deserialize from flat array (1-based) created by serializeLinear
@@ -297,6 +318,7 @@ function Chunk:deserializeLinear(data)
     local flat = data.flat or {}
     local flatMeta = data.flatMeta or {}  -- NEW: Deserialize metadata
     local i = 1
+    local count = 0
     for y = 0, sy - 1 do
         for z = 0, sz - 1 do
             for x = 0, sx - 1 do
@@ -304,6 +326,9 @@ function Chunk:deserializeLinear(data)
                 local meta = flatMeta[i] or 0
                 self.blocks[x][y][z] = bid
                 self.metadata[x][y][z] = meta
+                if bid ~= Constants.BlockType.AIR then
+                    count += 1
+                end
                 i += 1
             end
         end
@@ -326,6 +351,7 @@ function Chunk:deserializeLinear(data)
             self.heightMap[lx + lz * sx] = highest
         end
     end
+    self.numNonAirBlocks = count
 end
 
 -- PascalCase aliases
@@ -358,6 +384,7 @@ function Chunk:clear()
 		end
 	end
 	self.isDirty = true
+	self.numNonAirBlocks = 0
 end
 
 return Chunk

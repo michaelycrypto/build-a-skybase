@@ -59,8 +59,9 @@ end
 function Logger:Initialize(config, network)
 	config = config or {}
 
-	-- Set log level from config
-	if config.LEVEL then
+	-- Set log level from config (accepts LEVEL, level, logLevel; case-insensitive)
+	local configuredLevel = config.LEVEL or config.level or config.logLevel or config.Level
+	if configuredLevel ~= nil then
 		local levelMap = {
 			DEBUG = LogLevel.DEBUG,
 			INFO = LogLevel.INFO,
@@ -68,7 +69,15 @@ function Logger:Initialize(config, network)
 			ERROR = LogLevel.ERROR,
 			FATAL = LogLevel.FATAL
 		}
-		self._logLevel = levelMap[config.LEVEL] or LogLevel.INFO
+		if type(configuredLevel) == "string" then
+			local upper = string.upper(configuredLevel)
+			self._logLevel = levelMap[upper] or self._logLevel
+		elseif type(configuredLevel) == "number" then
+			-- Clamp to valid range if numeric level provided
+			if configuredLevel >= LogLevel.DEBUG and configuredLevel <= LogLevel.FATAL then
+				self._logLevel = configuredLevel
+			end
+		end
 	end
 
 	-- Set remote logger

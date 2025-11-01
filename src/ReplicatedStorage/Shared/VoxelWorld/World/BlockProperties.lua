@@ -1,7 +1,8 @@
 --[[
 	BlockProperties.lua
-	Defines properties for each block type (hardness, tools, break times)
-	Minecraft-accurate block breaking mechanics
+	Defines Minecraft-style block hardness and tool behavior.
+	Hardness values match Minecraft's hardness parameter (NOT seconds).
+	Break time is computed from hardness and tool speed using the Minecraft formula.
 ]]
 
 local Constants = require(script.Parent.Parent.Core.Constants)
@@ -29,9 +30,9 @@ BlockProperties.ToolType = {
 
 -- Block property definitions
 -- Format: {
---   hardness: Base time in seconds to break by hand (Minecraft ticks * 0.05)
---   toolType: Required tool type (nil = any tool works)
---   minToolTier: Minimum tool tier needed (nil = hand works)
+--   hardness: Minecraft hardness value (e.g., stone = 1.5, dirt = 0.5)
+--   toolType: Tool TYPE that mines it fastest (recommended tool). Only REQUIRED when minToolTier is set
+--   minToolTier: Minimum tool tier REQUIRED to harvest (nil = no requirement for drops)
 --   resistance: Explosion resistance (for future use)
 -- }
 BlockProperties.Properties = {
@@ -41,39 +42,75 @@ BlockProperties.Properties = {
 		minToolTier = nil,
 		resistance = 0
 	},
-	[Constants.BlockType.GRASS] = {
-		hardness = 0.6,  -- Minecraft: 0.6 seconds
-		toolType = BlockProperties.ToolType.SHOVEL,
-		minToolTier = nil,  -- Any tool works, shovel is faster
-		resistance = 0.6
-	},
-	[Constants.BlockType.DIRT] = {
-		hardness = 0.5,  -- Minecraft: 0.5 seconds
-		toolType = BlockProperties.ToolType.SHOVEL,
-		minToolTier = nil,
-		resistance = 0.5
-	},
-	[Constants.BlockType.STONE] = {
-		hardness = 1.5,  -- Minecraft: 1.5 seconds
-		toolType = BlockProperties.ToolType.PICKAXE,
-		minToolTier = BlockProperties.ToolTier.WOOD,  -- Requires at least wood pickaxe
-		resistance = 6.0
-	},
+    [Constants.BlockType.GRASS] = {
+        hardness = 0.6,  -- Minecraft hardness
+        toolType = BlockProperties.ToolType.SHOVEL, -- Recommended tool, not required
+        minToolTier = nil,
+        resistance = 0.6
+    },
+    [Constants.BlockType.DIRT] = {
+        hardness = 0.5,  -- Minecraft hardness
+        toolType = BlockProperties.ToolType.SHOVEL, -- Recommended tool, not required
+        minToolTier = nil,
+        resistance = 0.5
+    },
+    [Constants.BlockType.STONE] = {
+        hardness = 1.5,  -- Minecraft hardness
+        toolType = BlockProperties.ToolType.PICKAXE,
+        minToolTier = BlockProperties.ToolTier.WOOD,  -- Requires at least wooden pickaxe to harvest
+        resistance = 6.0
+    },
 	[Constants.BlockType.BEDROCK] = {
 		hardness = -1,  -- Unbreakable
 		toolType = nil,
 		minToolTier = nil,
 		resistance = 3600000
 	},
-	[Constants.BlockType.WOOD] = {
-		hardness = 2.0,  -- Minecraft: 2.0 seconds
-		toolType = BlockProperties.ToolType.AXE,
+    [Constants.BlockType.WOOD] = {
+        hardness = 2.0,  -- Minecraft hardness (logs)
+        toolType = BlockProperties.ToolType.AXE, -- Recommended
+        minToolTier = nil, -- Harvestable by hand
+        resistance = 2.0
+    },
+    [Constants.BlockType.LEAVES] = {
+        hardness = 0.2,  -- Minecraft hardness
+        toolType = nil,  -- Any tool or hand (shears not modeled here)
+        minToolTier = nil,
+        resistance = 0.2
+    },
+	[Constants.BlockType.OAK_LEAVES] = {
+		hardness = 0.2,
+		toolType = nil,
 		minToolTier = nil,
-		resistance = 2.0
+		resistance = 0.2
 	},
-	[Constants.BlockType.LEAVES] = {
-		hardness = 0.2,  -- Minecraft: 0.2 seconds
-		toolType = nil,  -- Any tool or hand
+	[Constants.BlockType.SPRUCE_LEAVES] = {
+		hardness = 0.2,
+		toolType = nil,
+		minToolTier = nil,
+		resistance = 0.2
+	},
+	[Constants.BlockType.JUNGLE_LEAVES] = {
+		hardness = 0.2,
+		toolType = nil,
+		minToolTier = nil,
+		resistance = 0.2
+	},
+	[Constants.BlockType.DARK_OAK_LEAVES] = {
+		hardness = 0.2,
+		toolType = nil,
+		minToolTier = nil,
+		resistance = 0.2
+	},
+	[Constants.BlockType.BIRCH_LEAVES] = {
+		hardness = 0.2,
+		toolType = nil,
+		minToolTier = nil,
+		resistance = 0.2
+	},
+	[Constants.BlockType.ACACIA_LEAVES] = {
+		hardness = 0.2,
+		toolType = nil,
 		minToolTier = nil,
 		resistance = 0.2
 	},
@@ -95,17 +132,23 @@ BlockProperties.Properties = {
 		minToolTier = nil,
 		resistance = 0
 	},
-	[Constants.BlockType.SAND] = {
-		hardness = 0.5,  -- Minecraft: 0.5 seconds
-		toolType = BlockProperties.ToolType.SHOVEL,
-		minToolTier = nil,
-		resistance = 0.5
+	[Constants.BlockType.CHEST] = {
+		hardness = 2.5,  -- Minecraft hardness (same as crafting table)
+		toolType = BlockProperties.ToolType.AXE,
+		minToolTier = nil,  -- Harvestable by hand
+		resistance = 2.5
 	},
+    [Constants.BlockType.SAND] = {
+        hardness = 0.5,  -- Minecraft hardness
+        toolType = BlockProperties.ToolType.SHOVEL,
+        minToolTier = nil,
+        resistance = 0.5
+    },
 	-- Staircase blocks
 	[Constants.BlockType.OAK_STAIRS] = {
 		hardness = 2.0,
 		toolType = BlockProperties.ToolType.AXE,
-		minToolTier = 1,
+		minToolTier = nil,
 		resistance = 3.0
 	},
 	[Constants.BlockType.STONE_STAIRS] = {
@@ -136,7 +179,7 @@ BlockProperties.Properties = {
 	[Constants.BlockType.OAK_SLAB] = {
 		hardness = 2.0,
 		toolType = BlockProperties.ToolType.AXE,
-		minToolTier = 1,
+		minToolTier = nil,
 		resistance = 3.0
 	},
 	[Constants.BlockType.STONE_SLAB] = {
@@ -170,35 +213,225 @@ BlockProperties.Properties = {
 		minToolTier = nil,
 		resistance = 2.0
 	},
-	[Constants.BlockType.STONE_BRICKS] = {
-		hardness = 1.5,  -- Minecraft: 1.5 seconds
+    [Constants.BlockType.STONE_BRICKS] = {
+        hardness = 1.5,  -- Minecraft hardness
+        toolType = BlockProperties.ToolType.PICKAXE,
+        minToolTier = BlockProperties.ToolTier.WOOD,
+        resistance = 6.0
+    },
+    [Constants.BlockType.OAK_PLANKS] = {
+        hardness = 2.0,  -- Minecraft hardness
+        toolType = BlockProperties.ToolType.AXE, -- Recommended
+        minToolTier = nil, -- Harvestable by hand
+        resistance = 3.0
+    },
+    -- Additional wood families
+    [Constants.BlockType.SPRUCE_LOG] = {
+        hardness = 2.0,
+        toolType = BlockProperties.ToolType.AXE,
+        minToolTier = nil,
+        resistance = 2.0
+    },
+    [Constants.BlockType.JUNGLE_LOG] = {
+        hardness = 2.0,
+        toolType = BlockProperties.ToolType.AXE,
+        minToolTier = nil,
+        resistance = 2.0
+    },
+    [Constants.BlockType.DARK_OAK_LOG] = {
+        hardness = 2.0,
+        toolType = BlockProperties.ToolType.AXE,
+        minToolTier = nil,
+        resistance = 2.0
+    },
+    [Constants.BlockType.BIRCH_LOG] = {
+        hardness = 2.0,
+        toolType = BlockProperties.ToolType.AXE,
+        minToolTier = nil,
+        resistance = 2.0
+    },
+    [Constants.BlockType.ACACIA_LOG] = {
+        hardness = 2.0,
+        toolType = BlockProperties.ToolType.AXE,
+        minToolTier = nil,
+        resistance = 2.0
+    },
+
+    [Constants.BlockType.SPRUCE_PLANKS] = {
+        hardness = 2.0,
+        toolType = BlockProperties.ToolType.AXE,
+        minToolTier = nil,
+        resistance = 3.0
+    },
+    [Constants.BlockType.JUNGLE_PLANKS] = {
+        hardness = 2.0,
+        toolType = BlockProperties.ToolType.AXE,
+        minToolTier = nil,
+        resistance = 3.0
+    },
+    [Constants.BlockType.DARK_OAK_PLANKS] = {
+        hardness = 2.0,
+        toolType = BlockProperties.ToolType.AXE,
+        minToolTier = nil,
+        resistance = 3.0
+    },
+    [Constants.BlockType.BIRCH_PLANKS] = {
+        hardness = 2.0,
+        toolType = BlockProperties.ToolType.AXE,
+        minToolTier = nil,
+        resistance = 3.0
+    },
+    [Constants.BlockType.ACACIA_PLANKS] = {
+        hardness = 2.0,
+        toolType = BlockProperties.ToolType.AXE,
+        minToolTier = nil,
+        resistance = 3.0
+    },
+
+    -- Stairs (wood families)
+    [Constants.BlockType.SPRUCE_STAIRS] = {
+        hardness = 2.0,
+        toolType = BlockProperties.ToolType.AXE,
+        minToolTier = nil,
+        resistance = 3.0
+    },
+    [Constants.BlockType.JUNGLE_STAIRS] = {
+        hardness = 2.0,
+        toolType = BlockProperties.ToolType.AXE,
+        minToolTier = nil,
+        resistance = 3.0
+    },
+    [Constants.BlockType.DARK_OAK_STAIRS] = {
+        hardness = 2.0,
+        toolType = BlockProperties.ToolType.AXE,
+        minToolTier = nil,
+        resistance = 3.0
+    },
+    [Constants.BlockType.BIRCH_STAIRS] = {
+        hardness = 2.0,
+        toolType = BlockProperties.ToolType.AXE,
+        minToolTier = nil,
+        resistance = 3.0
+    },
+    [Constants.BlockType.ACACIA_STAIRS] = {
+        hardness = 2.0,
+        toolType = BlockProperties.ToolType.AXE,
+        minToolTier = nil,
+        resistance = 3.0
+    },
+
+    -- Slabs (wood families)
+    [Constants.BlockType.SPRUCE_SLAB] = {
+        hardness = 2.0,
+        toolType = BlockProperties.ToolType.AXE,
+        minToolTier = nil,
+        resistance = 3.0
+    },
+    [Constants.BlockType.JUNGLE_SLAB] = {
+        hardness = 2.0,
+        toolType = BlockProperties.ToolType.AXE,
+        minToolTier = nil,
+        resistance = 3.0
+    },
+    [Constants.BlockType.DARK_OAK_SLAB] = {
+        hardness = 2.0,
+        toolType = BlockProperties.ToolType.AXE,
+        minToolTier = nil,
+        resistance = 3.0
+    },
+    [Constants.BlockType.BIRCH_SLAB] = {
+        hardness = 2.0,
+        toolType = BlockProperties.ToolType.AXE,
+        minToolTier = nil,
+        resistance = 3.0
+    },
+    [Constants.BlockType.ACACIA_SLAB] = {
+        hardness = 2.0,
+        toolType = BlockProperties.ToolType.AXE,
+        minToolTier = nil,
+        resistance = 3.0
+    },
+
+    -- Saplings (instant break)
+    [Constants.BlockType.SPRUCE_SAPLING] = {
+        hardness = 0,
+        toolType = nil,
+        minToolTier = nil,
+        resistance = 0
+    },
+    [Constants.BlockType.JUNGLE_SAPLING] = {
+        hardness = 0,
+        toolType = nil,
+        minToolTier = nil,
+        resistance = 0
+    },
+    [Constants.BlockType.DARK_OAK_SAPLING] = {
+        hardness = 0,
+        toolType = nil,
+        minToolTier = nil,
+        resistance = 0
+    },
+    [Constants.BlockType.BIRCH_SAPLING] = {
+        hardness = 0,
+        toolType = nil,
+        minToolTier = nil,
+        resistance = 0
+    },
+    [Constants.BlockType.ACACIA_SAPLING] = {
+        hardness = 0,
+        toolType = nil,
+        minToolTier = nil,
+        resistance = 0
+    },
+    [Constants.BlockType.CRAFTING_TABLE] = {
+        hardness = 2.5,  -- Minecraft hardness
+        toolType = BlockProperties.ToolType.AXE,
+        minToolTier = nil, -- Harvestable by hand
+        resistance = 2.5
+    },
+    [Constants.BlockType.COBBLESTONE] = {
+        hardness = 2.0,  -- Minecraft hardness
+        toolType = BlockProperties.ToolType.PICKAXE,
+        minToolTier = BlockProperties.ToolTier.WOOD,
+        resistance = 6.0
+    },
+    [Constants.BlockType.BRICKS] = {
+        hardness = 2.0,  -- Minecraft hardness
+        toolType = BlockProperties.ToolType.PICKAXE,
+        minToolTier = BlockProperties.ToolTier.WOOD,
+        resistance = 6.0
+    },
+	-- Ores
+	[Constants.BlockType.COAL_ORE] = {
+		hardness = 3.0,  -- Minecraft hardness
 		toolType = BlockProperties.ToolType.PICKAXE,
-		minToolTier = BlockProperties.ToolTier.WOOD,
-		resistance = 6.0
-	},
-	[Constants.BlockType.OAK_PLANKS] = {
-		hardness = 2.0,  -- Minecraft: 2.0 seconds
-		toolType = BlockProperties.ToolType.AXE,
-		minToolTier = nil,
+		minToolTier = BlockProperties.ToolTier.WOOD,  -- Requires wooden pickaxe
 		resistance = 3.0
 	},
-	[Constants.BlockType.CRAFTING_TABLE] = {
-		hardness = 2.5,  -- Minecraft: 2.5 seconds
-		toolType = BlockProperties.ToolType.AXE,
-		minToolTier = nil,
-		resistance = 2.5
-	},
-	[Constants.BlockType.COBBLESTONE] = {
-		hardness = 2.0,  -- Minecraft: 2.0 seconds
+	[Constants.BlockType.IRON_ORE] = {
+		hardness = 3.0,  -- Minecraft hardness
 		toolType = BlockProperties.ToolType.PICKAXE,
-		minToolTier = BlockProperties.ToolTier.WOOD,
-		resistance = 6.0
+		minToolTier = BlockProperties.ToolTier.STONE,  -- Requires stone pickaxe
+		resistance = 3.0
 	},
-	[Constants.BlockType.BRICKS] = {
-		hardness = 2.0,  -- Minecraft: 2.0 seconds
+	[Constants.BlockType.DIAMOND_ORE] = {
+		hardness = 3.0,  -- Minecraft hardness
 		toolType = BlockProperties.ToolType.PICKAXE,
-		minToolTier = BlockProperties.ToolTier.WOOD,
-		resistance = 6.0
+		minToolTier = BlockProperties.ToolTier.IRON,  -- Requires iron pickaxe
+		resistance = 3.0
+	},
+	-- Utility blocks
+	[Constants.BlockType.FURNACE] = {
+		hardness = 3.5,  -- Minecraft hardness
+		toolType = BlockProperties.ToolType.PICKAXE,
+		minToolTier = BlockProperties.ToolTier.WOOD,  -- Requires wooden pickaxe
+		resistance = 3.5
+	},
+	[Constants.BlockType.GLASS] = {
+		hardness = 0.3,  -- Minecraft hardness - breaks quickly
+		toolType = nil,  -- No specific tool required
+		minToolTier = nil,  -- Harvestable by hand
+		resistance = 0.3
 	}
 }
 
@@ -211,14 +444,51 @@ BlockProperties.ToolEffectiveness = {
 		[Constants.BlockType.STONE_BRICKS] = 1.5,
 		[Constants.BlockType.COBBLESTONE] = 1.5,
 		[Constants.BlockType.BRICKS] = 1.5,
-		-- Add ores here when implemented
+		[Constants.BlockType.COAL_ORE] = 1.5,
+		[Constants.BlockType.IRON_ORE] = 1.5,
+		[Constants.BlockType.DIAMOND_ORE] = 1.5,
+		[Constants.BlockType.FURNACE] = 1.5,
 	},
 	-- Axe effectiveness
 	axe = {
 		[Constants.BlockType.WOOD] = 1.5,
+		[Constants.BlockType.SPRUCE_LOG] = 1.5,
+		[Constants.BlockType.JUNGLE_LOG] = 1.5,
+		[Constants.BlockType.DARK_OAK_LOG] = 1.5,
+		[Constants.BlockType.BIRCH_LOG] = 1.5,
+		[Constants.BlockType.ACACIA_LOG] = 1.5,
+
 		[Constants.BlockType.LEAVES] = 1.5,
+		[Constants.BlockType.OAK_LEAVES] = 1.5,
+		[Constants.BlockType.SPRUCE_LEAVES] = 1.5,
+		[Constants.BlockType.JUNGLE_LEAVES] = 1.5,
+		[Constants.BlockType.DARK_OAK_LEAVES] = 1.5,
+		[Constants.BlockType.BIRCH_LEAVES] = 1.5,
+		[Constants.BlockType.ACACIA_LEAVES] = 1.5,
+
 		[Constants.BlockType.OAK_PLANKS] = 1.5,
+		[Constants.BlockType.SPRUCE_PLANKS] = 1.5,
+		[Constants.BlockType.JUNGLE_PLANKS] = 1.5,
+		[Constants.BlockType.DARK_OAK_PLANKS] = 1.5,
+		[Constants.BlockType.BIRCH_PLANKS] = 1.5,
+		[Constants.BlockType.ACACIA_PLANKS] = 1.5,
+
+		[Constants.BlockType.OAK_STAIRS] = 1.5,
+		[Constants.BlockType.SPRUCE_STAIRS] = 1.5,
+		[Constants.BlockType.JUNGLE_STAIRS] = 1.5,
+		[Constants.BlockType.DARK_OAK_STAIRS] = 1.5,
+		[Constants.BlockType.BIRCH_STAIRS] = 1.5,
+		[Constants.BlockType.ACACIA_STAIRS] = 1.5,
+
+		[Constants.BlockType.OAK_SLAB] = 1.5,
+		[Constants.BlockType.SPRUCE_SLAB] = 1.5,
+		[Constants.BlockType.JUNGLE_SLAB] = 1.5,
+		[Constants.BlockType.DARK_OAK_SLAB] = 1.5,
+		[Constants.BlockType.BIRCH_SLAB] = 1.5,
+		[Constants.BlockType.ACACIA_SLAB] = 1.5,
+
 		[Constants.BlockType.CRAFTING_TABLE] = 1.5,
+		[Constants.BlockType.OAK_FENCE] = 1.5,
 	},
 	-- Shovel effectiveness
 	shovel = {
@@ -230,10 +500,10 @@ BlockProperties.ToolEffectiveness = {
 
 -- Tool speed multipliers by tier (Minecraft values)
 BlockProperties.ToolSpeedMultipliers = {
-	[BlockProperties.ToolTier.WOOD] = 2.0,
-	[BlockProperties.ToolTier.STONE] = 4.0,
-	[BlockProperties.ToolTier.IRON] = 6.0,
-	[BlockProperties.ToolTier.DIAMOND] = 8.0
+    [BlockProperties.ToolTier.WOOD] = 2.0,   -- Wooden
+    [BlockProperties.ToolTier.STONE] = 4.0,  -- Stone
+    [BlockProperties.ToolTier.IRON] = 6.0,   -- Iron
+    [BlockProperties.ToolTier.DIAMOND] = 7.0 -- Diamond slightly reduced to avoid "instant" feel
 }
 
 --[[
@@ -268,49 +538,62 @@ end
 	@return: Break time in seconds, canBreak (boolean)
 ]]
 function BlockProperties:GetBreakTime(blockId: number, toolType: string?, toolTier: number?): (number, boolean)
-	local props = self:GetProperties(blockId)
+    local props = self:GetProperties(blockId)
 
-	-- Unbreakable blocks
-	if props.hardness < 0 then
-		return math.huge, false
-	end
+    -- Unbreakable blocks
+    if props.hardness < 0 then
+        return math.huge, false
+    end
 
-	-- Instant break
-	if props.hardness == 0 then
-		return 0, true
-	end
+    -- Instant break blocks
+    if props.hardness == 0 then
+        return 0, true
+    end
 
-	-- Check if tool meets minimum requirement
-	local currentTier = toolTier or BlockProperties.ToolTier.NONE
-	local requiredTier = props.minToolTier or BlockProperties.ToolTier.NONE
+    -- Determine if correct tool type is used for this block and tier meets requirement
+    local currentTier = toolTier or BlockProperties.ToolTier.NONE
+    local requiredTier = props.minToolTier or BlockProperties.ToolTier.NONE
+    local requiredType = props.toolType
 
-	-- Wrong tool type or insufficient tier
-	if props.minToolTier and currentTier < requiredTier then
-		-- Can't break this block (or takes extremely long)
-		return math.huge, false
-	end
+    local usingCorrectTool = false
+    if requiredType and requiredType ~= BlockProperties.ToolType.NONE then
+        if toolType == requiredType then
+            usingCorrectTool = true
+        end
+    else
+        -- No strict requiredType: treat matching effectiveness map as "correct tool"
+        if toolType and toolType ~= BlockProperties.ToolType.NONE then
+            local effMap = self.ToolEffectiveness[toolType]
+            if effMap and effMap[blockId] and effMap[blockId] > 1.0 then
+                usingCorrectTool = true
+            end
+        end
+    end
 
-	-- Base break time
-	local breakTime = props.hardness
+    -- Compute tool speed per Minecraft tier multipliers
+    local speedMultiplier = 1.0
+    if usingCorrectTool and toolTier and toolTier ~= BlockProperties.ToolTier.NONE then
+        speedMultiplier = self.ToolSpeedMultipliers[toolTier] or 1.0
+    end
 
-	-- Apply tool speed multiplier
-	if toolType and toolTier then
-		local speedMultiplier = self.ToolSpeedMultipliers[toolTier] or 1.0
+    -- Additional effectiveness vs specific blocks (axes vs wood, shovels vs dirt)
+    local effectiveness = 1.0
 
-		-- Check if tool is effective for this block
-		local effectiveness = 1.0
-		if self.ToolEffectiveness[toolType] then
-			effectiveness = self.ToolEffectiveness[toolType][blockId] or 1.0
-		end
+    -- Minecraft breaking formula approximation in seconds:
+    -- base time by hand ~ 1.5 * hardness; correct tool speeds up proportionally by (speedMultiplier * effectiveness).
+    -- Wrong tool is much slower; approximate as 5 * hardness by hand.
+    local baseByHand = 1.5 * props.hardness
+    local time
+    if usingCorrectTool then
+        time = baseByHand / math.max(1.0, (speedMultiplier * effectiveness))
+    else
+        time = 5.0 * props.hardness -- wrong tool baseline
+    end
 
-		-- Apply both multipliers
-		breakTime = breakTime / (speedMultiplier * effectiveness)
-	end
+    -- Enchantments/effects could modify here later
 
-	-- Minecraft applies efficiency enchantment here (for future)
-	-- breakTime = breakTime / (1 + efficiencyLevel)
-
-	return breakTime, true
+    -- Harvest gating: time is still finite; drops handled by CanHarvest
+    return time, true
 end
 
 --[[
@@ -341,13 +624,23 @@ function BlockProperties:CanHarvest(blockId: number, toolType: string?, toolTier
 	local props = self:GetProperties(blockId)
 
 	-- No tool requirement = always harvestable
+	-- toolType without minToolTier = recommended tool for speed, not required for drops
 	if not props.minToolTier then
 		return true
 	end
 
+	-- If minToolTier is set, we need to check tool requirements
+	-- Require correct tool type if specified
+	if props.toolType and props.toolType ~= BlockProperties.ToolType.NONE then
+		if toolType ~= props.toolType then
+			return false
+		end
+	end
+
 	-- Check tool tier meets requirement
 	local currentTier = toolTier or BlockProperties.ToolTier.NONE
-	return currentTier >= props.minToolTier
+	local requiredTier = props.minToolTier or BlockProperties.ToolTier.NONE
+	return currentTier >= requiredTier
 end
 
 return BlockProperties

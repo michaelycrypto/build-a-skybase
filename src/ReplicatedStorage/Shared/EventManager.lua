@@ -6,6 +6,7 @@
 --]]
 
 local RunService = game:GetService("RunService")
+local Logger = require(game:GetService("ReplicatedStorage").Shared.Logger)
 
 local EventManager = {}
 EventManager.__index = EventManager
@@ -20,6 +21,9 @@ function EventManager.new()
 	self._events = {}
 	self._handlers = {}
 	self._isInitialized = false
+
+	-- Logging
+	self._logger = Logger:CreateContext("EventManager")
 
 	return self
 end
@@ -250,6 +254,17 @@ function EventManager:CreateClientEventConfig(managers)
 					)
 				end
 			end
+		},
+
+		-- Combat/Animation events
+		{
+			name = "PlayerPunched",
+			handler = function(data)
+				-- Trigger punch animation on client
+				if managers.ToolAnimationController and managers.ToolAnimationController.PlaySwing then
+					managers.ToolAnimationController:PlaySwing()
+				end
+			end
 		}
 	}
 
@@ -280,6 +295,8 @@ local EVENT_DEFINITIONS = {
 	UpdateSettings = {"any"}, -- settings
     -- Dungeon request removed
 	PlayEmote = {"any"}, -- emoteName
+	-- Crafting events
+	CraftRecipe = {"any"}, -- {recipeId:string, toCursor:boolean}
     -- Spawner/mob/tooling events removed
 
 	-- Server-to-client events (with parameters)
@@ -481,7 +498,7 @@ function EventManager:CreateServerEventConfig(services)
 		{
 			name = "ClientReady",
 			handler = function(player)
-				print("EventManager: Client ready for player", player.Name)
+				self._logger.Debug("Client ready for player", player.Name)
 				if services.PlayerService and services.PlayerService.OnClientReady then
 					services.PlayerService:OnClientReady(player)
 				end
@@ -723,6 +740,23 @@ function EventManager:CreateServerEventConfig(services)
 				end
 			end
 		},
+		-- Voxel tool equip/unequip
+		{
+			name = "EquipTool",
+			handler = function(player, data)
+				if services.VoxelWorldService and services.VoxelWorldService.OnEquipTool then
+					services.VoxelWorldService:OnEquipTool(player, data)
+				end
+			end
+		},
+		{
+			name = "UnequipTool",
+			handler = function(player)
+				if services.VoxelWorldService and services.VoxelWorldService.OnUnequipTool then
+					services.VoxelWorldService:OnUnequipTool(player)
+				end
+			end
+		},
         -- Deprecated height/path handlers removed
 		-- Deploy/Remove tower handlers removed with world system
 
@@ -752,6 +786,23 @@ function EventManager:CreateServerEventConfig(services)
 				end
 			end
 		},
+		{
+			name = "CancelBlockBreak",
+			handler = function(player, data)
+				if services.VoxelWorldService and services.VoxelWorldService.CancelBlockBreak then
+					services.VoxelWorldService:CancelBlockBreak(player, data)
+				end
+			end
+		},
+		-- PvP melee
+		{
+			name = "PlayerMeleeHit",
+			handler = function(player, data)
+				if services.VoxelWorldService and services.VoxelWorldService.HandlePlayerMeleeHit then
+					services.VoxelWorldService:HandlePlayerMeleeHit(player, data)
+				end
+			end
+		},
 		-- PlayerSneak (REMOVED - using Roblox native movement)
 		{
 			name = "VoxelRequestRenderDistance",
@@ -765,9 +816,10 @@ function EventManager:CreateServerEventConfig(services)
 			name = "VoxelRequestInitialChunks",
 			handler = function(player)
 				-- Mark as ready and immediately stream an initial batch
-				if services.VoxelWorldService and services.VoxelWorldService.playerData and services.VoxelWorldService.playerData[player] then
-					services.VoxelWorldService.playerData[player].isReady = true
-					services.VoxelWorldService:StreamChunksToPlayer(player, services.VoxelWorldService.playerData[player])
+				local vws = services.VoxelWorldService
+				if vws and vws.players and vws.players[player] then
+					vws.players[player].isReady = true
+					vws:StreamChunksToPlayer(player, vws.players[player])
 				end
 			end
 		},
@@ -842,6 +894,14 @@ function EventManager:CreateServerEventConfig(services)
 			handler = function(player, data)
 				if services.DroppedItemService and services.DroppedItemService.HandleDropRequest then
 					services.DroppedItemService:HandleDropRequest(player, data)
+				end
+			end
+		},
+		{
+			name = "CraftRecipe",
+			handler = function(player, data)
+				if services.CraftingService and services.CraftingService.HandleCraftRequest then
+					services.CraftingService:HandleCraftRequest(player, data)
 				end
 			end
 		},

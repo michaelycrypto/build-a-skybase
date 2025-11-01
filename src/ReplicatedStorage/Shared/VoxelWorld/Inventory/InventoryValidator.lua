@@ -7,6 +7,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Constants = require(ReplicatedStorage.Shared.VoxelWorld.Core.Constants)
 local BlockRegistry = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockRegistry)
+local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
 
 local InventoryValidator = {}
 
@@ -44,6 +45,41 @@ local VALID_ITEM_IDS = {
 	[Constants.BlockType.STONE_BRICK_SLAB] = true,
 	[Constants.BlockType.BRICK_SLAB] = true,
 	[Constants.BlockType.OAK_FENCE] = true,
+	[Constants.BlockType.STICK] = true,
+	[Constants.BlockType.COAL_ORE] = true,
+	[Constants.BlockType.IRON_ORE] = true,
+	[Constants.BlockType.DIAMOND_ORE] = true,
+	[Constants.BlockType.COAL] = true,
+	[Constants.BlockType.IRON_INGOT] = true,
+	[Constants.BlockType.DIAMOND] = true,
+	[Constants.BlockType.FURNACE] = true,
+	[Constants.BlockType.GLASS] = true,
+	-- New wood families
+	[Constants.BlockType.SPRUCE_LOG] = true,
+	[Constants.BlockType.SPRUCE_PLANKS] = true,
+	[Constants.BlockType.SPRUCE_SAPLING] = true,
+	[Constants.BlockType.SPRUCE_STAIRS] = true,
+	[Constants.BlockType.SPRUCE_SLAB] = true,
+	[Constants.BlockType.JUNGLE_LOG] = true,
+	[Constants.BlockType.JUNGLE_PLANKS] = true,
+	[Constants.BlockType.JUNGLE_SAPLING] = true,
+	[Constants.BlockType.JUNGLE_STAIRS] = true,
+	[Constants.BlockType.JUNGLE_SLAB] = true,
+	[Constants.BlockType.DARK_OAK_LOG] = true,
+	[Constants.BlockType.DARK_OAK_PLANKS] = true,
+	[Constants.BlockType.DARK_OAK_SAPLING] = true,
+	[Constants.BlockType.DARK_OAK_STAIRS] = true,
+	[Constants.BlockType.DARK_OAK_SLAB] = true,
+	[Constants.BlockType.BIRCH_LOG] = true,
+	[Constants.BlockType.BIRCH_PLANKS] = true,
+	[Constants.BlockType.BIRCH_SAPLING] = true,
+	[Constants.BlockType.BIRCH_STAIRS] = true,
+	[Constants.BlockType.BIRCH_SLAB] = true,
+	[Constants.BlockType.ACACIA_LOG] = true,
+	[Constants.BlockType.ACACIA_PLANKS] = true,
+	[Constants.BlockType.ACACIA_SAPLING] = true,
+	[Constants.BlockType.ACACIA_STAIRS] = true,
+	[Constants.BlockType.ACACIA_SLAB] = true,
 }
 
 --[[
@@ -55,9 +91,10 @@ function InventoryValidator:ValidateItemStack(stackData)
 		return false, "Stack data is nil"
 	end
 
-	-- Check if itemId is a valid item
+	-- Check if itemId is a valid item (block or tool)
 	local itemId = stackData.itemId or stackData.id or 0
-	if not VALID_ITEM_IDS[itemId] then
+	local isTool = ToolConfig.IsTool(itemId)
+	if not VALID_ITEM_IDS[itemId] and not isTool then
 		return false, string.format("Invalid item ID: %d", itemId)
 	end
 
@@ -70,6 +107,11 @@ function InventoryValidator:ValidateItemStack(stackData)
 	local count = stackData.count or 0
 	if count < MIN_STACK_SIZE or count > MAX_STACK_SIZE then
 		return false, string.format("Invalid count: %d (must be 0-64)", count)
+	end
+
+	-- Tools are non-stackable (Minecraft parity)
+	if isTool and count > 1 then
+		return false, string.format("Invalid count for tool %d: %d (tools do not stack)", itemId, count)
 	end
 
 	-- Non-air items must have count > 0
@@ -317,8 +359,9 @@ function InventoryValidator:SanitizeInventoryData(slots, expectedSize)
 			if count < 0 then count = 0; wasModified = true end
 			if count > MAX_STACK_SIZE then count = MAX_STACK_SIZE; wasModified = true end
 
-			-- Validate item ID exists
-			if not VALID_ITEM_IDS[itemId] then
+			-- Validate item ID exists (allow tools)
+			local isTool = ToolConfig.IsTool(itemId)
+			if not VALID_ITEM_IDS[itemId] and not isTool then
 				itemId = 0
 				count = 0
 				wasModified = true
@@ -329,12 +372,18 @@ function InventoryValidator:SanitizeInventoryData(slots, expectedSize)
 				count = 0
 			end
 
-			sanitized[i] = {
-				itemId = itemId,
-				count = count,
-				maxStack = stackData.maxStack or MAX_STACK_SIZE,
-				metadata = stackData.metadata or {}
-			}
+			-- Tools are non-stackable: clamp to 1 if >1 (keep 0 if empty)
+			if isTool and count > 1 then
+				count = 1
+				wasModified = true
+			end
+
+				sanitized[i] = {
+					itemId = itemId,
+					count = count,
+					maxStack = (isTool and 1) or (stackData.maxStack or MAX_STACK_SIZE),
+					metadata = stackData.metadata or {}
+				}
 		else
 			wasModified = true
 		end

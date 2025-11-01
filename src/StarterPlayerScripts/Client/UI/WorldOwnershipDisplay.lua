@@ -5,6 +5,7 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local CollectionService = game:GetService("CollectionService")
 
 local EventManager = require(ReplicatedStorage.Shared.EventManager)
 
@@ -37,6 +38,14 @@ function WorldOwnershipDisplay:CreateUI()
 	screenGui.ResetOnSpawn = false
 	screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	screenGui.Parent = playerGui
+
+	-- Add responsive scaling (100% = original size)
+	local uiScale = Instance.new("UIScale")
+	uiScale.Name = "ResponsiveScale"
+	uiScale:SetAttribute("base_resolution", Vector2.new(1920, 1080)) -- 1920x1080 for 100% original size
+	uiScale.Parent = screenGui
+	CollectionService:AddTag(uiScale, "scale_component")
+	print("📐 WorldOwnershipDisplay: Added UIScale with base resolution 1920x1080 (100% original size)")
 
 	-- Create background frame
 	local frame = Instance.new("Frame")
