@@ -408,6 +408,20 @@ function DroppedItemService:HandleDropRequest(player, data)
 				player.Name, data.count, data.itemId))
 			return
 		end
+
+		-- Immediately flush inventory changes to client to avoid race with other full syncs
+		-- Prefer granular sync for known hotbar slot; otherwise, flush pending changes now
+		if data.slotIndex and type(data.slotIndex) == "number" then
+			pcall(function()
+				inv:SyncHotbarSlotToClient(player, data.slotIndex)
+			end)
+		else
+			if inv.ExecuteGranularSync then
+				pcall(function()
+					inv:ExecuteGranularSync(player)
+				end)
+			end
+		end
 	end
 
 	-- Drop in front of player

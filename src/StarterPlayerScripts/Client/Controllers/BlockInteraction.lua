@@ -353,10 +353,18 @@ local function interactOrPlace()
 
 		-- Handle other interactable blocks (like a chest)
 		if blockId and BlockRegistry:IsInteractable(blockId) then
-			-- Handle interaction (e.g., open chest)
+			-- Handle interaction (e.g., open chest, open workbench)
 			if blockId == Constants.BlockType.CHEST then
 				print("Opening chest at", blockPos.X, blockPos.Y, blockPos.Z)
 				EventManager:SendToServer("RequestOpenChest", {
+					x = blockPos.X,
+					y = blockPos.Y,
+					z = blockPos.Z
+				})
+				return true
+			elseif blockId == Constants.BlockType.CRAFTING_TABLE then
+				print("Opening workbench at", blockPos.X, blockPos.Y, blockPos.Z)
+				EventManager:SendToServer("RequestOpenWorkbench", {
 					x = blockPos.X,
 					y = blockPos.Y,
 					z = blockPos.Z
@@ -660,13 +668,11 @@ function BlockInteraction:Initialize(voxelWorldHandle)
 					-- Was a drag (camera rotation) - do nothing
 					-- print("📱 Drag gesture - Camera rotated")
 				else
-					-- Quick tap with no movement = TAP action (place/interact)
-					if duration < TAP_TIME_THRESHOLD then
+					-- Tap or short press without movement = interact/place (remove deadzone)
+					if not touchData.holdTriggered then
 						print("📱 Tap detected at", lastTapPosition, "- Place/Interact")
-						-- Tap position is already stored in lastTapPosition
 						interactOrPlace()
 					end
-					-- If between TAP and HOLD threshold, do nothing (too slow for tap, too quick for hold)
 				end
 
 				-- Clean up touch data

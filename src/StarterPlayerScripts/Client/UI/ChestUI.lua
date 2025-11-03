@@ -14,6 +14,7 @@ local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
 local GameState = require(script.Parent.Parent.Managers.GameState)
+local IconManager = require(script.Parent.Parent.Managers.IconManager)
 local ItemStack = require(ReplicatedStorage.Shared.VoxelWorld.Inventory.ItemStack)
 local BlockViewportCreator = require(ReplicatedStorage.Shared.VoxelWorld.Rendering.BlockViewportCreator)
 local BlockRegistry = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockRegistry)
@@ -25,17 +26,17 @@ local GameConfig = require(ReplicatedStorage.Configs.GameConfig)
 local ChestUI = {}
 ChestUI.__index = ChestUI
 
--- Configuration
+-- Configuration (matching VoxelInventoryPanel's compact design)
 local CHEST_CONFIG = {
 	COLUMNS = 9,
 	CHEST_ROWS = 3, -- 27 chest slots
 	INVENTORY_ROWS = 3, -- 27 inventory slots
-	SLOT_SIZE = 52,
-	SLOT_SPACING = 4,
-	PADDING = 20,
-	SECTION_SPACING = 20,
+	SLOT_SIZE = 44,        -- Matching inventory
+	SLOT_SPACING = 3,      -- Matching inventory
+	PADDING = 6,           -- Ultra-minimal padding
+	SECTION_SPACING = 8,   -- Minimal section spacing
 
-	-- Colors
+	-- Colors (matching inventory)
 	BG_COLOR = Color3.fromRGB(35, 35, 35),
 	SLOT_COLOR = Color3.fromRGB(45, 45, 45),
 	BORDER_COLOR = Color3.fromRGB(60, 60, 60),
@@ -62,6 +63,9 @@ function ChestUI.new(inventoryManager, inventoryPanel)
 	-- UI slot frames for inventory display
 	self.inventorySlotFrames = {}
 
+	-- Hotbar slot frames (for visual reference only)
+	self.hotbarSlotFrames = {}
+
 	-- Cursor/drag state
 	self.cursorStack = ItemStack.new(0, 0)
 	self.cursorFrame = nil
@@ -78,14 +82,22 @@ function ChestUI.new(inventoryManager, inventoryPanel)
 end
 
 function ChestUI:Initialize()
-	-- Create ScreenGui
+	-- Create ScreenGui for chest UI
 	self.gui = Instance.new("ScreenGui")
 	self.gui.Name = "ChestUI"
 	self.gui.ResetOnSpawn = false
-	self.gui.DisplayOrder = 101 -- Above inventory panel
+	self.gui.DisplayOrder = 150  -- Above inventory (100), below tooltips (1000)
 	self.gui.IgnoreGuiInset = true
 	self.gui.Enabled = false
 	self.gui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
+
+	-- Create separate ScreenGui for cursor (must be on top of everything)
+	self.cursorGui = Instance.new("ScreenGui")
+	self.cursorGui.Name = "ChestUICursor"
+	self.cursorGui.ResetOnSpawn = false
+	self.cursorGui.DisplayOrder = 2000  -- Always on top (shared with inventory cursor)
+	self.cursorGui.IgnoreGuiInset = true
+	self.cursorGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
 
 	-- Add responsive scaling (100% = original size)
 	local uiScale = Instance.new("UIScale")
@@ -114,11 +126,12 @@ function ChestUI:CreatePanel()
 	                    CHEST_CONFIG.SLOT_SPACING * (CHEST_CONFIG.CHEST_ROWS - 1)
 	local invHeight = CHEST_CONFIG.SLOT_SIZE * CHEST_CONFIG.INVENTORY_ROWS +
 	                  CHEST_CONFIG.SLOT_SPACING * (CHEST_CONFIG.INVENTORY_ROWS - 1)
+	local hotbarHeight = CHEST_CONFIG.SLOT_SIZE
 
-	local totalHeight = chestHeight + invHeight +
-	                    CHEST_CONFIG.SECTION_SPACING + -- Between chest and inventory
-	                    CHEST_CONFIG.PADDING * 2 +
-	                    50 + 25 + 25 -- Title + labels (no hotbar label)
+	-- Calculate proper height accounting for all elements (ultra-compact layout):
+	-- Top Padding (30) + Chest Label (16) + Chest + Spacing + Inv Label (16) + Inventory + Spacing + Hotbar Label (16) + Hotbar + Bottom Padding (10)
+	-- Note: Title is positioned above the panel with -0.5 offset, so not included in panel height
+	local totalHeight = 30 + 16 + chestHeight + CHEST_CONFIG.SECTION_SPACING + 16 + invHeight + CHEST_CONFIG.SECTION_SPACING + 16 + hotbarHeight + 10
 
 	-- Background overlay
 	local overlay = Instance.new("Frame")
@@ -150,55 +163,128 @@ function ChestUI:CreatePanel()
 	stroke.Thickness = 3
 	stroke.Parent = self.panel
 
-	-- Title
+	-- Header frame (transparent, for title positioning)
+	local headerFrame = Instance.new("Frame")
+	headerFrame.Name = "Header"
+	headerFrame.Size = UDim2.new(1, 0, 0, 1)
+	headerFrame.BackgroundTransparency = 1
+	headerFrame.BorderSizePixel = 0
+	headerFrame.Parent = self.panel
+
+	-- Title container (positioned above the panel like SettingsPanel)
+	local titleContainer = Instance.new("Frame")
+	titleContainer.Name = "TitleContainer"
+	titleContainer.Size = UDim2.new(1, -64 - 16, 1, 0) -- Reserve space for close button
+	titleContainer.Position = UDim2.new(0, 0, -0.5, 0) -- 50% offset above the panel
+	titleContainer.BackgroundTransparency = 1
+	titleContainer.Parent = headerFrame
+
+	-- Title container padding
+	local titlePadding = Instance.new("UIPadding")
+	titlePadding.PaddingLeft = UDim.new(0, 6)
+	titlePadding.PaddingRight = UDim.new(0, 16)
+	titlePadding.Parent = titleContainer
+
+	-- Horizontal layout for title
+	local titleLayout = Instance.new("UIListLayout")
+	titleLayout.FillDirection = Enum.FillDirection.Horizontal
+	titleLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	titleLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+	titleLayout.Padding = UDim.new(0, 12)
+	titleLayout.Parent = titleContainer
+
+	-- Chest icon
+	local titleIcon = IconManager:CreateIcon(titleContainer, "Chest", "Chest1", {
+		size = 36,
+		position = UDim2.new(0, 0, 0.5, 0),
+		anchorPoint = Vector2.new(0, 0.5)
+	})
+	titleIcon.LayoutOrder = 1
+
+	-- Title text (styled like SettingsPanel, but smaller)
 	local title = Instance.new("TextLabel")
 	title.Name = "Title"
-	title.Size = UDim2.new(1, -40, 0, 40)
-	title.Position = UDim2.new(0, 20, 0, 10)
+	title.Size = UDim2.new(0, 200, 1, 0)
 	title.BackgroundTransparency = 1
-	title.Font = Enum.Font.GothamBold
-	title.TextSize = 20
+	title.RichText = true
+	title.Text = "<b><i>Chest</i></b>"
 	title.TextColor3 = Color3.fromRGB(255, 255, 255)
-	title.Text = "Chest"
+	title.TextSize = 36
+	title.Font = Enum.Font.GothamBold -- Italic bold
 	title.TextXAlignment = Enum.TextXAlignment.Left
-	title.Parent = self.panel
+	title.LayoutOrder = 2
+	title.Parent = titleContainer
 
-	-- Close button
-	local closeBtn = Instance.new("TextButton")
+	-- Title stroke
+	local titleStroke = Instance.new("UIStroke")
+	titleStroke.Color = Color3.fromRGB(0, 0, 0)
+	titleStroke.Thickness = 2
+	titleStroke.Parent = title
+
+	-- Close button (same style as SettingsPanel) - positioned to stick out of top right corner
+	local closeIcon = IconManager:CreateIcon(headerFrame, "UI", "X", {
+		size = UDim2.new(0, 40, 0, 40),
+		position = UDim2.new(1, 2, 0, -2),  -- Reduced offset to account for 3px border
+		anchorPoint = Vector2.new(0.5, 0.5)
+	})
+
+	-- Convert to ImageButton for interaction
+	local closeBtn = Instance.new("ImageButton")
 	closeBtn.Name = "CloseButton"
-	closeBtn.Size = UDim2.new(0, 30, 0, 30)
-	closeBtn.Position = UDim2.new(1, -40, 0, 15)
-	closeBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-	closeBtn.BorderSizePixel = 0
-	closeBtn.Font = Enum.Font.GothamBold
-	closeBtn.TextSize = 18
-	closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-	closeBtn.Text = "×"
-	closeBtn.Parent = self.panel
+	closeBtn.Size = closeIcon.Size
+	closeBtn.Position = closeIcon.Position
+	closeBtn.AnchorPoint = closeIcon.AnchorPoint
+	closeBtn.BackgroundTransparency = 1
+	closeBtn.Image = closeIcon.Image
+	closeBtn.ScaleType = closeIcon.ScaleType
+	closeBtn.Parent = headerFrame
 
-	local closeCorner = Instance.new("UICorner")
-	closeCorner.CornerRadius = UDim.new(0, 6)
-	closeCorner.Parent = closeBtn
+	-- Add rounded corners
+	local closeButtonCorner = Instance.new("UICorner")
+	closeButtonCorner.CornerRadius = UDim.new(0, 4)
+	closeButtonCorner.Parent = closeBtn
+
+	-- Add rotation animation on mouse enter/leave
+	local rotationTweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+
+	closeBtn.MouseEnter:Connect(function()
+		local rotationTween = TweenService:Create(closeBtn, rotationTweenInfo, {
+			Rotation = 90
+		})
+		rotationTween:Play()
+	end)
+
+	closeBtn.MouseLeave:Connect(function()
+		local rotationTween = TweenService:Create(closeBtn, rotationTweenInfo, {
+			Rotation = 0
+		})
+		rotationTween:Play()
+	end)
 
 	closeBtn.MouseButton1Click:Connect(function()
 		self:Close()
 	end)
 
-	local yOffset = 50
+	-- Remove original icon
+	closeIcon:Destroy()
+
+	local yOffset = 30  -- Top padding for whitespace below header
 
 	-- === CHEST SECTION ===
+	-- Chest label (grey, caps, no icon)
 	local chestLabel = Instance.new("TextLabel")
-	chestLabel.Size = UDim2.new(1, -40, 0, 20)
-	chestLabel.Position = UDim2.new(0, 20, 0, yOffset)
+	chestLabel.Name = "ChestLabel"
+	chestLabel.Size = UDim2.new(1, -12, 0, 14)
+	chestLabel.Position = UDim2.new(0, CHEST_CONFIG.PADDING, 0, yOffset)
 	chestLabel.BackgroundTransparency = 1
-	chestLabel.Font = Enum.Font.Gotham
-	chestLabel.TextSize = 14
-	chestLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-	chestLabel.Text = "Chest"
+	chestLabel.Font = Enum.Font.GothamMedium
+	chestLabel.TextSize = 11
+	chestLabel.TextColor3 = Color3.fromRGB(140, 140, 140)
+	chestLabel.Text = "CHEST"
 	chestLabel.TextXAlignment = Enum.TextXAlignment.Left
 	chestLabel.Parent = self.panel
 
-	yOffset = yOffset + 25
+	yOffset = yOffset + 16
 
 	-- Create chest slots (3 rows of 9)
 	for row = 0, CHEST_CONFIG.CHEST_ROWS - 1 do
@@ -213,18 +299,20 @@ function ChestUI:CreatePanel()
 	yOffset = yOffset + chestHeight + CHEST_CONFIG.SECTION_SPACING
 
 	-- === INVENTORY SECTION ===
+	-- Inventory label (grey, caps, no icon)
 	local invLabel = Instance.new("TextLabel")
-	invLabel.Size = UDim2.new(1, -40, 0, 20)
-	invLabel.Position = UDim2.new(0, 20, 0, yOffset)
+	invLabel.Name = "InvLabel"
+	invLabel.Size = UDim2.new(1, -12, 0, 14)
+	invLabel.Position = UDim2.new(0, CHEST_CONFIG.PADDING, 0, yOffset)
 	invLabel.BackgroundTransparency = 1
-	invLabel.Font = Enum.Font.Gotham
-	invLabel.TextSize = 14
-	invLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-	invLabel.Text = "Inventory"
+	invLabel.Font = Enum.Font.GothamMedium
+	invLabel.TextSize = 11
+	invLabel.TextColor3 = Color3.fromRGB(140, 140, 140)
+	invLabel.Text = "INVENTORY"
 	invLabel.TextXAlignment = Enum.TextXAlignment.Left
 	invLabel.Parent = self.panel
 
-	yOffset = yOffset + 25
+	yOffset = yOffset + 16
 
 	-- Create inventory slots (3 rows of 9)
 	for row = 0, CHEST_CONFIG.INVENTORY_ROWS - 1 do
@@ -236,7 +324,30 @@ function ChestUI:CreatePanel()
 		end
 	end
 
-	-- Note: Hotbar remains visible at bottom of screen (not included in chest UI)
+	yOffset = yOffset + invHeight + CHEST_CONFIG.SECTION_SPACING
+
+	-- === HOTBAR SECTION ===
+	-- Hotbar label (grey, caps, no icon)
+	local hotbarLabel = Instance.new("TextLabel")
+	hotbarLabel.Name = "HotbarLabel"
+	hotbarLabel.Size = UDim2.new(1, -12, 0, 14)
+	hotbarLabel.Position = UDim2.new(0, CHEST_CONFIG.PADDING, 0, yOffset)
+	hotbarLabel.BackgroundTransparency = 1
+	hotbarLabel.Font = Enum.Font.GothamMedium
+	hotbarLabel.TextSize = 11
+	hotbarLabel.TextColor3 = Color3.fromRGB(140, 140, 140)
+	hotbarLabel.Text = "HOTBAR"
+	hotbarLabel.TextXAlignment = Enum.TextXAlignment.Left
+	hotbarLabel.Parent = self.panel
+
+	yOffset = yOffset + 16
+
+	-- Create hotbar slots (1 row of 9) - visual reference only, data managed by inventoryManager
+	for col = 0, CHEST_CONFIG.COLUMNS - 1 do
+		local index = col + 1
+		local x = CHEST_CONFIG.PADDING + col * (CHEST_CONFIG.SLOT_SIZE + CHEST_CONFIG.SLOT_SPACING)
+		self:CreateHotbarSlot(index, x, yOffset)
+	end
 end
 
 function ChestUI:CreateChestSlot(index, x, y)
@@ -389,15 +500,125 @@ function ChestUI:CreateInventorySlot(index, x, y)
 	self:UpdateInventorySlotDisplay(index)
 end
 
+function ChestUI:CreateHotbarSlot(index, x, y)
+	local slot = Instance.new("TextButton")
+	slot.Name = "HotbarSlot" .. index
+	slot.Size = UDim2.new(0, CHEST_CONFIG.SLOT_SIZE, 0, CHEST_CONFIG.SLOT_SIZE)
+	slot.Position = UDim2.new(0, x, 0, y)
+	slot.BackgroundColor3 = CHEST_CONFIG.SLOT_COLOR
+	slot.BorderSizePixel = 0
+	slot.Text = ""
+	slot.AutoButtonColor = false
+	slot.Parent = self.panel
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 4)
+	corner.Parent = slot
+
+	-- Selection indicator (if this is the active hotbar slot) - bright white, thick
+	local selectionBorder = Instance.new("UIStroke")
+	selectionBorder.Name = "Selection"
+	selectionBorder.Color = Color3.fromRGB(220, 220, 220)
+	selectionBorder.Thickness = 3
+	selectionBorder.Transparency = 1
+	selectionBorder.Parent = slot
+
+	-- Hover border (for drag-and-drop feedback)
+	local hoverBorder = Instance.new("UIStroke")
+	hoverBorder.Name = "HoverBorder"
+	hoverBorder.Color = Color3.fromRGB(180, 180, 180)
+	hoverBorder.Thickness = 2
+	hoverBorder.Transparency = 1
+	hoverBorder.Parent = slot
+
+	local iconContainer = Instance.new("Frame")
+	iconContainer.Name = "IconContainer"
+	iconContainer.Size = UDim2.new(1, 0, 1, 0)
+	iconContainer.Position = UDim2.new(0, 0, 0, 0)
+	iconContainer.BackgroundTransparency = 1
+	iconContainer.ZIndex = 2
+	iconContainer.Parent = slot
+
+	local countLabel = Instance.new("TextLabel")
+	countLabel.Name = "CountLabel"
+	countLabel.Size = UDim2.new(0, 40, 0, 20)
+	countLabel.Position = UDim2.new(1, -4, 1, -4)
+	countLabel.AnchorPoint = Vector2.new(1, 1)
+	countLabel.BackgroundTransparency = 1
+	countLabel.Font = Enum.Font.GothamBold
+	countLabel.TextSize = 12
+	countLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	countLabel.TextStrokeTransparency = 0.3
+	countLabel.Text = ""
+	countLabel.TextXAlignment = Enum.TextXAlignment.Right
+	countLabel.ZIndex = 4
+	countLabel.Parent = slot
+
+	-- Number label in top-left corner
+	local numberLabel = Instance.new("TextLabel")
+	numberLabel.Name = "Number"
+	numberLabel.Size = UDim2.new(0, 20, 0, 20)
+	numberLabel.Position = UDim2.new(0, 4, 0, 4)
+	numberLabel.BackgroundTransparency = 1
+	numberLabel.Font = Enum.Font.GothamBold
+	numberLabel.TextSize = 12
+	numberLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	numberLabel.TextStrokeTransparency = 0.5
+	numberLabel.Text = tostring(index)
+	numberLabel.TextXAlignment = Enum.TextXAlignment.Left
+	numberLabel.TextYAlignment = Enum.TextYAlignment.Top
+	numberLabel.ZIndex = 3
+	numberLabel.Parent = slot
+
+	self.hotbarSlotFrames[index] = {
+		frame = slot,
+		iconContainer = iconContainer,
+		countLabel = countLabel,
+		hoverBorder = hoverBorder,
+		selectionBorder = selectionBorder
+	}
+
+	-- Hover effects
+	slot.MouseEnter:Connect(function()
+		-- Show hover border (unless selection border is active)
+		if self.hotbar and self.hotbar.selectedSlot ~= index then
+			hoverBorder.Transparency = 0.5
+		end
+		slot.BackgroundColor3 = CHEST_CONFIG.HOVER_COLOR
+	end)
+
+	slot.MouseLeave:Connect(function()
+		hoverBorder.Transparency = 1
+		slot.BackgroundColor3 = CHEST_CONFIG.SLOT_COLOR
+	end)
+
+	-- Click handlers (hotbar slots interact with hotbar data through inventoryManager)
+	slot.MouseButton1Click:Connect(function()
+		self:OnHotbarSlotLeftClick(index)
+	end)
+
+	slot.MouseButton2Click:Connect(function()
+		self:OnHotbarSlotRightClick(index)
+	end)
+
+	self:UpdateHotbarSlotDisplay(index)
+end
+
 function ChestUI:CreateCursorItem()
 	self.cursorFrame = Instance.new("Frame")
 	self.cursorFrame.Name = "CursorItem"
 	self.cursorFrame.Size = UDim2.new(0, CHEST_CONFIG.SLOT_SIZE, 0, CHEST_CONFIG.SLOT_SIZE)
 	self.cursorFrame.AnchorPoint = Vector2.new(0.5, 0.5)  -- Center on cursor
-	self.cursorFrame.BackgroundTransparency = 1
+	self.cursorFrame.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+	self.cursorFrame.BackgroundTransparency = 0.7  -- Semi-transparent background, item stays fully visible
+	self.cursorFrame.BorderSizePixel = 0
 	self.cursorFrame.Visible = false
 	self.cursorFrame.ZIndex = 1000
-	self.cursorFrame.Parent = self.gui
+	self.cursorFrame.Parent = self.cursorGui  -- Separate ScreenGui for proper layering
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 4)
+	corner.Parent = self.cursorFrame
 
 	local iconContainer = Instance.new("Frame")
 	iconContainer.Name = "IconContainer"
@@ -599,6 +820,75 @@ function ChestUI:UpdateInventorySlotDisplay(index)
 	end
 end
 
+function ChestUI:UpdateHotbarSlotDisplay(index)
+	if not self.hotbar then return end
+
+	local slotData = self.hotbarSlotFrames[index]
+	if not slotData then return end
+
+	local stack = self.inventoryManager:GetHotbarSlot(index)
+	local iconContainer = slotData.iconContainer
+	local countLabel = slotData.countLabel
+	local currentItemId = iconContainer:GetAttribute("CurrentItemId")
+
+	if stack and not stack:IsEmpty() then
+		local itemId = stack:GetItemId()
+		local isTool = ToolConfig.IsTool(itemId)
+
+		-- Only update visuals if item type changed
+		if currentItemId ~= itemId then
+			-- Clear attribute FIRST to prevent race conditions
+			iconContainer:SetAttribute("CurrentItemId", nil)
+
+			-- Clear ALL existing visuals
+			for _, child in ipairs(iconContainer:GetChildren()) do
+				if not child:IsA("UILayout") and not child:IsA("UIPadding") and not child:IsA("UICorner") then
+					child:Destroy()
+				end
+			end
+
+			if isTool then
+				local info = ToolConfig.GetToolInfo(itemId)
+				local image = Instance.new("ImageLabel")
+				image.Name = "ToolImage"
+				image.Size = UDim2.new(1, -6, 1, -6)
+				image.Position = UDim2.new(0.5, 0, 0.5, 0)
+				image.AnchorPoint = Vector2.new(0.5, 0.5)
+				image.BackgroundTransparency = 1
+				image.Image = info and info.image or ""
+				image.ScaleType = Enum.ScaleType.Fit
+				image.Parent = iconContainer
+			else
+				BlockViewportCreator.CreateBlockViewport(iconContainer, itemId, UDim2.new(1, 0, 1, 0))
+			end
+
+			-- Set new item ID AFTER creating visuals
+			iconContainer:SetAttribute("CurrentItemId", itemId)
+		end
+
+		-- Always update count (cheap operation)
+		countLabel.Text = stack:GetCount() > 1 and tostring(stack:GetCount()) or ""
+	else
+		-- Slot is empty - clear attribute IMMEDIATELY to prevent race conditions
+		iconContainer:SetAttribute("CurrentItemId", nil)
+		countLabel.Text = ""
+
+		-- Then clear ALL visual children
+		for _, child in ipairs(iconContainer:GetChildren()) do
+			if not child:IsA("UILayout") and not child:IsA("UIPadding") and not child:IsA("UICorner") then
+				child:Destroy()
+			end
+		end
+	end
+
+	-- Update selection border
+	if self.hotbar.selectedSlot == index then
+		slotData.selectionBorder.Transparency = 0
+	else
+		slotData.selectionBorder.Transparency = 1
+	end
+end
+
 -- Smart update - check what actually changed and only update those slots
 -- Works for both local actions and remote player updates
 function ChestUI:UpdateChangedSlots()
@@ -640,6 +930,32 @@ function ChestUI:UpdateChangedSlots()
 		end
 	end
 
+	-- Check hotbar slots
+	if self.hotbar then
+		for i = 1, 9 do
+			local slotData = self.hotbarSlotFrames[i]
+			if slotData then
+				local stack = self.inventoryManager:GetHotbarSlot(i)
+				local cachedItemId = slotData.iconContainer:GetAttribute("CurrentItemId")
+				local actualItemId = stack and not stack:IsEmpty() and stack:GetItemId() or nil
+
+				-- Update if item ID changed
+				if cachedItemId ~= actualItemId then
+					self:UpdateHotbarSlotDisplay(i)
+				elseif actualItemId and stack then
+					-- Same item, just update count (cheap operation)
+					slotData.countLabel.Text = stack:GetCount() > 1 and tostring(stack:GetCount()) or ""
+					-- Also update selection border in case selection changed
+					if self.hotbar.selectedSlot == i then
+						slotData.selectionBorder.Transparency = 0
+					else
+						slotData.selectionBorder.Transparency = 1
+					end
+				end
+			end
+		end
+	end
+
 	-- Always update cursor
 	self:UpdateCursorDisplay()
 end
@@ -656,10 +972,13 @@ function ChestUI:UpdateAllDisplays()
 		self:UpdateInventorySlotDisplay(i)
 	end
 
+	-- Update hotbar slots
+	for i = 1, 9 do
+		self:UpdateHotbarSlotDisplay(i)
+	end
+
 	-- Update cursor
 	self:UpdateCursorDisplay()
-
-	-- Note: Hotbar remains visible at bottom of screen (managed by VoxelHotbar)
 end
 
 function ChestUI:UpdateCursorDisplay()
@@ -859,6 +1178,50 @@ function ChestUI:OnInventorySlotRightClick(index)
 	})
 end
 
+function ChestUI:OnHotbarSlotLeftClick(index)
+	if not self.hotbar then return end
+
+	-- Predictive visual update for instant feedback (hotbar slot)
+	local currentSlot = self.inventoryManager:GetHotbarSlot(index)
+	local newSlot, newCursor = self:_simulateSlotClick(currentSlot, self.cursorStack, "left")
+
+	-- Apply visuals immediately to hotbar
+	self.inventoryManager:SetHotbarSlot(index, newSlot)
+	self:UpdateHotbarSlotDisplay(index)
+	self.cursorStack = newCursor
+	self:UpdateCursorDisplay()
+
+	-- Send authoritative click to server (using negative indices to indicate hotbar)
+	EventManager:SendToServer("ChestSlotClick", {
+		chestPosition = self.chestPosition,
+		slotIndex = -index, -- Negative to indicate hotbar slot
+		isChestSlot = false,
+		clickType = "left"
+	})
+end
+
+function ChestUI:OnHotbarSlotRightClick(index)
+	if not self.hotbar then return end
+
+	-- Predictive visual update for instant feedback (hotbar slot)
+	local currentSlot = self.inventoryManager:GetHotbarSlot(index)
+	local newSlot, newCursor = self:_simulateSlotClick(currentSlot, self.cursorStack, "right")
+
+	-- Apply visuals immediately to hotbar
+	self.inventoryManager:SetHotbarSlot(index, newSlot)
+	self:UpdateHotbarSlotDisplay(index)
+	self.cursorStack = newCursor
+	self:UpdateCursorDisplay()
+
+	-- Send authoritative click to server (using negative indices to indicate hotbar)
+	EventManager:SendToServer("ChestSlotClick", {
+		chestPosition = self.chestPosition,
+		slotIndex = -index, -- Negative to indicate hotbar slot
+		isChestSlot = false,
+		clickType = "right"
+	})
+end
+
 -- === NETWORK SYNC ===
 
 -- Send atomic transaction (chest + inventory + cursor together)
@@ -880,19 +1243,29 @@ function ChestUI:SendTransaction()
 		end
 	end
 
+	-- Serialize hotbar
+	local hotbar = {}
+	for i = 1, 9 do
+		local stack = self.inventoryManager:GetHotbarSlot(i)
+		if stack and not stack:IsEmpty() then
+			hotbar[i] = stack:Serialize()
+		end
+	end
+
 	-- Include cursor items in transaction (important for validation!)
 	local cursorItem = nil
 	if not self.cursorStack:IsEmpty() then
 		cursorItem = self.cursorStack:Serialize()
 	end
 
-	-- Send SINGLE atomic transaction with all three states
+	-- Send SINGLE atomic transaction with all states
 	EventManager:SendToServer("ChestContentsUpdate", {
 		x = self.chestPosition.x,
 		y = self.chestPosition.y,
 		z = self.chestPosition.z,
 		contents = chestContents,
 		playerInventory = playerInventory,
+		hotbar = hotbar,  -- Include hotbar
 		cursorItem = cursorItem  -- Include cursor for proper validation
 	})
 end
@@ -908,7 +1281,7 @@ end
 
 -- === LIFECYCLE ===
 
-function ChestUI:Open(chestPos, chestContents, playerInventory)
+function ChestUI:Open(chestPos, chestContents, playerInventory, hotbar)
 	if not self.gui then
 		warn("ChestUI:Open - self.gui is nil! ChestUI not properly initialized!")
 		return
@@ -942,6 +1315,20 @@ function ChestUI:Open(chestPos, chestContents, playerInventory)
 				self.chestSlots[i] = ItemStack.new(0, 0)
 			end
 		end
+	end
+
+	-- Sync hotbar from server (if provided)
+	if hotbar and self.hotbar then
+		self.inventoryManager._syncingFromServer = true
+		for i = 1, 9 do
+			if hotbar[i] then
+				local deserialized = ItemStack.Deserialize(hotbar[i])
+				self.inventoryManager:SetHotbarSlot(i, deserialized or ItemStack.new(0, 0))
+			else
+				self.inventoryManager:SetHotbarSlot(i, ItemStack.new(0, 0))
+			end
+		end
+		self.inventoryManager._syncingFromServer = false
 	end
 
 	-- Update all displays
@@ -1035,17 +1422,17 @@ function ChestUI:UpdateCursorPosition()
 	if not self.cursorFrame or not self.cursorFrame.Visible then return end
 
 	local mousePos = UserInputService:GetMouseLocation()
-	local guiInset = GuiService:GetGuiInset()
 
-	-- Adjust for GUI insets (top bar, etc.)
-	self.cursorFrame.Position = UDim2.new(0, mousePos.X, 0, mousePos.Y - guiInset.Y)
+	-- Cursor ScreenGui has IgnoreGuiInset=true, so use raw mouse position
+	-- AnchorPoint of 0.5,0.5 centers the cursor frame on this position
+	self.cursorFrame.Position = UDim2.new(0, mousePos.X, 0, mousePos.Y)
 end
 
 function ChestUI:BindInput()
 	table.insert(self.connections, UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		if gameProcessed then return end
 
-		if input.KeyCode == Enum.KeyCode.Escape or input.KeyCode == Enum.KeyCode.E then
+		if input.KeyCode == Enum.KeyCode.Escape then
 			if self.isOpen then
 				self:Close()
 			end
@@ -1062,7 +1449,8 @@ function ChestUI:RegisterEvents()
 		self:Open(
 			{x = data.x, y = data.y, z = data.z},
 			data.contents or {},
-			data.playerInventory or {}
+			data.playerInventory or {},
+			data.hotbar or {}
 		)
 	end)
 
@@ -1121,6 +1509,27 @@ function ChestUI:RegisterEvents()
 			end
 			self.inventoryManager._syncingFromServer = false
 		end
+
+		-- Hotbar is also managed by inventoryManager (dense array from server)
+		if data.hotbar then
+			self.inventoryManager._syncingFromServer = true
+			for i = 1, 9 do
+				local incoming = data.hotbar[i]
+				local newStack = incoming and ItemStack.Deserialize(incoming) or ItemStack.new(0, 0)
+				local old = self.inventoryManager:GetHotbarSlot(i)
+				local oldId = old and not old:IsEmpty() and old:GetItemId() or 0
+				local oldCount = old and old:GetCount() or 0
+				local newId = not newStack:IsEmpty() and newStack:GetItemId() or 0
+				local newCount = newStack:GetCount()
+				if oldId ~= newId or oldCount ~= newCount then
+					self.inventoryManager:SetHotbarSlot(i, newStack)
+					self:UpdateHotbarSlotDisplay(i)
+				else
+					self.inventoryManager:SetHotbarSlot(i, newStack)
+				end
+			end
+			self.inventoryManager._syncingFromServer = false
+		end
 	end)
 
 	-- NEW SYSTEM: Handle server-authoritative click results (now delta-based)
@@ -1174,6 +1583,20 @@ function ChestUI:RegisterEvents()
 				local newStack = incoming and ItemStack.Deserialize(incoming) or ItemStack.new(0, 0)
 				self.inventoryManager:SetInventorySlot(i, newStack)
 				self:UpdateInventorySlotDisplay(i)
+			end
+			self.inventoryManager._syncingFromServer = false
+		end
+
+		-- Apply authoritative hotbar deltas (preferred)
+		if data.hotbarDelta then
+			self.inventoryManager._syncingFromServer = true
+			for k, stackData in pairs(data.hotbarDelta) do
+				local i = tonumber(k) or k
+				if type(i) == "number" and i >= 1 and i <= 9 then
+					local newStack = stackData and ItemStack.Deserialize(stackData) or ItemStack.new(0, 0)
+					self.inventoryManager:SetHotbarSlot(i, newStack)
+					self:UpdateHotbarSlotDisplay(i)
+				end
 			end
 			self.inventoryManager._syncingFromServer = false
 		end

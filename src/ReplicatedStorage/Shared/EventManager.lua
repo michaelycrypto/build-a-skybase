@@ -297,12 +297,15 @@ local EVENT_DEFINITIONS = {
 	PlayEmote = {"any"}, -- emoteName
 	-- Crafting events
 	CraftRecipe = {"any"}, -- {recipeId:string, toCursor:boolean}
+	CraftRecipeBatch = {"any"}, -- {recipeId:string, count:number, toCursor:boolean}
+	CraftRecipeBatchResult = {"any"}, -- server->client: {recipeId:string, acceptedCount:number, toCursor:boolean, outputItemId:number, outputPerCraft:number}
     -- Spawner/mob/tooling events removed
 
 	-- Server-to-client events (with parameters)
 	PlayerDataUpdated = {"any"}, -- playerData
 	CurrencyUpdated = {"any"}, -- currencies
 	InventoryUpdated = {"any"}, -- inventory
+	CraftRecipeBatchResult = {"any"}, -- {recipeId:string, acceptedCount:number, toCursor:boolean, outputItemId:number, outputPerCraft:number}
 	ShowNotification = {"any"}, -- notificationData
 	ShowError = {"any"}, -- errorData
 	PlaySound = {"any"}, -- soundData
@@ -856,6 +859,34 @@ function EventManager:CreateServerEventConfig(services)
 				end
 			end
 		},
+		-- Workbench open request (no server storage; just validate block type and open client UI)
+		{
+			name = "RequestOpenWorkbench",
+			handler = function(player, data)
+				if not data or not data.x or not data.y or not data.z then
+					return
+				end
+
+				-- Verify targeted block is a crafting table
+				local ok, _ = pcall(function()
+					if services and services.VoxelWorldService and services.VoxelWorldService.worldManager then
+						local ReplicatedStorage = game:GetService("ReplicatedStorage")
+						local Constants = require(ReplicatedStorage.Shared.VoxelWorld.Core.Constants)
+						local wm = services.VoxelWorldService.worldManager
+						local blockId = wm:GetBlock(data.x, data.y, data.z)
+						if blockId ~= Constants.BlockType.CRAFTING_TABLE then
+							return
+						end
+						-- Send open event to this player
+						local EventManager = require(ReplicatedStorage.Shared.EventManager)
+						EventManager:FireEvent("WorkbenchOpened", player, { x = data.x, y = data.y, z = data.z })
+					end
+				end)
+				if not ok then
+					-- Swallow errors; no-op on invalid requests
+				end
+			end
+		},
 		{
 			name = "ChestContentsUpdate",
 			handler = function(player, data)
@@ -902,6 +933,14 @@ function EventManager:CreateServerEventConfig(services)
 			handler = function(player, data)
 				if services.CraftingService and services.CraftingService.HandleCraftRequest then
 					services.CraftingService:HandleCraftRequest(player, data)
+				end
+			end
+		},
+		{
+			name = "CraftRecipeBatch",
+			handler = function(player, data)
+				if services.CraftingService and services.CraftingService.HandleCraftBatchRequest then
+					services.CraftingService:HandleCraftBatchRequest(player, data)
 				end
 			end
 		},

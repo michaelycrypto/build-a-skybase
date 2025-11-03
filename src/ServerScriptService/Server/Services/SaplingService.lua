@@ -142,6 +142,37 @@ local LEAVES_TO_SAPLING = {
     [BLOCK.ACACIA_LEAVES] = BLOCK.ACACIA_SAPLING,
 }
 
+-- Encode leaf species in metadata bits 4-6 (0..7) to survive log removal/server restarts
+local function getLeafSpecies(meta)
+    local v = bit32.band(meta or 0, 0x70) -- bits 4-6
+    return bit32.rshift(v, 4)
+end
+
+local function setLeafSpecies(meta, speciesCode)
+    local base = meta or 0
+    local cleared = bit32.band(base, bit32.bnot(0x70))
+    local coded = bit32.lshift(bit32.band(speciesCode or 0, 0x7), 4)
+    return bit32.bor(cleared, coded)
+end
+
+local LEAF_TO_SPECIES_CODE = {
+    [BLOCK.OAK_LEAVES] = 0,
+    [BLOCK.SPRUCE_LEAVES] = 1,
+    [BLOCK.JUNGLE_LEAVES] = 2,
+    [BLOCK.DARK_OAK_LEAVES] = 3,
+    [BLOCK.BIRCH_LEAVES] = 4,
+    [BLOCK.ACACIA_LEAVES] = 5,
+}
+
+local SPECIES_CODE_TO_SAPLING = {
+    [0] = BLOCK.OAK_SAPLING,
+    [1] = BLOCK.SPRUCE_SAPLING,
+    [2] = BLOCK.JUNGLE_SAPLING,
+    [3] = BLOCK.DARK_OAK_SAPLING,
+    [4] = BLOCK.BIRCH_SAPLING,
+    [5] = BLOCK.ACACIA_SAPLING,
+}
+
 function SaplingService:_isLeaf(blockId)
     return LEAF_SET[blockId] == true
 end
@@ -169,6 +200,7 @@ function SaplingService.new()
 	self._scannedChunks = {} -- "cx,cz" -> true
 	self._unsupportedSet = {}
 	self._unsupportedSchedule = {} -- key -> os.clock() time when eligible to decay
+    self._chunkSpecies = {} -- "cx,cz" -> speciesCode (0..5)
 	return self
 end
 
@@ -229,13 +261,17 @@ function SaplingService:OnBlockChanged(x, y, z, newBlockId, newMetadata, oldBloc
 	end
 
 	-- Recompute leaf distances around changes involving logs or leaf placements (not removals)
-	local involvesLeafOrLog = LOG_ANCHORS[newBlockId] or LOG_ANCHORS[oldBlockId] or (newBlockId == BLOCK.LEAVES)
+    local involvesLeafOrLog = LOG_ANCHORS[newBlockId] or LOG_ANCHORS[oldBlockId] or self:_isLeaf(newBlockId) or self:_isLeaf(oldBlockId)
 	if involvesLeafOrLog then
 		local vm = self.Deps and self.Deps.VoxelWorldService and self.Deps.VoxelWorldService.worldManager
 		if vm then
 			SaplingService._recomputeLeafDistances(self, vm, x, y, z, (SaplingConfig.LEAF_DECAY and SaplingConfig.LEAF_DECAY.RADIUS) or 6)
 		end
 	end
+end
+
+function SaplingService:GetChunkSpecies(cx, cz)
+    return self._chunkSpecies and self._chunkSpecies[string.format("%d,%d", cx, cz)]
 end
 
 function SaplingService:_tick()
@@ -358,22 +394,22 @@ function SaplingService:_randomTickLeaves()
 					SaplingService._recomputeLeafDistances(self, vm, x, y, z, (SaplingConfig.LEAF_DECAY and SaplingConfig.LEAF_DECAY.RADIUS) or 6)
 					meta = vm:GetBlockMetadata(x, y, z) or 0
 					distance = getLeafDistance(meta) or 7
-					if distance >= 7 then
-						vws:SetBlock(x, y, z, BLOCK.AIR)
-						local dropSvc = vws.Deps and vws.Deps.DroppedItemService
-                        if dropSvc then
-                            if math.random() < saplingChance then
-                                local dropId = self:_pickSaplingDropForLeaf(vm, x, y, z)
-                                if dropId then
-                                    dropSvc:SpawnItem(dropId, 1, Vector3.new(x, y, z), nil, true)
-                                end
-                            end
-                            -- Only oak leaves drop apples (no generic fallback)
-                            if id == BLOCK.OAK_LEAVES and (math.random() < appleChance) then
-                                dropSvc:SpawnItem(BLOCK.APPLE, 1, Vector3.new(x, y, z), nil, true)
-                            end
+                    if distance >= 7 then
+                        -- Compute drop BEFORE removing the leaf (metadata and id will be cleared on SetBlock)
+                        local dropId
+                        local dropSvc = vws.Deps and vws.Deps.DroppedItemService
+                        if dropSvc and (math.random() < saplingChance) then
+                            dropId = self:_pickSaplingDropForLeaf(vm, x, y, z, id, meta)
                         end
-					end
+                        vws:SetBlock(x, y, z, BLOCK.AIR)
+                        if dropSvc and dropId then
+                            dropSvc:SpawnItem(dropId, 1, Vector3.new(x, y, z), nil, true)
+                        end
+                        -- Only oak leaves drop apples (no generic fallback)
+                        if dropSvc and (id == BLOCK.OAK_LEAVES) and (math.random() < appleChance) then
+                            dropSvc:SpawnItem(BLOCK.APPLE, 1, Vector3.new(x, y, z), nil, true)
+                        end
+                    end
 				end
             end
         end
@@ -394,7 +430,9 @@ end
 -- (removed _scheduleLeafCluster; using random ticks instead)
 
 -- Recompute leaf distances (BFS) within radius cube centered at (cx,cy,cz)
+
 function SaplingService:_recomputeLeafDistances(vm, cx, cy, cz, radius)
+	local vws = self.Deps and self.Deps.VoxelWorldService
 	local minX, maxX = cx - radius, cx + radius
 	local minY, maxY = math.max(0, cy - radius), math.min(Constants.WORLD_HEIGHT - 1, cy + radius)
 	local minZ, maxZ = cz - radius, cz + radius
@@ -442,7 +480,28 @@ function SaplingService:_recomputeLeafDistances(vm, cx, cy, cz, radius)
 				local nx, ny, nz = x + off[1], y + off[2], z + off[3]
 				if ny >= minY and ny <= maxY and nx >= minX and nx <= maxX and nz >= minZ and nz <= maxZ then
 					local nid = vm:GetBlock(nx, ny, nz)
-					if nid == leafTarget then
+					if nid == leafTarget or nid == BLOCK.LEAVES then
+						-- Upgrade legacy generic leaves to the species near this log
+						if nid == BLOCK.LEAVES then
+							local oldMeta = vm:GetBlockMetadata(nx, ny, nz) or 0
+							local wasPersistent = bit32.band(oldMeta, 0x8) ~= 0
+							if vws and vws.SetBlock then
+								vws:SetBlock(nx, ny, nz, leafTarget)
+							else
+								if vm and vm.SetBlock then vm:SetBlock(nx, ny, nz, leafTarget) end
+							end
+							-- Preserve persistent bit if it was set
+							if wasPersistent then
+								local curMeta = vm:GetBlockMetadata(nx, ny, nz) or 0
+								vm:SetBlockMetadata(nx, ny, nz, bit32.bor(curMeta, 0x8))
+							end
+							-- Also stamp species code in metadata for future inference
+							local curMeta2 = vm:GetBlockMetadata(nx, ny, nz) or 0
+							local speciesCode = LEAF_TO_SPECIES_CODE[leafTarget]
+							if speciesCode then
+								vm:SetBlockMetadata(nx, ny, nz, setLeafSpecies(curMeta2, speciesCode))
+							end
+						end
 						local meta = vm:GetBlockMetadata(nx, ny, nz) or 0
 						local cur = getLeafDistance(meta)
 						if nextD < cur then
@@ -489,7 +548,8 @@ function SaplingService:_processSapling(vm, x, y, z)
 		local topY = math.min(Constants.WORLD_HEIGHT - 1, y + 7)
 		for ay = y + 1, topY do
 			local above = vm:GetBlock(x, ay, z)
-			if above ~= BLOCK.AIR then
+			-- Ignore all leaves when checking for obstruction
+			if above ~= BLOCK.AIR and (not self:_isLeaf(above)) then
 				return
 			end
 		end
@@ -544,6 +604,28 @@ function SaplingService:OnChunkStreamed(cx, cz)
 				end
 			end
 		end
+	end
+
+	-- Record a species hint for this chunk based on any logs present
+	local hint
+	for lx = 0, Constants.CHUNK_SIZE_X - 1 do
+		for lz = 0, Constants.CHUNK_SIZE_Z - 1 do
+			for y = 0, Constants.WORLD_HEIGHT - 1 do
+				local x = baseX + lx
+				local z = baseZ + lz
+				local id = vm:GetBlock(x, y, z)
+				if LOG_ANCHORS[id] then
+					local leafId = LOG_TO_LEAVES[id]
+					local code = leafId and LEAF_TO_SPECIES_CODE[leafId]
+					if code ~= nil then hint = code break end
+				end
+			end
+			if hint ~= nil then break end
+		end
+		if hint ~= nil then break end
+	end
+	if hint ~= nil then
+		self._chunkSpecies[string.format("%d,%d", cx, cz)] = hint
 	end
 
     -- Batch recompute distances for entire chunk footprint (plus border), crossing into neighbors
@@ -647,20 +729,22 @@ function SaplingService:_fastForwardIfOffline(vm, x, y, z, meta)
 					if self:_isLeaf(leafId) then
 						local meta = vm:GetBlockMetadata(x, y, z) or 0
 						local distance = getLeafDistance(meta) or 7
-						if distance >= 7 then
-							vws:SetBlock(x, y, z, BLOCK.AIR)
-							if dropSvc then
-                            if math.random() < saplingChance then
-                                local dropId = self:_pickSaplingDropForLeaf(vm, x, y, z)
-                                if dropId then
-                                    dropSvc:SpawnItem(dropId, 1, Vector3.new(x, y, z), nil, true)
-                                end
+                        if distance >= 7 then
+                            -- Compute drop BEFORE removing the leaf (metadata/id are cleared on SetBlock)
+                            local dropId
+                            if dropSvc and (math.random() < saplingChance) then
+                                local metaBefore = vm:GetBlockMetadata(x, y, z) or 0
+                                dropId = self:_pickSaplingDropForLeaf(vm, x, y, z, leafId, metaBefore)
+                            end
+                            vws:SetBlock(x, y, z, BLOCK.AIR)
+                            if dropSvc and dropId then
+                                dropSvc:SpawnItem(dropId, 1, Vector3.new(x, y, z), nil, true)
                             end
                             -- Only oak leaves drop apples (no generic fallback)
-                            if leafId == BLOCK.OAK_LEAVES and (math.random() < appleChance) then
+                            if dropSvc and (leafId == BLOCK.OAK_LEAVES) and (math.random() < appleChance) then
                                 dropSvc:SpawnItem(BLOCK.APPLE, 1, Vector3.new(x, y, z), nil, true)
                             end
-							end
+
 							removed += 1
 							-- Track for deterministic processing removal
 							self._unsupportedSet[keyFor(x, y, z)] = nil
@@ -695,7 +779,7 @@ function SaplingService:_processUnsupportedLeaves()
             local meta = vm:GetBlockMetadata(x, y, z) or 0
             local persistent = bit32.band(meta, 0x8) ~= 0
             local distance = getLeafDistance(meta) or 7
-            if (not persistent) and distance >= 7 then
+                    if (not persistent) and distance >= 7 then
                 if not self._unsupportedSchedule[k] then
                     self:_scheduleUnsupported(x, y, z)
                 end
@@ -708,16 +792,19 @@ function SaplingService:_processUnsupportedLeaves()
 					persistent = bit32.band(meta, 0x8) ~= 0
 					distance = getLeafDistance(meta) or 7
 					if (not persistent) and distance >= 7 then
-						vws:SetBlock(x, y, z, BLOCK.AIR)
+						-- Compute drop BEFORE removing the leaf (metadata/id are cleared on SetBlock)
 						local dropSvc = vws.Deps and vws.Deps.DroppedItemService
-						if dropSvc then
-							if math.random() < saplingChance then
-								local dropId = self:_pickSaplingDropForLeaf(vm, x, y, z)
-								dropSvc:SpawnItem(dropId, 1, Vector3.new(x, y, z), nil, true)
-							end
-							if (id == BLOCK.LEAVES or id == BLOCK.OAK_LEAVES) and (math.random() < appleChance) then
-								dropSvc:SpawnItem(BLOCK.APPLE, 1, Vector3.new(x, y, z), nil, true)
-							end
+						local dropId
+						if dropSvc and (math.random() < saplingChance) then
+							local metaBefore = vm:GetBlockMetadata(x, y, z) or 0
+							dropId = self:_pickSaplingDropForLeaf(vm, x, y, z, id, metaBefore)
+						end
+						vws:SetBlock(x, y, z, BLOCK.AIR)
+						if dropSvc and dropId then
+							dropSvc:SpawnItem(dropId, 1, Vector3.new(x, y, z), nil, true)
+						end
+						if dropSvc and (id == BLOCK.OAK_LEAVES) and (math.random() < appleChance) then
+							dropSvc:SpawnItem(BLOCK.APPLE, 1, Vector3.new(x, y, z), nil, true)
 						end
 						self._unsupportedSet[k] = nil
 						self._unsupportedSchedule[k] = nil
@@ -765,7 +852,35 @@ function SaplingService:_pickSaplingDropForLeaf(vm, x, y, z)
         local mapped = LEAVES_TO_SAPLING[leafId]
         if mapped then return mapped end
     end
-	for dy = -radius, radius do
+    -- If legacy generic LEAVES, first try to infer from metadata/chunk hint, then nearby species leaves, then logs
+    if leafId == BLOCK.LEAVES then
+        -- 1) Try species encoded in metadata
+        local meta = vm:GetBlockMetadata(x, y, z) or 0
+        local code = getLeafSpecies(meta)
+        if code and SPECIES_CODE_TO_SAPLING[code] then
+            return SPECIES_CODE_TO_SAPLING[code]
+        end
+        -- 2) Try last known species for this chunk
+        local cx = math.floor(x / Constants.CHUNK_SIZE_X)
+        local cz = math.floor(z / Constants.CHUNK_SIZE_Z)
+        local hint = self._chunkSpecies and self._chunkSpecies[string.format("%d,%d", cx, cz)]
+        if hint and SPECIES_CODE_TO_SAPLING[hint] then
+            return SPECIES_CODE_TO_SAPLING[hint]
+        end
+        -- 3) Try nearby species leaves
+        for dy = -radius, radius do
+            for dx = -radius, radius do
+                for dz = -radius, radius do
+                    local nid = vm:GetBlock(x + dx, y + dy, z + dz)
+                    local mapped = LEAVES_TO_SAPLING[nid]
+                    if mapped and nid ~= BLOCK.LEAVES then
+                        return mapped
+                    end
+                end
+            end
+        end
+    end
+    for dy = -radius, radius do
 		for dx = -radius, radius do
 			for dz = -radius, radius do
 				local id = vm:GetBlock(x + dx, y + dy, z + dz)
@@ -775,7 +890,8 @@ function SaplingService:_pickSaplingDropForLeaf(vm, x, y, z)
 			end
 		end
 	end
-	return BLOCK.OAK_SAPLING
+    -- If we couldn't infer species (no hints/leaves/logs), return nil to drop nothing
+    return nil
 end
 
 -- Check space for a small oak tree (5-block trunk, 5x5 canopy, top 3x3)
@@ -842,6 +958,10 @@ function SaplingService:_placeOakAt(vm, x, y, z)
 		if skipTrunk and dx == 0 and dz == 0 then return end
 		local leafId = LOG_TO_LEAVES[BLOCK.WOOD] or BLOCK.LEAVES
 		vws:SetBlock(x + dx, y + dy, z + dz, leafId)
+		-- Stamp species bits for persistence
+		local meta = vm:GetBlockMetadata(x + dx, y + dy, z + dz) or 0
+		local code = LEAF_TO_SPECIES_CODE[leafId]
+		if code then vm:SetBlockMetadata(x + dx, y + dy, z + dz, setLeafSpecies(meta, code)) end
 	end
 
 	-- Layer y+3: 5x5 minus corners, skip center
@@ -895,6 +1015,10 @@ function SaplingService:_placeTreeAt(vm, x, y, z, logId)
 		if skipTrunk and dx == 0 and dz == 0 then return end
 		local saplingLeafId = LOG_TO_LEAVES[trunkId] or LOG_TO_LEAVES[BLOCK.WOOD] or BLOCK.LEAVES
 		vws:SetBlock(x + dx, y + dy, z + dz, saplingLeafId)
+		-- Stamp species bits for persistence
+		local meta = vm:GetBlockMetadata(x + dx, y + dy, z + dz) or 0
+		local code = LEAF_TO_SPECIES_CODE[saplingLeafId]
+		if code then vm:SetBlockMetadata(x + dx, y + dy, z + dz, setLeafSpecies(meta, code)) end
 	end
 
 	-- Layer y+3: 5x5 minus corners, skip center

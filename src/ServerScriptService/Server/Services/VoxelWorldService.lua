@@ -513,9 +513,12 @@ function VoxelWorldService:SetBlock(x, y, z, blockId, player, metadata)
 		self.worldManager:SetBlockMetadata(x, y, z, 0)
 	end
 
-	-- Leaves persistence: player-placed leaves are persistent and should not decay
+	-- Leaves persistence: player-placed leaves (any variant) are persistent and should not decay
 	local BLOCK = require(ReplicatedStorage.Shared.VoxelWorld.Core.Constants).BlockType
-	if blockId == BLOCK.LEAVES then
+	local function _isLeaf(id)
+		return id == BLOCK.LEAVES or id == BLOCK.OAK_LEAVES or id == BLOCK.SPRUCE_LEAVES or id == BLOCK.JUNGLE_LEAVES or id == BLOCK.DARK_OAK_LEAVES or id == BLOCK.BIRCH_LEAVES or id == BLOCK.ACACIA_LEAVES
+	end
+	if _isLeaf(blockId) then
 		local metaToSet = metadata
 		-- If placed by a player, set persistent bit (bit 3)
 		if player then
@@ -751,26 +754,72 @@ function VoxelWorldService:HandlePlayerPunch(player, punchData)
 				if blockId == Constants.BlockType.BIRCH_LEAVES then saplingId = Constants.BlockType.BIRCH_SAPLING end
 				if blockId == Constants.BlockType.ACACIA_LEAVES then saplingId = Constants.BlockType.ACACIA_SAPLING end
 
-				-- If leaf was the legacy generic kind, infer species from nearest trunk
+				-- If leaf was the legacy generic kind, infer species from nearby variant leaves first, then nearest trunk
 				if (not saplingId) and blockId == Constants.BlockType.LEAVES then
 					local radius = (SaplingConfig.LEAF_DECAY and SaplingConfig.LEAF_DECAY.RADIUS) or 6
-					local best
+					-- Try species encoded in metadata (bits 4-6) first
+					local meta = self.worldManager and self.worldManager:GetBlockMetadata(x, y, z) or 0
+					local code = bit32.rshift(bit32.band(meta, 0x70), 4)
+					local function codeToSapling(c)
+						if c == 0 then return Constants.BlockType.OAK_SAPLING end
+						if c == 1 then return Constants.BlockType.SPRUCE_SAPLING end
+						if c == 2 then return Constants.BlockType.JUNGLE_SAPLING end
+						if c == 3 then return Constants.BlockType.DARK_OAK_SAPLING end
+						if c == 4 then return Constants.BlockType.BIRCH_SAPLING end
+						if c == 5 then return Constants.BlockType.ACACIA_SAPLING end
+						return nil
+					end
+					local fromCode = codeToSapling(code)
+					if fromCode then saplingId = fromCode end
+
+					-- Next, ask SaplingService for a chunk species hint
+					if (not saplingId) and self.Deps and self.Deps.SaplingService and self.Deps.SaplingService.GetChunkSpecies then
+						local cx = math.floor(x / Constants.CHUNK_SIZE_X)
+						local cz = math.floor(z / Constants.CHUNK_SIZE_Z)
+						local hint = self.Deps.SaplingService:GetChunkSpecies(cx, cz)
+						if hint ~= nil then
+							local hinted = codeToSapling(hint)
+							if hinted then saplingId = hinted end
+						end
+					end
+
+					-- Prefer nearby species leaves to infer correct sapling when logs are gone
+					local inferred
 					for dy = -radius, radius do
 						for dx = -radius, radius do
 							for dz = -radius, radius do
-								local bid = self.worldManager and self.worldManager:GetBlock(x + dx, y + dy, z + dz)
-								if bid == Constants.BlockType.WOOD then best = Constants.BlockType.OAK_SAPLING break end
-								if bid == Constants.BlockType.SPRUCE_LOG then best = Constants.BlockType.SPRUCE_SAPLING break end
-								if bid == Constants.BlockType.JUNGLE_LOG then best = Constants.BlockType.JUNGLE_SAPLING break end
-								if bid == Constants.BlockType.DARK_OAK_LOG then best = Constants.BlockType.DARK_OAK_SAPLING break end
-								if bid == Constants.BlockType.BIRCH_LOG then best = Constants.BlockType.BIRCH_SAPLING break end
-								if bid == Constants.BlockType.ACACIA_LOG then best = Constants.BlockType.ACACIA_SAPLING break end
+								local nid = self.worldManager and self.worldManager:GetBlock(x + dx, y + dy, z + dz)
+								if nid == Constants.BlockType.OAK_LEAVES then inferred = Constants.BlockType.OAK_SAPLING break end
+								if nid == Constants.BlockType.SPRUCE_LEAVES then inferred = Constants.BlockType.SPRUCE_SAPLING break end
+								if nid == Constants.BlockType.JUNGLE_LEAVES then inferred = Constants.BlockType.JUNGLE_SAPLING break end
+								if nid == Constants.BlockType.DARK_OAK_LEAVES then inferred = Constants.BlockType.DARK_OAK_SAPLING break end
+								if nid == Constants.BlockType.BIRCH_LEAVES then inferred = Constants.BlockType.BIRCH_SAPLING break end
+								if nid == Constants.BlockType.ACACIA_LEAVES then inferred = Constants.BlockType.ACACIA_SAPLING break end
 							end
-							if best then break end
+							if inferred then break end
 						end
-						if best then break end
+						if inferred then
+							saplingId = inferred
+						else
+							local best
+							for dy = -radius, radius do
+								for dx = -radius, radius do
+									for dz = -radius, radius do
+										local bid = self.worldManager and self.worldManager:GetBlock(x + dx, y + dy, z + dz)
+										if bid == Constants.BlockType.WOOD then best = Constants.BlockType.OAK_SAPLING break end
+										if bid == Constants.BlockType.SPRUCE_LOG then best = Constants.BlockType.SPRUCE_SAPLING break end
+										if bid == Constants.BlockType.JUNGLE_LOG then best = Constants.BlockType.JUNGLE_SAPLING break end
+										if bid == Constants.BlockType.DARK_OAK_LOG then best = Constants.BlockType.DARK_OAK_SAPLING break end
+										if bid == Constants.BlockType.BIRCH_LOG then best = Constants.BlockType.BIRCH_SAPLING break end
+										if bid == Constants.BlockType.ACACIA_LOG then best = Constants.BlockType.ACACIA_SAPLING break end
+									end
+									if best then break end
+								end
+								if best then break end
+							end
+							saplingId = best
+						end
 					end
-					saplingId = best or Constants.BlockType.OAK_SAPLING
 				end
 
 				if saplingId and (math.random() < saplingChance) then
@@ -1554,6 +1603,15 @@ end
 -- Save world data
 function VoxelWorldService:SaveWorldData()
 	print("===== SaveWorldData called =====")
+
+	-- Throttle rapid duplicate saves (e.g., PlayerRemoving followed by BindToClose)
+	self._lastWorldSaveAt = self._lastWorldSaveAt or 0
+	local now = os.clock()
+	if now - self._lastWorldSaveAt < 2 then
+		print("Skipping world save - throttled")
+		return
+	end
+	self._lastWorldSaveAt = now
 
 	if not self.Deps or not self.Deps.WorldOwnershipService then
 		warn("WorldOwnershipService not available for saving")

@@ -36,9 +36,9 @@ local GameConfig = {
 			notification = {id = "rbxassetid://18595195017", volume = 0.4}, -- Notification
 			achievement = {id = "rbxassetid://17648982831", volume = 0.8}, -- Achievement (same as level up)
 			rewardClaim = {id = "rbxassetid://10066947742", volume = 0.6}, -- Reward claim (same as purchase)
-			-- Voxel World Sounds
-			blockPlace = {id = "rbxassetid://4842910279", volume = 0.5}, -- Block placement sound
-			blockBreak = {id = "rbxassetid://4842910279", volume = 0.5} -- Block break sound
+				-- Voxel World Sounds
+				blockPlace = {id = "rbxassetid://6324790483", volume = 0.5}, -- Block placement sound
+				blockBreak = {id = "rbxassetid://6324790483", volume = 0.5} -- Block break sound
 		}
 	},
 

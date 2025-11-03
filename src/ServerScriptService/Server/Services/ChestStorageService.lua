@@ -212,6 +212,7 @@ function ChestStorageService:HandleOpenChest(player, data)
 	-- IMPORTANT: Send ALL 27 slots (even empty) to keep array dense
 	local emptySlot = ItemStack.new(0, 0):Serialize()
 	local playerInventory = {}
+	local hotbar = {}
 	if self.Deps and self.Deps.PlayerInventoryService then
 		local invData = self.Deps.PlayerInventoryService.inventories[player]
 		if invData then
@@ -222,6 +223,16 @@ function ChestStorageService:HandleOpenChest(player, data)
 					playerInventory[i] = stack:Serialize()
 				else
 					playerInventory[i] = emptySlot
+				end
+			end
+
+			-- Get hotbar slots (9 slots) - use Serialize() for proper format
+			for i = 1, 9 do
+				local stack = invData.hotbar[i]
+				if stack and stack:GetItemId() > 0 then
+					hotbar[i] = stack:Serialize()
+				else
+					hotbar[i] = emptySlot
 				end
 			end
 		end
@@ -240,13 +251,14 @@ function ChestStorageService:HandleOpenChest(player, data)
 	end
 	print(string.format("[ChestOpen] Sending %d chest items to %s", chestItemCount, player.Name))
 
-	-- Send chest contents and player inventory to player (hotbar stays visible at bottom)
+	-- Send chest contents, player inventory, and hotbar to player
 	EventManager:FireEvent("ChestOpened", player, {
 		x = x,
 		y = y,
 		z = z,
 		contents = chestContents,
-		playerInventory = playerInventory
+		playerInventory = playerInventory,
+		hotbar = hotbar
 	})
 
 	print(string.format("Player %s opened chest at (%d, %d, %d)", player.Name, x, y, z))
@@ -376,13 +388,28 @@ function ChestStorageService:HandleChestSlotClick(player, data)
 				serialized and string.format("Item %d x%d (serialized)", serialized.itemId, serialized.count) or "nil (empty)"))
 		end
 	else
-		-- Click on inventory slot
-		local invSlot = invData.inventory[data.slotIndex] or ItemStack.new(0, 0)
+		-- Click on inventory or hotbar slot
+		-- Negative slotIndex means hotbar, positive means inventory
+		local isHotbarSlot = data.slotIndex < 0
+		local actualIndex = isHotbarSlot and -data.slotIndex or data.slotIndex
+
+		local invSlot
+		if isHotbarSlot then
+			-- Hotbar slot (indices 1-9)
+			invSlot = invData.hotbar[actualIndex] or ItemStack.new(0, 0)
+		else
+			-- Inventory slot (indices 1-27)
+			invSlot = invData.inventory[actualIndex] or ItemStack.new(0, 0)
+		end
 
 		success, newSlotStack, newCursor = self:ExecuteSlotClick(invSlot, cursor, data.clickType)
 
 		if success then
-			invData.inventory[data.slotIndex] = newSlotStack
+			if isHotbarSlot then
+				invData.hotbar[actualIndex] = newSlotStack
+			else
+				invData.inventory[actualIndex] = newSlotStack
+			end
 			chest.cursors[cursorKey] = newCursor
 			shouldUpdateInventory = true
 		end
@@ -412,15 +439,26 @@ function ChestStorageService:HandleChestSlotClick(player, data)
     end
 
     local inventoryDelta = {}
+    local hotbarDelta = {}
     if shouldUpdateInventory then
-        local stack = invData.inventory[data.slotIndex] or ItemStack.new(0, 0)
-        inventoryDelta[data.slotIndex] = stack:Serialize()
+        -- Negative slotIndex means hotbar, positive means inventory
+        local isHotbarSlot = data.slotIndex < 0
+        local actualIndex = isHotbarSlot and -data.slotIndex or data.slotIndex
+
+        if isHotbarSlot then
+            local stack = invData.hotbar[actualIndex] or ItemStack.new(0, 0)
+            hotbarDelta[actualIndex] = stack:Serialize()
+        else
+            local stack = invData.inventory[actualIndex] or ItemStack.new(0, 0)
+            inventoryDelta[actualIndex] = stack:Serialize()
+        end
     end
 
     EventManager:FireEvent("ChestActionResult", player, {
         chestPosition = {x = x, y = y, z = z},
         chestDelta = chestDelta,
         inventoryDelta = inventoryDelta,
+        hotbarDelta = hotbarDelta,
         cursorItem = newCursor:IsEmpty() and nil or newCursor:Serialize()
     })
 end
@@ -607,6 +645,19 @@ function ChestStorageService:HandleChestContentsUpdate(player, data)
 		end
 	end
 
+	-- Apply hotbar changes from transaction to player's actual hotbar
+	local clientHotbar = data.hotbar or {}
+	if playerInvData and clientHotbar then
+		for i = 1, 9 do
+			if clientHotbar[i] then
+				local deserialized = ItemStack.Deserialize(clientHotbar[i])
+				playerInvData.hotbar[i] = deserialized
+			else
+				playerInvData.hotbar[i] = ItemStack.new(0, 0)
+			end
+		end
+	end
+
 	-- Get updated player inventory (now reflects the transaction)
 	local playerInventory = {}
 	if playerInvData then
@@ -618,12 +669,24 @@ function ChestStorageService:HandleChestContentsUpdate(player, data)
 		end
 	end
 
+	-- Get updated hotbar
+	local hotbar = {}
+	if playerInvData then
+		for i = 1, 9 do
+			local stack = playerInvData.hotbar[i]
+			if stack and stack:GetItemId() > 0 then
+				hotbar[i] = stack:Serialize()
+			end
+		end
+	end
+
 	-- Notify all viewers
 	for viewer in pairs(chest.viewers) do
 		EventManager:FireEvent("ChestUpdated", viewer, {
 			x = x, y = y, z = z,
 			contents = chest.slots,
-			playerInventory = playerInventory
+			playerInventory = playerInventory,
+			hotbar = hotbar
 		})
 	end
 

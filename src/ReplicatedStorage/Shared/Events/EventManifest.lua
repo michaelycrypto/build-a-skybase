@@ -54,6 +54,9 @@ local Manifest = {
 		PlayerInventoryUpdate = {"any"}, -- {inventory} - Client updated player inventory (from chest UI) (LEGACY)
 		InventoryUpdate = {"any"}, -- {inventory, hotbar} - Client updated inventory (from inventory panel)
 
+		-- Workbench interaction
+		RequestOpenWorkbench = {"any"}, -- {x, y, z} - Request to open workbench at position
+
 		-- Dropped item interactions
 		RequestItemPickup = {"any"}, -- {id} - Request to pick up item by ID
 		RequestDropItem = {"any"}, -- {itemId, count, slotIndex} - Request to drop item
@@ -103,6 +106,8 @@ local Manifest = {
 		ChestClosed = {"any"}, -- {x, y, z} - Chest closed
 		ChestUpdated = {"any"}, -- {x, y, z, contents} - Chest contents changed (LEGACY)
 		ChestActionResult = {"any"}, -- NEW: {chestPosition, chestContents, playerInventory, cursorItem} - Server-authoritative result
+		-- Workbench open
+		WorkbenchOpened = {"any"}, -- {x, y, z}
 		-- Dropped item events (server calculates, client simulates)
 		ItemSpawned = {"any"}, -- {id, itemId, count, startPos, finalPos, velocity}
 		ItemRemoved = {"any"}, -- {id}

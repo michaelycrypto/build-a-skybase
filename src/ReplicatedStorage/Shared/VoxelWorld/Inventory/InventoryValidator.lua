@@ -214,19 +214,14 @@ function InventoryValidator:ValidateInventoryTransaction(oldInventory, oldHotbar
 		end
 	end
 
-	-- Compare totals - new should not exceed old (items can only be lost, not created)
-	-- In creative mode, this might be relaxed, but in survival it's strict
+	-- Compare totals - client InventoryUpdate must not create items in survival.
+	-- Any net increase is invalid; item gains come from server-side actions only.
 	for itemId, newCount in pairs(newTotals) do
 		local oldCount = oldTotals[itemId] or 0
-
-		-- Allow creative mode flexibility: can gain items, but check for reasonable amounts
-		-- In creative, you can add items, but not absurd amounts (anti-exploit)
-		local maxCreativeGain = 640 -- 10 stacks at once is reasonable for creative
-
-		if newCount > oldCount + maxCreativeGain then
+		if newCount > oldCount then
 			return false, string.format(
-				"Suspicious item gain: Item %d increased from %d to %d (+%d exceeds limit)",
-				itemId, oldCount, newCount, newCount - oldCount
+				"Invalid gain: Item %d increased from %d to %d via client update",
+				itemId, oldCount, newCount
 			)
 		end
 	end

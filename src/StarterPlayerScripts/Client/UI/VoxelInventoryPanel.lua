@@ -24,24 +24,31 @@ local BlockViewportCreator = require(ReplicatedStorage.Shared.VoxelWorld.Renderi
 local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
 local EventManager = require(ReplicatedStorage.Shared.EventManager)
 local GameConfig = require(ReplicatedStorage.Configs.GameConfig)
+local IconManager = require(script.Parent.Parent.Managers.IconManager)
 
 local VoxelInventoryPanel = {}
 VoxelInventoryPanel.__index = VoxelInventoryPanel
 
--- Inventory configuration
+-- Inventory configuration (optimized for compactness)
 local INVENTORY_CONFIG = {
 	COLUMNS = 9,
 	ROWS = 3, -- 3 rows of storage (27 slots) + 9 hotbar slots = 36 total
-	SLOT_SIZE = 52,
-	SLOT_SPACING = 4,
-	PADDING = 20,
-	SECTION_SPACING = 20, -- Space between inventory and hotbar sections
+	SLOT_SIZE = 44,        -- Reduced from 52 for compactness
+	SLOT_SPACING = 3,      -- Reduced from 4
+	PADDING = 6,           -- Ultra-minimal padding
+	SECTION_SPACING = 8,   -- Minimal section spacing
+
+	-- Equipment slots (left side)
+	EQUIPMENT_SLOT_SIZE = 44,  -- Same as inventory slots
+	EQUIPMENT_SPACING = 3,      -- Same as slot spacing
+	EQUIPMENT_GAP = 12,         -- Minimal gap between equipment and inventory
 
 	-- Colors
 	BG_COLOR = Color3.fromRGB(35, 35, 35),
 	SLOT_COLOR = Color3.fromRGB(45, 45, 45),
 	BORDER_COLOR = Color3.fromRGB(60, 60, 60),
 	HOVER_COLOR = Color3.fromRGB(80, 80, 80),
+	EQUIPMENT_COLOR = Color3.fromRGB(50, 50, 60),  -- Slightly different tint for equipment
 }
 
 function VoxelInventoryPanel.new(inventoryManager)
@@ -52,11 +59,19 @@ function VoxelInventoryPanel.new(inventoryManager)
 	self.hotbar = inventoryManager.hotbar
 
 	self.isOpen = false
+
+	-- Ensure crafting detail page is closed so next open shows overview
+	if self.craftingPanel and self.craftingPanel.HideRecipeDetailPage then
+		pcall(function()
+			self.craftingPanel:HideRecipeDetailPage()
+		end)
+	end
 	self.gui = nil
 	self.panel = nil
 
 	-- UI slot frames
 	self.inventorySlotFrames = {}
+	self.equipmentSlotFrames = {}  -- Head, Chest, Leggings, Boots
 
 	-- Cursor/drag state (Minecraft-style)
 	self.cursorStack = ItemStack.new(0, 0) -- Item attached to cursor
@@ -69,14 +84,22 @@ function VoxelInventoryPanel.new(inventoryManager)
 end
 
 function VoxelInventoryPanel:Initialize()
-	-- Create ScreenGui
+	-- Create ScreenGui for inventory panel
 	self.gui = Instance.new("ScreenGui")
 	self.gui.Name = "VoxelInventory"
 	self.gui.ResetOnSpawn = false
-	self.gui.DisplayOrder = 100
+	self.gui.DisplayOrder = 100  -- Below tooltips
 	self.gui.IgnoreGuiInset = true
 	self.gui.Enabled = false
 	self.gui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
+
+	-- Create separate ScreenGui for cursor (must be on top of everything)
+	self.cursorGui = Instance.new("ScreenGui")
+	self.cursorGui.Name = "VoxelInventoryCursor"
+	self.cursorGui.ResetOnSpawn = false
+	self.cursorGui.DisplayOrder = 2000  -- Always on top
+	self.cursorGui.IgnoreGuiInset = true
+	self.cursorGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
 
 	-- Add responsive scaling (100% = original size)
 	local uiScale = Instance.new("UIScale")
@@ -103,14 +126,22 @@ function VoxelInventoryPanel:CreatePanel()
 	                      INVENTORY_CONFIG.SLOT_SPACING * (INVENTORY_CONFIG.ROWS - 1)
 	local hotbarHeight = INVENTORY_CONFIG.SLOT_SIZE
 
-	-- Calculate proper height accounting for all elements:
-	-- Title (50) + Inv Label (25) + Storage (164) + Spacing (20) + Hotbar Label (25) + Hotbar (52) + Bottom Padding (20)
-	local totalHeight = 50 + 25 + storageHeight + INVENTORY_CONFIG.SECTION_SPACING + 25 + hotbarHeight + 20
+	-- Equipment slots (4 slots vertical: Head, Chest, Leggings, Boots)
+	local equipmentWidth = INVENTORY_CONFIG.EQUIPMENT_SLOT_SIZE
+	local equipmentTotalHeight = (INVENTORY_CONFIG.EQUIPMENT_SLOT_SIZE * 4) +
+	                             (INVENTORY_CONFIG.EQUIPMENT_SPACING * 3)
 
-	-- Crafting section dimensions
-	local CRAFTING_WIDTH = 260  -- Slightly wider for better layout
-	local CRAFTING_GAP = 25  -- Smaller gap, cleaner look
-	local totalWidth = slotWidth + CRAFTING_GAP + CRAFTING_WIDTH + INVENTORY_CONFIG.PADDING * 2
+	-- Calculate proper height accounting for all elements (ultra-compact layout):
+	-- Top Padding (30) + Inv Label (18) + Storage + Spacing + Hotbar Label (18) + Hotbar + Bottom Padding (10)
+	-- Note: Title is positioned above the panel with -0.5 offset, so not included in panel height
+	local totalHeight = 30 + 18 + storageHeight + INVENTORY_CONFIG.SECTION_SPACING + 18 + hotbarHeight + 10
+
+	-- Crafting section dimensions (ultra-compact)
+	local CRAFTING_WIDTH = 230  -- Ultra-compact width (detail page overlays anyway)
+	local CRAFTING_GAP = 12     -- Minimal gap
+
+	-- Total width: Equipment + Gap + Divider + Gap + Inventory + Gap + Crafting + Padding
+	local totalWidth = equipmentWidth + INVENTORY_CONFIG.EQUIPMENT_GAP + slotWidth + CRAFTING_GAP + CRAFTING_WIDTH + INVENTORY_CONFIG.PADDING * 2
 
 	-- Background overlay
 	local overlay = Instance.new("Frame")
@@ -142,61 +173,153 @@ function VoxelInventoryPanel:CreatePanel()
 	stroke.Thickness = 3
 	stroke.Parent = self.panel
 
-	-- Title
+	-- Header frame (transparent, for title positioning)
+	local headerFrame = Instance.new("Frame")
+	headerFrame.Name = "Header"
+	headerFrame.Size = UDim2.new(1, 0, 0, 1)
+	headerFrame.BackgroundTransparency = 1
+	headerFrame.BorderSizePixel = 0
+	headerFrame.Parent = self.panel
+
+	-- Title container (positioned above the panel like SettingsPanel)
+	local titleContainer = Instance.new("Frame")
+	titleContainer.Name = "TitleContainer"
+	titleContainer.Size = UDim2.new(1, -64 - 16, 1, 0) -- Reserve space for close button
+	titleContainer.Position = UDim2.new(0, 0, -0.5, 0) -- 50% offset above the panel
+	titleContainer.BackgroundTransparency = 1
+	titleContainer.Parent = headerFrame
+
+	-- Title container padding
+	local titlePadding = Instance.new("UIPadding")
+	titlePadding.PaddingLeft = UDim.new(0, 6)
+	titlePadding.PaddingRight = UDim.new(0, 16)
+	titlePadding.Parent = titleContainer
+
+	-- Horizontal layout for title
+	local titleLayout = Instance.new("UIListLayout")
+	titleLayout.FillDirection = Enum.FillDirection.Horizontal
+	titleLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	titleLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+	titleLayout.Padding = UDim.new(0, 12)
+	titleLayout.Parent = titleContainer
+
+	-- Backpack icon for Inventory
+	local titleIcon = IconManager:CreateIcon(titleContainer, "Clothing", "Backpack", {
+		size = 36,
+		position = UDim2.new(0, 0, 0.5, 0),
+		anchorPoint = Vector2.new(0, 0.5)
+	})
+	titleIcon.LayoutOrder = 1
+
+	-- Keep reference for dynamic icon updates
+	self.titleIcon = titleIcon
+
+	-- Title text (styled like SettingsPanel)
 	local title = Instance.new("TextLabel")
 	title.Name = "Title"
-	title.Size = UDim2.new(1, -40, 0, 40)
-	title.Position = UDim2.new(0, 20, 0, 10)
+	title.Size = UDim2.new(0, 200, 1, 0)
 	title.BackgroundTransparency = 1
-	title.Font = Enum.Font.GothamBold
-	title.TextSize = 20
+	title.RichText = true
+	title.Text = "<b><i>Inventory</i></b>"
 	title.TextColor3 = Color3.fromRGB(255, 255, 255)
-	title.Text = "Inventory"
+	title.TextSize = 36
+	title.Font = Enum.Font.GothamBold
 	title.TextXAlignment = Enum.TextXAlignment.Left
-	title.Parent = self.panel
+	title.LayoutOrder = 2
+	title.Parent = titleContainer
 
-	-- Close button
-	local closeBtn = Instance.new("TextButton")
+	-- Keep reference for dynamic title updates (Inventory vs Workbench)
+	self.titleLabel = title
+
+	-- Title stroke
+	local titleStroke = Instance.new("UIStroke")
+	titleStroke.Color = Color3.fromRGB(0, 0, 0)
+	titleStroke.Thickness = 2
+	titleStroke.Parent = title
+
+	-- Close button (same style as SettingsPanel) - positioned to stick out of top right corner
+	local closeIcon = IconManager:CreateIcon(headerFrame, "UI", "X", {
+		size = UDim2.new(0, 40, 0, 40),
+		position = UDim2.new(1, 2, 0, -2),  -- Reduced offset to account for 3px border
+		anchorPoint = Vector2.new(0.5, 0.5)
+	})
+
+	-- Convert to ImageButton for interaction
+	local closeBtn = Instance.new("ImageButton")
 	closeBtn.Name = "CloseButton"
-	closeBtn.Size = UDim2.new(0, 30, 0, 30)
-	closeBtn.Position = UDim2.new(1, -40, 0, 15)
-	closeBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-	closeBtn.BorderSizePixel = 0
-	closeBtn.Font = Enum.Font.GothamBold
-	closeBtn.TextSize = 18
-	closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-	closeBtn.Text = "×"
-	closeBtn.Parent = self.panel
+	closeBtn.Size = closeIcon.Size
+	closeBtn.Position = closeIcon.Position
+	closeBtn.AnchorPoint = closeIcon.AnchorPoint
+	closeBtn.BackgroundTransparency = 1
+	closeBtn.Image = closeIcon.Image
+	closeBtn.ScaleType = closeIcon.ScaleType
+	closeBtn.Parent = headerFrame
 
-	local closeCorner = Instance.new("UICorner")
-	closeCorner.CornerRadius = UDim.new(0, 6)
-	closeCorner.Parent = closeBtn
+	-- Add rounded corners
+	local closeButtonCorner = Instance.new("UICorner")
+	closeButtonCorner.CornerRadius = UDim.new(0, 4)
+	closeButtonCorner.Parent = closeBtn
+
+	-- Add rotation animation on mouse enter/leave
+	local rotationTweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+
+	closeBtn.MouseEnter:Connect(function()
+		local rotationTween = TweenService:Create(closeBtn, rotationTweenInfo, {
+			Rotation = 90
+		})
+		rotationTween:Play()
+	end)
+
+	closeBtn.MouseLeave:Connect(function()
+		local rotationTween = TweenService:Create(closeBtn, rotationTweenInfo, {
+			Rotation = 0
+		})
+		rotationTween:Play()
+	end)
 
 	closeBtn.MouseButton1Click:Connect(function()
 		self:Close()
 	end)
 
-	local yOffset = 50
+	-- Remove original icon
+	closeIcon:Destroy()
 
-	-- Inventory section label
+	local yOffset = 30  -- Top padding for whitespace below header
+
+	-- Equipment base X position (left side)
+	local equipmentX = INVENTORY_CONFIG.PADDING
+
+	-- Inventory base X position (after equipment + gap + divider space)
+	local inventoryBaseX = INVENTORY_CONFIG.PADDING + equipmentWidth + INVENTORY_CONFIG.EQUIPMENT_GAP
+
+	-- Inventory label (grey, caps, no icon)
 	local invLabel = Instance.new("TextLabel")
-	invLabel.Size = UDim2.new(1, -40, 0, 20)
-	invLabel.Position = UDim2.new(0, 20, 0, yOffset)
+	invLabel.Name = "InvLabel"
+	invLabel.Size = UDim2.new(0, storageWidth, 0, 14)
+	invLabel.Position = UDim2.new(0, inventoryBaseX, 0, yOffset)
 	invLabel.BackgroundTransparency = 1
-	invLabel.Font = Enum.Font.Gotham
-	invLabel.TextSize = 14
-	invLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-	invLabel.Text = "Inventory"
+	invLabel.Font = Enum.Font.GothamMedium
+	invLabel.TextSize = 11
+	invLabel.TextColor3 = Color3.fromRGB(140, 140, 140)
+	invLabel.Text = "INVENTORY"
 	invLabel.TextXAlignment = Enum.TextXAlignment.Left
 	invLabel.Parent = self.panel
 
-	yOffset = yOffset + 25
+	yOffset = yOffset + 16
+
+	-- Create equipment slots (4 slots vertical: Head, Chest, Leggings, Boots)
+	local equipmentTypes = {"Head", "Chest", "Leggings", "Boots"}
+	local equipmentStartY = yOffset  -- Aligned with inventory slots
+	for i = 1, 4 do
+		local equipY = equipmentStartY + (i - 1) * (INVENTORY_CONFIG.EQUIPMENT_SLOT_SIZE + INVENTORY_CONFIG.EQUIPMENT_SPACING + 2)  -- +2 for extra spacing
+		self:CreateEquipmentSlot(i, equipmentTypes[i], equipmentX, equipY)
+	end
 
 	-- Create inventory slots (3 rows of 9)
 	for row = 0, INVENTORY_CONFIG.ROWS - 1 do
 		for col = 0, INVENTORY_CONFIG.COLUMNS - 1 do
 			local index = row * INVENTORY_CONFIG.COLUMNS + col + 1
-			local x = INVENTORY_CONFIG.PADDING + col * (INVENTORY_CONFIG.SLOT_SIZE + INVENTORY_CONFIG.SLOT_SPACING)
+			local x = inventoryBaseX + col * (INVENTORY_CONFIG.SLOT_SIZE + INVENTORY_CONFIG.SLOT_SPACING)
 			local y = yOffset + row * (INVENTORY_CONFIG.SLOT_SIZE + INVENTORY_CONFIG.SLOT_SPACING)
 			self:CreateInventorySlot(index, x, y)
 		end
@@ -204,43 +327,67 @@ function VoxelInventoryPanel:CreatePanel()
 
 	yOffset = yOffset + storageHeight + INVENTORY_CONFIG.SECTION_SPACING
 
-	-- Hotbar section label
+	-- Hotbar label (grey, caps, no icon)
 	local hotbarLabel = Instance.new("TextLabel")
-	hotbarLabel.Size = UDim2.new(1, -40, 0, 20)
-	hotbarLabel.Position = UDim2.new(0, 20, 0, yOffset)
+	hotbarLabel.Name = "HotbarLabel"
+	hotbarLabel.Size = UDim2.new(0, storageWidth, 0, 14)
+	hotbarLabel.Position = UDim2.new(0, inventoryBaseX, 0, yOffset)
 	hotbarLabel.BackgroundTransparency = 1
-	hotbarLabel.Font = Enum.Font.Gotham
-	hotbarLabel.TextSize = 14
-	hotbarLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-	hotbarLabel.Text = "Hotbar"
+	hotbarLabel.Font = Enum.Font.GothamMedium
+	hotbarLabel.TextSize = 11
+	hotbarLabel.TextColor3 = Color3.fromRGB(140, 140, 140)
+	hotbarLabel.Text = "HOTBAR"
 	hotbarLabel.TextXAlignment = Enum.TextXAlignment.Left
 	hotbarLabel.Parent = self.panel
 
-	yOffset = yOffset + 25
+	yOffset = yOffset + 16
 
 	-- Hotbar slots (reference only, actual data in hotbar)
 	for col = 0, INVENTORY_CONFIG.COLUMNS - 1 do
-		local x = INVENTORY_CONFIG.PADDING + col * (INVENTORY_CONFIG.SLOT_SIZE + INVENTORY_CONFIG.SLOT_SPACING)
+		local x = inventoryBaseX + col * (INVENTORY_CONFIG.SLOT_SIZE + INVENTORY_CONFIG.SLOT_SPACING)
 		self:CreateHotbarSlot(col + 1, x, yOffset)
 	end
 
-	-- Crafting section (right side)
+	-- Equipment divider (between equipment and inventory)
+	local equipmentDivider = Instance.new("Frame")
+	equipmentDivider.Name = "EquipmentDivider"
+	equipmentDivider.Size = UDim2.new(0, 2, 0, totalHeight - 48)
+	equipmentDivider.Position = UDim2.new(0, equipmentX + equipmentWidth + INVENTORY_CONFIG.EQUIPMENT_GAP/2 - 1, 0, 42)
+	equipmentDivider.BackgroundColor3 = INVENTORY_CONFIG.BORDER_COLOR
+	equipmentDivider.BackgroundTransparency = 0.5
+	equipmentDivider.BorderSizePixel = 0
+	equipmentDivider.Parent = self.panel
+
+	-- Crafting label (grey, caps, no icon)
+	local craftingLabel = Instance.new("TextLabel")
+	craftingLabel.Name = "CraftingLabel"
+	craftingLabel.Size = UDim2.new(0, CRAFTING_WIDTH, 0, 14)
+	craftingLabel.Position = UDim2.new(0, inventoryBaseX + slotWidth + CRAFTING_GAP, 0, 30)
+	craftingLabel.BackgroundTransparency = 1
+	craftingLabel.Font = Enum.Font.GothamMedium
+	craftingLabel.TextSize = 11
+	craftingLabel.TextColor3 = Color3.fromRGB(140, 140, 140)
+	craftingLabel.Text = "CRAFTING"
+	craftingLabel.TextXAlignment = Enum.TextXAlignment.Left
+	craftingLabel.Parent = self.panel
+
+	-- Crafting section (right side, expanded)
 	local craftingSection = Instance.new("Frame")
 	craftingSection.Name = "CraftingSection"
-	craftingSection.Size = UDim2.new(0, CRAFTING_WIDTH, 0, totalHeight - 80)
-	craftingSection.Position = UDim2.new(0, slotWidth + INVENTORY_CONFIG.PADDING + CRAFTING_GAP, 0, 55)
+	craftingSection.Size = UDim2.new(0, CRAFTING_WIDTH, 0, totalHeight - 50)
+	craftingSection.Position = UDim2.new(0, inventoryBaseX + slotWidth + CRAFTING_GAP, 0, 44)
 	craftingSection.BackgroundTransparency = 1
 	craftingSection.Parent = self.panel
 
-	-- Create vertical divider line
-	local divider = Instance.new("Frame")
-	divider.Name = "Divider"
-	divider.Size = UDim2.new(0, 2, 0, totalHeight - 70)
-	divider.Position = UDim2.new(0, slotWidth + INVENTORY_CONFIG.PADDING + CRAFTING_GAP/2 - 1, 0, 55)
-	divider.BackgroundColor3 = INVENTORY_CONFIG.BORDER_COLOR
-	divider.BackgroundTransparency = 0.5
-	divider.BorderSizePixel = 0
-	divider.Parent = self.panel
+	-- Crafting divider (between inventory and crafting)
+	local craftingDivider = Instance.new("Frame")
+	craftingDivider.Name = "CraftingDivider"
+	craftingDivider.Size = UDim2.new(0, 2, 0, totalHeight - 48)
+	craftingDivider.Position = UDim2.new(0, inventoryBaseX + slotWidth + CRAFTING_GAP/2 - 1, 0, 42)
+	craftingDivider.BackgroundColor3 = INVENTORY_CONFIG.BORDER_COLOR
+	craftingDivider.BackgroundTransparency = 0.5
+	craftingDivider.BorderSizePixel = 0
+	craftingDivider.Parent = self.panel
 
 	-- Initialize crafting panel
 	local CraftingPanel = require(script.Parent.CraftingPanel)
@@ -432,6 +579,84 @@ function VoxelInventoryPanel:CreateHotbarSlot(index, x, y)
 	self:UpdateHotbarSlotDisplay(index, slot, iconContainer, countLabel, selectionBorder)
 end
 
+function VoxelInventoryPanel:CreateEquipmentSlot(index, equipmentType, x, y)
+	local slot = Instance.new("TextButton")
+	slot.Name = "EquipmentSlot" .. equipmentType
+	slot.Size = UDim2.new(0, INVENTORY_CONFIG.EQUIPMENT_SLOT_SIZE, 0, INVENTORY_CONFIG.EQUIPMENT_SLOT_SIZE)
+	slot.Position = UDim2.new(0, x, 0, y)
+	slot.BackgroundColor3 = INVENTORY_CONFIG.EQUIPMENT_COLOR
+	slot.BorderSizePixel = 0
+	slot.Text = ""
+	slot.AutoButtonColor = false
+	slot.Parent = self.panel
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 4)
+	corner.Parent = slot
+
+	-- Hover border
+	local hoverBorder = Instance.new("UIStroke")
+	hoverBorder.Name = "HoverBorder"
+	hoverBorder.Color = Color3.fromRGB(255, 255, 255)
+	hoverBorder.Thickness = 2
+	hoverBorder.Transparency = 1
+	hoverBorder.Parent = slot
+
+	-- Create container for viewport - slightly inset for padding
+	local iconContainer = Instance.new("Frame")
+	iconContainer.Name = "IconContainer"
+	iconContainer.Size = UDim2.new(1, -6, 1, -6)  -- 3px padding on all sides
+	iconContainer.Position = UDim2.new(0, 3, 0, 3)
+	iconContainer.BackgroundTransparency = 1
+	iconContainer.ZIndex = 2
+	iconContainer.Parent = slot
+
+	-- Equipment type icon/label (when empty)
+	local typeLabel = Instance.new("TextLabel")
+	typeLabel.Name = "TypeLabel"
+	typeLabel.Size = UDim2.new(1, 0, 1, 0)
+	typeLabel.BackgroundTransparency = 1
+	typeLabel.Font = Enum.Font.Gotham
+	typeLabel.TextSize = 8  -- Smaller text
+	typeLabel.TextColor3 = Color3.fromRGB(100, 100, 120)  -- More subtle
+	typeLabel.Text = equipmentType
+	typeLabel.TextXAlignment = Enum.TextXAlignment.Center
+	typeLabel.TextYAlignment = Enum.TextYAlignment.Center
+	typeLabel.ZIndex = 2
+	typeLabel.Parent = slot
+
+	self.equipmentSlotFrames[index] = {
+		frame = slot,
+		iconContainer = iconContainer,
+		typeLabel = typeLabel,
+		hoverBorder = hoverBorder,
+		equipmentType = equipmentType
+	}
+
+	-- Hover effect
+	slot.MouseEnter:Connect(function()
+		hoverBorder.Transparency = 0.5
+		slot.BackgroundColor3 = INVENTORY_CONFIG.HOVER_COLOR
+	end)
+
+	slot.MouseLeave:Connect(function()
+		hoverBorder.Transparency = 1
+		slot.BackgroundColor3 = INVENTORY_CONFIG.EQUIPMENT_COLOR
+	end)
+
+	-- Click handlers (for future equipment system)
+	slot.MouseButton1Click:Connect(function()
+		self:OnEquipmentSlotLeftClick(index, equipmentType)
+	end)
+
+	slot.MouseButton2Click:Connect(function()
+		self:OnEquipmentSlotRightClick(index, equipmentType)
+	end)
+
+	-- TODO: Update display when equipment system is implemented
+	-- For now, equipment slots are always empty
+end
+
 function VoxelInventoryPanel:CreateCursorItem()
 	-- Item that follows cursor when dragging
 	self.cursorFrame = Instance.new("Frame")
@@ -439,11 +664,11 @@ function VoxelInventoryPanel:CreateCursorItem()
 	self.cursorFrame.Size = UDim2.new(0, INVENTORY_CONFIG.SLOT_SIZE, 0, INVENTORY_CONFIG.SLOT_SIZE)
 	self.cursorFrame.AnchorPoint = Vector2.new(0.5, 0.5)  -- Center on cursor
 	self.cursorFrame.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-	self.cursorFrame.BackgroundTransparency = 0.2
+	self.cursorFrame.BackgroundTransparency = 0.7  -- Semi-transparent background, item stays fully visible
 	self.cursorFrame.BorderSizePixel = 0
 	self.cursorFrame.Visible = false
 	self.cursorFrame.ZIndex = 1000
-	self.cursorFrame.Parent = self.gui
+	self.cursorFrame.Parent = self.cursorGui  -- Separate ScreenGui for proper layering
 
 	local corner = Instance.new("UICorner")
 	corner.CornerRadius = UDim.new(0, 4)
@@ -933,6 +1158,19 @@ function VoxelInventoryPanel:OnHotbarSlotRightClick(index)
 	end
 end
 
+--- Equipment slot clicks (placeholder for future equipment system)
+function VoxelInventoryPanel:OnEquipmentSlotLeftClick(index, equipmentType)
+	-- TODO: Implement equipment system
+	-- For now, equipment slots don't interact with items
+	print(string.format("Equipment slot clicked: %s (index %d)", equipmentType, index))
+end
+
+function VoxelInventoryPanel:OnEquipmentSlotRightClick(index, equipmentType)
+	-- TODO: Implement equipment system
+	-- For now, equipment slots don't interact with items
+	print(string.format("Equipment slot right-clicked: %s (index %d)", equipmentType, index))
+end
+
 -- Send inventory update to server (deprecated - use inventoryManager)
 function VoxelInventoryPanel:SendInventoryUpdateToServer()
 	-- Delegate to inventory manager
@@ -943,20 +1181,17 @@ function VoxelInventoryPanel:UpdateCursorPosition()
 	if not self.cursorFrame.Visible then return end
 
 	local mousePos = UserInputService:GetMouseLocation()
-	local guiInset = GuiService:GetGuiInset()
 
-	-- Adjust for GUI insets (top bar, etc.)
-	self.cursorFrame.Position = UDim2.new(0, mousePos.X, 0, mousePos.Y - guiInset.Y)
+	-- Cursor ScreenGui has IgnoreGuiInset=true, so use raw mouse position
+	-- AnchorPoint of 0.5,0.5 centers the cursor frame on this position
+	self.cursorFrame.Position = UDim2.new(0, mousePos.X, 0, mousePos.Y)
 end
 
 function VoxelInventoryPanel:BindInput()
-	-- E key to toggle
+	-- Only handle Escape here; E is handled centrally in GameClient to avoid conflicts
 	self.connections[#self.connections + 1] = UserInputService.InputBegan:Connect(function(input, gpe)
 		if gpe then return end
-
-		if input.KeyCode == Enum.KeyCode.E then
-			self:Toggle()
-		elseif input.KeyCode == Enum.KeyCode.Escape and self.isOpen then
+		if input.KeyCode == Enum.KeyCode.Escape and self.isOpen then
 			self:Close()
 		end
 	end)
@@ -982,7 +1217,7 @@ function VoxelInventoryPanel:BindInput()
 				EventManager:SendToServer("RequestDropItem", {
 					itemId = itemId,
 					count = count,
-					fromCursor = true
+					fromCursor = false -- Server will remove from inventory authoritative
 				})
 			end)
 			-- Clear cursor locally
@@ -997,6 +1232,13 @@ function VoxelInventoryPanel:Open()
 
 	self.isOpen = true
 	self.gui.Enabled = true
+
+	-- Reset crafting UI state on open so overview shows first
+	if self.craftingPanel and self.craftingPanel.OnPanelOpen then
+		pcall(function()
+			self.craftingPanel:OnPanelOpen()
+		end)
+	end
 
 	-- Close chest UI if open (mutual exclusion)
 	if self.chestUI and self.chestUI.isOpen then
@@ -1062,7 +1304,7 @@ function VoxelInventoryPanel:Close()
 				EventManager:SendToServer("RequestDropItem", {
 					itemId = itemId,
 					count = count,
-					fromCursor = true
+					fromCursor = false -- Server will remove authoritative
 				})
 			end)
 		end
@@ -1070,11 +1312,15 @@ function VoxelInventoryPanel:Close()
 		self.cursorStack = ItemStack.new(0, 0)
 		self:UpdateCursorDisplay()
 
-		-- Sync to server
-		self.inventoryManager:SendUpdateToServer()
+		-- Sync to server only if we placed the item back into an empty slot.
+		-- For drops, the server will remove and granularly sync changed slots.
+		if placed then
+			self.inventoryManager:SendUpdateToServer()
+		end
 	end
 
 	self.isOpen = false
+
 
 	-- Stop updating cursor
 	if self.renderConnection then
@@ -1095,6 +1341,11 @@ function VoxelInventoryPanel:Close()
 	tween:Play()
 	tween.Completed:Connect(function()
 		self.gui.Enabled = false
+
+		-- Reset workbench mode after UI is hidden to avoid visible title flicker
+		if self.isWorkbenchMode then
+			self:SetWorkbenchMode(false)
+		end
 	end)
 end
 
@@ -1108,6 +1359,32 @@ end
 
 function VoxelInventoryPanel:IsOpen()
 	return self.isOpen
+end
+
+-- Enable or disable Workbench mode (filters crafting recipes)
+function VoxelInventoryPanel:SetWorkbenchMode(enabled)
+	self.isWorkbenchMode = enabled and true or false
+	if self.craftingPanel and self.craftingPanel.SetMode then
+		self.craftingPanel:SetMode(self.isWorkbenchMode and "workbench" or "inventory")
+	end
+
+	-- Update title text
+	if self.titleLabel then
+		if self.isWorkbenchMode then
+			self.titleLabel.Text = "<b><i>Workbench</i></b>"
+		else
+			self.titleLabel.Text = "<b><i>Inventory</i></b>"
+		end
+	end
+
+	-- Update title icon
+	if self.titleIcon then
+		if self.isWorkbenchMode then
+			IconManager:ApplyIcon(self.titleIcon, "Tools", "Anvil")
+		else
+			IconManager:ApplyIcon(self.titleIcon, "Clothing", "Backpack")
+		end
+	end
 end
 
 function VoxelInventoryPanel:Cleanup()

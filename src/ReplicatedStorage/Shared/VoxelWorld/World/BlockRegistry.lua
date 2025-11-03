@@ -188,7 +188,8 @@ BlockRegistry.Blocks = {
 			back = "crafting_table_side"
 		},
 		crossShape = false,
-		hasRotation = true -- NEW: Block can be rotated
+		hasRotation = true, -- NEW: Block can be rotated
+		interactable = true -- Allow right-click interaction (Workbench)
 	},
 
 	[Constants.BlockType.COBBLESTONE] = {

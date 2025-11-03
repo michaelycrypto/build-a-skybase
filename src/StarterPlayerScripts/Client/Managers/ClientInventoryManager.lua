@@ -303,6 +303,79 @@ function ClientInventoryManager:CountItem(itemId)
 end
 
 --[[
+	Check if there's enough space in inventory to add items
+	@param itemId: number - Item ID to add
+	@param amount: number - Amount to add
+	@return: boolean - True if there's enough space
+]]
+function ClientInventoryManager:HasSpaceForItem(itemId, amount)
+	local remaining = amount
+
+	local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
+	local isTool = ToolConfig.IsTool(itemId)
+
+	-- For tools, count empty slots only (tools don't stack)
+	if isTool then
+		local emptySlots = 0
+		for i = 1, 27 do
+			if self:GetInventorySlot(i):IsEmpty() then
+				emptySlots = emptySlots + 1
+			end
+		end
+		for i = 1, 9 do
+			if self:GetHotbarSlot(i):IsEmpty() then
+				emptySlots = emptySlots + 1
+			end
+		end
+		return emptySlots >= amount
+	end
+
+	-- Check space in existing stacks (inventory)
+	for i = 1, 27 do
+		if remaining <= 0 then break end
+
+		local stack = self:GetInventorySlot(i)
+		if stack:GetItemId() == itemId and not stack:IsFull() then
+			local spaceLeft = stack:GetRemainingSpace()
+			remaining = remaining - spaceLeft
+		end
+	end
+
+	-- Check space in existing stacks (hotbar)
+	for i = 1, 9 do
+		if remaining <= 0 then break end
+
+		local stack = self:GetHotbarSlot(i)
+		if stack:GetItemId() == itemId and not stack:IsFull() then
+			local spaceLeft = stack:GetRemainingSpace()
+			remaining = remaining - spaceLeft
+		end
+	end
+
+	-- Count empty slots that can be used
+	if remaining > 0 then
+		local emptySlots = 0
+		for i = 1, 27 do
+			if self:GetInventorySlot(i):IsEmpty() then
+				emptySlots = emptySlots + 1
+			end
+		end
+		for i = 1, 9 do
+			if self:GetHotbarSlot(i):IsEmpty() then
+				emptySlots = emptySlots + 1
+			end
+		end
+
+		-- Each empty slot can hold up to max stack size
+		local maxStack = ItemStack.new(itemId, 1):GetMaxStack()
+		local spaceInEmptySlots = emptySlots * maxStack
+		remaining = remaining - spaceInEmptySlots
+	end
+
+	return remaining <= 0
+end
+
+--[[
 	Remove item from inventory/hotbar (smart removal from any slot)
 	@param itemId: number - Item ID to remove
 	@param amount: number - Amount to remove

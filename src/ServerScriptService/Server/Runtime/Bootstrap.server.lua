@@ -188,6 +188,8 @@ local clientEvents = {
 	"ChestClosed",
 	"ChestUpdated",
 	"ChestActionResult",  -- NEW: Server-authoritative click result
+	-- Workbench Events
+	"WorkbenchOpened",
 	-- Dropped Item Events (server calculates, client simulates)
 	"ItemSpawned",
 	"ItemRemoved",
@@ -292,7 +294,13 @@ local function ensureGroup(name)
 	for _, g in ipairs(groups) do
 		if g.name == name then return end
 	end
-	pcall(function() PhysicsService:CreateCollisionGroup(name) end)
+	pcall(function()
+		if PhysicsService.RegisterCollisionGroup then
+			PhysicsService:RegisterCollisionGroup(name)
+		else
+			PhysicsService:CreateCollisionGroup(name)
+		end
+	end)
 end
 
 ensureGroup("DroppedItem")
@@ -426,11 +434,7 @@ end)
 Players.PlayerRemoving:Connect(function(player)
 	logger.Info("Player leaving:", player.Name)
 
-	-- IMPORTANT: Save player data before cleanup
-	if playerService:GetPlayerData(player) then
-		logger.Info("💾 Saving player data for:", player.Name)
-		playerService:SavePlayerData(player)
-	end
+    -- PlayerService handles saving on PlayerRemoving; avoid duplicate save here
 
 	-- IMPORTANT: Save world data if this player is the owner
 	if worldOwnershipService:GetOwnerId() == player.UserId then
@@ -536,14 +540,6 @@ task.spawn(function()
 	while true do
 		task.wait(Config.SERVER.SAVE_INTERVAL or 300) -- Default 5 minutes
 
-		-- Auto-save all player data
-		local Players = game:GetService("Players")
-		for _, player in pairs(Players:GetPlayers()) do
-			if playerService:GetPlayerData(player) then
-				playerService:SavePlayerData(player)
-			end
-		end
-
 		-- Auto-save world data (if owner exists)
 		if worldOwnershipService:GetOwnerId() then
 			voxelWorldService:SaveWorldData()
@@ -603,11 +599,7 @@ game:BindToClose(function()
 		end
 	end
 
-	-- Save world data
-	if worldOwnershipService:GetOwnerId() then
-		voxelWorldService:SaveWorldData()
-		logger.Info("💾 Saved world data on shutdown")
-	end
+	-- World data is saved on owner leave and via periodic auto-save to avoid duplicate queueing here
 
 	logger.Info("Destroying all services...")
 	services:Destroy()

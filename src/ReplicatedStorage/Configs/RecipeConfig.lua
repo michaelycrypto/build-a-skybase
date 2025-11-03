@@ -53,6 +53,7 @@ RecipeConfig.Recipes = {
 		id = "wood_pickaxe",
 		name = "Wood Pickaxe",
 		category = RecipeConfig.Categories.TOOLS,
+		requiresWorkbench = true,
 		inputs = {
 			{itemId = 12, count = 3},  -- 3x Oak Planks
 			{itemId = 28, count = 2}   -- 2x Sticks
@@ -66,6 +67,7 @@ RecipeConfig.Recipes = {
 		id = "wood_axe",
 		name = "Wood Axe",
 		category = RecipeConfig.Categories.TOOLS,
+		requiresWorkbench = true,
 		inputs = {
 			{itemId = 12, count = 3},  -- 3x Oak Planks
 			{itemId = 28, count = 2}   -- 2x Sticks
@@ -79,6 +81,7 @@ RecipeConfig.Recipes = {
 		id = "wood_shovel",
 		name = "Wood Shovel",
 		category = RecipeConfig.Categories.TOOLS,
+		requiresWorkbench = true,
 		inputs = {
 			{itemId = 12, count = 1},  -- 1x Oak Planks
 			{itemId = 28, count = 2}   -- 2x Sticks
@@ -92,6 +95,7 @@ RecipeConfig.Recipes = {
 		id = "wood_sword",
 		name = "Wood Sword",
 		category = RecipeConfig.Categories.TOOLS,
+		requiresWorkbench = true,
 		inputs = {
 			{itemId = 12, count = 2},  -- 2x Oak Planks
 			{itemId = 28, count = 1}   -- 1x Stick
@@ -106,6 +110,7 @@ RecipeConfig.Recipes = {
 		id = "stone_pickaxe",
 		name = "Stone Pickaxe",
 		category = RecipeConfig.Categories.TOOLS,
+		requiresWorkbench = true,
 		inputs = {
 			{itemId = 14, count = 3},  -- 3x Cobblestone
 			{itemId = 28, count = 2}   -- 2x Sticks
@@ -119,6 +124,7 @@ RecipeConfig.Recipes = {
 		id = "stone_axe",
 		name = "Stone Axe",
 		category = RecipeConfig.Categories.TOOLS,
+		requiresWorkbench = true,
 		inputs = {
 			{itemId = 14, count = 3},  -- 3x Cobblestone
 			{itemId = 28, count = 2}   -- 2x Sticks
@@ -132,6 +138,7 @@ RecipeConfig.Recipes = {
 		id = "stone_shovel",
 		name = "Stone Shovel",
 		category = RecipeConfig.Categories.TOOLS,
+		requiresWorkbench = true,
 		inputs = {
 			{itemId = 14, count = 1},  -- 1x Cobblestone
 			{itemId = 28, count = 2}   -- 2x Sticks
@@ -145,6 +152,7 @@ RecipeConfig.Recipes = {
 		id = "stone_sword",
 		name = "Stone Sword",
 		category = RecipeConfig.Categories.TOOLS,
+		requiresWorkbench = true,
 		inputs = {
 			{itemId = 14, count = 2},  -- 2x Cobblestone
 			{itemId = 28, count = 1}   -- 1x Stick
@@ -159,6 +167,7 @@ RecipeConfig.Recipes = {
 		id = "iron_pickaxe",
 		name = "Iron Pickaxe",
 		category = RecipeConfig.Categories.TOOLS,
+		requiresWorkbench = true,
 		inputs = {
 			{itemId = 33, count = 3},  -- 3x Iron Ingot
 			{itemId = 28, count = 2}   -- 2x Sticks
@@ -172,6 +181,7 @@ RecipeConfig.Recipes = {
 		id = "iron_axe",
 		name = "Iron Axe",
 		category = RecipeConfig.Categories.TOOLS,
+		requiresWorkbench = true,
 		inputs = {
 			{itemId = 33, count = 3},  -- 3x Iron Ingot
 			{itemId = 28, count = 2}   -- 2x Sticks
@@ -185,6 +195,7 @@ RecipeConfig.Recipes = {
 		id = "iron_shovel",
 		name = "Iron Shovel",
 		category = RecipeConfig.Categories.TOOLS,
+		requiresWorkbench = true,
 		inputs = {
 			{itemId = 33, count = 1},  -- 1x Iron Ingot
 			{itemId = 28, count = 2}   -- 2x Sticks
@@ -198,6 +209,7 @@ RecipeConfig.Recipes = {
 		id = "iron_sword",
 		name = "Iron Sword",
 		category = RecipeConfig.Categories.TOOLS,
+		requiresWorkbench = true,
 		inputs = {
 			{itemId = 33, count = 2},  -- 2x Iron Ingot
 			{itemId = 28, count = 1}   -- 1x Stick
@@ -212,6 +224,7 @@ RecipeConfig.Recipes = {
 		id = "diamond_pickaxe",
 		name = "Diamond Pickaxe",
 		category = RecipeConfig.Categories.TOOLS,
+		requiresWorkbench = true,
 		inputs = {
 			{itemId = 34, count = 3},  -- 3x Diamond
 			{itemId = 28, count = 2}   -- 2x Sticks
@@ -225,6 +238,7 @@ RecipeConfig.Recipes = {
 		id = "diamond_axe",
 		name = "Diamond Axe",
 		category = RecipeConfig.Categories.TOOLS,
+		requiresWorkbench = true,
 		inputs = {
 			{itemId = 34, count = 3},  -- 3x Diamond
 			{itemId = 28, count = 2}   -- 2x Sticks
@@ -238,6 +252,7 @@ RecipeConfig.Recipes = {
 		id = "diamond_shovel",
 		name = "Diamond Shovel",
 		category = RecipeConfig.Categories.TOOLS,
+		requiresWorkbench = true,
 		inputs = {
 			{itemId = 34, count = 1},  -- 1x Diamond
 			{itemId = 28, count = 2}   -- 2x Sticks
@@ -251,6 +266,7 @@ RecipeConfig.Recipes = {
 		id = "diamond_sword",
 		name = "Diamond Sword",
 		category = RecipeConfig.Categories.TOOLS,
+		requiresWorkbench = true,
 		inputs = {
 			{itemId = 34, count = 2},  -- 2x Diamond
 			{itemId = 28, count = 1}   -- 1x Stick
@@ -277,6 +293,7 @@ RecipeConfig.Recipes = {
 		id = "chest",
 		name = "Chest",
 		category = RecipeConfig.Categories.BUILDING,
+		requiresWorkbench = true,
 		inputs = {
 			{itemId = 12, count = 8}  -- 8x Oak Planks
 		},
@@ -289,6 +306,7 @@ RecipeConfig.Recipes = {
 		id = "oak_stairs",
 		name = "Oak Stairs",
 		category = RecipeConfig.Categories.BUILDING,
+		requiresWorkbench = true,
 		inputs = {
 			{itemId = 12, count = 6}  -- 6x Oak Planks
 		},
@@ -301,6 +319,7 @@ RecipeConfig.Recipes = {
 		id = "oak_slab",
 		name = "Oak Slab",
 		category = RecipeConfig.Categories.BUILDING,
+		requiresWorkbench = true,
 		inputs = {
 			{itemId = 12, count = 3}  -- 3x Oak Planks
 		},
@@ -313,6 +332,7 @@ RecipeConfig.Recipes = {
 		id = "oak_fence",
 		name = "Oak Fence",
 		category = RecipeConfig.Categories.BUILDING,
+		requiresWorkbench = true,
 		inputs = {
 			{itemId = 12, count = 2},  -- 2x Oak Planks
 			{itemId = 28, count = 4}   -- 4x Sticks
@@ -326,6 +346,7 @@ RecipeConfig.Recipes = {
 		id = "furnace",
 		name = "Furnace",
 		category = RecipeConfig.Categories.BUILDING,
+		requiresWorkbench = true,
 		inputs = {
 			{itemId = 14, count = 8}  -- 8x Cobblestone
 		},
@@ -522,6 +543,7 @@ RecipeConfig.Recipes = {
 		id = "chest_spruce",
 		name = "Chest (Spruce)",
 		category = RecipeConfig.Categories.BUILDING,
+		requiresWorkbench = true,
 		inputs = {
 			{itemId = 39, count = 8}
 		},
@@ -534,6 +556,7 @@ RecipeConfig.Recipes = {
 		id = "chest_jungle",
 		name = "Chest (Jungle)",
 		category = RecipeConfig.Categories.BUILDING,
+		requiresWorkbench = true,
 		inputs = {
 			{itemId = 44, count = 8}
 		},
@@ -546,6 +569,7 @@ RecipeConfig.Recipes = {
 		id = "chest_dark_oak",
 		name = "Chest (Dark Oak)",
 		category = RecipeConfig.Categories.BUILDING,
+		requiresWorkbench = true,
 		inputs = {
 			{itemId = 49, count = 8}
 		},
@@ -558,6 +582,7 @@ RecipeConfig.Recipes = {
 		id = "chest_birch",
 		name = "Chest (Birch)",
 		category = RecipeConfig.Categories.BUILDING,
+		requiresWorkbench = true,
 		inputs = {
 			{itemId = 54, count = 8}
 		},
@@ -570,6 +595,7 @@ RecipeConfig.Recipes = {
 		id = "chest_acacia",
 		name = "Chest (Acacia)",
 		category = RecipeConfig.Categories.BUILDING,
+		requiresWorkbench = true,
 		inputs = {
 			{itemId = 59, count = 8}
 		},
@@ -583,6 +609,7 @@ RecipeConfig.Recipes = {
 		id = "spruce_stairs",
 		name = "Spruce Stairs",
 		category = RecipeConfig.Categories.BUILDING,
+		requiresWorkbench = true,
 		inputs = {
 			{itemId = 39, count = 6}
 		},
@@ -595,6 +622,7 @@ RecipeConfig.Recipes = {
 		id = "jungle_stairs",
 		name = "Jungle Stairs",
 		category = RecipeConfig.Categories.BUILDING,
+		requiresWorkbench = true,
 		inputs = {
 			{itemId = 44, count = 6}
 		},
@@ -607,6 +635,7 @@ RecipeConfig.Recipes = {
 		id = "dark_oak_stairs",
 		name = "Dark Oak Stairs",
 		category = RecipeConfig.Categories.BUILDING,
+		requiresWorkbench = true,
 		inputs = {
 			{itemId = 49, count = 6}
 		},
@@ -619,6 +648,7 @@ RecipeConfig.Recipes = {
 		id = "birch_stairs",
 		name = "Birch Stairs",
 		category = RecipeConfig.Categories.BUILDING,
+		requiresWorkbench = true,
 		inputs = {
 			{itemId = 54, count = 6}
 		},
@@ -631,6 +661,7 @@ RecipeConfig.Recipes = {
 		id = "acacia_stairs",
 		name = "Acacia Stairs",
 		category = RecipeConfig.Categories.BUILDING,
+		requiresWorkbench = true,
 		inputs = {
 			{itemId = 59, count = 6}
 		},
@@ -644,6 +675,7 @@ RecipeConfig.Recipes = {
 		id = "spruce_slab",
 		name = "Spruce Slab",
 		category = RecipeConfig.Categories.BUILDING,
+		requiresWorkbench = true,
 		inputs = {
 			{itemId = 39, count = 3}
 		},
@@ -656,6 +688,7 @@ RecipeConfig.Recipes = {
 		id = "jungle_slab",
 		name = "Jungle Slab",
 		category = RecipeConfig.Categories.BUILDING,
+		requiresWorkbench = true,
 		inputs = {
 			{itemId = 44, count = 3}
 		},
@@ -668,6 +701,7 @@ RecipeConfig.Recipes = {
 		id = "dark_oak_slab",
 		name = "Dark Oak Slab",
 		category = RecipeConfig.Categories.BUILDING,
+		requiresWorkbench = true,
 		inputs = {
 			{itemId = 49, count = 3}
 		},
@@ -680,6 +714,7 @@ RecipeConfig.Recipes = {
 		id = "birch_slab",
 		name = "Birch Slab",
 		category = RecipeConfig.Categories.BUILDING,
+		requiresWorkbench = true,
 		inputs = {
 			{itemId = 54, count = 3}
 		},
@@ -692,6 +727,7 @@ RecipeConfig.Recipes = {
 		id = "acacia_slab",
 		name = "Acacia Slab",
 		category = RecipeConfig.Categories.BUILDING,
+		requiresWorkbench = true,
 		inputs = {
 			{itemId = 59, count = 3}
 		},

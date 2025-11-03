@@ -22,7 +22,7 @@ local PlayerDataStoreService = setmetatable({}, BaseService)
 PlayerDataStoreService.__index = PlayerDataStoreService
 
 -- DataStore configuration
-local DATA_STORE_NAME = "PlayerData_v16"  -- Changed to v5 to reset all data
+local DATA_STORE_NAME = "PlayerData_v17"  -- Changed to v5 to reset all data
 local DATA_VERSION = 5
 
 -- Retry configuration for DataStore operations
@@ -132,10 +132,7 @@ function PlayerDataStoreService:Start()
 	-- Start auto-save loop
 	self:_startAutoSave()
 
-	-- Handle server shutdown
-	game:BindToClose(function()
-		self:SaveAllPlayers()
-	end)
+	-- Server shutdown saving is centralized in Bootstrap; avoid duplicate saves here
 
 	BaseService.Start(self)
 	self._logger.Debug("PlayerDataStoreService started")
@@ -360,9 +357,6 @@ end
 	@param player: Player instance
 ]]
 function PlayerDataStoreService:OnPlayerRemoving(player: Player)
-	-- Save before removing
-	self:SavePlayerData(player)
-
 	-- Remove session
 	self._playerSessions[player.UserId] = nil
 
@@ -516,8 +510,7 @@ function PlayerDataStoreService:Destroy()
 		self._autoSaveConnection = nil
 	end
 
-	-- Save all players before destroying
-	self:SaveAllPlayers()
+	-- Saving on shutdown is handled by Bootstrap; avoid duplicate saves here
 
 	BaseService.Destroy(self)
 	self._logger.Info("PlayerDataStoreService destroyed")

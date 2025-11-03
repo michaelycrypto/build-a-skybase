@@ -25,8 +25,9 @@ local HOTBAR_CONFIG = {
 	SLOT_COUNT = 9,
 	SLOT_SIZE = 58,
 	SLOT_SPACING = 4,
-	BOTTOM_OFFSET = 5,
+		BOTTOM_OFFSET = 20,
 	BORDER_WIDTH = 3,
+		SCALE = 1.1,
 
 	-- Colors (Minecraft-inspired)
 	BG_COLOR = Color3.fromRGB(40, 40, 40),
@@ -144,12 +145,18 @@ function VoxelHotbar:CreateHotbar()
 	self.container = Instance.new("Frame")
 	self.container.Name = "HotbarContainer"
 	self.container.Size = UDim2.new(0, totalWidth + 16, 0, HOTBAR_CONFIG.SLOT_SIZE + 16)
-	self.container.Position = UDim2.new(0.5, -totalWidth/2 - 8, 1, -HOTBAR_CONFIG.BOTTOM_OFFSET - HOTBAR_CONFIG.SLOT_SIZE - 16)
-	self.container.AnchorPoint = Vector2.new(0, 1)
+	self.container.Position = UDim2.new(0.5, 0, 1, -math.floor(HOTBAR_CONFIG.BOTTOM_OFFSET / (HOTBAR_CONFIG.SCALE or 1) + 0.5))
+	self.container.AnchorPoint = Vector2.new(0.5, 1)
 	self.container.BackgroundColor3 = HOTBAR_CONFIG.BG_COLOR
 	self.container.BackgroundTransparency = HOTBAR_CONFIG.BG_TRANSPARENCY
 	self.container.BorderSizePixel = 0
 	self.container.Parent = self.gui
+
+	-- Local scale only for hotbar (multiplies on top of global UIScaler)
+	local localScale = Instance.new("UIScale")
+	localScale.Name = "LocalScale"
+	localScale.Scale = HOTBAR_CONFIG.SCALE
+	localScale.Parent = self.container
 
 	-- Rounded corners
 	local corner = Instance.new("UICorner")

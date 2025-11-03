@@ -23,6 +23,7 @@ function PlayerInventoryService.new()
 
 	self._logger = Logger:CreateContext("PlayerInventoryService")
 	self.inventories = {} -- {[player] = {hotbar = {}, inventory = {}}}
+	self.craftCredits = {} -- {[player] = {[itemId] = creditCount}}
 
 	-- Granular sync optimization: track modified slots
 	self.pendingSyncs = {} -- {[player] = {hotbar = {[slot] = true}, inventory = {[slot] = true}}}
@@ -49,6 +50,14 @@ function PlayerInventoryService:Start()
 
 	BaseService.Start(self)
 	self._logger.Debug("PlayerInventoryService started")
+end
+
+-- Add craft credit for a player and item (used for toCursor crafts)
+function PlayerInventoryService:AddCraftCredit(player: Player, itemId: number, amount: number)
+	if amount <= 0 then return end
+	self.craftCredits[player] = self.craftCredits[player] or {}
+	self.craftCredits[player][itemId] = (self.craftCredits[player][itemId] or 0) + amount
+	self._logger.Debug("Added craft credit", {player = player.Name, itemId = itemId, amount = amount, total = self.craftCredits[player][itemId]})
 end
 
 function PlayerInventoryService:OnPlayerAdded(player: Player)
@@ -100,6 +109,7 @@ function PlayerInventoryService:OnPlayerRemoved(player: Player)
 	self.inventories[player] = nil
 	self.pendingSyncs[player] = nil
 	self.syncScheduled[player] = nil
+	self.craftCredits[player] = nil
 	self._logger.Debug("Removed inventory", {player = player.Name})
 end
 
@@ -560,7 +570,7 @@ function PlayerInventoryService:HandleInventoryUpdate(player: Player, updateData
         newHotbar = sanitizedHot
     end
 
-    -- VALIDATION: Validate inventory array structure (post-sanitize)
+	-- VALIDATION: Validate inventory array structure (post-sanitize)
     if newInventory then
         local valid, reason = InventoryValidator:ValidateInventoryArray(newInventory, 27)
         if not valid then
@@ -571,7 +581,7 @@ function PlayerInventoryService:HandleInventoryUpdate(player: Player, updateData
         end
     end
 
-    -- VALIDATION: Validate hotbar array structure (post-sanitize)
+	-- VALIDATION: Validate hotbar array structure (post-sanitize)
     if newHotbar then
         local valid, reason = InventoryValidator:ValidateInventoryArray(newHotbar, 9)
         if not valid then
@@ -582,22 +592,61 @@ function PlayerInventoryService:HandleInventoryUpdate(player: Player, updateData
         end
     end
 
-	-- VALIDATION: Check for item duplication (compare old vs new totals)
-    local valid, reason = InventoryValidator:ValidateInventoryTransaction(
-        playerInv.inventory,
-        playerInv.hotbar,
-        newInventory,
-        newHotbar
-    )
+	-- VALIDATION: Compare totals and allow increases only if covered by craft credits
+	local function computeTotalsFromStacks(stacks)
+		local totals = {}
+		for _, stack in ipairs(stacks) do
+			local itemId = stack:GetItemId()
+			if itemId > 0 then
+				totals[itemId] = (totals[itemId] or 0) + stack:GetCount()
+			end
+		end
+		return totals
+	end
 
-	if not valid then
-		self._logger.Warn("Transaction validation failed - potential exploit attempt", {
-			player = player.Name,
-			reason = reason
-		})
-		-- Resync correct state to client
-		self:SyncInventoryToClient(player)
-		return
+	local oldTotals = {}
+	oldTotals = computeTotalsFromStacks(playerInv.inventory)
+	local oldHotTotals = computeTotalsFromStacks(playerInv.hotbar)
+	for itemId, count in pairs(oldHotTotals) do
+		oldTotals[itemId] = (oldTotals[itemId] or 0) + count
+	end
+
+	local newTotals = {}
+	if newInventory then
+		for i, stackData in pairs(newInventory) do
+			local itemId = stackData.itemId or stackData.id or 0
+			if itemId > 0 then
+				newTotals[itemId] = (newTotals[itemId] or 0) + (stackData.count or 0)
+			end
+		end
+	end
+	if newHotbar then
+		for i, stackData in pairs(newHotbar) do
+			local itemId = stackData.itemId or stackData.id or 0
+			if itemId > 0 then
+				newTotals[itemId] = (newTotals[itemId] or 0) + (stackData.count or 0)
+			end
+		end
+	end
+
+	-- Ensure no net gains beyond credits
+	self.craftCredits[player] = self.craftCredits[player] or {}
+	for itemId, newCount in pairs(newTotals) do
+		local oldCount = oldTotals[itemId] or 0
+		if newCount > oldCount then
+			local increase = newCount - oldCount
+			local credit = self.craftCredits[player][itemId] or 0
+			if increase > credit then
+				self._logger.Warn("Transaction validation failed - uncredited item gain", {
+					player = player.Name,
+					itemId = itemId,
+					increase = increase,
+					credit = credit
+				})
+				self:SyncInventoryToClient(player)
+				return
+			end
+		end
 	end
 
 	-- Validation passed - apply changes
@@ -614,6 +663,17 @@ function PlayerInventoryService:HandleInventoryUpdate(player: Player, updateData
 			-- Convert to number if needed
 			local slotIndex = tonumber(i) or i
 			self:UpdateInventorySlot(player, slotIndex, stackData)
+		end
+	end
+
+	-- Consume credits equal to any net increases that were accepted
+	for itemId, newCount in pairs(newTotals) do
+		local oldCount = oldTotals[itemId] or 0
+		if newCount > oldCount then
+			local increase = newCount - oldCount
+			local credit = self.craftCredits[player][itemId] or 0
+			local remaining = math.max(0, credit - increase)
+			self.craftCredits[player][itemId] = remaining
 		end
 	end
 

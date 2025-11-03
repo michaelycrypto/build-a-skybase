@@ -11,6 +11,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local StarterGui = game:GetService("StarterGui")
 local Lighting = game:GetService("Lighting")
+local UserInputService = game:GetService("UserInputService")
 
 local player = Players.LocalPlayer
 
@@ -463,6 +464,39 @@ local function completeInitialization(EmoteManager)
 	inventory.chestUI = chestUI
 
 	print("📦 Chest UI initialized")
+
+	-- Centralize inventory/chest key handling to avoid duplicate listeners
+	UserInputService.InputBegan:Connect(function(input, gameProcessed)
+		if gameProcessed then return end
+		if input.KeyCode == Enum.KeyCode.E then
+			if chestUI and chestUI.isOpen then
+				chestUI:Close()
+			else
+				if inventory then
+					inventory:Toggle()
+				end
+			end
+		elseif input.KeyCode == Enum.KeyCode.Escape then
+			if chestUI and chestUI.isOpen then
+				chestUI:Close()
+			elseif inventory and inventory.isOpen then
+				inventory:Close()
+			end
+		end
+	end)
+
+	-- Open Workbench (crafting table interaction)
+	EventManager:RegisterEvent("WorkbenchOpened", function(data)
+		if inventory then
+			-- Close chest if open
+			if chestUI and chestUI.isOpen then
+				chestUI:Close()
+			end
+			-- Enable workbench filter and open
+			inventory:SetWorkbenchMode(true)
+			inventory:Open()
+		end
+	end)
 
 	-- Re-register event handlers with complete managers (including ToastManager and ToolAnimationController)
 	local completeEventConfig = EventManager:CreateClientEventConfig(Client.managers)

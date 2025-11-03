@@ -350,8 +350,8 @@ function BlockViewportCreator.CreateBlockViewport(parent, blockId, size, positio
 		local imageLabel = Instance.new("ImageLabel")
 		imageLabel.Name = "ItemImage"
 		imageLabel.Size = size or UDim2.new(1, 0, 1, 0)
-		imageLabel.Position = position or UDim2.new(0, 0, 0, 0)
-		imageLabel.AnchorPoint = anchorPoint or Vector2.new(0, 0)
+		imageLabel.Position = position or UDim2.new(0.5, 0, 0.5, 0)
+		imageLabel.AnchorPoint = anchorPoint or Vector2.new(0.5, 0.5)  -- Center by default
 		imageLabel.BackgroundTransparency = 1
 		imageLabel.BorderSizePixel = 0
 		imageLabel.Image = toolInfo.image
@@ -376,8 +376,8 @@ function BlockViewportCreator.CreateBlockViewport(parent, blockId, size, positio
 				local imageLabel = Instance.new("ImageLabel")
 				imageLabel.Name = "ItemImage"
 				imageLabel.Size = size or UDim2.new(1, 0, 1, 0)
-				imageLabel.Position = position or UDim2.new(0, 0, 0, 0)
-				imageLabel.AnchorPoint = anchorPoint or Vector2.new(0, 0)
+				imageLabel.Position = position or UDim2.new(0.5, 0, 0.5, 0)
+				imageLabel.AnchorPoint = anchorPoint or Vector2.new(0.5, 0.5)  -- Center by default
 				imageLabel.BackgroundTransparency = 1
 				imageLabel.BorderSizePixel = 0
 				imageLabel.Image = textureId
