@@ -300,6 +300,7 @@ local EVENT_DEFINITIONS = {
 	CraftRecipeBatch = {"any"}, -- {recipeId:string, count:number, toCursor:boolean}
 	CraftRecipeBatchResult = {"any"}, -- server->client: {recipeId:string, acceptedCount:number, toCursor:boolean, outputItemId:number, outputPerCraft:number}
     -- Spawner/mob/tooling events removed
+    AttackMob = {"any"}, -- {entityId:string, damage:number}
 
 	-- Server-to-client events (with parameters)
 	PlayerDataUpdated = {"any"}, -- playerData
@@ -316,6 +317,11 @@ local EVENT_DEFINITIONS = {
 	ShopDataUpdated = {"any"}, -- shopData
 	ShopStockUpdated = {"any"}, -- stockData
     -- Grid/spawner/mob events removed
+    MobSpawned = {"any"}, -- {entityId:string, mobType:string, ...}
+    MobBatchUpdate = {"any"}, -- {mobs:table}
+    MobDespawned = {"any"}, -- {entityId:string}
+    MobDamaged = {"any"}, -- {entityId:string, health:number}
+    MobDied = {"any"}, -- {entityId:string}
 	ShowEmote = {"any", "any"}, -- targetPlayer, emoteName
 	RemoveEmote = {"any"}, -- targetPlayer
 	StatsUpdated = {"any"}, -- statsData
@@ -760,6 +766,14 @@ function EventManager:CreateServerEventConfig(services)
 				end
 			end
 		},
+		{
+			name = "SelectHotbarSlot",
+			handler = function(player, data)
+				if services.VoxelWorldService and services.VoxelWorldService.OnSelectHotbarSlot then
+					services.VoxelWorldService:OnSelectHotbarSlot(player, data)
+				end
+			end
+		},
         -- Deprecated height/path handlers removed
 		-- Deploy/Remove tower handlers removed with world system
 
@@ -925,6 +939,14 @@ function EventManager:CreateServerEventConfig(services)
 			handler = function(player, data)
 				if services.DroppedItemService and services.DroppedItemService.HandleDropRequest then
 					services.DroppedItemService:HandleDropRequest(player, data)
+				end
+			end
+		},
+		{
+			name = "AttackMob",
+			handler = function(player, data)
+				if services.MobEntityService and services.MobEntityService.HandleAttackMob then
+					services.MobEntityService:HandleAttackMob(player, data)
 				end
 			end
 		},

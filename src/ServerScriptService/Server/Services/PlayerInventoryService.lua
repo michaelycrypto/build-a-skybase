@@ -14,6 +14,7 @@ local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
 local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
 local EventManager = require(ReplicatedStorage.Shared.EventManager)
 local InventoryValidator = require(ReplicatedStorage.Shared.VoxelWorld.Inventory.InventoryValidator)
+local Constants = require(ReplicatedStorage.Shared.VoxelWorld.Core.Constants)
 
 local PlayerInventoryService = setmetatable({}, BaseService)
 PlayerInventoryService.__index = PlayerInventoryService
@@ -82,6 +83,62 @@ function PlayerInventoryService:OnPlayerAdded(player: Player)
 	for i = 1, 27 do
 		inventory[i] = ItemStack.new(0, 0)
 	end
+
+	-- Starter building resources: fill hotbar with common blocks and wood families
+	local B = Constants.BlockType
+	local function setHot(slot, id, count)
+		if slot >= 1 and slot <= 9 then
+			hotbar[slot] = ItemStack.new(id, count)
+		end
+	end
+	setHot(1, B.OAK_PLANKS, 64)
+	setHot(2, B.SPRUCE_PLANKS, 64)
+	setHot(3, B.JUNGLE_PLANKS, 64)
+	setHot(4, B.DARK_OAK_PLANKS, 64)
+	setHot(5, B.BIRCH_PLANKS, 64)
+	setHot(6, B.ACACIA_PLANKS, 64)
+	setHot(7, B.COBBLESTONE, 64)
+	setHot(8, B.STONE_BRICKS, 64)
+	setHot(9, B.BRICKS, 64)
+
+	-- Fill inventory with additional resource stacks (27 slots)
+	local invIndex = 1
+	local function pushInv(id, count)
+		if invIndex <= 27 then
+			inventory[invIndex] = ItemStack.new(id, count)
+			invIndex += 1
+		end
+	end
+	-- Core resources
+	pushInv(B.STONE, 64)
+	pushInv(B.DIRT, 64)
+	pushInv(B.GRASS, 64)
+	pushInv(B.SAND, 64)
+	pushInv(B.GLASS, 64)
+	-- Logs for each family
+	pushInv(B.WOOD, 64) -- Oak logs
+	pushInv(B.SPRUCE_LOG, 64)
+	pushInv(B.JUNGLE_LOG, 64)
+	pushInv(B.DARK_OAK_LOG, 64)
+	pushInv(B.BIRCH_LOG, 64)
+	pushInv(B.ACACIA_LOG, 64)
+	-- Extra planks
+	pushInv(B.OAK_PLANKS, 64)
+	pushInv(B.SPRUCE_PLANKS, 64)
+	pushInv(B.JUNGLE_PLANKS, 64)
+	pushInv(B.DARK_OAK_PLANKS, 64)
+	pushInv(B.BIRCH_PLANKS, 64)
+	pushInv(B.ACACIA_PLANKS, 64)
+	-- Stone variants
+	pushInv(B.COBBLESTONE, 64)
+	pushInv(B.STONE_BRICKS, 64)
+	pushInv(B.BRICKS, 64)
+
+	-- Diamond tools (non-stackable)
+	pushInv(1004, 1) -- Diamond Pickaxe
+	pushInv(1014, 1) -- Diamond Axe
+	pushInv(1024, 1) -- Diamond Shovel
+	pushInv(1044, 1) -- Diamond Sword
 
 	self.inventories[player] = {
 		hotbar = hotbar,
@@ -611,23 +668,23 @@ function PlayerInventoryService:HandleInventoryUpdate(player: Player, updateData
 		oldTotals[itemId] = (oldTotals[itemId] or 0) + count
 	end
 
-	local newTotals = {}
-	if newInventory then
-		for i, stackData in pairs(newInventory) do
-			local itemId = stackData.itemId or stackData.id or 0
-			if itemId > 0 then
-				newTotals[itemId] = (newTotals[itemId] or 0) + (stackData.count or 0)
-			end
-		end
-	end
-	if newHotbar then
-		for i, stackData in pairs(newHotbar) do
-			local itemId = stackData.itemId or stackData.id or 0
-			if itemId > 0 then
-				newTotals[itemId] = (newTotals[itemId] or 0) + (stackData.count or 0)
-			end
-		end
-	end
+    local newTotals = {}
+    if newInventory then
+        for i, stackData in pairs(newInventory) do
+            local itemId = tonumber(stackData.itemId or stackData.id) or 0
+            if itemId > 0 then
+                newTotals[itemId] = (newTotals[itemId] or 0) + (tonumber(stackData.count) or 0)
+            end
+        end
+    end
+    if newHotbar then
+        for i, stackData in pairs(newHotbar) do
+            local itemId = tonumber(stackData.itemId or stackData.id) or 0
+            if itemId > 0 then
+                newTotals[itemId] = (newTotals[itemId] or 0) + (tonumber(stackData.count) or 0)
+            end
+        end
+    end
 
 	-- Ensure no net gains beyond credits
 	self.craftCredits[player] = self.craftCredits[player] or {}
@@ -652,17 +709,27 @@ function PlayerInventoryService:HandleInventoryUpdate(player: Player, updateData
 	-- Validation passed - apply changes
     if newHotbar then
         for i, stackData in pairs(newHotbar) do
-			-- Convert to number if needed
-			local slotIndex = tonumber(i) or i
-			self:UpdateHotbarSlot(player, slotIndex, stackData)
+            -- Convert to number if needed
+            local slotIndex = tonumber(i) or i
+            -- Ensure numeric fields
+            if type(stackData) == "table" then
+                stackData.itemId = tonumber(stackData.itemId or stackData.id) or 0
+                stackData.count = tonumber(stackData.count) or 0
+            end
+            self:UpdateHotbarSlot(player, slotIndex, stackData)
 		end
 	end
 
     if newInventory then
         for i, stackData in pairs(newInventory) do
-			-- Convert to number if needed
-			local slotIndex = tonumber(i) or i
-			self:UpdateInventorySlot(player, slotIndex, stackData)
+            -- Convert to number if needed
+            local slotIndex = tonumber(i) or i
+            -- Ensure numeric fields
+            if type(stackData) == "table" then
+                stackData.itemId = tonumber(stackData.itemId or stackData.id) or 0
+                stackData.count = tonumber(stackData.count) or 0
+            end
+            self:UpdateInventorySlot(player, slotIndex, stackData)
 		end
 	end
 

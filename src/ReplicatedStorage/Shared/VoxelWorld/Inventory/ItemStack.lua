@@ -157,15 +157,19 @@ end
 function ItemStack.Deserialize(data)
     if not data then return ItemStack.new(0, 0) end
 
+    -- Coerce potentially string-typed fields from network/datastore
+    local itemId = tonumber(data.itemId or data.id) or 0
+    local count = tonumber(data.count) or 0
+
     -- Re-resolve maxStack based on current config to avoid persisting wrong max values
     local resolvedMax
-    if ToolConfig.IsTool(data.itemId) then
+    if ToolConfig.IsTool(itemId) then
         resolvedMax = 1
     else
-        resolvedMax = MAX_STACK_SIZES[data.itemId] or DEFAULT_MAX_STACK
+        resolvedMax = MAX_STACK_SIZES[itemId] or DEFAULT_MAX_STACK
     end
 
-    local stack = ItemStack.new(data.itemId, data.count, resolvedMax)
+    local stack = ItemStack.new(itemId, count, resolvedMax)
     stack.metadata = data.metadata or {}
     return stack
 end

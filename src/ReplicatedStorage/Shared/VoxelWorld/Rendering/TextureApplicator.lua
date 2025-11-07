@@ -21,7 +21,7 @@ local TextureApplicator = {}
 --[[
 	Apply textures to all 6 faces of a merged box Part
 
-	This function creates 6 Texture objects (one for each face) and attaches them to the Part.
+This function creates Texture objects (one for each visible face) and attaches them to the Part.
 	Each texture is properly tiled based on the merged box dimensions.
 
 	Example: A 3×2×1 merged grass block box will have:
@@ -34,6 +34,8 @@ local TextureApplicator = {}
 	@param widthBlocks: Number of blocks along X axis (dx)
 	@param heightBlocks: Number of blocks along Y axis (dy)
 	@param depthBlocks: Number of blocks along Z axis (dz)
+	@param metadata: Optional block metadata for rotation
+	@param visibleFaces: Optional table mask of face visibility; keys may be Enum.NormalId or face name strings. If a key is explicitly false, that face will be skipped.
 ]]
 --[[
 	Get rotated face name based on metadata
@@ -68,7 +70,8 @@ function TextureApplicator:ApplyBoxTextures(
 	widthBlocks: number,
 	heightBlocks: number,
 	depthBlocks: number,
-	metadata: number?
+	metadata: number?,
+	visibleFaces: table?
 )
 	if not part then
 		warn("[TextureApplicator] ApplyBoxTextures called with nil part")
@@ -128,11 +131,25 @@ function TextureApplicator:ApplyBoxTextures(
 	-- Apply texture to each face
 	local texturesApplied = 0
 	for _, faceInfo in ipairs(faces) do
+		-- Respect optional visibility mask; default to visible unless explicitly false
+		local isVisible = true
+		if visibleFaces then
+			local mask = visibleFaces
+			local v = mask[faceInfo.normalId]
+			if v == nil then v = mask[faceInfo.normalId and faceInfo.normalId.Name or nil] end
+			if v == nil then v = mask[faceInfo.faceName] end
+			if v == nil and type(faceInfo.faceName) == "string" then v = mask[string.lower(faceInfo.faceName)] end
+			if v == false then
+				isVisible = false
+			end
+		end
+
+		if isVisible then
 		-- Apply rotation to get the correct texture for this face
 		local rotatedFaceName = getRotatedFaceName(faceInfo.faceName, rotation)
 		local textureId = TextureManager:GetTextureForBlockFace(blockId, rotatedFaceName)
 
-		if textureId then
+			if textureId then
 			local texture = Instance.new("Texture")
 			texture.Name = "BlockTexture_" .. faceInfo.faceName
 			texture.Face = faceInfo.normalId
@@ -164,8 +181,9 @@ function TextureApplicator:ApplyBoxTextures(
 				texture.Color3 = def.color or part.Color
 			end
 
-			texture.Parent = part
-			texturesApplied = texturesApplied + 1
+				texture.Parent = part
+				texturesApplied = texturesApplied + 1
+		end
 		end
 	end
 
@@ -173,7 +191,7 @@ function TextureApplicator:ApplyBoxTextures(
 	if texturesApplied == 0 then
 		-- No textures applied - this is normal if textures aren't configured yet
 		-- or if the block type doesn't have texture definitions
-	elseif texturesApplied < 6 then
+	elseif not visibleFaces and texturesApplied < 6 then
 		-- Some textures missing - might indicate incomplete texture configuration
 		warn(string.format("[TextureApplicator] Only %d/6 textures applied to block %d", texturesApplied, blockId))
 	end

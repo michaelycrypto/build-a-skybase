@@ -32,8 +32,8 @@ local THIRD_PERSON_DISTANCE = 9 -- Default zoom distance for third person
 local THIRD_PERSON_MAX_ZOOM = 9 -- Maximum zoom out distance
 local THIRD_PERSON_MIN_ZOOM = 9 -- Minimum zoom in distance (can zoom to first person)
 local FIRST_PERSON_DISTANCE = 0.5 -- Roblox's default first-person distance
-local FIRST_PERSON_FOV = 90 -- Minecraft-style wide FOV
-local THIRD_PERSON_FOV = 90 -- Standard Roblox FOV
+local FIRST_PERSON_FOV = 85 -- Minecraft-style wide FOV
+local THIRD_PERSON_FOV = 85 -- Standard Roblox FOV
 local MOUSE_SENSITIVITY = 0.6 -- Lower = less sensitive (0.6 = 60% of normal speed)
 
 -- Camera bobbing settings (Minecraft-style)
@@ -47,6 +47,22 @@ local NORMAL_WALKSPEED = 14 -- Must match SprintController
 -- State
 local isFirstPerson = true -- Players always start in first person
 local bobbingTime = 0
+
+-- Dynamic FOV + Hurt Roll tunables
+local BASE_FOV = 80
+local MAX_FOV = 96
+local FOV_LERP = 0.25
+local WALKSPEED_BASE = NORMAL_WALKSPEED -- 14
+local FOV_PER_SPEED = 1.8 -- degrees per stud/sec beyond base
+
+local HURT_ROLL_MAX_DEG = 2.0
+local HURT_ROLL_DECAY = 7.0 -- per second
+local HURT_ROLL_IMPULSE = 1.0 -- multiplied by damage fraction
+
+-- Hurt roll state
+local hurtRollAngle = 0
+local hurtRollVel = 0
+local lastHealth = nil
 
 local function setupCamera(char)
 	-- Wait for character to be fully loaded
@@ -66,7 +82,8 @@ local function setupCamera(char)
 			player.CameraMaxZoomDistance = FIRST_PERSON_DISTANCE
 			player.CameraMinZoomDistance = FIRST_PERSON_DISTANCE
 			hum.CameraOffset = Vector3.new(0, 0, 0)
-			camera.FieldOfView = FIRST_PERSON_FOV
+			-- Initialize FOV toward base to avoid abrupt jumps
+			camera.FieldOfView = BASE_FOV
 		else
 			-- Third person: Fixed zoom at 16 studs (no zooming)
 			player.CameraMode = Enum.CameraMode.Classic
@@ -90,6 +107,22 @@ function CameraController:Initialize()
 	-- Setup character
 	character = player.Character or player.CharacterAdded:Wait()
 	humanoid = setupCamera(character)
+
+	-- Hook health change for hurt roll
+	if humanoid then
+		lastHealth = humanoid.Health
+		humanoid.HealthChanged:Connect(function(newHealth)
+			if lastHealth then
+				local delta = lastHealth - newHealth
+				if delta > 0 then
+					local maxH = math.max(1, humanoid.MaxHealth or 100)
+					-- Apply an impulse proportional to damage fraction
+					hurtRollVel = hurtRollVel + (delta / maxH) * HURT_ROLL_IMPULSE
+				end
+			end
+			lastHealth = newHealth
+		end)
+	end
 
 	-- Initialize camera mode state
 	GameState:Set("camera.isFirstPerson", isFirstPerson)
@@ -170,15 +203,20 @@ function CameraController:Initialize()
 				-- Apply bobbing and settings
 				humanoid.CameraOffset = baseOffset
 
-				-- Enforce FOV
-				if camera.FieldOfView ~= FIRST_PERSON_FOV then
-					camera.FieldOfView = FIRST_PERSON_FOV
-				end
+				-- Dynamic FOV tied to WalkSpeed (clamped)
+				local ws = humanoid.WalkSpeed or NORMAL_WALKSPEED
+				local targetFov = BASE_FOV + math.max(0, ws - WALKSPEED_BASE) * FOV_PER_SPEED
+				targetFov = math.clamp(targetFov, BASE_FOV, MAX_FOV)
+				camera.FieldOfView = camera.FieldOfView + (targetFov - camera.FieldOfView) * FOV_LERP
 
 				-- Enforce mouse sensitivity
 				if UserInputService.MouseDeltaSensitivity ~= MOUSE_SENSITIVITY then
 					UserInputService.MouseDeltaSensitivity = MOUSE_SENSITIVITY
 				end
+				-- Head roll on hurt (decays over time)
+				hurtRollVel = hurtRollVel - (hurtRollVel * HURT_ROLL_DECAY * deltaTime)
+				hurtRollAngle = math.clamp(hurtRollAngle + (hurtRollVel * deltaTime * 60), -HURT_ROLL_MAX_DEG, HURT_ROLL_MAX_DEG)
+				camera.CFrame = camera.CFrame * CFrame.Angles(0, 0, math.rad(hurtRollAngle))
 			end
 			-- THIRD PERSON MODE: No camera updates (let Roblox handle everything)
 			-- We don't touch any camera properties to avoid interfering

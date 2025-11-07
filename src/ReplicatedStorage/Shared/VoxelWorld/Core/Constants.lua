@@ -114,6 +114,44 @@ local Constants = {
 		DARK_OAK_LEAVES = 66,
 		BIRCH_LEAVES = 67,
 		ACACIA_LEAVES = 68
+		,
+
+		-- Farming blocks and items
+		FARMLAND = 69,
+		WHEAT_SEEDS = 70,
+		WHEAT = 71,
+		POTATO = 72,
+		CARROT = 73,
+		BEETROOT_SEEDS = 74,
+		BEETROOT = 75,
+
+		-- Crop stages (cross-shaped plants)
+		WHEAT_CROP_0 = 76,
+		WHEAT_CROP_1 = 77,
+		WHEAT_CROP_2 = 78,
+		WHEAT_CROP_3 = 79,
+		WHEAT_CROP_4 = 80,
+		WHEAT_CROP_5 = 81,
+		WHEAT_CROP_6 = 82,
+		WHEAT_CROP_7 = 83,
+
+		POTATO_CROP_0 = 84,
+		POTATO_CROP_1 = 85,
+		POTATO_CROP_2 = 86,
+		POTATO_CROP_3 = 87,
+
+		CARROT_CROP_0 = 88,
+		CARROT_CROP_1 = 89,
+		CARROT_CROP_2 = 90,
+		CARROT_CROP_3 = 91,
+
+		BEETROOT_CROP_0 = 92,
+		BEETROOT_CROP_1 = 93,
+		BEETROOT_CROP_2 = 94,
+		BEETROOT_CROP_3 = 95,
+
+		-- Compost item (used to convert grass/dirt to farmland)
+		COMPOST = 96
 	},
 
 	-- Mapping: Slab block ID → Full block ID (when two slabs combine)

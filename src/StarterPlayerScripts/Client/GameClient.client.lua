@@ -205,7 +205,7 @@ local function updateVoxelWorld()
                 if lx >= 0 and lx < Constants.CHUNK_SIZE_X and lz >= 0 and lz < Constants.CHUNK_SIZE_Z then
                     return baseChunk:GetBlock(lx, ly, lz)
                 end
-				if not worldManagerRef then return Constants.BlockType.STONE end -- Treat unknown neighbor as occluder; avoid seam faces until neighbor loads
+				if not worldManagerRef then return Constants.BlockType.AIR end -- Treat unknown neighbor as air so edge faces render until neighbor loads
                 local cx, cz = baseChunk.x, baseChunk.z
                 local nx, nz = lx, lz
                 if nx < 0 then cx -= 1 nx += Constants.CHUNK_SIZE_X elseif nx >= Constants.CHUNK_SIZE_X then cx += 1 nx -= Constants.CHUNK_SIZE_X end
@@ -213,7 +213,7 @@ local function updateVoxelWorld()
                 local key
                 key = tostring(cx)..","..tostring(cz)
                 local neighbor = (worldManagerRef and worldManagerRef.chunks) and worldManagerRef.chunks[key]
-				if not neighbor then return Constants.BlockType.STONE end -- Defer border faces until real neighbor is present
+				if not neighbor then return Constants.BlockType.AIR end -- Render border faces when neighbor chunk is absent
                 return neighbor:GetBlock(nx, ly, nz)
             end
 
@@ -425,6 +425,11 @@ local function completeInitialization(EmoteManager)
 	Client.droppedItemController = DroppedItemController
 	print("💎 Dropped Item Controller initialized")
 
+	-- Initialize Mob Replication Controller (renders passive/hostile mobs)
+	local MobReplicationController = require(script.Parent.Controllers.MobReplicationController)
+	Client.mobReplicationController = MobReplicationController
+	print("👾 Mob Replication Controller initialized")
+
 	-- Initialize Tool Visual Controller (attach placeholder handle for equipped tools)
 	local ToolVisualController = require(script.Parent.Controllers.ToolVisualController)
 	ToolVisualController:Initialize()
@@ -437,6 +442,13 @@ local function completeInitialization(EmoteManager)
 	Client.toolAnimationController = ToolAnimationController
 	Client.managers.ToolAnimationController = ToolAnimationController
 	print("🎬 Tool Animation Controller initialized")
+
+	-- Initialize Viewmodel Controller (first-person hand/held item)
+	local ViewmodelController = require(script.Parent.Controllers.ViewmodelController)
+	ViewmodelController:Initialize()
+	Client.viewmodelController = ViewmodelController
+	Client.managers.ViewmodelController = ViewmodelController
+	print("🖐️ Viewmodel Controller initialized")
 
 	-- Initialize Combat Controller (PvP)
 	local CombatController = require(script.Parent.Controllers.CombatController)

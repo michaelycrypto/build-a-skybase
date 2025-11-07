@@ -38,6 +38,19 @@ function BlockPlacementRules:CanPlace(worldManager, x: number, y: number, z: num
 		return false, "cannot_place_bedrock"
 	end
 
+	-- Block must be eligible for placement
+	-- Exception: allow farm items (seeds, carrots, potatoes, beetroot seeds, compost) for redirect planting/soil tilling
+	local BLOCK = Constants.BlockType
+	local isFarmItem = (
+		blockId == BLOCK.WHEAT_SEEDS or
+		blockId == BLOCK.POTATO or
+		blockId == BLOCK.CARROT or
+		blockId == BLOCK.BEETROOT_SEEDS
+	)
+	if not (BlockRegistry.IsPlaceable and BlockRegistry:IsPlaceable(blockId)) and not isFarmItem then
+		return false, "not_placeable"
+	end
+
 	-- Check if target position is replaceable (air or water)
 	local currentBlock = worldManager:GetBlock(x, y, z)
 	if not BlockRegistry:IsReplaceable(currentBlock) then
@@ -107,6 +120,26 @@ function BlockPlacementRules:NeedsGroundSupport(blockId: number): boolean
 	return blockId == Constants.BlockType.TALL_GRASS
 		or blockId == Constants.BlockType.FLOWER
 		or blockId == Constants.BlockType.OAK_SAPLING
+		or blockId == Constants.BlockType.WHEAT_CROP_0
+		or blockId == Constants.BlockType.WHEAT_CROP_1
+		or blockId == Constants.BlockType.WHEAT_CROP_2
+		or blockId == Constants.BlockType.WHEAT_CROP_3
+		or blockId == Constants.BlockType.WHEAT_CROP_4
+		or blockId == Constants.BlockType.WHEAT_CROP_5
+		or blockId == Constants.BlockType.WHEAT_CROP_6
+		or blockId == Constants.BlockType.WHEAT_CROP_7
+		or blockId == Constants.BlockType.POTATO_CROP_0
+		or blockId == Constants.BlockType.POTATO_CROP_1
+		or blockId == Constants.BlockType.POTATO_CROP_2
+		or blockId == Constants.BlockType.POTATO_CROP_3
+		or blockId == Constants.BlockType.CARROT_CROP_0
+		or blockId == Constants.BlockType.CARROT_CROP_1
+		or blockId == Constants.BlockType.CARROT_CROP_2
+		or blockId == Constants.BlockType.CARROT_CROP_3
+		or blockId == Constants.BlockType.BEETROOT_CROP_0
+		or blockId == Constants.BlockType.BEETROOT_CROP_1
+		or blockId == Constants.BlockType.BEETROOT_CROP_2
+		or blockId == Constants.BlockType.BEETROOT_CROP_3
 end
 
 --[[
@@ -121,6 +154,7 @@ function BlockPlacementRules:CanSupport(blockId: number): boolean
 	-- Grass and dirt can support flowers/plants
 	return blockId == Constants.BlockType.GRASS
 		or blockId == Constants.BlockType.DIRT
+		or blockId == Constants.BlockType.FARMLAND
 		or blockId == Constants.BlockType.STONE
 		or blockId == Constants.BlockType.BEDROCK
 end

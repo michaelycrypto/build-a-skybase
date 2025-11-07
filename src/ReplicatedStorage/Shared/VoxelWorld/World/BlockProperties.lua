@@ -433,6 +433,48 @@ BlockProperties.Properties = {
 		minToolTier = nil,  -- Harvestable by hand
 		resistance = 0.3
 	}
+	,
+
+	-- Farming
+	[Constants.BlockType.FARMLAND] = {
+		hardness = 0.6,
+		toolType = BlockProperties.ToolType.SHOVEL,
+		minToolTier = nil,
+		resistance = 0.6
+	},
+
+	-- Inventory items (instant break if ever placed)
+	[Constants.BlockType.WHEAT_SEEDS] = { hardness = 0, toolType = nil, minToolTier = nil, resistance = 0 },
+	[Constants.BlockType.WHEAT] = { hardness = 0, toolType = nil, minToolTier = nil, resistance = 0 },
+	[Constants.BlockType.POTATO] = { hardness = 0, toolType = nil, minToolTier = nil, resistance = 0 },
+	[Constants.BlockType.CARROT] = { hardness = 0, toolType = nil, minToolTier = nil, resistance = 0 },
+	[Constants.BlockType.BEETROOT_SEEDS] = { hardness = 0, toolType = nil, minToolTier = nil, resistance = 0 },
+	[Constants.BlockType.BEETROOT] = { hardness = 0, toolType = nil, minToolTier = nil, resistance = 0 },
+
+	-- Crop stages (instant break)
+	[Constants.BlockType.WHEAT_CROP_0] = { hardness = 0, toolType = nil, minToolTier = nil, resistance = 0 },
+	[Constants.BlockType.WHEAT_CROP_1] = { hardness = 0, toolType = nil, minToolTier = nil, resistance = 0 },
+	[Constants.BlockType.WHEAT_CROP_2] = { hardness = 0, toolType = nil, minToolTier = nil, resistance = 0 },
+	[Constants.BlockType.WHEAT_CROP_3] = { hardness = 0, toolType = nil, minToolTier = nil, resistance = 0 },
+	[Constants.BlockType.WHEAT_CROP_4] = { hardness = 0, toolType = nil, minToolTier = nil, resistance = 0 },
+	[Constants.BlockType.WHEAT_CROP_5] = { hardness = 0, toolType = nil, minToolTier = nil, resistance = 0 },
+	[Constants.BlockType.WHEAT_CROP_6] = { hardness = 0, toolType = nil, minToolTier = nil, resistance = 0 },
+	[Constants.BlockType.WHEAT_CROP_7] = { hardness = 0, toolType = nil, minToolTier = nil, resistance = 0 },
+
+	[Constants.BlockType.POTATO_CROP_0] = { hardness = 0, toolType = nil, minToolTier = nil, resistance = 0 },
+	[Constants.BlockType.POTATO_CROP_1] = { hardness = 0, toolType = nil, minToolTier = nil, resistance = 0 },
+	[Constants.BlockType.POTATO_CROP_2] = { hardness = 0, toolType = nil, minToolTier = nil, resistance = 0 },
+	[Constants.BlockType.POTATO_CROP_3] = { hardness = 0, toolType = nil, minToolTier = nil, resistance = 0 },
+
+	[Constants.BlockType.CARROT_CROP_0] = { hardness = 0, toolType = nil, minToolTier = nil, resistance = 0 },
+	[Constants.BlockType.CARROT_CROP_1] = { hardness = 0, toolType = nil, minToolTier = nil, resistance = 0 },
+	[Constants.BlockType.CARROT_CROP_2] = { hardness = 0, toolType = nil, minToolTier = nil, resistance = 0 },
+	[Constants.BlockType.CARROT_CROP_3] = { hardness = 0, toolType = nil, minToolTier = nil, resistance = 0 },
+
+	[Constants.BlockType.BEETROOT_CROP_0] = { hardness = 0, toolType = nil, minToolTier = nil, resistance = 0 },
+	[Constants.BlockType.BEETROOT_CROP_1] = { hardness = 0, toolType = nil, minToolTier = nil, resistance = 0 },
+	[Constants.BlockType.BEETROOT_CROP_2] = { hardness = 0, toolType = nil, minToolTier = nil, resistance = 0 },
+	[Constants.BlockType.BEETROOT_CROP_3] = { hardness = 0, toolType = nil, minToolTier = nil, resistance = 0 }
 }
 
 -- Tool effectiveness multipliers (Minecraft-accurate)

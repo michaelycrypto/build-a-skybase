@@ -38,25 +38,7 @@ local function snap(value)
 end
 
 local function getMaterialForBlock(blockId)
-    if blockId == Constants.BlockType.GRASS then
-		return Enum.Material.Grass
-	elseif blockId == Constants.BlockType.DIRT then
-		return Enum.Material.Ground
-	elseif blockId == Constants.BlockType.STONE then
-		return Enum.Material.Slate
-	elseif blockId == Constants.BlockType.WOOD then
-		return Enum.Material.Wood
-    elseif blockId == Constants.BlockType.LEAVES
-        or blockId == Constants.BlockType.OAK_LEAVES
-        or blockId == Constants.BlockType.SPRUCE_LEAVES
-        or blockId == Constants.BlockType.JUNGLE_LEAVES
-        or blockId == Constants.BlockType.DARK_OAK_LEAVES
-        or blockId == Constants.BlockType.BIRCH_LEAVES
-        or blockId == Constants.BlockType.ACACIA_LEAVES then
-		return Enum.Material.Glass
-	else
-		return Enum.Material.SmoothPlastic
-	end
+	return Enum.Material.Plastic
 end
 
 -- Helper: sample block ID, including neighbors across chunk borders

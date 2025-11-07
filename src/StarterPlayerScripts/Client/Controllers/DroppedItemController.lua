@@ -440,7 +440,7 @@ function DroppedItemController:CreateModel(itemId, count)
 			local cube = Instance.new("Part")
 			cube.Name = "VisualCube"
 			cube.Size = Vector3.new(0.9, 0.9, 0.9)
-			cube.Material = blockInfo and blockInfo.material or Enum.Material.SmoothPlastic
+			cube.Material = blockInfo and blockInfo.material or Enum.Material.Plastic
 			cube.Color = blockInfo and blockInfo.color or Color3.new(0.8, 0.8, 0.8)
 			cube.Anchored = false
 			cube.CanCollide = false
@@ -579,7 +579,7 @@ function DroppedItemController:CreateModel(itemId, count)
 			local post = Instance.new("Part")
 			post.Name = "FencePost"
 			post.Size = Vector3.new(postWidth, postHeight, postWidth)
-			post.Material = blockInfo.material or Enum.Material.SmoothPlastic
+			post.Material = blockInfo.material or Enum.Material.Plastic
 			post.Color = blockInfo.color or Color3.new(0.8, 0.8, 0.8)
 			post.Anchored = false
 			post.CanCollide = false
@@ -611,7 +611,7 @@ function DroppedItemController:CreateModel(itemId, count)
 			local rail = Instance.new("Part")
 			rail.Name = "FenceRail"
 			rail.Size = Vector3.new(span, railThickness, railThickness)
-			rail.Material = blockInfo.material or Enum.Material.SmoothPlastic
+			rail.Material = blockInfo.material or Enum.Material.Plastic
 			rail.Color = blockInfo.color or Color3.new(0.8, 0.8, 0.8)
 			rail.Anchored = false
 			rail.CanCollide = false
@@ -695,7 +695,7 @@ function DroppedItemController:CreateModel(itemId, count)
 		local slab = Instance.new("Part")
 		slab.Name = "SlabVisual"
 		slab.Size = Vector3.new(size, size * 0.5, size)
-		slab.Material = blockInfo.material or Enum.Material.SmoothPlastic
+		slab.Material = blockInfo.material or Enum.Material.Plastic
 		slab.Color = blockInfo.color or Color3.new(0.8, 0.8, 0.8)
 		slab.Anchored = false
 		slab.CanCollide = false
@@ -768,7 +768,7 @@ function DroppedItemController:CreateModel(itemId, count)
 		local bottom = Instance.new("Part")
 		bottom.Name = "StairBottom"
 		bottom.Size = Vector3.new(size, size * 0.5, size)
-		bottom.Material = blockInfo.material or Enum.Material.SmoothPlastic
+		bottom.Material = blockInfo.material or Enum.Material.Plastic
 		bottom.Color = blockInfo.color or Color3.new(0.8, 0.8, 0.8)
 		bottom.Anchored = false
 		bottom.CanCollide = false
@@ -779,7 +779,7 @@ function DroppedItemController:CreateModel(itemId, count)
 		local top = Instance.new("Part")
 		top.Name = "StairTop"
 		top.Size = Vector3.new(size, size * 0.5, size * 0.5)
-		top.Material = blockInfo.material or Enum.Material.SmoothPlastic
+		top.Material = blockInfo.material or Enum.Material.Plastic
 		top.Color = blockInfo.color or Color3.new(0.8, 0.8, 0.8)
 		top.Anchored = false
 		top.CanCollide = false
@@ -867,7 +867,7 @@ function DroppedItemController:CreateModel(itemId, count)
 			part.CastShadow = true
 		end
 
-		part.Material = blockInfo and blockInfo.material or Enum.Material.SmoothPlastic
+	part.Material = blockInfo and blockInfo.material or Enum.Material.Plastic
 		part.Color = blockInfo and blockInfo.color or Color3.new(0.8, 0.8, 0.8)
 
 		local offset = layerOffsets[i]

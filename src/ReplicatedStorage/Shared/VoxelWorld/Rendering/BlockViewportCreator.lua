@@ -60,7 +60,7 @@ local function createBlockPart(blockId)
 		p1.Size = Vector3.new(size, size, FACE_THICKNESS)
 		p1.Anchored = true
 		p1.CanCollide = false
-		p1.Material = Enum.Material.SmoothPlastic
+		p1.Material = Enum.Material.Plastic
 		p1.Color = def.color
 		p1.Transparency = 1 -- Fully transparent, only texture shows
 		p1.TopSurface = Enum.SurfaceType.Smooth
@@ -74,7 +74,7 @@ local function createBlockPart(blockId)
 		p2.Size = Vector3.new(size, size, FACE_THICKNESS)
 		p2.Anchored = true
 		p2.CanCollide = false
-		p2.Material = Enum.Material.SmoothPlastic
+		p2.Material = Enum.Material.Plastic
 		p2.Color = def.color
 		p2.Transparency = 1 -- Fully transparent, only texture shows
 		p2.TopSurface = Enum.SurfaceType.Smooth
@@ -142,7 +142,7 @@ local function createBlockPart(blockId)
 		bottomPart.Size = Vector3.new(size, size / 2, size)
 		bottomPart.Anchored = true
 		bottomPart.CanCollide = false
-		bottomPart.Material = Enum.Material.SmoothPlastic
+		bottomPart.Material = Enum.Material.Plastic
 		bottomPart.Color = def.color
 		bottomPart.TopSurface = Enum.SurfaceType.Smooth
 		bottomPart.BottomSurface = Enum.SurfaceType.Smooth
@@ -155,7 +155,7 @@ local function createBlockPart(blockId)
 		topPart.Size = Vector3.new(size, size / 2, size / 2)
 		topPart.Anchored = true
 		topPart.CanCollide = false
-		topPart.Material = Enum.Material.SmoothPlastic
+		topPart.Material = Enum.Material.Plastic
 		topPart.Color = def.color
 		topPart.TopSurface = Enum.SurfaceType.Smooth
 		topPart.BottomSurface = Enum.SurfaceType.Smooth
@@ -211,7 +211,7 @@ local function createBlockPart(blockId)
 			post.Size = Vector3.new(postWidth, postHeight, postWidth)
 			post.Anchored = true
 			post.CanCollide = false
-			post.Material = Enum.Material.SmoothPlastic
+			post.Material = Enum.Material.Plastic
 			post.Color = def.color
 			post.TopSurface = Enum.SurfaceType.Smooth
 			post.BottomSurface = Enum.SurfaceType.Smooth
@@ -245,7 +245,7 @@ local function createBlockPart(blockId)
 			rail.Size = Vector3.new(span, railThickness, railThickness)
 			rail.Anchored = true
 			rail.CanCollide = false
-			rail.Material = Enum.Material.SmoothPlastic
+			rail.Material = Enum.Material.Plastic
 			rail.Color = def.color
 			rail.TopSurface = Enum.SurfaceType.Smooth
 			rail.BottomSurface = Enum.SurfaceType.Smooth
@@ -289,7 +289,7 @@ local function createBlockPart(blockId)
 		slabPart.CFrame = CFrame.new(0, -size / 4, 0)  -- Position at bottom half
 		slabPart.Anchored = true
 		slabPart.CanCollide = false
-		slabPart.Material = Enum.Material.SmoothPlastic
+		slabPart.Material = Enum.Material.Plastic
 		slabPart.Color = def.color or Color3.fromRGB(255, 255, 255)
 		slabPart.TopSurface = Enum.SurfaceType.Smooth
 		slabPart.BottomSurface = Enum.SurfaceType.Smooth
@@ -319,7 +319,7 @@ local function createBlockPart(blockId)
 	part.Size = Vector3.new(1, 1, 1) -- 1 stud size for viewport
 	part.Anchored = true
 	part.CanCollide = false
-	part.Material = Enum.Material.SmoothPlastic
+	part.Material = Enum.Material.Plastic
 	part.Color = def.color
 	part.Transparency = def.transparent and 0.8 or 0
 	part.TopSurface = Enum.SurfaceType.Smooth

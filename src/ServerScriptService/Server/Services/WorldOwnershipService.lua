@@ -15,7 +15,7 @@ local WorldOwnershipService = setmetatable({}, BaseService)
 WorldOwnershipService.__index = WorldOwnershipService
 
 -- DataStore for world ownership
-local WORLD_DATA_STORE_NAME = "PlayerOwnedWorlds_v34"  -- Changed to v4 to reset all data
+local WORLD_DATA_STORE_NAME = "PlayerOwnedWorlds_v42"  -- Changed to v4 to reset all data
 
 function WorldOwnershipService.new()
 	local self = setmetatable(BaseService.new(), WorldOwnershipService)
@@ -150,6 +150,7 @@ function WorldOwnershipService:LoadWorldData()
 			lastSaved = os.time(),
 			seed = math.random(1, 999999),
 			chunks = {},
+			mobs = {},
 			metadata = {
 				name = self._ownerName .. "'s World",
 				description = "A player-owned world",

@@ -45,6 +45,44 @@ local warn = function(...)
     _logger.Warn(_concatArgs(...))
 end
 
+-- Internal: combat tagging helpers
+function VoxelWorldService:_refreshCombatTagForCharacter(character, now)
+    if not character then return end
+    local ttl = CombatConfig.COMBAT_TTL_SECONDS or 8
+    local expiresAt = now + ttl
+
+    -- Mark as in combat and set expiry
+    pcall(function()
+        character:SetAttribute("IsInCombat", true)
+        character:SetAttribute("CombatExpiresAt", expiresAt)
+    end)
+
+    -- Schedule a delayed check to clear the tag after TTL (if not refreshed)
+    task.delay(ttl + 0.05, function()
+        local ok, currentExpiry = pcall(function()
+            return character:GetAttribute("CombatExpiresAt")
+        end)
+        if not ok then return end
+        if type(currentExpiry) ~= "number" then return end
+        if os.clock() >= currentExpiry then
+            pcall(function()
+                character:SetAttribute("IsInCombat", false)
+            end)
+        end
+    end)
+end
+
+function VoxelWorldService:_tagCombat(attackerChar, victimChar)
+    local now = os.clock()
+    -- Attacker enters combat as well
+    self:_refreshCombatTagForCharacter(attackerChar, now)
+    -- Victim enters combat and records last hit time for client flash
+    self:_refreshCombatTagForCharacter(victimChar, now)
+    pcall(function()
+        victimChar:SetAttribute("LastHitAt", now)
+    end)
+end
+
 -- Initialize service
 function VoxelWorldService:Init()
 	-- Single world instance for this server
@@ -158,13 +196,8 @@ function VoxelWorldService:HandlePlayerMeleeHit(player: Player, data)
         -- allow slight occlusion tolerance; skip rejection for now to reduce false negatives
     end
 
-    -- Compute damage (sword -> table by tier; otherwise hand damage)
-    local dmg
-    if toolType == require(ReplicatedStorage.Shared.VoxelWorld.World.BlockProperties).ToolType.SWORD and toolTier then
-        dmg = CombatConfig.SWORD_DAMAGE_BY_TIER[toolTier] or 4
-    else
-        dmg = CombatConfig.HAND_DAMAGE or 2
-    end
+    -- Compute damage using unified config (supports swords, axes, pickaxes, shovels, or hand)
+    local dmg = CombatConfig.GetMeleeDamage(toolType, toolTier)
     victimHum:TakeDamage(dmg)
 
     -- Optional knockback
@@ -188,6 +221,9 @@ function VoxelWorldService:HandlePlayerMeleeHit(player: Player, data)
             userId = player.UserId
         })
     end)
+
+    -- Apply combat tags and victim flash
+    self:_tagCombat(attackerChar, victimChar)
 end
 
 -- Cancel block breaking immediately for a specific block
@@ -333,6 +369,12 @@ function VoxelWorldService:StreamChunkToPlayer(player, chunkX, chunkZ)
 	local saplingService = self.Deps and self.Deps.SaplingService
 	if saplingService and saplingService.OnChunkStreamed then
 		saplingService:OnChunkStreamed(chunkX, chunkZ)
+	end
+
+	-- Notify CropService to scan this chunk for crops
+	local cropService = self.Deps and self.Deps.CropService
+	if cropService and cropService.OnChunkStreamed then
+		cropService:OnChunkStreamed(chunkX, chunkZ)
 	end
 
 	-- Enforce per-player chunk cap
@@ -541,6 +583,13 @@ function VoxelWorldService:SetBlock(x, y, z, blockId, player, metadata)
 	if saplingService and saplingService.OnBlockChanged then
 		local metaNow = metadata or self.worldManager:GetBlockMetadata(x, y, z) or 0
         saplingService:OnBlockChanged(x, y, z, blockId, metaNow, prevBlockId)
+	end
+
+	-- Notify CropService about block change (for crop growth tracking)
+	local cropService = self.Deps and self.Deps.CropService
+	if cropService and cropService.OnBlockChanged then
+		local metaNow = metadata or self.worldManager:GetBlockMetadata(x, y, z) or 0
+		cropService:OnBlockChanged(x, y, z, blockId, metaNow, prevBlockId)
 	end
 
 	-- After changing a block, update nearby stair shapes
@@ -831,35 +880,80 @@ function VoxelWorldService:HandlePlayerPunch(player, punchData)
 				end
 			-- Otherwise, default drop path (only if harvestable)
 			elseif canHarvest then
-			-- Check if this full block should drop as 2 slabs instead
+			-- Crop drops override
 			local dropItemId = blockId
 			local dropCount = 1
+			local BLOCK = Constants.BlockType
+			local handled = false
+			local function isWheatStage(id)
+				return id == BLOCK.WHEAT_CROP_0 or id == BLOCK.WHEAT_CROP_1 or id == BLOCK.WHEAT_CROP_2 or id == BLOCK.WHEAT_CROP_3
+					or id == BLOCK.WHEAT_CROP_4 or id == BLOCK.WHEAT_CROP_5 or id == BLOCK.WHEAT_CROP_6 or id == BLOCK.WHEAT_CROP_7
+			end
+			local function isPotatoStage(id)
+				return id == BLOCK.POTATO_CROP_0 or id == BLOCK.POTATO_CROP_1 or id == BLOCK.POTATO_CROP_2 or id == BLOCK.POTATO_CROP_3
+			end
+			local function isCarrotStage(id)
+				return id == BLOCK.CARROT_CROP_0 or id == BLOCK.CARROT_CROP_1 or id == BLOCK.CARROT_CROP_2 or id == BLOCK.CARROT_CROP_3
+			end
+			local function isBeetStage(id)
+				return id == BLOCK.BEETROOT_CROP_0 or id == BLOCK.BEETROOT_CROP_1 or id == BLOCK.BEETROOT_CROP_2 or id == BLOCK.BEETROOT_CROP_3
+			end
 
-			if Constants.ShouldDropAsSlabs(blockId) then
+			if isWheatStage(blockId) then
+				if blockId == BLOCK.WHEAT_CROP_7 then
+					-- Mature: 1 wheat + 1 seeds
+					self.Deps.DroppedItemService:SpawnItem(BLOCK.WHEAT, 1, Vector3.new(x, y, z), Vector3.new(0,0,0), true)
+					self.Deps.DroppedItemService:SpawnItem(BLOCK.WHEAT_SEEDS, 1, Vector3.new(x, y, z), Vector3.new(0,0,0), true)
+				else
+					-- Immature: seeds only
+					self.Deps.DroppedItemService:SpawnItem(BLOCK.WHEAT_SEEDS, 1, Vector3.new(x, y, z), Vector3.new(0,0,0), true)
+				end
+				handled = true
+			elseif isPotatoStage(blockId) then
+				local count = (blockId == BLOCK.POTATO_CROP_3) and math.random(1, 3) or 1
+				self.Deps.DroppedItemService:SpawnItem(BLOCK.POTATO, count, Vector3.new(x, y, z), Vector3.new(0,0,0), true)
+				handled = true
+			elseif isCarrotStage(blockId) then
+				local count = (blockId == BLOCK.CARROT_CROP_3) and math.random(1, 3) or 1
+				self.Deps.DroppedItemService:SpawnItem(BLOCK.CARROT, count, Vector3.new(x, y, z), Vector3.new(0,0,0), true)
+				handled = true
+			elseif isBeetStage(blockId) then
+				if blockId == BLOCK.BEETROOT_CROP_3 then
+					self.Deps.DroppedItemService:SpawnItem(BLOCK.BEETROOT, 1, Vector3.new(x, y, z), Vector3.new(0,0,0), true)
+					self.Deps.DroppedItemService:SpawnItem(BLOCK.BEETROOT_SEEDS, 1, Vector3.new(x, y, z), Vector3.new(0,0,0), true)
+				else
+					self.Deps.DroppedItemService:SpawnItem(BLOCK.BEETROOT_SEEDS, 1, Vector3.new(x, y, z), Vector3.new(0,0,0), true)
+				end
+				handled = true
+			end
+
+			if not handled and Constants.ShouldDropAsSlabs(blockId) then
 				-- This full block (e.g., Oak Planks) should drop as 2 slabs (e.g., Oak Slabs)
 				dropItemId = Constants.GetSlabFromFullBlock(blockId)
 				dropCount = 2
 				print(string.format("📦 Block %d drops as 2x slab %d", blockId, dropItemId))
-			elseif Constants.IsOreBlock(blockId) then
+			elseif not handled and Constants.IsOreBlock(blockId) then
 				-- Ore blocks drop their refined material instead of the ore block
 				dropItemId = Constants.GetOreMaterialDrop(blockId)
 				dropCount = 1
 				print(string.format("⛏️ Ore block %d drops as material %d", blockId, dropItemId))
 			end
 
-			-- Minimal velocity - just let it drop naturally
-			local popVelocity = Vector3.new(
-				math.random(-1, 1) * 0.5,
-				0, -- No upward velocity - spawn and drop
-				math.random(-1, 1) * 0.5
-			)
-			self.Deps.DroppedItemService:SpawnItem(
-				dropItemId,
-				dropCount,
-				Vector3.new(x, y, z),
-				popVelocity,
-				true -- Is block coordinates
-			)
+			if not handled then
+				-- Minimal velocity - just let it drop naturally
+				local popVelocity = Vector3.new(
+					math.random(-1, 1) * 0.5,
+					0, -- No upward velocity - spawn and drop
+					math.random(-1, 1) * 0.5
+				)
+				self.Deps.DroppedItemService:SpawnItem(
+					dropItemId,
+					dropCount,
+					Vector3.new(x, y, z),
+					popVelocity,
+					true -- Is block coordinates
+				)
+			end
 		end
 		end
 	else
@@ -971,6 +1065,54 @@ function VoxelWorldService:RequestBlockPlace(player, placeData)
 
 	-- Debug: Successful placement check
 	print(string.format("[BlockPlace] ✅ Validation passed for %s at (%d,%d,%d)", player.Name, x, y, z))
+
+	-- Custom placements: Farmland conversion and crop planting redirects
+	local BLOCK = Constants.BlockType
+	-- 1) Farmland item: convert targeted GRASS/DIRT into FARMLAND and consume farmland item
+	if blockId == BLOCK.FARMLAND then
+		local tpos = placeData.targetBlockPos
+		local tgtId = self.worldManager:GetBlock(tpos.X, tpos.Y, tpos.Z)
+		if tgtId == BLOCK.GRASS or tgtId == BLOCK.DIRT then
+			-- Consume one farmland from hotbar
+			if self.Deps and self.Deps.PlayerInventoryService then
+				local inventoryService = self.Deps.PlayerInventoryService
+				local hotbarSlot = placeData.hotbarSlot or 1
+				if not inventoryService:ConsumeFromHotbar(player, hotbarSlot, blockId) then
+					self:RejectBlockChange(player, {x = tpos.X, y = tpos.Y, z = tpos.Z}, "consume_failed")
+					return
+				end
+			end
+			-- Convert block to farmland at target location
+			self:SetBlock(tpos.X, tpos.Y, tpos.Z, BLOCK.FARMLAND, player)
+			return
+		end
+	end
+
+	-- 2) Planting: redirect seed/produce items to stage-0 crop if above farmland
+	local function seedToCrop(item)
+		if item == BLOCK.WHEAT_SEEDS then return BLOCK.WHEAT_CROP_0 end
+		if item == BLOCK.POTATO then return BLOCK.POTATO_CROP_0 end
+		if item == BLOCK.CARROT then return BLOCK.CARROT_CROP_0 end
+		if item == BLOCK.BEETROOT_SEEDS then return BLOCK.BEETROOT_CROP_0 end
+		return nil
+	end
+
+	local redirectedCropId = seedToCrop(blockId)
+	local plantingCrop = false
+	if redirectedCropId then
+		-- Must be placing into air with farmland below
+		local belowId = self.worldManager:GetBlock(x, y - 1, z)
+		local atId = self.worldManager:GetBlock(x, y, z)
+		if atId ~= BLOCK.AIR then
+			self:RejectBlockChange(player, {x = x, y = y, z = z}, "space_occupied")
+			return
+		end
+		if belowId ~= BLOCK.FARMLAND then
+			self:RejectBlockChange(player, {x = x, y = y - 1, z = z}, "no_support")
+			return
+		end
+		plantingCrop = true
+	end
 
 	-- Debug: Log placement request details
 	local targetBlock = self.worldManager:GetBlock(placeData.targetBlockPos.X, placeData.targetBlockPos.Y, placeData.targetBlockPos.Z)
@@ -1233,7 +1375,7 @@ function VoxelWorldService:RequestBlockPlace(player, placeData)
 	-- Minecraft-style slab merging: Check if we're placing a slab where another slab exists
 	-- Special case: When clicking TOP of a bottom slab or BOTTOM of a top slab, redirect placement
 	local actualX, actualY, actualZ = x, y, z
-	local actualBlockId = blockId
+	local actualBlockId = plantingCrop and redirectedCropId or blockId
 	local actualMetadata = metadata
 
 	print(string.format("[BlockPlace] 🔄 Checking slab merging logic for blockId=%d at (%d,%d,%d)", blockId, x, y, z))
@@ -1581,6 +1723,23 @@ function VoxelWorldService:OnUnequipTool(player)
 	end
 end
 
+-- Track client hotbar selection (blocks-in-hand)
+function VoxelWorldService:OnSelectHotbarSlot(player, data)
+    if not data or type(data.slotIndex) ~= "number" then return end
+    local slotIndex = data.slotIndex
+    if slotIndex < 1 or slotIndex > 9 then return end
+
+    local state = self.players[player]
+    if not state then return end
+
+    state.selectedSlot = slotIndex
+end
+
+function VoxelWorldService:GetSelectedHotbarSlot(player)
+    local state = self.players[player]
+    return state and state.selectedSlot or nil
+end
+
 -- Handle player leaving
 function VoxelWorldService:OnPlayerRemoved(player)
 	if self.players[player] then
@@ -1672,6 +1831,10 @@ function VoxelWorldService:SaveWorldData()
 	worldData.modifiedChunkCount = #chunksToSave
 	print(string.format("Prepared %d total chunks for saving", #chunksToSave))
 
+	if self.Deps.MobEntityService then
+		self.Deps.MobEntityService:OnWorldDataSaving(worldData)
+	end
+
 	-- Save chest data (if ChestStorageService is available)
 	if self.Deps.ChestStorageService then
 		worldData.chests = self.Deps.ChestStorageService:SaveChestData()
@@ -1709,10 +1872,17 @@ function VoxelWorldService:LoadWorldData()
 
 	if not worldData or not worldData.chunks then
 		print("No saved chunks to load")
+		if worldData and self.Deps.MobEntityService then
+			self.Deps.MobEntityService:OnWorldDataLoaded(worldData)
+		end
 		return
 	end
 
 	print(string.format("Found %d chunks in saved data", #worldData.chunks))
+
+	if self.Deps.MobEntityService then
+		self.Deps.MobEntityService:OnWorldDataLoaded(worldData)
+	end
 
 	-- Load saved chunks
 	local loadedCount = 0
@@ -1790,12 +1960,21 @@ end
 function VoxelWorldService:_addViewer(player, key)
 	if not key then return end
 	local viewers = self.chunkViewers[key]
+	local isNew = false
 	if not viewers then
 		viewers = {}
 		self.chunkViewers[key] = viewers
+		isNew = true
 	end
 	viewers[player] = true
 	self.chunkLastAccess[key] = os.clock()
+
+	if isNew and self.Deps and self.Deps.MobEntityService then
+		local cx, cz = string.match(key, "(-?%d+),(-?%d+)")
+		if cx and cz then
+			self.Deps.MobEntityService:OnChunkLoaded(tonumber(cx), tonumber(cz))
+		end
+	end
 end
 
 -- Internal: remove viewer
@@ -1809,6 +1988,12 @@ function VoxelWorldService:_removeViewer(player, key)
 		if empty then
 			self.chunkViewers[key] = nil
 			self.chunkLastAccess[key] = os.clock()
+			if self.Deps and self.Deps.MobEntityService then
+				local cx, cz = string.match(key, "(-?%d+),(-?%d+)")
+				if cx and cz then
+					self.Deps.MobEntityService:OnChunkUnloaded(tonumber(cx), tonumber(cz))
+				end
+			end
 		end
 	end
 end

@@ -88,6 +88,12 @@ Injector:Bind("SaplingService", script.Parent.Parent.Services.SaplingService, {
 	mixins = {}
 })
 
+-- Bind CropService (depends on voxel world)
+Injector:Bind("CropService", script.Parent.Parent.Services.CropService, {
+	dependencies = {"VoxelWorldService", "WorldOwnershipService"},
+	mixins = {}
+})
+
 -- Bind ChestStorageService (manages chest inventories)
 Injector:Bind("ChestStorageService", script.Parent.Parent.Services.ChestStorageService, {
 	dependencies = {"VoxelWorldService", "PlayerInventoryService"},
@@ -97,6 +103,12 @@ Injector:Bind("ChestStorageService", script.Parent.Parent.Services.ChestStorageS
 -- Bind DroppedItemService (manages dropped items in world)
 Injector:Bind("DroppedItemService", script.Parent.Parent.Services.DroppedItemService, {
 	dependencies = {"VoxelWorldService", "PlayerInventoryService"},
+	mixins = {}
+})
+
+-- Bind MobEntityService (new mob system)
+Injector:Bind("MobEntityService", script.Parent.Parent.Services.MobEntityService, {
+	dependencies = {"VoxelWorldService", "WorldOwnershipService", "DroppedItemService", "PlayerInventoryService"},
 	mixins = {}
 })
 
@@ -114,18 +126,24 @@ local playerInventoryService = Injector:Resolve("PlayerInventoryService")
 local craftingService = Injector:Resolve("CraftingService")
 local voxelWorldService = Injector:Resolve("VoxelWorldService")
 local saplingService = Injector:Resolve("SaplingService")
+local cropService = Injector:Resolve("CropService")
 local worldOwnershipService = Injector:Resolve("WorldOwnershipService")
 local chestStorageService = Injector:Resolve("ChestStorageService")
 local droppedItemService = Injector:Resolve("DroppedItemService")
+local mobEntityService = Injector:Resolve("MobEntityService")
 
 -- Manually inject ChestStorageService into VoxelWorldService (to avoid circular dependency during init)
 voxelWorldService.Deps.ChestStorageService = chestStorageService
 
 -- Manually inject DroppedItemService into VoxelWorldService
 voxelWorldService.Deps.DroppedItemService = droppedItemService
+voxelWorldService.Deps.MobEntityService = mobEntityService
 
 -- Manually inject SaplingService into VoxelWorldService for block-change notifications
 voxelWorldService.Deps.SaplingService = saplingService
+
+-- Manually inject CropService into VoxelWorldService
+voxelWorldService.Deps.CropService = cropService
 
 -- Create services table for EventManager
 local servicesTable = {
@@ -139,6 +157,7 @@ local servicesTable = {
 	WorldOwnershipService = worldOwnershipService,
 	ChestStorageService = chestStorageService,
 	DroppedItemService = droppedItemService,
+	MobEntityService = mobEntityService,
 }
 
 -- Register all events first (defines RemoteEvents with proper parameter signatures)
@@ -194,80 +213,23 @@ local clientEvents = {
 	"ItemSpawned",
 	"ItemRemoved",
 	"ItemUpdated",
-	"ItemPickedUp"
+	"ItemPickedUp",
+	"MobSpawned",
+	"MobBatchUpdate",
+	"MobDespawned",
+	"MobDamaged",
+	"MobDied"
 }
 
 -- Register each client-bound event (this will define them in the Network module)
 for _, eventName in pairs(clientEvents) do
-	EventManager:RegisterEvent(eventName, function()
-		-- Empty handler - these events are fired TO clients, not handled BY server
-	end)
+    EventManager:RegisterEvent(eventName, function()
+        -- Empty handler - these events are fired TO clients, not handled BY server
+    end)
 end
 
 -- Export services for debugging (before starting services)
 -- Remove global exports in production; keep locals accessible via server console only
-
--- Ensure Snapshot IPC binder exists for Actor workers
-pcall(function()
-	local sss = game:GetService("ServerScriptService")
-	local ipc = sss:FindFirstChild("SnapshotIPC")
-	if not ipc then
-		ipc = Instance.new("Folder")
-		ipc.Name = "SnapshotIPC"
-		ipc.Parent = sss
-	end
-	if not ipc:FindFirstChild("Result") then
-		local ev = Instance.new("BindableEvent")
-		ev.Name = "Result"
-		ev.Parent = ipc
-	end
-end)
-
--- Provision Snapshot Actor workers (parallel)
-pcall(function()
-	local sss = game:GetService("ServerScriptService")
-	local serverFolder = sss:FindFirstChild("Server")
-	if not serverFolder then return end
-	local actorsFolder = serverFolder:FindFirstChild("Actors")
-	if not actorsFolder then
-		actorsFolder = Instance.new("Folder")
-		actorsFolder.Name = "Actors"
-		actorsFolder.Parent = serverFolder
-	end
-    -- Find template script for worker (robust lookup across possible instance names)
-    local template = actorsFolder:FindFirstChild("SnapshotWorker")
-        or actorsFolder:FindFirstChild("SnapshotWorker.server")
-        or actorsFolder:FindFirstChild("SnapshotWorker.server.lua")
-    if not template then
-        -- Fallback: pick any Script child whose name contains "SnapshotWorker"
-        for _, child in ipairs(actorsFolder:GetChildren()) do
-            if child:IsA("Script") and string.find(child.Name, "SnapshotWorker", 1, true) then
-                template = child
-                break
-            end
-        end
-    end
-	-- Desired actor count (using 0 to disable actors, fallback to no actors)
-	local desired = 0
-	-- Count existing actors
-	local existing = {}
-	for _, child in ipairs(actorsFolder:GetChildren()) do
-		if child:IsA("Actor") then table.insert(existing, child) end
-	end
-	for i = #existing + 1, desired do
-		local a = Instance.new("Actor")
-		a.Name = "SnapshotActor_" .. tostring(i)
-		a.Parent = actorsFolder
-        if template and template:IsA("Script") then
-			local worker = template:Clone()
-			worker.Name = "SnapshotWorker"
-			pcall(function() worker.RunContext = Enum.RunContext.Parallel end)
-			worker.Parent = a
-        else
-            warn("[Bootstrap] SnapshotWorker template script not found; Actor exists without worker script.")
-		end
-	end
-end)
 
 -- Start all services
 services:Start()

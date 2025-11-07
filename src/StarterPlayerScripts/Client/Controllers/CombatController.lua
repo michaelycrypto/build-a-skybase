@@ -6,6 +6,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 
 local EventManager = require(ReplicatedStorage.Shared.EventManager)
 local CombatConfig = require(ReplicatedStorage.Configs.CombatConfig)
@@ -19,17 +20,7 @@ local CombatController = {}
 local isHolding = false
 local lastSwing = 0
 
-local function hasSwordEquipped()
-    local GameState = require(script.Parent.Parent.Managers.GameState)
-    local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
-    -- Prefer explicit equip state set by VoxelHotbar
-    local equippedToolId = GameState:Get("voxelWorld.selectedToolItemId")
-    if equippedToolId and ToolConfig.IsTool(equippedToolId) then
-        local info = ToolConfig.GetToolInfo(equippedToolId)
-        return info and info.toolType == BlockProperties.ToolType.SWORD
-    end
-    return false
-end
+-- No longer gating melee by sword; any item or empty hand can attack
 
 local function findTarget()
     local camera = workspace.CurrentCamera
@@ -56,22 +47,64 @@ local function findTarget()
     return nil
 end
 
+local function findMobEntityId()
+	local camera = workspace.CurrentCamera
+	if not camera then return nil end
+
+	local origin = camera.CFrame.Position
+	local dir = camera.CFrame.LookVector
+	local reach = CombatConfig.REACH_STUDS or 10
+	local rayParams = RaycastParams.new()
+	rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+	local char = player.Character
+	if char then rayParams.FilterDescendantsInstances = {char} end
+	local result = workspace:Raycast(origin, dir * reach, rayParams)
+	if result and result.Instance then
+		local model = result.Instance:FindFirstAncestorOfClass("Model")
+		if model then
+			local id = model:GetAttribute("MobEntityId")
+			if id then
+				return id
+			end
+		end
+	end
+	return nil
+end
+
 function CombatController:Initialize()
-    -- Input handled by BlockInteraction for mining; we only send hits on swing cadence
+    -- Input: track LMB hold state for repeated swings
+    UserInputService.InputBegan:Connect(function(input, gpe)
+        if gpe then return end
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            isHolding = true
+        end
+    end)
+    UserInputService.InputEnded:Connect(function(input, gpe)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            isHolding = false
+        end
+    end)
+
+    -- We send hits on swing cadence while LMB is held; server validates reach/FOV
     RunService.Heartbeat:Connect(function()
         if not isHolding then return end
         local now = os.clock()
         if (now - lastSwing) >= (CombatConfig.SWING_COOLDOWN or 0.35) then
             lastSwing = now
-            -- Only try to hit if sword is equipped
-            if hasSwordEquipped() then
-                local target = findTarget()
-                if target then
-                    -- Play local swing animation when attempting a hit
+            -- Attempt to hit player first, then mob; play swing either way
+            local target = findTarget()
+            if target then
+                ToolAnimationController:PlaySwing()
+                EventManager:SendToServer("PlayerMeleeHit", {
+                    targetUserId = target.UserId,
+                    swingTimeMs = math.floor(now * 1000)
+                })
+            else
+                local mobId = findMobEntityId()
+                if mobId then
                     ToolAnimationController:PlaySwing()
-                    EventManager:SendToServer("PlayerMeleeHit", {
-                        targetUserId = target.UserId,
-                        swingTimeMs = math.floor(now * 1000)
+                    EventManager:SendToServer("AttackMob", {
+                        entityId = mobId
                     })
                 end
             end

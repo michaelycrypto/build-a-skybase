@@ -10,6 +10,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local EventManager = require(ReplicatedStorage.Shared.EventManager)
 local Constants = require(ReplicatedStorage.Shared.VoxelWorld.Core.Constants)
+local VoxelConfig = require(ReplicatedStorage.Shared.VoxelWorld.Core.Config)
 local GameState = require(script.Parent.Parent.Managers.GameState)
 local GameConfig = require(ReplicatedStorage.Configs.GameConfig)
 local BlockAPI = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockAPI)
@@ -77,6 +78,33 @@ local PLACE_COOLDOWN = 0.2 -- Prevent spam
 
 -- Forward declarations
 local getTargetedBlock
+local getBridgePlacementCandidate
+
+-- Compute an aim ray (origin, direction) based on device/camera mode
+local function _computeAimRay()
+    if not camera then return nil, nil end
+
+    local origin
+    local direction
+    local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+    local isFirstPerson = GameState:Get("camera.isFirstPerson")
+
+    if isMobile then
+        local viewportSize = camera.ViewportSize
+        local ray = camera:ViewportPointToRay(viewportSize.X/2, viewportSize.Y/2)
+        origin = ray.Origin
+        direction = ray.Direction
+    elseif isFirstPerson then
+        origin = camera.CFrame.Position
+        direction = camera.CFrame.LookVector
+    else
+        local mousePos = UserInputService:GetMouseLocation()
+        local ray = camera:ViewportPointToRay(mousePos.X, mousePos.Y)
+        origin = ray.Origin
+        direction = ray.Direction
+    end
+    return origin, direction
+end
 
 -- Create selection box for visual feedback
 local function createSelectionBox()
@@ -114,6 +142,13 @@ local function updateSelectionBox()
 	end
 
 	local blockPos, faceNormal, preciseHitPos = getTargetedBlock()
+	if (not blockPos) and VoxelConfig and VoxelConfig.PLACEMENT and VoxelConfig.PLACEMENT.BRIDGE_ASSIST_ENABLED then
+		local placePos, _supportPos = getBridgePlacementCandidate()
+		if placePos then
+			-- Highlight the target placement cell (air block)
+			blockPos = placePos
+		end
+	end
 
 	-- Dirty check: Skip update if still targeting same block
 	if lastTargetedBlock and blockPos then
@@ -234,6 +269,121 @@ getTargetedBlock = function()
 	return Vector3.new(blockX, blockY, blockZ), faceNormal, preciseHitPos
 end
 
+-- Bridge-assist: when aiming into the void, propose a placement on the player's ground level
+-- Returns: placePos (Vector3) to place into AIR, supportBlockPos (Vector3), faceNormal (Vector3), hitPosition (Vector3)
+getBridgePlacementCandidate = function()
+    if not VoxelConfig or not VoxelConfig.PLACEMENT or not VoxelConfig.PLACEMENT.BRIDGE_ASSIST_ENABLED then
+        return nil, nil, nil, nil
+    end
+    if not BlockInteraction.isReady or not blockAPI or not camera then
+        return nil, nil, nil, nil
+    end
+
+    local character = player.Character
+    if not character then return nil, nil, nil, nil end
+    local head = character:FindFirstChild("Head")
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    if not head or not rootPart then return nil, nil, nil, nil end
+
+    local origin, direction = _computeAimRay()
+    if not origin or not direction then return nil, nil, nil, nil end
+
+    -- Ignore if not generally aiming downward enough (prevents odd forward snaps)
+    if direction.Y > 0.2 then
+        return nil, nil, nil, nil
+    end
+
+    local bs = Constants.BLOCK_SIZE
+    local worldHeight = Constants.WORLD_HEIGHT or 128
+
+    -- Target bridge plane: one block below the player's center (≈ bottom surface for 5-stud height)
+    local yBlock = math.floor(rootPart.Position.Y / bs) - 1
+    if yBlock < 0 then yBlock = 0 end
+    if yBlock >= worldHeight then yBlock = worldHeight - 1 end
+
+    local wm = blockAPI and blockAPI.worldManager
+    if not wm then return nil, nil, nil, nil end
+
+    local function _isAirAt(x, y, z)
+        local id = wm:GetBlock(x, y, z)
+        return (id == nil) or (id == Constants.BlockType.AIR)
+    end
+    local function _nonAirAt(x, y, z)
+        local id = wm:GetBlock(x, y, z)
+        return id and id ~= Constants.BlockType.AIR
+    end
+
+    local maxSteps = (VoxelConfig.PLACEMENT.BRIDGE_ASSIST_MAX_STEPS or 3)
+    if maxSteps < 0 then maxSteps = 0 end
+
+    -- Horizontal direction to bias search
+    local dir2 = Vector3.new(direction.X, 0, direction.Z)
+    local mag2 = dir2.Magnitude
+    if mag2 < 1e-3 then
+        return nil, nil, nil, nil
+    end
+    local absX, absZ = math.abs(dir2.X), math.abs(dir2.Z)
+    local xPrimary = (absX >= absZ)
+    local stepSign = xPrimary and ((dir2.X >= 0) and 1 or -1) or ((dir2.Z >= 0) and 1 or -1)
+
+    local planeY = yBlock * bs + bs * 0.5
+    if math.abs(direction.Y) < 1e-3 then
+        return nil, nil, nil, nil
+    end
+    local t = (planeY - origin.Y) / direction.Y
+    local maxDistance = 100
+    if not (t > 0 and t <= maxDistance) then
+        return nil, nil, nil, nil
+    end
+
+    local hit = origin + direction * t
+    local candidateX = math.floor(hit.X / bs)
+    local candidateZ = math.floor(hit.Z / bs)
+
+    for s = 0, maxSteps do
+        local cx = candidateX - (xPrimary and (s * stepSign) or 0)
+        local cz = candidateZ - (xPrimary and 0 or (s * stepSign))
+
+        if _isAirAt(cx, yBlock, cz) then
+            local neighbors = {}
+            if xPrimary then
+                neighbors[#neighbors+1] = {x = cx - stepSign, y = yBlock, z = cz, face = Vector3.new(stepSign, 0, 0)}
+                neighbors[#neighbors+1] = {x = cx, y = yBlock, z = cz + 1, face = Vector3.new(0, 0, -1)}
+                neighbors[#neighbors+1] = {x = cx, y = yBlock, z = cz - 1, face = Vector3.new(0, 0, 1)}
+            else
+                neighbors[#neighbors+1] = {x = cx, y = yBlock, z = cz - stepSign, face = Vector3.new(0, 0, stepSign)}
+                neighbors[#neighbors+1] = {x = cx + 1, y = yBlock, z = cz, face = Vector3.new(-1, 0, 0)}
+                neighbors[#neighbors+1] = {x = cx - 1, y = yBlock, z = cz, face = Vector3.new(1, 0, 0)}
+            end
+
+            for i = 1, #neighbors do
+                local n = neighbors[i]
+                if _nonAirAt(n.x, n.y, n.z) then
+                    local blockCenter = Vector3.new(
+                        cx * bs + bs * 0.5,
+                        yBlock * bs + bs * 0.5,
+                        cz * bs + bs * 0.5
+                    )
+                    local maxReach = 4.5 * bs + 2
+                    if (blockCenter - head.Position).Magnitude <= maxReach then
+                        local placePos = Vector3.new(cx, yBlock, cz)
+                        local supportPos = Vector3.new(n.x, n.y, n.z)
+                        local faceNormal = n.face
+                        local hitPosition = Vector3.new(
+                            n.x * bs + bs * 0.5,
+                            n.y * bs + bs * 0.25,
+                            n.z * bs + bs * 0.5
+                        )
+                        return placePos, supportPos, faceNormal, hitPosition
+                    end
+                end
+            end
+        end
+    end
+
+    return nil, nil, nil, nil
+end
+
 -- Break block (left click)
 local function startBreaking()
 	-- Guard: Don't allow breaking until system is ready
@@ -344,7 +494,21 @@ local function interactOrPlace()
 	lastPlaceTime = now
 
 	local blockPos, faceNormal, preciseHitPos = getTargetedBlock()
-	if not blockPos then return false end
+	if not blockPos then
+		-- Bridge assist fallback: synthesize support face when aiming into void
+		if VoxelConfig and VoxelConfig.PLACEMENT and VoxelConfig.PLACEMENT.BRIDGE_ASSIST_ENABLED then
+			local placePos, supportPos, bFace, bHit = getBridgePlacementCandidate()
+			if placePos and supportPos and bFace then
+				blockPos = supportPos
+				faceNormal = bFace
+				preciseHitPos = bHit
+			else
+				return false
+			end
+		else
+			return false
+		end
+	end
 
 	-- Check if the targeted block is interactable (like a chest)
 	local worldManager = blockAPI and blockAPI.worldManager
@@ -381,6 +545,18 @@ local function interactOrPlace()
 	local selectedBlock = GameState:Get("voxelWorld.selectedBlock")
 	if not selectedBlock or not selectedBlock.id then
 		return false -- No block selected
+	end
+
+	-- Client-side guard: allow farm items (seeds/carrots/potatoes/beetroot seeds/compost) even if not normally placeable
+	local BLOCK = Constants.BlockType
+	local isFarmItem = (
+		selectedBlock.id == BLOCK.WHEAT_SEEDS or
+		selectedBlock.id == BLOCK.POTATO or
+		selectedBlock.id == BLOCK.CARROT or
+		selectedBlock.id == BLOCK.BEETROOT_SEEDS
+	)
+	if not BlockRegistry:IsPlaceable(selectedBlock.id) and not isFarmItem then
+		return false
 	end
 
 	-- Always place adjacent to clicked face (Minecraft logic)
@@ -421,13 +597,25 @@ local function startPlacing()
         while isPlacing do
             local now = os.clock()
             if (now - lastPlaceTime) >= PLACE_COOLDOWN then
-                local blockPos, faceNormal, preciseHitPos = getTargetedBlock()
-                if blockPos and faceNormal then
+				local blockPos, faceNormal, preciseHitPos = getTargetedBlock()
+				local usedFallback = false
+				if not (blockPos and faceNormal) then
+					if VoxelConfig and VoxelConfig.PLACEMENT and VoxelConfig.PLACEMENT.BRIDGE_ASSIST_ENABLED then
+						local placePos, supportPos, bFace, bHit = getBridgePlacementCandidate()
+						if placePos and supportPos and bFace then
+							blockPos = supportPos
+							faceNormal = bFace
+							preciseHitPos = bHit
+							usedFallback = true
+						end
+					end
+				end
+				if blockPos and faceNormal then
                     local selectedBlock = GameState:Get("voxelWorld.selectedBlock")
                     if selectedBlock and selectedBlock.id then
-                        local placeX = blockPos.X + faceNormal.X
-                        local placeY = blockPos.Y + faceNormal.Y
-                        local placeZ = blockPos.Z + faceNormal.Z
+						local placeX = blockPos.X + faceNormal.X
+						local placeY = blockPos.Y + faceNormal.Y
+						local placeZ = blockPos.Z + faceNormal.Z
 
                         -- Skip if already occupied (client check to reduce spam)
                         local worldManager = blockAPI and blockAPI.worldManager
@@ -439,16 +627,29 @@ local function startPlacing()
                             end
                         end
 
-                        if canTryPlace then
+	                        if canTryPlace then
                             local selectedSlot = GameState:Get("voxelWorld.selectedSlot") or 1
-                            EventManager:SendToServer("VoxelRequestBlockPlace", {
+	                            -- Client-side guard: allow farm items even if not placeable (server redirects to planting)
+	                            local BLOCK = Constants.BlockType
+	                            local isFarmItem = (
+	                                selectedBlock.id == BLOCK.WHEAT_SEEDS or
+	                                selectedBlock.id == BLOCK.POTATO or
+	                                selectedBlock.id == BLOCK.CARROT or
+	                                selectedBlock.id == BLOCK.BEETROOT_SEEDS
+	                            )
+	                            if not BlockRegistry:IsPlaceable(selectedBlock.id) and not isFarmItem then
+	                                -- Skip sending place request for non-placeable items
+	                                lastPlaceTime = now
+	                                continue
+	                            end
+							EventManager:SendToServer("VoxelRequestBlockPlace", {
                                 x = placeX,
                                 y = placeY,
                                 z = placeZ,
                                 blockId = selectedBlock.id,
                                 hotbarSlot = selectedSlot,
                                 hitPosition = preciseHitPos,
-                                targetBlockPos = blockPos,
+								targetBlockPos = blockPos,
                                 faceNormal = faceNormal
                             })
                             lastPlaceTime = now

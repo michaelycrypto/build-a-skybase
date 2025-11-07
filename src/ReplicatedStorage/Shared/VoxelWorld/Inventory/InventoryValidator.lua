@@ -80,6 +80,15 @@ local VALID_ITEM_IDS = {
 	[Constants.BlockType.ACACIA_SAPLING] = true,
 	[Constants.BlockType.ACACIA_STAIRS] = true,
 	[Constants.BlockType.ACACIA_SLAB] = true,
+
+		-- Farming items
+		[Constants.BlockType.FARMLAND] = true,
+		[Constants.BlockType.WHEAT_SEEDS] = true,
+		[Constants.BlockType.WHEAT] = true,
+		[Constants.BlockType.POTATO] = true,
+		[Constants.BlockType.CARROT] = true,
+		[Constants.BlockType.BEETROOT_SEEDS] = true,
+		[Constants.BlockType.BEETROOT] = true,
 }
 
 --[[
@@ -92,7 +101,7 @@ function InventoryValidator:ValidateItemStack(stackData)
 	end
 
 	-- Check if itemId is a valid item (block or tool)
-	local itemId = stackData.itemId or stackData.id or 0
+    local itemId = tonumber(stackData.itemId or stackData.id) or 0
 	local isTool = ToolConfig.IsTool(itemId)
 	if not VALID_ITEM_IDS[itemId] and not isTool then
 		return false, string.format("Invalid item ID: %d", itemId)
@@ -104,7 +113,7 @@ function InventoryValidator:ValidateItemStack(stackData)
 	end
 
 	-- Check count is within valid range
-	local count = stackData.count or 0
+    local count = tonumber(stackData.count) or 0
 	if count < MIN_STACK_SIZE or count > MAX_STACK_SIZE then
 		return false, string.format("Invalid count: %d (must be 0-64)", count)
 	end
@@ -149,9 +158,9 @@ function InventoryValidator:ValidateInventoryArray(slots, expectedSize)
 		end
 
 		-- Count total items per type (for duplication checking)
-		local itemId = stackData.itemId or stackData.id or 0
-		if itemId > 0 then
-			totalItems[itemId] = (totalItems[itemId] or 0) + (stackData.count or 0)
+        local itemId = tonumber(stackData.itemId or stackData.id) or 0
+        if itemId > 0 then
+            totalItems[itemId] = (totalItems[itemId] or 0) + (tonumber(stackData.count) or 0)
 		end
 	end
 
@@ -197,9 +206,9 @@ function InventoryValidator:ValidateInventoryTransaction(oldInventory, oldHotbar
 	-- Count new inventory
 	if newInventory then
 		for i, stackData in pairs(newInventory) do
-			local itemId = stackData.itemId or stackData.id or 0
-			if itemId > 0 then
-				newTotals[itemId] = (newTotals[itemId] or 0) + (stackData.count or 0)
+            local itemId = tonumber(stackData.itemId or stackData.id) or 0
+            if itemId > 0 then
+                newTotals[itemId] = (newTotals[itemId] or 0) + (tonumber(stackData.count) or 0)
 			end
 		end
 	end
@@ -207,9 +216,9 @@ function InventoryValidator:ValidateInventoryTransaction(oldInventory, oldHotbar
 	-- Count new hotbar
 	if newHotbar then
 		for i, stackData in pairs(newHotbar) do
-			local itemId = stackData.itemId or stackData.id or 0
-			if itemId > 0 then
-				newTotals[itemId] = (newTotals[itemId] or 0) + (stackData.count or 0)
+            local itemId = tonumber(stackData.itemId or stackData.id) or 0
+            if itemId > 0 then
+                newTotals[itemId] = (newTotals[itemId] or 0) + (tonumber(stackData.count) or 0)
 			end
 		end
 	end
@@ -261,14 +270,14 @@ function InventoryValidator:ValidateChestTransaction(
 
 	for _, stackData in pairs(newChest or {}) do
 		if stackData and stackData.itemId and stackData.itemId > 0 then
-			afterTotals[stackData.itemId] = (afterTotals[stackData.itemId] or 0) + (stackData.count or 0)
+            afterTotals[stackData.itemId] = (afterTotals[stackData.itemId] or 0) + (tonumber(stackData.count) or 0)
 		end
 	end
 
 	for _, stackData in pairs(newInventory or {}) do
-		local itemId = stackData.itemId or stackData.id or 0
-		if itemId > 0 then
-			afterTotals[itemId] = (afterTotals[itemId] or 0) + (stackData.count or 0)
+        local itemId = tonumber(stackData.itemId or stackData.id) or 0
+        if itemId > 0 then
+            afterTotals[itemId] = (afterTotals[itemId] or 0) + (tonumber(stackData.count) or 0)
 		end
 	end
 
@@ -346,8 +355,8 @@ function InventoryValidator:SanitizeInventoryData(slots, expectedSize)
 
 	for i, stackData in pairs(slots) do
 		if type(i) == "number" and i >= 1 and i <= expectedSize then
-			local itemId = stackData.itemId or stackData.id or 0
-			local count = stackData.count or 0
+            local itemId = tonumber(stackData.itemId or stackData.id) or 0
+            local count = tonumber(stackData.count) or 0
 
 			-- Clamp to valid ranges
 			if itemId < 0 then itemId = 0; wasModified = true end
@@ -355,7 +364,7 @@ function InventoryValidator:SanitizeInventoryData(slots, expectedSize)
 			if count > MAX_STACK_SIZE then count = MAX_STACK_SIZE; wasModified = true end
 
 			-- Validate item ID exists (allow tools)
-			local isTool = ToolConfig.IsTool(itemId)
+            local isTool = ToolConfig.IsTool(itemId)
 			if not VALID_ITEM_IDS[itemId] and not isTool then
 				itemId = 0
 				count = 0

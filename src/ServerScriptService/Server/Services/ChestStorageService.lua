@@ -36,6 +36,17 @@ end
 -- Chest data structure: { x, y, z -> { slots = {}, viewers = {} } }
 local CHEST_SLOTS = 27 -- Standard single chest size
 
+-- Helpers: robust numeric coercion for potentially stringly-typed saved fields
+local function toNumber(value, default)
+	local n = tonumber(value)
+	if n ~= nil then return n end
+	return default or 0
+end
+
+local function isValidItem(slotData)
+	return slotData and toNumber(slotData.itemId, 0) > 0
+end
+
 function ChestStorageService:Init()
 	self.chests = {} -- Map of "x,y,z" -> chest data
 	self.playerViewers = {} -- Map of Player -> {x, y, z} they're viewing
@@ -81,7 +92,7 @@ function ChestStorageService:GetChest(x, y, z)
 				for k, v in pairs(slot) do
 					print(string.format("[GetChest]     %s = %s (type: %s)", tostring(k), tostring(v), type(v)))
 				end
-				if slot.itemId and slot.itemId > 0 then
+				if isValidItem(slot) then
 					itemCount = itemCount + 1
 				end
 			end
@@ -106,7 +117,7 @@ function ChestStorageService:InitializeStarterChest(x, y, z)
 	-- Only initialize if chest is empty (prevent overwriting existing data)
 	local hasItems = false
 	for i = 1, CHEST_SLOTS do
-		if chest.slots[i] and chest.slots[i].itemId and chest.slots[i].itemId > 0 then
+		if isValidItem(chest.slots[i]) then
 			hasItems = true
 			break
 		end
@@ -180,7 +191,10 @@ function ChestStorageService:HandleOpenChest(player, data)
 		return
 	end
 
-	local x, y, z = data.x, data.y, data.z
+    -- Normalize numeric inputs (defensive: some clients may send strings)
+    local x = tonumber(data.x) or data.x
+    local y = tonumber(data.y) or data.y
+    local z = tonumber(data.z) or data.z
 	local key = self:GetChestKey(x, y, z)
 	print(string.format("[HandleOpenChest] Opening chest at (%d,%d,%d), key=%s", x, y, z, key))
 
@@ -243,10 +257,10 @@ function ChestStorageService:HandleOpenChest(player, data)
 	local chestItemCount = 0
 	for i = 1, 27 do
 		chestContents[i] = chest.slots[i] or emptySlot
-		if chest.slots[i] and chest.slots[i].itemId and chest.slots[i].itemId > 0 then
+		if isValidItem(chest.slots[i]) then
 			chestItemCount = chestItemCount + 1
 			print(string.format("[ChestOpen] Chest slot %d: Item %d x%d",
-				i, chest.slots[i].itemId or 0, chest.slots[i].count or 0))
+				i, toNumber(chest.slots[i].itemId, 0), toNumber(chest.slots[i].count, 0)))
 		end
 	end
 	print(string.format("[ChestOpen] Sending %d chest items to %s", chestItemCount, player.Name))
@@ -341,7 +355,16 @@ function ChestStorageService:HandleChestSlotClick(player, data)
 		return
 	end
 
-	local x, y, z = data.chestPosition.x, data.chestPosition.y, data.chestPosition.z
+    -- Normalize numeric inputs
+    local x = tonumber(data.chestPosition.x) or data.chestPosition.x
+    local y = tonumber(data.chestPosition.y) or data.chestPosition.y
+    local z = tonumber(data.chestPosition.z) or data.chestPosition.z
+    local slotIndex = tonumber(data.slotIndex)
+    if not slotIndex then
+        warn("Invalid slotIndex for chest click from", player.Name)
+        return
+    end
+    data.slotIndex = slotIndex
 	local chest = self:GetChest(x, y, z)
 
 	-- Verify player is viewing this chest
@@ -445,12 +468,12 @@ function ChestStorageService:HandleChestSlotClick(player, data)
         local isHotbarSlot = data.slotIndex < 0
         local actualIndex = isHotbarSlot and -data.slotIndex or data.slotIndex
 
-        if isHotbarSlot then
+		if isHotbarSlot then
             local stack = invData.hotbar[actualIndex] or ItemStack.new(0, 0)
-            hotbarDelta[actualIndex] = stack:Serialize()
+			hotbarDelta[actualIndex] = stack:Serialize()
         else
             local stack = invData.inventory[actualIndex] or ItemStack.new(0, 0)
-            inventoryDelta[actualIndex] = stack:Serialize()
+			inventoryDelta[actualIndex] = stack:Serialize()
         end
     end
 
@@ -791,9 +814,15 @@ function ChestStorageService:HandleItemTransfer(player, data)
 		return
 	end
 
-	local x, y, z = data.chestPos.x, data.chestPos.y, data.chestPos.z
-	local fromSlot = data.fromSlot
-	local isDeposit = data.isDeposit -- true = player->chest, false = chest->player
+    local x = tonumber(data.chestPos.x) or data.chestPos.x
+    local y = tonumber(data.chestPos.y) or data.chestPos.y
+    local z = tonumber(data.chestPos.z) or data.chestPos.z
+    local fromSlot = tonumber(data.fromSlot)
+    if not fromSlot then
+        warn("Invalid fromSlot in chest transfer from", player.Name)
+        return
+    end
+    local isDeposit = data.isDeposit -- true = player->chest, false = chest->player
 
 	local chest = self:GetChest(x, y, z)
 
@@ -825,7 +854,7 @@ function ChestStorageService:HandleItemTransfer(player, data)
 		local targetSlot = nil
 		for i = 1, 27 do
 			local slotData = chest.slots[i]
-			if not slotData or not slotData.itemId or slotData.itemId == 0 then
+			if not isValidItem(slotData) then
 				targetSlot = i
 				break
 			end
@@ -847,7 +876,7 @@ function ChestStorageService:HandleItemTransfer(player, data)
 	else
 		-- Transfer from chest to player
 		local itemData = chest.slots[fromSlot]
-		if not itemData or not itemData.itemId or itemData.itemId == 0 then
+		if not isValidItem(itemData) then
 			return -- Nothing to withdraw
 		end
 
@@ -916,8 +945,8 @@ function ChestStorageService:RemoveChest(x, y, z)
 		-- For now, just log what would be dropped
 		local itemsToLog = {}
 		for i, slotData in pairs(chest.slots) do
-			if slotData and slotData.itemId and slotData.itemId > 0 then
-				table.insert(itemsToLog, string.format("Slot %d: Item %d x%d", i, slotData.itemId, slotData.count))
+			if isValidItem(slotData) then
+				table.insert(itemsToLog, string.format("Slot %d: Item %d x%d", toNumber(i, 0), toNumber(slotData.itemId, 0), toNumber(slotData.count, 0)))
 			end
 		end
 
@@ -996,7 +1025,7 @@ function ChestStorageService:SaveChestData()
 		local hasItems = false
 		local itemCount = 0
 		for _, slot in pairs(chest.slots) do
-			if slot and slot.itemId and slot.itemId > 0 then
+			if isValidItem(slot) then
 				hasItems = true
 				itemCount = itemCount + 1
 			end
@@ -1067,9 +1096,9 @@ function ChestStorageService:LoadChestData(chestData)
 						chest.slots[slotIndex] = slotData
 						print(string.format("[LoadChestData]   Slot %d: Loading slotData with itemId=%s, count=%s",
 							slotIndex, tostring(slotData.itemId), tostring(slotData.count)))
-						if slotData.itemId and slotData.itemId > 0 then
+						if isValidItem(slotData) then
 							print(string.format("[LoadChestData]   ✅ Slot %d: Item %d x%d",
-								slotIndex, slotData.itemId, slotData.count))
+								slotIndex, toNumber(slotData.itemId, 0), toNumber(slotData.count, 0)))
 							loadedSlots = loadedSlots + 1
 						else
 							print(string.format("[LoadChestData]   ⚠️ Slot %d has no valid itemId (itemId=%s)",

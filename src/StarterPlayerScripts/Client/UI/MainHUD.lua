@@ -10,6 +10,7 @@ local TweenService = game:GetService("TweenService")
 local GuiService = game:GetService("GuiService")
 local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
 
 -- Import dependencies
 local EventManager = require(ReplicatedStorage.Shared.EventManager)
@@ -340,6 +341,9 @@ function MainHUD:Create()
 	self:CreateBottomLeftCurrency()
 	self:CreateLeftSidebar()
 
+	-- Right-side quick actions (mobile)
+	self:CreateRightQuickActions()
+
 	-- Center crosshair (Minecraft-style)
 	Crosshair:Create(hudGui)
 
@@ -562,6 +566,65 @@ function MainHUD:CreateLeftSidebar()
 
 	-- Removed expand/collapse functionality for simpler design
 	-- self:SetupMenuToggle()
+end
+
+--[[
+	Create right-side quick actions (mobile-only)
+--]]
+function MainHUD:CreateRightQuickActions()
+	-- Mobile only (touch devices without keyboard)
+	local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+	if not isMobile then return end
+
+	local rightBar = Instance.new("Frame")
+	rightBar.Name = "RightQuickActions"
+	rightBar.Size = UDim2.new(0, SIDEBAR_WIDTH, 0, 0)
+	rightBar.Position = UDim2.new(1, -10, 0.5, 0)
+	rightBar.AnchorPoint = Vector2.new(1, 0.5)
+	rightBar.AutomaticSize = Enum.AutomaticSize.Y
+	rightBar.BackgroundTransparency = 1
+	rightBar.BorderSizePixel = 0
+	rightBar.Parent = hudGui
+
+	local padding = Instance.new("UIPadding")
+	padding.PaddingTop = UDim.new(0, CONTENT_PADDING)
+	padding.PaddingBottom = UDim.new(0, CONTENT_PADDING)
+	padding.PaddingLeft = UDim.new(0, CONTENT_PADDING)
+	padding.PaddingRight = UDim.new(0, CONTENT_PADDING)
+	padding.Parent = rightBar
+
+	local layout = Instance.new("UIListLayout")
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Padding = UDim.new(0, CONTENT_PADDING + 6)
+	layout.FillDirection = Enum.FillDirection.Vertical
+	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	layout.Parent = rightBar
+
+	-- First-person toggle button (uses Technology.Camera icon)
+	local buttonData = {
+		iconCategory = "Technology",
+		iconName = "Camera",
+		text = "View",
+		buttonText = nil,
+		callback = function()
+			local current = GameState:Get("camera.isFirstPerson") and true or false
+			GameState:Set("camera.isFirstPerson", not current)
+		end
+	}
+
+	local btn = self:CreateMenuButton(buttonData)
+	btn.borderFrame.LayoutOrder = 1
+	btn.borderFrame.Parent = rightBar
+
+	-- Reflect state (active wiggle/size)
+	local function applyState()
+		local active = GameState:Get("camera.isFirstPerson") and true or false
+		setIconActiveForButton(btn, active)
+	end
+	applyState()
+	GameState:OnPropertyChanged("camera.isFirstPerson", function()
+		applyState()
+	end)
 end
 
 --[[

@@ -36,6 +36,8 @@ local Manifest = {
 		-- Voxel tool equip (Minecraft-style)
 		EquipTool = {"any"}, -- {slotIndex}
 		UnequipTool = {},
+		-- Hotbar selection (for blocks held in hand)
+		SelectHotbarSlot = {"any"}, -- {slotIndex}
 
 		-- Voxel server-authoritative edit requests
 		VoxelRequestBlockPlace = {"any"},

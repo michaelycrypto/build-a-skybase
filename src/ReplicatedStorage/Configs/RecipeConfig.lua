@@ -342,6 +342,77 @@ RecipeConfig.Recipes = {
 		}
 	},
 
+	-- Fences from any wood planks (2 planks + 4 sticks -> 3 fences)
+	spruce_fence = {
+		id = "spruce_fence",
+		name = "Spruce Fence",
+		category = RecipeConfig.Categories.BUILDING,
+		requiresWorkbench = true,
+		inputs = {
+			{itemId = 39, count = 2},  -- 2x Spruce Planks
+			{itemId = 28, count = 4}   -- 4x Sticks
+		},
+		outputs = {
+			{itemId = 27, count = 3}  -- 3x Fence (currently Oak Fence)
+		}
+	},
+
+	jungle_fence = {
+		id = "jungle_fence",
+		name = "Jungle Fence",
+		category = RecipeConfig.Categories.BUILDING,
+		requiresWorkbench = true,
+		inputs = {
+			{itemId = 44, count = 2},  -- 2x Jungle Planks
+			{itemId = 28, count = 4}
+		},
+		outputs = {
+			{itemId = 27, count = 3}
+		}
+	},
+
+	dark_oak_fence = {
+		id = "dark_oak_fence",
+		name = "Dark Oak Fence",
+		category = RecipeConfig.Categories.BUILDING,
+		requiresWorkbench = true,
+		inputs = {
+			{itemId = 49, count = 2},  -- 2x Dark Oak Planks
+			{itemId = 28, count = 4}
+		},
+		outputs = {
+			{itemId = 27, count = 3}
+		}
+	},
+
+	birch_fence = {
+		id = "birch_fence",
+		name = "Birch Fence",
+		category = RecipeConfig.Categories.BUILDING,
+		requiresWorkbench = true,
+		inputs = {
+			{itemId = 54, count = 2},  -- 2x Birch Planks
+			{itemId = 28, count = 4}
+		},
+		outputs = {
+			{itemId = 27, count = 3}
+		}
+	},
+
+	acacia_fence = {
+		id = "acacia_fence",
+		name = "Acacia Fence",
+		category = RecipeConfig.Categories.BUILDING,
+		requiresWorkbench = true,
+		inputs = {
+			{itemId = 59, count = 2},  -- 2x Acacia Planks
+			{itemId = 28, count = 4}
+		},
+		outputs = {
+			{itemId = 27, count = 3}
+		}
+	},
+
 	furnace = {
 		id = "furnace",
 		name = "Furnace",

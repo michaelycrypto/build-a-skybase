@@ -15,7 +15,7 @@ local function resetCommon(part)
 	part.CFrame = CFrame.new()
 	part.Transparency = 0
 	part.Color = Color3.fromRGB(255, 255, 255)
-	part.Material = Enum.Material.SmoothPlastic
+	part.Material = Enum.Material.Plastic
 	part.Reflectance = 0
 	part.Name = ""
 

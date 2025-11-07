@@ -846,6 +846,99 @@ BlockRegistry.Blocks = {
 		},
 		crossShape = false
 	}
+,
+
+	-- Farming blocks/items
+	[Constants.BlockType.FARMLAND] = {
+		name = "Farmland",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(150, 100, 70),
+		textures = {
+			top = "rbxassetid://94222438062668",
+			side = "dirt",
+			bottom = "dirt"
+		},
+		crossShape = false
+	},
+
+	-- Inventory items (cross-shaped for icon rendering)
+	[Constants.BlockType.WHEAT_SEEDS] = {
+		name = "Wheat Seeds",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(200, 200, 200),
+		textures = { all = "rbxassetid://87026885464531" },
+		crossShape = true
+	},
+	[Constants.BlockType.WHEAT] = {
+		name = "Wheat",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(230, 210, 140),
+		textures = { all = "rbxassetid://129655035000946" },
+		crossShape = true
+	},
+	[Constants.BlockType.POTATO] = {
+		name = "Potato",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(200, 170, 120),
+		textures = { all = "rbxassetid://102603334676051" },
+		crossShape = true
+	},
+	[Constants.BlockType.CARROT] = {
+		name = "Carrot",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(240, 150, 80),
+		textures = { all = "rbxassetid://111539451283086" },
+		crossShape = true
+	},
+	[Constants.BlockType.BEETROOT_SEEDS] = {
+		name = "Beetroot Seeds",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(200, 200, 200),
+		textures = { all = "rbxassetid://84894596040373" },
+		crossShape = true
+	},
+	[Constants.BlockType.BEETROOT] = {
+		name = "Beetroot",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(200, 50, 80),
+		textures = { all = "rbxassetid://98898799067872" },
+		crossShape = true
+	},
+
+	-- Wheat crop stages (cross-shaped)
+	[Constants.BlockType.WHEAT_CROP_0] = { name = "Wheat (Stage 0)", solid = false, transparent = true, color = Color3.fromRGB(180, 200, 120), textures = { all = "rbxassetid://114356013890110" }, crossShape = true },
+	[Constants.BlockType.WHEAT_CROP_1] = { name = "Wheat (Stage 1)", solid = false, transparent = true, color = Color3.fromRGB(180, 200, 120), textures = { all = "rbxassetid://101949350772745" }, crossShape = true },
+	[Constants.BlockType.WHEAT_CROP_2] = { name = "Wheat (Stage 2)", solid = false, transparent = true, color = Color3.fromRGB(180, 200, 120), textures = { all = "rbxassetid://133533519991116" }, crossShape = true },
+	[Constants.BlockType.WHEAT_CROP_3] = { name = "Wheat (Stage 3)", solid = false, transparent = true, color = Color3.fromRGB(190, 200, 120), textures = { all = "rbxassetid://102996391913529" }, crossShape = true },
+	[Constants.BlockType.WHEAT_CROP_4] = { name = "Wheat (Stage 4)", solid = false, transparent = true, color = Color3.fromRGB(200, 200, 120), textures = { all = "rbxassetid://77729218147670" }, crossShape = true },
+	[Constants.BlockType.WHEAT_CROP_5] = { name = "Wheat (Stage 5)", solid = false, transparent = true, color = Color3.fromRGB(210, 200, 120), textures = { all = "rbxassetid://105328080071552" }, crossShape = true },
+	[Constants.BlockType.WHEAT_CROP_6] = { name = "Wheat (Stage 6)", solid = false, transparent = true, color = Color3.fromRGB(220, 200, 120), textures = { all = "rbxassetid://83753723300014" }, crossShape = true },
+	[Constants.BlockType.WHEAT_CROP_7] = { name = "Wheat (Stage 7)", solid = false, transparent = true, color = Color3.fromRGB(230, 200, 120), textures = { all = "rbxassetid://136030730993000" }, crossShape = true },
+
+	-- Potato crop stages
+	[Constants.BlockType.POTATO_CROP_0] = { name = "Potatoes (Stage 0)", solid = false, transparent = true, color = Color3.fromRGB(180, 200, 120), textures = { all = "rbxassetid://128460303336429" }, crossShape = true },
+	[Constants.BlockType.POTATO_CROP_1] = { name = "Potatoes (Stage 1)", solid = false, transparent = true, color = Color3.fromRGB(180, 200, 120), textures = { all = "rbxassetid://92682259576493" }, crossShape = true },
+	[Constants.BlockType.POTATO_CROP_2] = { name = "Potatoes (Stage 2)", solid = false, transparent = true, color = Color3.fromRGB(180, 200, 120), textures = { all = "rbxassetid://103623438750445" }, crossShape = true },
+	[Constants.BlockType.POTATO_CROP_3] = { name = "Potatoes (Stage 3)", solid = false, transparent = true, color = Color3.fromRGB(180, 200, 120), textures = { all = "rbxassetid://104276053911593" }, crossShape = true },
+
+	-- Carrot crop stages
+	[Constants.BlockType.CARROT_CROP_0] = { name = "Carrots (Stage 0)", solid = false, transparent = true, color = Color3.fromRGB(180, 200, 120), textures = { all = "rbxassetid://128380408094802" }, crossShape = true },
+	[Constants.BlockType.CARROT_CROP_1] = { name = "Carrots (Stage 1)", solid = false, transparent = true, color = Color3.fromRGB(180, 200, 120), textures = { all = "rbxassetid://107854444375662" }, crossShape = true },
+	[Constants.BlockType.CARROT_CROP_2] = { name = "Carrots (Stage 2)", solid = false, transparent = true, color = Color3.fromRGB(180, 200, 120), textures = { all = "rbxassetid://71473488230615" }, crossShape = true },
+	[Constants.BlockType.CARROT_CROP_3] = { name = "Carrots (Stage 3)", solid = false, transparent = true, color = Color3.fromRGB(180, 200, 120), textures = { all = "rbxassetid://81683662013698" }, crossShape = true },
+
+	-- Beetroot crop stages
+	[Constants.BlockType.BEETROOT_CROP_0] = { name = "Beetroots (Stage 0)", solid = false, transparent = true, color = Color3.fromRGB(180, 200, 120), textures = { all = "rbxassetid://79781523080066" }, crossShape = true },
+	[Constants.BlockType.BEETROOT_CROP_1] = { name = "Beetroots (Stage 1)", solid = false, transparent = true, color = Color3.fromRGB(180, 200, 120), textures = { all = "rbxassetid://81286687752129" }, crossShape = true },
+	[Constants.BlockType.BEETROOT_CROP_2] = { name = "Beetroots (Stage 2)", solid = false, transparent = true, color = Color3.fromRGB(180, 200, 120), textures = { all = "rbxassetid://119272458748743" }, crossShape = true },
+	[Constants.BlockType.BEETROOT_CROP_3] = { name = "Beetroots (Stage 3)", solid = false, transparent = true, color = Color3.fromRGB(180, 200, 120), textures = { all = "rbxassetid://105511567346427" }, crossShape = true }
 }
 
 -- Get block definition by ID
@@ -914,6 +1007,47 @@ function BlockRegistry:IsReplaceable(blockId: number): boolean
 	end
 	local block = self:GetBlock(blockId)
 	return block.replaceable == true
+end
+
+-- Determine if a block/item is allowed to be placed in the world
+function BlockRegistry:IsPlaceable(blockId: number): boolean
+    if not blockId or blockId == Constants.BlockType.AIR then
+        return false
+    end
+
+    local block = self:GetBlock(blockId)
+
+    -- Unknown definitions are never placeable
+    if block.name == "Unknown" then
+        return false
+    end
+
+    -- Crafting-only materials are not placeable (e.g., sticks, ingots, gems, apples)
+    if block.craftingMaterial == true then
+        return false
+    end
+
+    -- Cross-shaped visuals are placeable only for actual plants/saplings (not items)
+    if block.crossShape == true then
+        local t = Constants.BlockType
+        if blockId == t.TALL_GRASS
+            or blockId == t.FLOWER
+            or blockId == t.OAK_SAPLING
+            or blockId == t.SPRUCE_SAPLING
+            or blockId == t.JUNGLE_SAPLING
+            or blockId == t.DARK_OAK_SAPLING
+            or blockId == t.BIRCH_SAPLING
+            or blockId == t.ACACIA_SAPLING
+        then
+            return true
+        end
+
+        -- Everything else that is cross-shaped (seeds, produce, loose items) is not placeable
+        return false
+    end
+
+    -- All other block shapes (solid cubes, stairs, slabs, fences, interactables) are placeable
+    return true
 end
 
 return BlockRegistry

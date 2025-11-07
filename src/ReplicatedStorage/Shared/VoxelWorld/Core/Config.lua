@@ -81,7 +81,11 @@ local Config = {
 		-- Match Minecraft: do not force corners on placement; shape derives from neighbors at render time
 		STAIR_CORNER_ON_PLACEMENT = false,
 		-- If true, use within-face hit position to bias corner selection towards clicked quadrant (QoL, non-vanilla)
-		STAIR_QUADRANT_ASSIST = false
+		STAIR_QUADRANT_ASSIST = false,
+		-- QoL: allow placing into air when aiming down if an adjacent horizontal support exists
+		BRIDGE_ASSIST_ENABLED = true,
+		-- How many cells to step back along aim direction to find a supported air cell
+		BRIDGE_ASSIST_MAX_STEPS = 3
 	},
 
 	-- Debug settings

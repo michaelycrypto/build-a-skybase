@@ -35,19 +35,7 @@ end
 
 -- Get Roblox material for block type
 local function getMaterialForBlock(blockId)
-	if blockId == Constants.BlockType.GRASS then
-		return Enum.Material.Grass
-	elseif blockId == Constants.BlockType.DIRT then
-		return Enum.Material.Ground
-	elseif blockId == Constants.BlockType.STONE then
-		return Enum.Material.Slate
-	elseif blockId == Constants.BlockType.WOOD then
-		return Enum.Material.Wood
-	elseif blockId == Constants.BlockType.LEAVES then
-		return Enum.Material.Glass
-	else
-		return Enum.Material.SmoothPlastic
-	end
+	return Enum.Material.Plastic
 end
 
 -- Helper: sample block ID including neighbors across chunk borders
@@ -182,7 +170,7 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 
 	-- Check if block is solid at position (for box merging)
 	-- Excludes crossShape and stairShape blocks - they're rendered in separate passes
-    local function isSolid(x, y, z)
+	    local function isSolid(x, y, z)
 		if y < 0 or y >= sy then return false end
 		local id
 		if x >= 0 and x < sx and z >= 0 and z < sz then
@@ -192,28 +180,44 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 		end
 		if id == Constants.BlockType.AIR then return false end
 		local def = Blocks[id] or BlockRegistry:GetBlock(id)
-        return def and def.solid ~= false and not def.crossShape and not def.stairShape and not def.slabShape and not def.fenceShape
+	        return def and def.solid ~= false and not def.crossShape and not def.stairShape and not def.slabShape and not def.fenceShape
 	end
 
-	-- Check if box touches air (is exposed)
+	-- Check if a neighbor FULLY occludes visibility (opaque full cube)
+	local function isOccluding(x, y, z)
+		if y < 0 or y >= sy then return false end
+		local id
+		if x >= 0 and x < sx and z >= 0 and z < sz then
+			id = chunk:GetBlock(x, y, z)
+		else
+			id = sampler(worldManager, chunk, x, y, z)
+		end
+		if id == Constants.BlockType.AIR then return false end
+		local def = Blocks[id] or BlockRegistry:GetBlock(id)
+		-- Occluding only when it is a full, opaque cube (not slabs/stairs/fences/cross-shapes)
+		return def and def.solid ~= false and def.transparent ~= true
+			and not def.crossShape and not def.stairShape and not def.slabShape and not def.fenceShape
+	end
+
+	-- Check if box touches exposure (not fully occluded by opaque full cubes)
 	local function touchesAir(x0, y0, z0, dx, dy, dz)
 		for y = y0, y0 + dy - 1 do
 			for z = z0, z0 + dz - 1 do
-				if not isSolid(x0 - 1, y, z) or not isSolid(x0 + dx, y, z) then
+				if not isOccluding(x0 - 1, y, z) or not isOccluding(x0 + dx, y, z) then
 					return true
 				end
 			end
 		end
 		for x = x0, x0 + dx - 1 do
 			for z = z0, z0 + dz - 1 do
-				if not isSolid(x, y0 - 1, z) or not isSolid(x, y0 + dy, z) then
+				if not isOccluding(x, y0 - 1, z) or not isOccluding(x, y0 + dy, z) then
 					return true
 				end
 			end
 		end
 		for x = x0, x0 + dx - 1 do
 			for y = y0, y0 + dy - 1 do
-				if not isSolid(x, y, z0 - 1) or not isSolid(x, y, z0 + dz) then
+				if not isOccluding(x, y, z0 - 1) or not isOccluding(x, y, z0 + dz) then
 					return true
 				end
 			end
@@ -341,8 +345,95 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 						-- Get metadata for rotation (if applicable)
 						local metadata = chunk:GetMetadata(x, y, z)
 
-						-- Apply textures to all 6 faces of the merged box
-						TextureApplicator:ApplyBoxTextures(p, id, dx, dy, dz, metadata)
+					-- Compute per-face exposure to hide textures on fully occluded faces
+					local visibleFaces = {}
+					-- Left face (-X)
+					do
+						local faceVisible = false
+						for iy = 0, dy - 1 do
+							for iz = 0, dz - 1 do
+								if not isOccluding(x - 1, y + iy, z + iz) then
+									faceVisible = true
+									break
+								end
+							end
+							if faceVisible then break end
+						end
+						visibleFaces[Enum.NormalId.Left] = faceVisible
+					end
+					-- Right face (+X)
+					do
+						local faceVisible = false
+						for iy = 0, dy - 1 do
+							for iz = 0, dz - 1 do
+								if not isOccluding(x + dx, y + iy, z + iz) then
+									faceVisible = true
+									break
+								end
+							end
+							if faceVisible then break end
+						end
+						visibleFaces[Enum.NormalId.Right] = faceVisible
+					end
+					-- Bottom face (-Y)
+					do
+						local faceVisible = false
+						for ix = 0, dx - 1 do
+							for iz = 0, dz - 1 do
+								if not isOccluding(x + ix, y - 1, z + iz) then
+									faceVisible = true
+									break
+								end
+							end
+							if faceVisible then break end
+						end
+						visibleFaces[Enum.NormalId.Bottom] = faceVisible
+					end
+					-- Top face (+Y)
+					do
+						local faceVisible = false
+						for ix = 0, dx - 1 do
+							for iz = 0, dz - 1 do
+								if not isOccluding(x + ix, y + dy, z + iz) then
+									faceVisible = true
+									break
+								end
+							end
+							if faceVisible then break end
+						end
+						visibleFaces[Enum.NormalId.Top] = faceVisible
+					end
+					-- Front face (-Z)
+					do
+						local faceVisible = false
+						for ix = 0, dx - 1 do
+							for iy = 0, dy - 1 do
+								if not isOccluding(x + ix, y + iy, z - 1) then
+									faceVisible = true
+									break
+								end
+							end
+							if faceVisible then break end
+						end
+						visibleFaces[Enum.NormalId.Front] = faceVisible
+					end
+					-- Back face (+Z)
+					do
+						local faceVisible = false
+						for ix = 0, dx - 1 do
+							for iy = 0, dy - 1 do
+								if not isOccluding(x + ix, y + iy, z + dz) then
+									faceVisible = true
+									break
+								end
+							end
+							if faceVisible then break end
+						end
+						visibleFaces[Enum.NormalId.Back] = faceVisible
+					end
+
+					-- Apply textures only to faces marked visible
+					TextureApplicator:ApplyBoxTextures(p, id, dx, dy, dz, metadata, visibleFaces)
 
 						table.insert(meshParts, p)
 						partsBudget += 1
@@ -464,7 +555,7 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 						bottomPart.Anchored = true
 						bottomPart.CanCollide = true
 						bottomPart.CastShadow = true
-						bottomPart.Material = Enum.Material.SmoothPlastic
+						bottomPart.Material = Enum.Material.Plastic
 						bottomPart.Color = def.color or Color3.fromRGB(255, 255, 255)
 						bottomPart.TopSurface = Enum.SurfaceType.Smooth
 						bottomPart.BottomSurface = Enum.SurfaceType.Smooth
@@ -511,7 +602,7 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 						topPart.Anchored = true
 						topPart.CanCollide = true
 						topPart.CastShadow = true
-						topPart.Material = Enum.Material.SmoothPlastic
+						topPart.Material = Enum.Material.Plastic
 						topPart.Color = def.color or Color3.fromRGB(255, 255, 255)
 						topPart.TopSurface = Enum.SurfaceType.Smooth
 						topPart.BottomSurface = Enum.SurfaceType.Smooth
@@ -683,7 +774,7 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 							topPart2.Anchored = true
 							topPart2.CanCollide = true
 							topPart2.CastShadow = true
-							topPart2.Material = Enum.Material.SmoothPlastic
+						topPart2.Material = Enum.Material.Plastic
 							topPart2.Color = def.color or Color3.fromRGB(255, 255, 255)
 							topPart2.TopSurface = Enum.SurfaceType.Smooth
 							topPart2.BottomSurface = Enum.SurfaceType.Smooth
@@ -877,7 +968,7 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 						slabPart.Anchored = true
 						slabPart.CanCollide = true
 						slabPart.CastShadow = true
-						slabPart.Material = Enum.Material.SmoothPlastic
+					slabPart.Material = Enum.Material.Plastic
 						slabPart.Color = def.color or Color3.fromRGB(255, 255, 255)
 						slabPart.TopSurface = Enum.SurfaceType.Smooth
 						slabPart.BottomSurface = Enum.SurfaceType.Smooth

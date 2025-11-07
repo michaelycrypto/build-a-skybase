@@ -394,6 +394,8 @@ function VoxelHotbar:OnSlotSelected()
 
 	-- Store selected slot index for server requests
 	GameState:Set("voxelWorld.selectedSlot", self.selectedSlot)
+	-- Inform server of selected hotbar slot (used for held block / tempt logic)
+	EventManager:SendToServer("SelectHotbarSlot", { slotIndex = self.selectedSlot })
 
     if stack and not stack:IsEmpty() then
         local itemId = stack:GetItemId()
@@ -423,6 +425,7 @@ function VoxelHotbar:OnSlotSelected()
             GameState:Set("voxelWorld.selectedToolSlotIndex", nil)
             -- Ensure no tool is equipped
             EventManager:SendToServer("UnequipTool")
+			-- Already sent SelectHotbarSlot above
         end
     else
 		-- Empty hand
@@ -433,6 +436,7 @@ function VoxelHotbar:OnSlotSelected()
             GameState:Set("voxelWorld.isHoldingTool", false)
             GameState:Set("voxelWorld.selectedToolSlotIndex", nil)
         EventManager:SendToServer("UnequipTool")
+		-- Already sent SelectHotbarSlot above
 	end
 end
 
