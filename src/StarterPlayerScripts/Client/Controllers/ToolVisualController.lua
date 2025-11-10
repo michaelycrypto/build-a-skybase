@@ -18,7 +18,6 @@ local controller = {}
 local player = Players.LocalPlayer
 local currentHandle -- BasePart
 local handleWeld -- Weld
-local characterConn -- RBXScriptConnection
 local propertyConns = {}
 
 -- No presets needed; fixed orientation for Diamond Sword
@@ -67,6 +66,42 @@ local TOOL_C0_BY_TYPE = {
     [BlockProperties.ToolType.PICKAXE] = { pos = Vector3.new(0, -0.15, -1.5), rot = Vector3.new(225, 90, 0) },
 }
 
+-- Try to locate the Tools container even if it's a Model or differently named parent
+local function findToolsContainer(assetsFolder: Instance)
+	if not assetsFolder then return nil end
+	-- First, prefer a direct child named "Tools"
+	local direct = assetsFolder:FindFirstChild("Tools")
+	if direct then return direct end
+	-- Otherwise, scan for a child that contains tool-named children
+	local expectedNames = {
+		[TOOL_ASSET_NAME_BY_TYPE[BlockProperties.ToolType.SWORD]] = true,
+		[TOOL_ASSET_NAME_BY_TYPE[BlockProperties.ToolType.AXE]] = true,
+		[TOOL_ASSET_NAME_BY_TYPE[BlockProperties.ToolType.SHOVEL]] = true,
+		[TOOL_ASSET_NAME_BY_TYPE[BlockProperties.ToolType.PICKAXE]] = true,
+	}
+	for _, child in ipairs(assetsFolder:GetChildren()) do
+		if child:IsA("Folder") or child:IsA("Model") then
+			for name, _ in pairs(expectedNames) do
+				if child:FindFirstChild(name) then
+					return child
+				end
+			end
+		end
+	end
+	return nil
+end
+
+-- Given a template which may be a MeshPart, Model, or Folder, find a MeshPart to clone
+local function findMeshPartFromTemplate(template: Instance)
+	if not template then return nil end
+	if template:IsA("MeshPart") then
+		return template
+	end
+	-- Search descendants for the first MeshPart (common when template is a Model)
+	local mesh = template:FindFirstChildWhichIsA("MeshPart", true)
+	return mesh
+end
+
 local function cframeFromPosRotDeg(pos: Vector3, rotDeg: Vector3)
     return CFrame.new(pos) * CFrame.Angles(math.rad(rotDeg.X), math.rad(rotDeg.Y), math.rad(rotDeg.Z))
 end
@@ -98,14 +133,30 @@ local function createPlaceholder(toolItemId)
         toolType = tType
     end
 
-    -- Clone appropriate MeshPart from Assets when a known tool is equipped
+	-- Clone appropriate MeshPart from ReplicatedStorage.Tools (fallback to Assets.Tools) when a known tool is equipped
     if toolType and TOOL_ASSET_NAME_BY_TYPE[toolType] then
         local assetName = TOOL_ASSET_NAME_BY_TYPE[toolType]
-        local assetsFolder = ReplicatedStorage:FindFirstChild("Assets")
-        local template = assetsFolder and assetsFolder:FindFirstChild(assetName)
-        if template and template:IsA("BasePart") then
-            part = template:Clone()
+		-- Prefer ReplicatedStorage.Tools directly
+		local toolsFolder = ReplicatedStorage:FindFirstChild("Tools")
+		-- Fallback: ReplicatedStorage.Assets.Tools or auto-detected tools container under Assets
+		if not toolsFolder then
+			local assetsFolder = ReplicatedStorage:FindFirstChild("Assets")
+			toolsFolder = assetsFolder and (assetsFolder:FindFirstChild("Tools") or findToolsContainer(assetsFolder)) or nil
+		end
+		local template = toolsFolder and toolsFolder:FindFirstChild(assetName)
+
+        -- Specifically check for MeshPart (the expected asset type)
+		if template then
+			local mesh = findMeshPartFromTemplate(template)
+			if mesh then
+				part = mesh:Clone()
+			end
+		end
+
+		if part and part:IsA("MeshPart") then
             part.Name = "ToolHandle_" .. tostring(toolType)
+
+            -- Configure MeshPart properties
             part.Massless = true
             part.CanCollide = false
             part.CastShadow = false
@@ -116,7 +167,13 @@ local function createPlaceholder(toolItemId)
             -- Set texture from ToolConfig image if available
             local toolInfo = ToolConfig.GetToolInfo(toolItemId)
             local textureId = toolInfo and toolInfo.image
-            if textureId and part:IsA("MeshPart") then
+			-- Do not override existing TextureID on the template if already present
+			local hasExistingTexture = false
+			pcall(function()
+				local currentTex = part.TextureID
+				hasExistingTexture = (currentTex ~= nil and tostring(currentTex) ~= "")
+			end)
+			if textureId and (not hasExistingTexture) then
                 pcall(function()
                     part.TextureID = textureId
                 end)
@@ -127,6 +184,14 @@ local function createPlaceholder(toolItemId)
             if px then
                 scaleMeshToPixels(part, px.x, px.y)
             end
+		else
+			if template then
+				warn("ToolVisualController: Could not find MeshPart inside asset '" .. assetName .. "' (found type: " .. template.ClassName .. ")")
+			elseif toolsFolder then
+				warn("ToolVisualController: Tool asset '" .. assetName .. "' not found in ReplicatedStorage.Tools (or fallback Assets.Tools)")
+			else
+				warn("ToolVisualController: 'Tools' folder not found in ReplicatedStorage (or fallback under ReplicatedStorage.Assets)")
+			end
         end
     end
 
@@ -170,8 +235,26 @@ local function onToolStateChanged()
 end
 
 local function onCharacterAdded(char)
-    -- Reattach handle if tool was selected during respawn
-    task.defer(onToolStateChanged)
+    -- Clean up old handle when character respawns
+    destroyHandle()
+
+    -- Wait for character to fully load before trying to attach tool
+    task.spawn(function()
+        -- Wait for RightHand or Right Arm to exist
+        local hand = char:WaitForChild("RightHand", 5) or char:WaitForChild("Right Arm", 5)
+        if hand then
+            -- Small delay to ensure character is fully loaded
+            task.wait(0.1)
+            onToolStateChanged()
+        end
+    end)
+
+    -- Clean up when character is removed
+    char:GetPropertyChangedSignal("Parent"):Connect(function()
+        if not char.Parent then
+            destroyHandle()
+        end
+    end)
 end
 
 function controller:Initialize()

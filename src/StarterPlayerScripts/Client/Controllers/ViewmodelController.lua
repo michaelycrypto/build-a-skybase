@@ -223,28 +223,77 @@ local function scaleMeshToPixels(part, pxX, pxY)
 	end
 end
 
+-- Helpers for resolving tool assets (prefer ReplicatedStorage.Tools, fallback to Assets.Tools)
+local function findToolsContainer()
+	-- Prefer direct ReplicatedStorage.Tools
+	local tools = ReplicatedStorage:FindFirstChild("Tools")
+	if tools then return tools end
+	-- Fallback: ReplicatedStorage.Assets.Tools or an auto-detected container under Assets
+	local assets = ReplicatedStorage:FindFirstChild("Assets")
+	if not assets then return nil end
+	local direct = assets:FindFirstChild("Tools")
+	if direct then return direct end
+	-- Heuristic: find a folder/model that contains tool names
+	local expected = {
+		[TOOL_ASSET_NAME_BY_TYPE[BlockProperties.ToolType.SWORD]] = true,
+		[TOOL_ASSET_NAME_BY_TYPE[BlockProperties.ToolType.AXE]] = true,
+		[TOOL_ASSET_NAME_BY_TYPE[BlockProperties.ToolType.SHOVEL]] = true,
+		[TOOL_ASSET_NAME_BY_TYPE[BlockProperties.ToolType.PICKAXE]] = true,
+	}
+	for _, child in ipairs(assets:GetChildren()) do
+		if child:IsA("Folder") or child:IsA("Model") then
+			for name, _ in pairs(expected) do
+				if child:FindFirstChild(name) then
+					return child
+				end
+			end
+		end
+	end
+	return nil
+end
+
+local function findMeshPartFromTemplate(template: Instance)
+	if not template then return nil end
+	if template:IsA("MeshPart") then
+		return template
+	end
+	return template:FindFirstChildWhichIsA("MeshPart", true)
+end
+
 local function buildToolMesh(itemId)
 	local toolType = select(1, ToolConfig.GetBlockProps(itemId))
 	local assetName = toolType and TOOL_ASSET_NAME_BY_TYPE[toolType]
 	if not assetName then return nil end
-	local assets = ReplicatedStorage:FindFirstChild("Assets")
-	local template = assets and assets:FindFirstChild(assetName)
-	if not (template and template:IsA("BasePart")) then return nil end
 
-	local p = template:Clone()
+	local toolsFolder = findToolsContainer()
+	if not toolsFolder then return nil end
+	local template = toolsFolder:FindFirstChild(assetName)
+	if not template then return nil end
+
+	local mesh = findMeshPartFromTemplate(template)
+	if not mesh then return nil end
+
+	local p = mesh:Clone()
 	p.Name = "ToolVM_" .. tostring(toolType)
 	p.Anchored = true
 	p.CanCollide = false
 	p.Massless = true
 	p.CastShadow = false
 
-	-- Apply tier texture from ToolConfig
-	local info = ToolConfig.GetToolInfo(itemId)
-	local texId = info and info.image
-	if texId and p:IsA("MeshPart") then
-		pcall(function()
-			p.TextureID = texId
-		end)
+	-- Apply tier texture from ToolConfig if template has none
+	local hasExistingTexture = false
+	pcall(function()
+		local currentTex = p.TextureID
+		hasExistingTexture = (currentTex ~= nil and tostring(currentTex) ~= "")
+	end)
+	if not hasExistingTexture then
+		local info = ToolConfig.GetToolInfo(itemId)
+		local texId = info and info.image
+		if texId and p:IsA("MeshPart") then
+			pcall(function()
+				p.TextureID = texId
+			end)
+		end
 	end
 
 	-- Scale to pixel dimensions per tool type
@@ -330,7 +379,8 @@ local function rebuild()
 
     local newInst
 	if holdingTool then
-		newInst = buildToolMesh(currentItemId) or buildFlatItem(currentItemId)
+		-- Tools: always prefer 3D MeshPart; no SurfaceGui fallback
+		newInst = buildToolMesh(currentItemId)
     elseif holdingItem then
         if isFlatItem then
             newInst = buildFlatBlockItem(currentItemId)

@@ -8,6 +8,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
 
 local EventManager = require(ReplicatedStorage.Shared.EventManager)
 local CombatConfig = require(ReplicatedStorage.Configs.CombatConfig)
@@ -97,6 +98,69 @@ end
 
 local function angleLerpDeg(a, b, t)
 	return a + shortestAngleDiffDeg(a, b) * math.clamp(t, 0, 1)
+end
+
+-- Simple Minecraft-style death animation: tip over and sink, then cleanup
+local function playDeathAnimation(model, onComplete)
+	if not model or not model:IsA("Model") then
+		if onComplete then onComplete() end
+		return
+	end
+	-- Use a CFrameValue tween driving Model:PivotTo
+	local cfVal = Instance.new("CFrameValue")
+	local startCf = model:GetPivot()
+	cfVal.Value = startCf
+	local pivotConn = cfVal:GetPropertyChangedSignal("Value"):Connect(function()
+		model:PivotTo(cfVal.Value)
+	end)
+	-- Disable collisions to avoid physics fighting the tween
+	local fadeParts = {}
+	for _, inst in ipairs(model:GetDescendants()) do
+		if inst:IsA("BasePart") then
+			inst.CanCollide = false
+			table.insert(fadeParts, inst)
+		end
+	end
+	-- Find ground Y under current position
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { model }
+	local origin = startCf.Position + Vector3.new(0, 1, 0)
+	local hit = workspace:Raycast(origin, Vector3.new(0, -512, 0), params)
+	local groundY = (hit and hit.Position.Y) or (origin.Y - 2)
+	-- Tip sideways (local roll ±90 deg) randomly left/right and move toward ground a bit
+	local rollRad = math.rad((math.random(0, 1) == 0) and -90 or 90)
+	local tipped = startCf * CFrame.Angles(0, 0, rollRad) * CFrame.new(0, -0.5, 0)
+	local onGround = CFrame.new(tipped.Position.X, groundY + 0.2, tipped.Position.Z) * tipped.Rotation
+	-- Phase 1: tip to ground
+	local t1 = TweenService:Create(cfVal, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Value = onGround })
+	-- Phase 2: sink and fade
+	local sinkCf = onGround * CFrame.new(0, -0.8, 0)
+	local alphaVal = Instance.new("NumberValue")
+	alphaVal.Value = 0
+	local alphaConn = alphaVal:GetPropertyChangedSignal("Value"):Connect(function()
+		for _, p in ipairs(fadeParts) do
+			if p.Parent then
+				p.Transparency = math.clamp(alphaVal.Value, 0, 1)
+			end
+		end
+	end)
+	local t2 = TweenService:Create(cfVal, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Value = sinkCf })
+	local t3 = TweenService:Create(alphaVal, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Value = 1 })
+	-- Run the sequence
+	t1:Play()
+	t1.Completed:Wait()
+	t2:Play()
+	t3:Play()
+	-- Wait for either to complete (both have same duration)
+	t2.Completed:Wait()
+	-- Cleanup tween helpers
+	pivotConn:Disconnect()
+	alphaConn:Disconnect()
+	cfVal:Destroy()
+	alphaVal:Destroy()
+	-- Finish
+	if onComplete then onComplete() end
 end
 
 function MobReplicationController:_onMobSpawned(data)
@@ -268,7 +332,25 @@ function MobReplicationController:_onMobDied(data)
 	if not data then
 		return
 	end
-	self:_onMobDespawned(data)
+	-- Play a brief Minecraft-style death animation before removing the model
+	local mob = self.mobs[data.entityId]
+	if not mob or not mob.build or not mob.build.model then
+		self:_onMobDespawned(data)
+		return
+	end
+	local model = mob.build.model
+	-- Stop tracking this mob so the render loop doesn't move it during the animation
+	self.mobs[data.entityId] = nil
+	-- Run animation, then destroy the model
+	task.spawn(function()
+		pcall(function()
+			playDeathAnimation(model, function()
+				if model and model.Parent then
+					model:Destroy()
+				end
+			end)
+		end)
+	end)
 end
 
 function MobReplicationController:_onRenderStep(deltaTime)
