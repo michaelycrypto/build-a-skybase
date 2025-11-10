@@ -16,6 +16,7 @@ local BlockRegistry = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockReg
 local TextureApplicator = require(ReplicatedStorage.Shared.VoxelWorld.Rendering.TextureApplicator)
 local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
 local TextureManager = require(ReplicatedStorage.Shared.VoxelWorld.Rendering.TextureManager)
+local BlockProperties = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockProperties)
 
 local player = Players.LocalPlayer
 
@@ -193,6 +194,68 @@ local function buildFlatItem(itemId)
 	return p
 end
 
+-- === TOOL MESH (replace SurfaceGui for tools) ===
+local STUDS_PER_PIXEL = 3/16
+local VM_TOOL_SCALE = 0.5 -- shrink first-person tool meshes to 50% of true scale
+local TOOL_ASSET_NAME_BY_TYPE = {
+	[BlockProperties.ToolType.SWORD] = "Sword",
+	[BlockProperties.ToolType.AXE] = "Axe",
+	[BlockProperties.ToolType.SHOVEL] = "Shovel",
+	[BlockProperties.ToolType.PICKAXE] = "Pickaxe",
+}
+
+local TOOL_PX_BY_TYPE = {
+	[BlockProperties.ToolType.SWORD] = {x = 14, y = 14},
+	[BlockProperties.ToolType.AXE] = {x = 12, y = 14},
+	[BlockProperties.ToolType.SHOVEL] = {x = 12, y = 12},
+	[BlockProperties.ToolType.PICKAXE] = {x = 13, y = 13},
+}
+
+local function scaleMeshToPixels(part, pxX, pxY)
+	local longestPx = math.max(pxX or 0, pxY or 0)
+	if longestPx <= 0 then return end
+	local targetStuds = longestPx * STUDS_PER_PIXEL
+	local size = part.Size
+	local maxDim = math.max(size.X, size.Y, size.Z)
+	if maxDim > 0 then
+		local s = (targetStuds / maxDim) * VM_TOOL_SCALE
+		part.Size = Vector3.new(size.X * s, size.Y * s, size.Z * s)
+	end
+end
+
+local function buildToolMesh(itemId)
+	local toolType = select(1, ToolConfig.GetBlockProps(itemId))
+	local assetName = toolType and TOOL_ASSET_NAME_BY_TYPE[toolType]
+	if not assetName then return nil end
+	local assets = ReplicatedStorage:FindFirstChild("Assets")
+	local template = assets and assets:FindFirstChild(assetName)
+	if not (template and template:IsA("BasePart")) then return nil end
+
+	local p = template:Clone()
+	p.Name = "ToolVM_" .. tostring(toolType)
+	p.Anchored = true
+	p.CanCollide = false
+	p.Massless = true
+	p.CastShadow = false
+
+	-- Apply tier texture from ToolConfig
+	local info = ToolConfig.GetToolInfo(itemId)
+	local texId = info and info.image
+	if texId and p:IsA("MeshPart") then
+		pcall(function()
+			p.TextureID = texId
+		end)
+	end
+
+	-- Scale to pixel dimensions per tool type
+	local px = TOOL_PX_BY_TYPE[toolType]
+	if px then
+		scaleMeshToPixels(p, px.x, px.y)
+	end
+
+	return p
+end
+
 local function buildFlatBlockItem(itemId)
     local def = BlockRegistry.Blocks[itemId]
     if not def or not def.textures then return nil end
@@ -266,8 +329,8 @@ local function rebuild()
 	end
 
     local newInst
-    if holdingTool then
-		newInst = buildFlatItem(currentItemId)
+	if holdingTool then
+		newInst = buildToolMesh(currentItemId) or buildFlatItem(currentItemId)
     elseif holdingItem then
         if isFlatItem then
             newInst = buildFlatBlockItem(currentItemId)
@@ -390,7 +453,8 @@ local function update(dt)
         if c < 0 then c = c * 1.5 end
         local d = math.sin((a^(1/3)) * 1.6)
         local pre = CFrame.new(-humCamOff/2.9 * 3)
-        local pos = (Vector3.new(0.36 + (-0.28 * b2), -0.1 + (c * 0.16), -0.37 + (-0.23 * b)) * 3)
+        -- Lower base Y offset
+        local pos = (Vector3.new(0.36 + (-0.28 * b2), -0.20 + (c * 0.16), -0.37 + (-0.23 * b)) * 3)
         local rot = CFrame.fromEulerAnglesYXZ(
             math.rad(0 + (-22 * d)),
             math.rad(90 + (25 * d)),

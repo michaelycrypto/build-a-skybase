@@ -172,6 +172,7 @@ end
 
 -- Check if player has at least one of an item in hotbar
 function PlayerInventoryService:HasItem(player: Player, itemId: number): boolean
+	itemId = tonumber(itemId) or 0
 	local playerInv = self.inventories[player]
 	if not playerInv then
 		self._logger.Warn("No inventory found", {player = player.Name, itemId = itemId})
@@ -215,6 +216,7 @@ end
 
 -- Get total count of an item across all slots
 function PlayerInventoryService:GetItemCount(player: Player, itemId: number): number
+	itemId = tonumber(itemId) or 0
 	local playerInv = self.inventories[player]
 	if not playerInv then return 0 end
 
@@ -237,6 +239,7 @@ end
 
 -- Consume one item from hotbar slot (used for block placement)
 function PlayerInventoryService:ConsumeFromHotbar(player: Player, slotIndex: number, itemId: number): boolean
+	itemId = tonumber(itemId) or 0
 	local playerInv = self.inventories[player]
 	if not playerInv or slotIndex < 1 or slotIndex > 9 then return false end
 
@@ -273,6 +276,8 @@ end
 
 -- Add item to inventory (finds best slot)
 function PlayerInventoryService:AddItem(player: Player, itemId: number, count: number): boolean
+	itemId = tonumber(itemId) or 0
+	count = tonumber(count) or 0
 	local playerInv = self.inventories[player]
 	if not playerInv then return false end
 
@@ -356,6 +361,8 @@ end
 
 -- Remove item from inventory (removes from any slot)
 function PlayerInventoryService:RemoveItem(player: Player, itemId: number, count: number): boolean
+	itemId = tonumber(itemId) or 0
+	count = tonumber(count) or 0
 	local playerInv = self.inventories[player]
 	if not playerInv then return false end
 
@@ -653,7 +660,7 @@ function PlayerInventoryService:HandleInventoryUpdate(player: Player, updateData
 	local function computeTotalsFromStacks(stacks)
 		local totals = {}
 		for _, stack in ipairs(stacks) do
-			local itemId = stack:GetItemId()
+			local itemId = tonumber(stack:GetItemId()) or 0
 			if itemId > 0 then
 				totals[itemId] = (totals[itemId] or 0) + stack:GetCount()
 			end

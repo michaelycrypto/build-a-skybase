@@ -72,13 +72,9 @@ Standard Roblox camera: Full freedom
 
 ### Building Controls (PC)
 ```
-F Key: Toggle Break ↔ Place Mode
-
-Break Mode (Grey Crosshair):
-  Left-Click: Break blocks / Interact with chests
-
-Place Mode (Green Crosshair):
-  Left-Click: Place blocks from hotbar
+Left Click: Break blocks
+Right Click: Place blocks / Interact
+(Third person) Right-Click + Drag: Rotate camera
 ```
 
 ### Building Controls (Mobile)
@@ -105,7 +101,6 @@ Place Mode:
 
 **Press V** to toggle between First and Third Person
 - Available at any time (except when UI is open)
-- Place Mode automatically resets when entering First Person
 - Crosshair adapts to current mode
 - Mouse lock toggles automatically
 
@@ -117,10 +112,7 @@ Place Mode:
 ```
 Grey (200, 200, 200):
   - First Person mode (always)
-  - Third Person + Break Mode
-
-Green (100, 255, 100):
-  - Third Person + Place Mode (ready to build!)
+  - Mobile (for tap targeting)
 ```
 
 ### UI States
@@ -134,7 +126,6 @@ Third Person:
   - Mouse cursor visible
   - Crosshair centered
   - Camera can orbit character
-  - Mode indicator (Break/Place)
 ```
 
 ---

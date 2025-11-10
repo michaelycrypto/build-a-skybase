@@ -20,8 +20,8 @@ local MAX_STACK_SIZES = {
 function ItemStack.new(itemId, count, maxStack)
     local self = setmetatable({}, ItemStack)
 
-    self.itemId = itemId or 0
-    self.count = count or 1
+    self.itemId = tonumber(itemId) or 0
+    self.count = tonumber(count) or 1
 
     -- Tools are non-stackable (max 1). Otherwise use configured/default max.
     local resolvedMax = maxStack
@@ -50,7 +50,7 @@ function ItemStack:IsEmpty()
 end
 
 function ItemStack:GetItemId()
-	return self.itemId
+    return tonumber(self.itemId) or 0
 end
 
 function ItemStack:GetCount()

@@ -33,7 +33,7 @@ ToolConfig.Items = {
 	[1041] = {name = "Wood Sword",       icon = "🗡️", image = "rbxassetid://74762524011845", toolType = BlockProperties.ToolType.SWORD, tier = BlockProperties.ToolTier.WOOD},
 	[1042] = {name = "Stone Sword",      icon = "🗡️", image = "rbxassetid://80451498258502", toolType = BlockProperties.ToolType.SWORD, tier = BlockProperties.ToolTier.STONE},
 	[1043] = {name = "Iron Sword",       icon = "🗡️", image = "rbxassetid://80622149476148", toolType = BlockProperties.ToolType.SWORD, tier = BlockProperties.ToolTier.IRON},
-	[1044] = {name = "Diamond Sword",    icon = "🗡️", image = "rbxassetid://130094269547476", toolType = BlockProperties.ToolType.SWORD, tier = BlockProperties.ToolTier.DIAMOND},
+	[1044] = {name = "Diamond Sword",    icon = "🗡️", image = "rbxassetid://87802001016187", toolType = BlockProperties.ToolType.SWORD, tier = BlockProperties.ToolTier.DIAMOND},
 }
 
 function ToolConfig.IsTool(itemId)

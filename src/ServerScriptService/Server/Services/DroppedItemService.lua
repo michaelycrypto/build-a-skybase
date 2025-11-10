@@ -114,6 +114,8 @@ end
 	Spawn a dropped item
 ]]
 function DroppedItemService:SpawnItem(itemId, count, position, velocity, isBlockCoords)
+	itemId = tonumber(itemId) or 0
+	count = tonumber(count) or 0
 	if not itemId or itemId == 0 or count <= 0 then return end
 
 	local BS = BLOCK_SIZE
@@ -375,8 +377,12 @@ end
 function DroppedItemService:HandleDropRequest(player, data)
 	if not player or not data or not data.itemId or not data.count then return end
 
+	-- Normalize inputs
+	local droppingItemId = tonumber(data.itemId) or 0
+	local droppingCount = tonumber(data.count) or 0
+
 	-- Validate count is positive
-	if data.count <= 0 then return end
+	if droppingCount <= 0 or droppingItemId == 0 then return end
 
 	local char = player.Character
 	if not char then return end
@@ -396,16 +402,16 @@ function DroppedItemService:HandleDropRequest(player, data)
 		-- If dropping from a specific hotbar slot, remove from that slot
 		-- This ensures the correct slot is cleared visually on the client
 		if data.slotIndex and data.slotIndex >= 1 and data.slotIndex <= 9 then
-			removed = inv:RemoveItemFromHotbarSlot(player, data.slotIndex, data.count)
+			removed = inv:RemoveItemFromHotbarSlot(player, data.slotIndex, droppingCount)
 		else
 			-- Otherwise, remove from any slot (for inventory drops)
-			removed = inv:RemoveItem(player, data.itemId, data.count)
+			removed = inv:RemoveItem(player, droppingItemId, droppingCount)
 		end
 
 		if not removed then
 			-- Failed to remove (player doesn't have enough), don't spawn anything
 			warn(string.format("Player %s tried to drop %d x itemId %d but doesn't have enough",
-				player.Name, data.count, data.itemId))
+				player.Name, droppingCount, droppingItemId))
 			return
 		end
 
@@ -428,7 +434,7 @@ function DroppedItemService:HandleDropRequest(player, data)
 	local dropPos = head.Position + head.CFrame.LookVector * 3
 	local dropVel = head.CFrame.LookVector * 8 + Vector3.new(0, 4, 0)
 
-	self:SpawnItem(data.itemId, data.count, dropPos, dropVel, false)
+	self:SpawnItem(droppingItemId, droppingCount, dropPos, dropVel, false)
 end
 
 function DroppedItemService:Destroy()

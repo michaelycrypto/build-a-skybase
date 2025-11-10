@@ -48,21 +48,13 @@ local NORMAL_WALKSPEED = 14 -- Must match SprintController
 local isFirstPerson = true -- Players always start in first person
 local bobbingTime = 0
 
--- Dynamic FOV + Hurt Roll tunables
+-- Dynamic FOV tunables
 local BASE_FOV = 80
 local MAX_FOV = 96
 local FOV_LERP = 0.25
 local WALKSPEED_BASE = NORMAL_WALKSPEED -- 14
 local FOV_PER_SPEED = 1.8 -- degrees per stud/sec beyond base
 
-local HURT_ROLL_MAX_DEG = 2.0
-local HURT_ROLL_DECAY = 7.0 -- per second
-local HURT_ROLL_IMPULSE = 1.0 -- multiplied by damage fraction
-
--- Hurt roll state
-local hurtRollAngle = 0
-local hurtRollVel = 0
-local lastHealth = nil
 
 local function setupCamera(char)
 	-- Wait for character to be fully loaded
@@ -108,21 +100,7 @@ function CameraController:Initialize()
 	character = player.Character or player.CharacterAdded:Wait()
 	humanoid = setupCamera(character)
 
-	-- Hook health change for hurt roll
-	if humanoid then
-		lastHealth = humanoid.Health
-		humanoid.HealthChanged:Connect(function(newHealth)
-			if lastHealth then
-				local delta = lastHealth - newHealth
-				if delta > 0 then
-					local maxH = math.max(1, humanoid.MaxHealth or 100)
-					-- Apply an impulse proportional to damage fraction
-					hurtRollVel = hurtRollVel + (delta / maxH) * HURT_ROLL_IMPULSE
-				end
-			end
-			lastHealth = newHealth
-		end)
-	end
+
 
 	-- Initialize camera mode state
 	GameState:Set("camera.isFirstPerson", isFirstPerson)
@@ -213,10 +191,7 @@ function CameraController:Initialize()
 				if UserInputService.MouseDeltaSensitivity ~= MOUSE_SENSITIVITY then
 					UserInputService.MouseDeltaSensitivity = MOUSE_SENSITIVITY
 				end
-				-- Head roll on hurt (decays over time)
-				hurtRollVel = hurtRollVel - (hurtRollVel * HURT_ROLL_DECAY * deltaTime)
-				hurtRollAngle = math.clamp(hurtRollAngle + (hurtRollVel * deltaTime * 60), -HURT_ROLL_MAX_DEG, HURT_ROLL_MAX_DEG)
-				camera.CFrame = camera.CFrame * CFrame.Angles(0, 0, math.rad(hurtRollAngle))
+
 			end
 			-- THIRD PERSON MODE: No camera updates (let Roblox handle everything)
 			-- We don't touch any camera properties to avoid interfering
@@ -260,6 +235,7 @@ function CameraController:Initialize()
 			if input.KeyCode == Enum.KeyCode.V then
 				isFirstPerson = not isFirstPerson
 				bobbingTime = 0 -- Reset bobbing when toggling camera
+
 
 				-- Update GameState so other modules can react
 				GameState:Set("camera.isFirstPerson", isFirstPerson)

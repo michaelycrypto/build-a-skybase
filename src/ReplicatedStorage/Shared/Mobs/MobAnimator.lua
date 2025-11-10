@@ -144,7 +144,7 @@ local function animateSheep(self, t)
 	local frontRight = safeMotor(motors, "FrontRightLegMotor") or safeMotor(motors, "RightFrontLegMotor")
 	local backLeft = safeMotor(motors, "BackLeftLegMotor") or safeMotor(motors, "LeftBackLegMotor")
 	local backRight = safeMotor(motors, "BackRightLegMotor") or safeMotor(motors, "RightBackLegMotor")
-	local headMotor = safeMotor(motors, "HeadWoolMotor") or safeMotor(motors, "HeadSkinMotor")
+	local headMotor = safeMotor(motors, "HeadSkinMotor") or safeMotor(motors, "HeadWoolMotor")
 
 	if speed < 0.05 then
 		if frontLeft then frontLeft.Transform = CFrame.new() end
@@ -197,7 +197,7 @@ local function animateSheepIdle(self, t)
 	if backRight then backRight.Transform = CFrame.new() end
 
 	-- Subtle head look-around (Minecraft-style idle)
-	local headMotor = safeMotor(motors, "HeadWoolMotor") or safeMotor(motors, "HeadSkinMotor")
+	local headMotor = safeMotor(motors, "HeadSkinMotor") or safeMotor(motors, "HeadWoolMotor")
 	if headMotor then
 		local yaw = math.sin(t * 0.8 + self.phaseOffset * 2.0) * math.rad(8)
 		local pitch = math.sin(t * 0.6 + self.phaseOffset * 3.1) * math.rad(3)
@@ -218,7 +218,7 @@ local function animateSheepGraze(self, t)
     if backRight then backRight.Transform = CFrame.new() end
 
     -- Head down with subtle nibble motion
-    local headMotor = safeMotor(motors, "HeadWoolMotor") or safeMotor(motors, "HeadSkinMotor")
+    local headMotor = safeMotor(motors, "HeadSkinMotor") or safeMotor(motors, "HeadWoolMotor")
     if headMotor then
         local baseDown = math.rad(25)
         local nibble = math.sin(t * 6) * math.rad(2)

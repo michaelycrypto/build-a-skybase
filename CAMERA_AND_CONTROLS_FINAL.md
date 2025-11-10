@@ -76,7 +76,7 @@ V KEY:
   → Switch to first person
 
 F KEY:
-  → Toggle Place Mode (currently disabled/unused)
+  → Removed (Place Mode no longer used)
 ```
 
 ### Targeting System

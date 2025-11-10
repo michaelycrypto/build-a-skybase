@@ -289,14 +289,17 @@ function DroppedItemController:UpdateVisuals(item, dt, now)
         if item.noSettleUntil and now < item.noSettleUntil then
             canSettle = false
         end
-		if canSettle and velocity.Magnitude < 0.5 then
+		-- Loosen settle threshold and add time-based fallback to avoid perpetual jitter
+		local ageNow = now - (item.spawnTime or now)
+		local settleOk = (velocity.Magnitude < 1.0) or ((ageNow > 1.0) and (math.abs(velocity.Y) < 0.7))
+		if canSettle and settleOk then
 			-- Require a solid ground hit directly below to avoid anchoring mid-air
 			local groundHit = raycastGroundBelow(part, 6)
 			if groundHit and groundHit.Position then
 				item.settled = true
 				-- Place slightly above the ground for floating effect
 				local groundY = groundHit.Position.Y
-				item.finalPosition = Vector3.new(part.Position.X, groundY + 0.25, part.Position.Z)
+				item.finalPosition = Vector3.new(part.Position.X, groundY + 0.5, part.Position.Z)
 				-- Anchor and disable collision once settled
 				part.Anchored = true
 				part.CanCollide = false
@@ -348,6 +351,18 @@ function DroppedItemController:UpdateVisuals(item, dt, now)
                 item.lastVelocityCheck = now
             end
         end
+		-- Gentle pre-settle magnetism in XZ to help pickup feel responsive
+		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+		if root then
+			local toRoot = Vector3.new(root.Position.X - part.Position.X, 0, root.Position.Z - part.Position.Z)
+			local dist = toRoot.Magnitude
+			if dist > 0 and dist <= MAGNET_RADIUS then
+				local dir = toRoot.Unit
+				local v = part.AssemblyLinearVelocity
+				local pull = math.min(MAGNET_SPEED * dt, 3)
+				part.AssemblyLinearVelocity = Vector3.new(v.X, v.Y, v.Z) + dir * pull
+			end
+		end
 	end
 
 	-- Despawn warning flash (last 15 seconds)
@@ -1107,31 +1122,44 @@ function DroppedItemController:CheckPickup()
 
 	local now = os.clock()
 
-    -- Find nearest item (only pick up settled ones, ignore merging items)
-	for id, item in pairs(items) do
-		if item.settled and not item.merging and item.model and item.model.PrimaryPart then
-			local itemPos = item.model.PrimaryPart.Position
-			local dist = (itemPos - root.Position).Magnitude
+	-- Find nearest in-range item (allow pickup while moving; ignore merging)
+	local nearestId = nil
+	local nearestDist = math.huge
+	local nearestPos = nil
 
-            if dist <= 3 then
-                local nowTime = now
-                local lastReq = pickupRequests[id] or 0
-                -- Re-send request if enough time has passed (handles server pickup delay)
-				if (nowTime - lastReq) >= 0.4 then
-					pickupRequests[id] = nowTime
-					local reportPos
+	for id, item in pairs(items) do
+		if not item.merging and item.model and item.model.PrimaryPart then
+			local itemPos = item.model.PrimaryPart.Position
+			-- Use horizontal (XZ) distance for Minecraft-like pickup feel
+			local dx = itemPos.X - root.Position.X
+			local dz = itemPos.Z - root.Position.Z
+			local distXZ = math.sqrt(dx*dx + dz*dz)
+
+			if distXZ <= 3 then
+				if distXZ < nearestDist then
+					nearestDist = distXZ
+					nearestId = id
 					if item.settled and item.finalPosition then
-						reportPos = item.finalPosition
+						nearestPos = item.finalPosition
 					else
-						reportPos = item.model.PrimaryPart.Position
+						nearestPos = itemPos
 					end
-					EventManager:SendToServer("RequestItemPickup", {id = id, pos = {reportPos.X, reportPos.Y, reportPos.Z}})
 				end
-                break
-            else
-                -- Out of range: allow immediate retry next time
-                pickupRequests[id] = nil
-            end
+			else
+				-- Out of range: allow immediate retry next time
+				pickupRequests[id] = nil
+			end
+		end
+	end
+
+	if nearestId and nearestPos then
+		local lastReq = pickupRequests[nearestId] or 0
+		if (now - lastReq) >= 0.4 then
+			pickupRequests[nearestId] = now
+			EventManager:SendToServer("RequestItemPickup", {
+				id = nearestId,
+				pos = {nearestPos.X, nearestPos.Y, nearestPos.Z}
+			})
 		end
 	end
 end

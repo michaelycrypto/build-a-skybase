@@ -21,30 +21,6 @@ local BlockBreakProgress = require(script.Parent.Parent.UI.BlockBreakProgress)
 local BlockInteraction = {}
 BlockInteraction.isReady = false
 
--- Public function to toggle place mode (for UI/mobile buttons)
-function BlockInteraction:TogglePlaceMode()
-	local isFirstPerson = GameState:Get("camera.isFirstPerson")
-	if not isFirstPerson then
-		isPlaceMode = not isPlaceMode
-		print("🔧 Place Mode:", isPlaceMode and "ON (Green = Place)" or "OFF (Grey = Break)")
-		return isPlaceMode
-	end
-	return false -- Can't toggle in first person
-end
-
--- Public function to get current place mode state
-function BlockInteraction:IsPlaceMode()
-	return isPlaceMode
-end
-
--- Public function to set place mode (for UI)
-function BlockInteraction:SetPlaceMode(enabled)
-	local isFirstPerson = GameState:Get("camera.isFirstPerson")
-	if not isFirstPerson then
-		isPlaceMode = enabled
-		print("🔧 Place Mode:", isPlaceMode and "ON (Green = Place)" or "OFF (Grey = Break)")
-	end
-end
 
 -- Private state
 local player = Players.LocalPlayer
@@ -56,7 +32,6 @@ local lastBreakTime = 0
 local lastPlaceTime = 0
 local isPlacing = false
 local selectionBox = nil -- Visual indicator for targeted block
-local isPlaceMode = false -- Toggle between Break and Place mode (for third person)
 
 -- Right-click detection for third person (distinguish click from camera pan)
 local rightClickStartTime = 0
@@ -709,11 +684,7 @@ task.spawn(function()
 			lastCameraLook = currentLook
 		end
 
-		-- Reset place mode when switching to first person
-		if isFirstPerson and lastFirstPersonState == false then
-			isPlaceMode = false
-			print("📷 Switched to First Person - Place Mode reset")
-		end
+		-- No special handling needed on camera mode switch
 		lastFirstPersonState = isFirstPerson
 	end
 end)
@@ -772,15 +743,7 @@ function BlockInteraction:Initialize(voxelWorldHandle)
 		-- This ensures we don't interfere with Roblox's native camera controls or UI
 		if gameProcessed then return end
 
-		-- F key: Toggle Place Mode (for third person building)
-		if input.KeyCode == Enum.KeyCode.F then
-			local isFirstPerson = GameState:Get("camera.isFirstPerson")
-			if not isFirstPerson then
-				-- Only allow toggling in third person
-				isPlaceMode = not isPlaceMode
-				print("🔧 Place Mode:", isPlaceMode and "ON (Green = Place)" or "OFF (Grey = Break)")
-			end
-		end
+		-- F key: (unused)
 
 		-- MOBILE: Touch handling (tap vs hold vs drag)
 		if input.UserInputType == Enum.UserInputType.Touch then

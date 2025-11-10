@@ -331,7 +331,11 @@ function MinecraftBoneTranslator.BuildSheepModel(scale)
 				material = Enum.Material.SmoothPlastic,
 				color = Color3.fromRGB(245, 245, 245),
 				tag = "HeadWool",
-				motorName = "HeadWoolMotor"
+				motorName = "HeadWoolMotor",
+				parent = "HeadSkin",
+				-- HeadWool center is 1px forward of HeadSkin center; attach to head so it inherits rotation
+				c0 = CFrame.new(0, 0, px(1) * s),
+				jointC1 = CFrame.new()
 			},
 			-- LEGS: Legs centered at Y=6px, but root is offset by +6px
 			-- So relative to root, legs are at Y=0
@@ -626,7 +630,11 @@ function MinecraftBoneTranslator.BuildCowModel(scale)
                 material = Enum.Material.SmoothPlastic,
                 color = hornColor,
                 tag = "HornLeft",
-                motorName = "HornLeftMotor"
+				motorName = "HornLeftMotor",
+				parent = "Head",
+				-- Relative to head center (0, 8, -11): (-4.5, +3.5, -0.5)
+				c0 = CFrame.new(px(-4.5) * s, px(3.5) * s, px(-0.5) * s),
+				jointC1 = CFrame.new()
             },
 
             -- RIGHT HORN (Minecraft: origin [4, 22, -12], size [1, 3, 1])
@@ -637,7 +645,11 @@ function MinecraftBoneTranslator.BuildCowModel(scale)
                 material = Enum.Material.SmoothPlastic,
                 color = hornColor,
                 tag = "HornRight",
-                motorName = "HornRightMotor"
+				motorName = "HornRightMotor",
+				parent = "Head",
+				-- Relative to head center (0, 8, -11): (+4.5, +3.5, -0.5)
+				c0 = CFrame.new(px(4.5) * s, px(3.5) * s, px(-0.5) * s),
+				jointC1 = CFrame.new()
             },
 
             -- BACK LEFT LEG (leg0: pivot [-4, 12, 7])
