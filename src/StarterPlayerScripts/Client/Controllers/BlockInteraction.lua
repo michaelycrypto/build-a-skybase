@@ -9,6 +9,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local EventManager = require(ReplicatedStorage.Shared.EventManager)
+local SpawnEggConfig = require(ReplicatedStorage.Configs.SpawnEggConfig)
 local Constants = require(ReplicatedStorage.Shared.VoxelWorld.Core.Constants)
 local VoxelConfig = require(ReplicatedStorage.Shared.VoxelWorld.Core.Config)
 local GameState = require(script.Parent.Parent.Managers.GameState)
@@ -24,6 +25,7 @@ BlockInteraction.isReady = false
 
 -- Private state
 local player = Players.LocalPlayer
+local mouse = player:GetMouse()
 local camera = workspace.CurrentCamera
 local blockAPI = nil
 local isBreaking = false
@@ -32,6 +34,8 @@ local lastBreakTime = 0
 local lastPlaceTime = 0
 local isPlacing = false
 local selectionBox = nil -- Visual indicator for targeted block
+local lastMinionOpenRequestAt = 0
+local MINION_OPEN_DEBOUNCE = 0.25
 
 -- Right-click detection for third person (distinguish click from camera pan)
 local rightClickStartTime = 0
@@ -455,6 +459,27 @@ end
 
 -- Interact with block or place block (right click)
 local function interactOrPlace()
+	-- First: try interacting with a minion mob model under mouse
+	do
+		local target = mouse and mouse.Target
+		if target then
+			local model = target:FindFirstAncestorOfClass("Model")
+			if model then
+				local entityId = model:GetAttribute("MobEntityId")
+				if entityId then
+					local now = os.clock()
+					if (now - lastMinionOpenRequestAt) < MINION_OPEN_DEBOUNCE then
+						print("[BlockInteraction] Minion open request debounced (entity path)")
+						return true
+					end
+					lastMinionOpenRequestAt = now
+					print("[BlockInteraction] RequestOpenMinionByEntity entityId=", tostring(entityId))
+					EventManager:SendToServer("RequestOpenMinionByEntity", { entityId = tostring(entityId) })
+					return true
+				end
+			end
+		end
+	end
 	-- Guard: Don't allow actions until system is ready
 	if not BlockInteraction.isReady or not blockAPI then return end
 
@@ -490,7 +515,7 @@ local function interactOrPlace()
 	if worldManager then
 		local blockId = worldManager:GetBlock(blockPos.X, blockPos.Y, blockPos.Z)
 
-		-- Handle other interactable blocks (like a chest)
+		-- Handle other interactable blocks (like a chest, minion)
 		if blockId and BlockRegistry:IsInteractable(blockId) then
 			-- Handle interaction (e.g., open chest, open workbench)
 			if blockId == Constants.BlockType.CHEST then
@@ -509,17 +534,52 @@ local function interactOrPlace()
 					z = blockPos.Z
 				})
 				return true
+			elseif blockId == Constants.BlockType.COBBLESTONE_MINION then
+				local now = os.clock()
+				if (now - lastMinionOpenRequestAt) < MINION_OPEN_DEBOUNCE then
+					print("[BlockInteraction] Minion open request debounced (block path)")
+					return true
+				end
+				lastMinionOpenRequestAt = now
+				print("Opening minion at", blockPos.X, blockPos.Y, blockPos.Z)
+				EventManager:SendToServer("RequestOpenMinion", {
+					x = blockPos.X,
+					y = blockPos.Y,
+					z = blockPos.Z
+				})
+				return true
 			end
 		end
 	end
 
-	-- Not interacting with anything, try to place a block
+	-- Not interacting with anything, try to open minion UI (if a minion is anchored here), else place a block or use spawn egg
 	if not faceNormal then return false end
+
+	-- Only entity right-click opens minion UI; do not fallback-open by block position
 
 	-- Get selected block from hotbar
 	local selectedBlock = GameState:Get("voxelWorld.selectedBlock")
 	if not selectedBlock or not selectedBlock.id then
 		return false -- No block selected
+	end
+
+	-- If a spawn egg is selected, request mob spawn instead of block placement
+	if selectedBlock and selectedBlock.id and SpawnEggConfig.IsSpawnEgg(selectedBlock.id) then
+		local placeX = blockPos.X + faceNormal.X
+		local placeY = blockPos.Y + faceNormal.Y
+		local placeZ = blockPos.Z + faceNormal.Z
+		local selectedSlot = GameState:Get("voxelWorld.selectedSlot") or 1
+		EventManager:SendToServer("RequestSpawnMobAt", {
+			x = placeX,
+			y = placeY,
+			z = placeZ,
+			eggItemId = selectedBlock.id,
+			hotbarSlot = selectedSlot,
+			targetBlockPos = blockPos,
+			faceNormal = faceNormal,
+			hitPosition = preciseHitPos
+		})
+		return true
 	end
 
 	-- Client-side guard: allow farm items (seeds/carrots/potatoes/beetroot seeds/compost) even if not normally placeable
@@ -874,6 +934,27 @@ function BlockInteraction:Initialize(voxelWorldHandle)
 	local function handleRightClick(actionName, inputState, inputObject)
 		-- First person: Handle block placement and interaction (Minecraft-style)
 		if inputState == Enum.UserInputState.Begin then
+			-- First, try minion mob model interaction in first-person
+			do
+				local target = mouse and mouse.Target
+				if target then
+					local model = target:FindFirstAncestorOfClass("Model")
+					if model then
+						local entityId = model:GetAttribute("MobEntityId")
+						if entityId then
+							local now = os.clock()
+							if (now - lastMinionOpenRequestAt) < MINION_OPEN_DEBOUNCE then
+								print("[BlockInteraction] Minion open request debounced (entity path FP)")
+								return Enum.ContextActionResult.Sink
+							end
+							lastMinionOpenRequestAt = now
+							print("[BlockInteraction] RequestOpenMinionByEntity (FP) entityId=", tostring(entityId))
+							EventManager:SendToServer("RequestOpenMinionByEntity", { entityId = tostring(entityId) })
+							return Enum.ContextActionResult.Sink
+						end
+					end
+				end
+			end
 			-- Check if clicking on an interactable block first
 			local blockPos, faceNormal, preciseHitPos = getTargetedBlock()
 			if blockPos then

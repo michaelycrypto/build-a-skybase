@@ -8,6 +8,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Constants = require(ReplicatedStorage.Shared.VoxelWorld.Core.Constants)
 local BlockRegistry = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockRegistry)
 local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
+local SpawnEggConfig = require(ReplicatedStorage.Configs.SpawnEggConfig)
 
 local InventoryValidator = {}
 
@@ -89,6 +90,8 @@ local VALID_ITEM_IDS = {
 		[Constants.BlockType.CARROT] = true,
 		[Constants.BlockType.BEETROOT_SEEDS] = true,
 		[Constants.BlockType.BEETROOT] = true,
+		-- Utility/minion
+		[Constants.BlockType.COBBLESTONE_MINION] = true,
 }
 
 --[[
@@ -103,7 +106,7 @@ function InventoryValidator:ValidateItemStack(stackData)
 	-- Check if itemId is a valid item (block or tool)
     local itemId = tonumber(stackData.itemId or stackData.id) or 0
 	local isTool = ToolConfig.IsTool(itemId)
-	if not VALID_ITEM_IDS[itemId] and not isTool then
+	if not VALID_ITEM_IDS[itemId] and not isTool and not SpawnEggConfig.IsSpawnEgg(itemId) then
 		return false, string.format("Invalid item ID: %d", itemId)
 	end
 
@@ -363,9 +366,10 @@ function InventoryValidator:SanitizeInventoryData(slots, expectedSize)
 			if count < 0 then count = 0; wasModified = true end
 			if count > MAX_STACK_SIZE then count = MAX_STACK_SIZE; wasModified = true end
 
-			-- Validate item ID exists (allow tools)
+			-- Validate item ID exists (allow tools and spawn eggs)
             local isTool = ToolConfig.IsTool(itemId)
-			if not VALID_ITEM_IDS[itemId] and not isTool then
+			local isEgg = SpawnEggConfig.IsSpawnEgg(itemId)
+			if not VALID_ITEM_IDS[itemId] and not isTool and not isEgg then
 				itemId = 0
 				count = 0
 				wasModified = true

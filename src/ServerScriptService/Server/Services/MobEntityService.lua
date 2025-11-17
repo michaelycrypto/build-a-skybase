@@ -16,11 +16,13 @@ local Logger = require(ReplicatedStorage.Shared.Logger)
 local EventManager = require(ReplicatedStorage.Shared.EventManager)
 local MobRegistry = require(ReplicatedStorage.Configs.MobRegistry)
 local Constants = require(ReplicatedStorage.Shared.VoxelWorld.Core.Constants)
+local MinionConfig = require(ReplicatedStorage.Configs.MinionConfig)
 local CombatConfig = require(ReplicatedStorage.Configs.CombatConfig)
 local BlockProperties = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockProperties)
 local BlockRegistry = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockRegistry)
 local AdvancedPathfinding = require(ReplicatedStorage.Shared.Pathfinding.AdvancedPathfinding)
 local Navigator = require(ReplicatedStorage.Shared.Pathfinding.Navigator)
+local SpawnEggConfig = require(ReplicatedStorage.Configs.SpawnEggConfig)
 
 local MobEntityService = setmetatable({}, BaseService)
 MobEntityService.__index = MobEntityService
@@ -467,6 +469,79 @@ function MobEntityService:SpawnMob(mobType, position, options)
 	return mob
 end
 
+-- Client -> Server: Handle spawn egg usage to spawn a mob at target location
+function MobEntityService:HandleSpawnEggUse(player, data)
+	if not data or type(data) ~= "table" then
+		return
+	end
+	local x, y, z = data.x, data.y, data.z
+	local eggItemId = tonumber(data.eggItemId)
+	local hotbarSlot = tonumber(data.hotbarSlot) or 1
+	if type(x) ~= "number" or type(y) ~= "number" or type(z) ~= "number" or not eggItemId then
+		return
+	end
+	if not SpawnEggConfig.IsSpawnEgg(eggItemId) then
+		return
+	end
+
+	if not player or not player:IsDescendantOf(Players) then
+		return
+	end
+
+	local eggInfo = SpawnEggConfig.GetEggInfo(eggItemId)
+	if not eggInfo or not eggInfo.mobType then
+		return
+	end
+	local mobType = eggInfo.mobType
+
+	-- Compute target world position from block coordinates (center of cell, slightly above)
+	local BLOCK_SIZE = Constants.BLOCK_SIZE
+	local worldPos = Vector3.new(
+		x * BLOCK_SIZE + BLOCK_SIZE * 0.5,
+		y * BLOCK_SIZE + BLOCK_SIZE * 0.75,
+		z * BLOCK_SIZE + BLOCK_SIZE * 0.5
+	)
+
+	-- Reach validation similar to placement
+	local character = player.Character
+	if not character then return end
+	local head = character:FindFirstChild("Head")
+	if not head then return end
+	local distance = (worldPos - head.Position).Magnitude
+	local maxReach = 4.5 * BLOCK_SIZE + 2
+	if distance > maxReach then
+		return
+	end
+
+	-- Basic collision check: prefer air at target, else try one block higher
+	local vws = self.Deps and self.Deps.VoxelWorldService
+	if vws and vws.worldManager then
+		local atId = vws.worldManager:GetBlock(x, y, z)
+		if atId and atId ~= Constants.BlockType.AIR then
+			local aboveId = vws.worldManager:GetBlock(x, y + 1, z)
+			if aboveId and aboveId ~= Constants.BlockType.AIR then
+				return
+			end
+			worldPos = Vector3.new(
+				x * BLOCK_SIZE + BLOCK_SIZE * 0.5,
+				(y + 1) * BLOCK_SIZE + BLOCK_SIZE * 0.75,
+				z * BLOCK_SIZE + BLOCK_SIZE * 0.5
+			)
+		end
+	end
+
+	-- Consume the egg from the specified hotbar slot
+	if self.Deps and self.Deps.PlayerInventoryService then
+		local inv = self.Deps.PlayerInventoryService
+		if not inv:ConsumeFromHotbar(player, hotbarSlot, eggItemId) then
+			return
+		end
+	end
+
+	-- Spawn mob
+	self:SpawnMob(mobType, worldPos, { metadata = { spawnedBy = player.UserId } })
+end
+
 function MobEntityService:DespawnMob(entityId, opts)
 	local ctx = ensureWorldContext(self)
 	local mob = ctx.mobsById[entityId]
@@ -518,7 +593,10 @@ function MobEntityService:OnChunkUnloaded(chunkX, chunkZ)
 	for entityId in pairs(bucket) do
 		local mob = ctx.mobsById[entityId]
 		if mob then
-			table.insert(ctx.persistedByChunk[key], MobRegistry:SerializeMob(mob))
+			-- Do not persist minions; they are managed by VoxelWorldService minion state
+			if mob.mobType ~= "COBBLE_MINION" then
+				table.insert(ctx.persistedByChunk[key], MobRegistry:SerializeMob(mob))
+			end
 			ctx.mobsById[entityId] = nil
 			self:_broadcastDespawn(entityId)
 		end
@@ -534,6 +612,10 @@ function MobEntityService:OnWorldDataLoaded(worldData)
 	local ctx = ensureWorldContext(self)
 	ctx.persistedByChunk = {}
 	for _, mob in ipairs(worldData.mobs) do
+		-- Ignore persisted minions; VoxelWorldService will respawn them from minion state
+		if mob.mobType == "COBBLE_MINION" then
+			continue
+		end
 		local key = chunkKey(mob.chunkX or 0, mob.chunkZ or 0)
 		ctx.persistedByChunk[key] = ctx.persistedByChunk[key] or {}
 		table.insert(ctx.persistedByChunk[key], shallowCopy(mob))
@@ -545,13 +627,19 @@ function MobEntityService:OnWorldDataSaving(worldData)
 	local ctx = ensureWorldContext(self)
 	local all = {}
 	for _, mob in pairs(ctx.mobsById) do
-		local serialized = MobRegistry:SerializeMob(mob)
-		serialized.chunkX, serialized.chunkZ = worldPositionToChunk(mob.position)
-		table.insert(all, serialized)
+		-- Skip minions; they are persisted separately in worldData.minions
+		if mob.mobType ~= "COBBLE_MINION" then
+			local serialized = MobRegistry:SerializeMob(mob)
+			serialized.chunkX, serialized.chunkZ = worldPositionToChunk(mob.position)
+			table.insert(all, serialized)
+		end
 	end
 	for _, list in pairs(ctx.persistedByChunk) do
 		for _, data in ipairs(list) do
-			table.insert(all, shallowCopy(data))
+			-- Historical data may include minions; skip them
+			if data.mobType ~= "COBBLE_MINION" then
+				table.insert(all, shallowCopy(data))
+			end
 		end
 	end
 	worldData.mobs = all
@@ -592,6 +680,201 @@ end
 function MobEntityService:_updateMob(ctx, mob, dt)
 	local def = mob.definition
 	local brain = mob.brain
+
+	-- Stationary/Minion: keep fixed at spawn, no AI, no movement
+	if mob.mobType == "COBBLE_MINION" or (mob.metadata and mob.metadata.stationary == true) then
+		-- Simple minion brain: every ~15s place or mine on 5x5 platform beneath
+		local now = os.clock()
+		-- Determine interval from minion type and level
+		-- Initialize per-context cooldown map for recently acted cells (persists across minion ticks)
+		ctx._minionCooldowns = ctx._minionCooldowns or {}
+		local cooldowns = ctx._minionCooldowns
+		local minionType = (mob.metadata and mob.metadata.minionType) or "COBBLESTONE"
+		local anchorKeyForLevel
+		do
+			anchorKeyForLevel = mob.metadata and mob.metadata.anchorKey
+			if not anchorKeyForLevel and mob.spawnPosition then
+				local bs = BLOCK_SIZE
+				local ax = math.floor(mob.spawnPosition.X / bs)
+				local ay = math.floor(mob.spawnPosition.Y / bs) - 1
+				local az = math.floor(mob.spawnPosition.Z / bs)
+				anchorKeyForLevel = string.format("%d,%d,%d", ax, ay, az)
+			end
+		end
+		local levelForTiming = 1
+		do
+			local vws = self.Deps and self.Deps.VoxelWorldService
+			if vws and anchorKeyForLevel and vws.minionStateByBlockKey then
+				local s = vws.minionStateByBlockKey[anchorKeyForLevel]
+				if s and s.level then levelForTiming = s.level end
+			end
+		end
+		local baseWait = MinionConfig.GetWaitSeconds(minionType, levelForTiming)
+		-- Add slight jitter +/-2s
+		local nextInterval = math.max(0.1, baseWait + self._rng:NextNumber(-2, 2))
+		brain.nextMinionActAt = brain.nextMinionActAt or (now + nextInterval)
+		-- Do not recompute ground for minions; keep fixed Y at spawn (prevents falling)
+		if now >= brain.nextMinionActAt then
+			-- Determine platform coordinates beneath minion
+			local BLOCK = Constants.BlockType
+			local bs = BLOCK_SIZE
+			local spawn = mob.spawnPosition
+			local cx = math.floor(spawn.X / bs)
+			local cz = math.floor(spawn.Z / bs)
+			-- Use fixed platform layer derived from spawn Y (prevents drifting with terrain changes)
+			brain.basePlatformY = brain.basePlatformY or (math.floor(spawn.Y / bs) - 1)
+			local platformY = brain.basePlatformY
+
+			local vws = self.Deps and self.Deps.VoxelWorldService
+			local wm = vws and vws.worldManager
+			-- If world manager unavailable, skip acting this cycle to avoid phantom placements based on AIR defaults
+			if not wm then
+				brain.nextMinionActAt = now + math.max(0.1, MinionConfig.GetWaitSeconds(minionType, levelForTiming) + self._rng:NextNumber(-2, 2))
+				mob.state = "idle"
+				self:_queueUpdate(mob)
+				return
+			end
+
+			local function getBlock(x, y, z)
+				if wm then return wm:GetBlock(x, y, z) end
+				return BLOCK.AIR
+			end
+			local function setBlock(x, y, z, id)
+				if vws and vws.SetBlock then
+					vws:SetBlock(x, y, z, id, nil, 0)
+				elseif wm then
+					wm:SetBlock(x, y, z, id)
+				end
+			end
+
+			-- Scan 5x5 footprint for air and target resource; avoid cells claimed by other minions this tick
+			local targetForPlace
+			local targetForMine
+			local BLOCK_TO_PLACE = MinionConfig.GetPlaceBlockId(minionType)
+			local BLOCK_TO_MINE = MinionConfig.GetMineBlockId(minionType)
+			-- Randomize scan order to reduce contention patterns across minions
+			local startI = self._rng:NextInteger(0, 4)
+			local dirI = (self._rng:NextNumber(0, 1) < 0.5) and 1 or -1
+			local startJ = self._rng:NextInteger(0, 4)
+			local dirJ = (self._rng:NextNumber(0, 1) < 0.5) and 1 or -1
+			for oj = 0, 4 do
+				local j = (startJ + oj * dirJ) % 5 -- 0..4
+				local dz = (j - 2)
+				for oi = 0, 4 do
+					local i = (startI + oi * dirI) % 5 -- 0..4
+					local dx = (i - 2)
+					local bx = cx + dx
+					local bz = cz + dz
+					local k = string.format("%d,%d,%d", bx, platformY, bz)
+					local claimed = ctx._minionClaims and ctx._minionClaims[k]
+					-- Per-cell cooldown: skip cells recently acted upon by any minion
+					local cdUntil = cooldowns and cooldowns[k]
+					local isOnCooldown = (cdUntil ~= nil and cdUntil > now)
+					if (not claimed) and (not isOnCooldown) then
+						local id = getBlock(bx, platformY, bz)
+						if id == BLOCK.AIR and not targetForPlace then
+							targetForPlace = { x = bx, y = platformY, z = bz, key = k }
+						elseif id == BLOCK_TO_MINE and not targetForMine then
+							targetForMine = { x = bx, y = platformY, z = bz, key = k }
+						end
+					end
+				end
+			end
+
+			-- Choose action: place if any air; otherwise mine if any cobblestone
+			local target = targetForPlace or targetForMine
+			if target then
+				-- Claim the target so other minions skip it this tick
+				if ctx._minionClaims then
+					ctx._minionClaims[target.key] = true
+				end
+				-- Apply a short cooldown on this cell so it won't be selected again immediately in subsequent ticks
+				if cooldowns then
+					-- Small randomization to avoid lockstep (configurable per minion type)
+					local cdMin, cdMax = MinionConfig.GetCellCooldownRangeSec(minionType)
+					cooldowns[target.key] = now + self._rng:NextNumber(cdMin, cdMax)
+				end
+				-- Face the target block center
+				local tx = target.x * bs + bs * 0.5
+				local tz = target.z * bs + bs * 0.5
+				local dx = tx - mob.position.X
+				local dz = tz - mob.position.Z
+				if math.abs(dx) > 1e-6 or math.abs(dz) > 1e-6 then
+					mob.rotation = math.deg(math.atan2(dx, dz))
+				end
+
+				-- Perform action
+				if targetForPlace and target == targetForPlace then
+					-- Re-verify target cell is still AIR before placing (race safety)
+					if getBlock(target.x, target.y, target.z) == BLOCK.AIR then
+						setBlock(target.x, target.y, target.z, BLOCK_TO_PLACE)
+						-- Update last active timestamp for offline catch-up
+						if vws then
+							local anchorKey = brain.basePlatformY and string.format("%d,%d,%d",
+								math.floor(mob.spawnPosition.X / bs),
+								(brain.basePlatformY),
+								math.floor(mob.spawnPosition.Z / bs))
+								or (mob.metadata and mob.metadata.anchorKey)
+							if anchorKey and vws.minionStateByBlockKey[anchorKey] then
+								vws.minionStateByBlockKey[anchorKey].lastActiveAt = now
+							end
+						end
+					end
+				else
+					-- Mine only if still matching target block
+					if getBlock(target.x, target.y, target.z) == BLOCK_TO_MINE then
+						-- Try to add to minion's storage
+						local anchorKey = mob.metadata and mob.metadata.anchorKey
+						-- Fallback: compute anchorKey from spawn position if missing (for persisted minions)
+						if not anchorKey and mob.spawnPosition then
+							local ax = math.floor(mob.spawnPosition.X / bs)
+							local ay = math.floor(mob.spawnPosition.Y / bs) - 1 -- minion spawns at y+1
+							local az = math.floor(mob.spawnPosition.Z / bs)
+							anchorKey = string.format("%d,%d,%d", ax, ay, az)
+							-- Cache it for future use
+							if mob.metadata then
+								mob.metadata.anchorKey = anchorKey
+							end
+						end
+						if anchorKey and vws and vws.AddItemToMinion then
+							local added = vws:AddItemToMinion(anchorKey, BLOCK_TO_MINE, 1)
+							if added then
+								-- Successfully stored, mine the block
+								setBlock(target.x, target.y, target.z, BLOCK.AIR)
+								-- Update last active timestamp for offline catch-up
+								if vws and anchorKey then
+									local key = anchorKey
+									if vws.minionStateByBlockKey[key] then
+										vws.minionStateByBlockKey[key].lastActiveAt = now
+									end
+								end
+							end
+							-- If not added (full), skip mining this cycle
+						else
+							-- No storage system; just mine to air
+							setBlock(target.x, target.y, target.z, BLOCK.AIR)
+						end
+					end
+				end
+			end
+
+			-- Schedule next action with slight jitter
+			brain.nextMinionActAt = now + math.max(0.1, MinionConfig.GetWaitSeconds(minionType, levelForTiming) + self._rng:NextNumber(-2, 2))
+		end
+
+		mob.velocity = Vector3.new()
+		-- Keep position pinned (no falling/jostling), with adjusted Y so model sits on the platform correctly
+		do
+			local bs = BLOCK_SIZE
+			local baseY = brain.basePlatformY or (math.floor(mob.spawnPosition.Y / bs) - 1)
+			-- Place minion on top of the platform block (feet at surface)
+			local pinnedY = math.max(0, (baseY + 1) * bs)
+			mob.position = Vector3.new(mob.spawnPosition.X, pinnedY, mob.spawnPosition.Z)
+		end
+		mob.state = "idle"
+		self:_queueUpdate(mob)
+		return
+	end
 
 	-- Activation gating + per-mob think staggering
 	local now = os.clock()
@@ -1740,9 +2023,13 @@ function MobEntityService:_applyMobRepulsion(ctx, dt)
                             if otherId ~= mob.entityId then
                                 local other = ctx.mobsById[otherId]
                                 if other and other.position and other.entityId then
-                                    local pk = pairKey(mob.entityId, other.entityId)
-                                    if not processed[pk] then
-                                        processed[pk] = true
+									-- Skip repulsion for minions or stationary entities
+									local skip = (mob.mobType == "COBBLE_MINION") or (mob.metadata and mob.metadata.stationary == true)
+										or (other.mobType == "COBBLE_MINION") or (other.metadata and other.metadata.stationary == true)
+									if not skip then
+										local pk = pairKey(mob.entityId, other.entityId)
+										if not processed[pk] then
+											processed[pk] = true
 
                                         -- Horizontal separation check using per-entity radii
                                         local dxv = mob.position.X - other.position.X
@@ -1782,7 +2069,8 @@ function MobEntityService:_applyMobRepulsion(ctx, dt)
                                                 end
                                             end
                                         end
-                                    end
+										end
+									end
                                 end
                             end
                         end
@@ -2227,79 +2515,8 @@ function MobEntityService:_applyMeleeDamage(player, damage)
 end
 
 function MobEntityService:_maybeSpawnNatural(ctx, chunkX, chunkZ, skip)
-	if skip then
-		return
-	end
-	local defList = {
-		MobRegistry.Definitions.SHEEP,
-		MobRegistry.Definitions.COW,
-		MobRegistry.Definitions.CHICKEN,
-		MobRegistry.Definitions.ZOMBIE
-	}
-
-	local spawnedAny = false
-
-	for _, def in ipairs(defList) do
-		if def then
-			local cap = MobRegistry:GetSpawnCap(def.category)
-			local count = self:_countMobsByCategory(ctx, def.category)
-			if count < cap then
-				local attempts = (def.spawnRules and def.spawnRules.packSize and def.spawnRules.packSize.max) or 1
-				for _ = 1, attempts do
-					local position = self:_findSpawnPosition(chunkX, chunkZ)
-					if position then
-						self:SpawnMob(def.id, position)
-						spawnedAny = true
-					end
-				end
-			end
-		end
-	end
-
-	-- Guarantee at least one zombie spawns near this chunk if nothing spawned naturally
-	if not spawnedAny then
-		local zdef = MobRegistry.Definitions.ZOMBIE
-		if zdef then
-			local cap = MobRegistry:GetSpawnCap(zdef.category)
-			local count = self:_countMobsByCategory(ctx, zdef.category)
-			if count < cap then
-				-- Try nearby chunks first (3x3 area)
-				local found
-				for dx = -1, 1 do
-					for dz = -1, 1 do
-						local pos = self:_findSpawnPosition(chunkX + dx, chunkZ + dz)
-						if pos then
-							self:SpawnMob(zdef.id, pos)
-							found = true
-							break
-						end
-					end
-					if found then break end
-				end
-				-- Fallback: try the player's current chunk
-				if not found then
-					local players = self:_playersInWorld()
-					local first = players[1]
-					if first and first.Character and first.Character:FindFirstChild("HumanoidRootPart") then
-						local root = first.Character.HumanoidRootPart
-						local pcx, pcz = worldPositionToChunk(root.Position)
-						local ppos = self:_findSpawnPosition(pcx, pcz)
-						if ppos then
-							self:SpawnMob(zdef.id, ppos)
-							found = true
-						end
-					end
-				end
-				-- As an absolute last resort, spawn at chunk center slightly above groundY we assume
-				if not found then
-					local worldX = chunkX * CHUNK_STUD_SIZE_X + CHUNK_STUD_SIZE_X / 2
-					local worldZ = chunkZ * CHUNK_STUD_SIZE_Z + CHUNK_STUD_SIZE_Z / 2
-					local pos = Vector3.new(worldX, BLOCK_SIZE * 4, worldZ)
-					self:SpawnMob(zdef.id, pos)
-				end
-			end
-		end
-	end
+	-- Natural mob spawning disabled (no zombies or passive mobs)
+	return
 end
 
 function MobEntityService:_countMobsByCategory(ctx, category)
@@ -2341,13 +2558,30 @@ end
 function MobEntityService:_onHeartbeat(dt)
 	self._updateAccumulator += dt
 	self._broadcastTimer += dt
+	-- Minion throttling accumulator (per service)
+	self._minionUpdateInterval = self._minionUpdateInterval or 0.5
+	self._minionUpdateAccumulator = (self._minionUpdateAccumulator or 0) + dt
 
 	if self._updateAccumulator >= self._updateInterval then
 		local step = self._updateAccumulator
 		self._updateAccumulator = 0
 		for _, ctx in pairs(self._worlds) do
+			-- Determine if minions should be processed this cycle; reset per-ctx claim set
+			local minionTick = false
+			if self._minionUpdateAccumulator >= self._minionUpdateInterval then
+				self._minionUpdateAccumulator -= self._minionUpdateInterval
+				minionTick = true
+				ctx._minionClaims = {}
+			end
 			for _, mob in pairs(ctx.mobsById) do
-				self:_updateMob(ctx, mob, step)
+				-- Skip minion updates on most frames; only run when minionTick is true
+				if mob.mobType == "COBBLE_MINION" or (mob.metadata and mob.metadata.stationary == true) then
+					if minionTick then
+						self:_updateMob(ctx, mob, step)
+					end
+				else
+					self:_updateMob(ctx, mob, step)
+				end
 			end
 			-- Apply small horizontal repulsion after movement to reduce crowd cramming
 			self:_applyMobRepulsion(ctx, step)
@@ -2364,6 +2598,11 @@ function MobEntityService:DamageMob(entityId, amount, player)
 	local ctx = ensureWorldContext(self)
 	local mob = ctx.mobsById[entityId]
 	if not mob then
+		return
+	end
+
+	-- Unattackable mobs (e.g., minions) ignore damage
+	if mob.metadata and mob.metadata.unattackable == true then
 		return
 	end
 
@@ -2442,6 +2681,11 @@ function MobEntityService:HandleAttackMob(player, data)
 	local ctx = ensureWorldContext(self)
 	local mob = ctx.mobsById[data.entityId]
 	if not mob then
+		return
+	end
+
+	-- Ignore attacks on invincible/static minions
+	if mob.mobType == "COBBLE_MINION" or (mob.metadata and mob.metadata.unattackable == true) then
 		return
 	end
 

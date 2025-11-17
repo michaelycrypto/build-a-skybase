@@ -131,12 +131,16 @@ function ChestStorageService:InitializeStarterChest(x, y, z)
 	-- Starter chest items tuned for testing new wood families and recipes
 	-- Baseline essentials
 	local blockTypes = {
+		-- Requested essentials
+		{id = Constants.BlockType.COBBLESTONE_MINION, count = 1, metadata = { level = 1, minionType = "COBBLESTONE" }}, -- Level 1 Cobblestone Minion
+		{id = Constants.BlockType.BIRCH_SAPLING, count = 8},      -- Birch saplings (requested)
+		{id = Constants.BlockType.COBBLESTONE, count = 64},       -- 1 stack cobblestone (requested)
+
 		{id = Constants.BlockType.GRASS, count = 64},           -- 1 stack grass blocks
 		{id = Constants.BlockType.OAK_SAPLING, count = 8},      -- Oak saplings
 		{id = Constants.BlockType.WOOD, count = 64},            -- Oak logs
 		{id = Constants.BlockType.OAK_PLANKS, count = 64},      -- Oak planks
 		{id = Constants.BlockType.STONE_BRICKS, count = 64},    -- Building block: Stone Bricks
-		{id = Constants.BlockType.COBBLESTONE, count = 64},     -- Building block: Cobblestone
 		{id = Constants.BlockType.BRICKS, count = 64},          -- Building block: Bricks
 
 		-- Spruce samples
@@ -155,7 +159,6 @@ function ChestStorageService:InitializeStarterChest(x, y, z)
 		{id = Constants.BlockType.DARK_OAK_PLANKS, count = 32},
 
 		-- Birch samples
-		{id = Constants.BlockType.BIRCH_SAPLING, count = 8},
 		{id = Constants.BlockType.BIRCH_LOG, count = 32},
 		{id = Constants.BlockType.BIRCH_PLANKS, count = 32},
 
@@ -176,6 +179,11 @@ function ChestStorageService:InitializeStarterChest(x, y, z)
 	for i, blockData in ipairs(blockTypes) do
 		if i <= CHEST_SLOTS then
 			local stack = ItemStack.new(blockData.id, blockData.count)
+			if blockData.metadata then
+				for k, v in pairs(blockData.metadata) do
+					stack.metadata[k] = v
+				end
+			end
 			chest.slots[i] = stack:Serialize()
 			print(string.format("[InitializeStarterChest] Added block ID %d (x%d) to slot %d", blockData.id, blockData.count, i))
 		end

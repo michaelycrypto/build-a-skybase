@@ -289,6 +289,10 @@ function MobReplicationController:_onMobDamaged(data)
 	if not mob then
 		return
 	end
+	-- Ignore damage visuals/combat tagging for static minions
+	if mob.mobType == "COBBLE_MINION" then
+		return
+	end
 	-- Simple damage flash by briefly changing root transparency
 	local model = mob.build.model
 	if model and model.PrimaryPart then
@@ -376,6 +380,14 @@ function MobReplicationController:_onRenderStep(deltaTime)
 		end
 
 		if isNear then
+			-- Static minions: snap to exact position, no interpolation or animation
+			if mob.mobType == "COBBLE_MINION" then
+				if mob.targetCFrame then
+					mob.currentCFrame = mob.targetCFrame
+					mob.build.model:PivotTo(mob.currentCFrame)
+				end
+				-- Don't process animation or interpolation for static minions
+			elseif true then
 			local newCFrame = nil
 			local buf = mob.snapshots
             local usedTargetYaw = false
@@ -460,9 +472,10 @@ function MobReplicationController:_onRenderStep(deltaTime)
                 mob.currentCFrame = finalCFrame
 				mob.build.model:PivotTo(mob.currentCFrame)
 			end
+			end -- end of elseif true block
 		end
 
-		if isNear and mob.animator then
+		if isNear and mob.animator and mob.mobType ~= "COBBLE_MINION" then
 			local dist = 1e9
 			if lpPos then
 				local mobPos = mob.currentCFrame and mob.currentCFrame.Position or Vector3.new()
@@ -480,8 +493,8 @@ function MobReplicationController:_onRenderStep(deltaTime)
 			end
 		end
 
-		-- Handle mob sounds
-		if mob.sounds and mob.state == "graze" and now >= mob.nextSoundTime then
+		-- Handle mob sounds (skip for minions)
+		if mob.mobType ~= "COBBLE_MINION" and mob.sounds and mob.state == "graze" and now >= mob.nextSoundTime then
 			local grazeSound = mob.sounds.GrazeSound
 			if grazeSound and not grazeSound.IsPlaying then
 				grazeSound:Play()

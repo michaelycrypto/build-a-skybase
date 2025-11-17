@@ -20,8 +20,10 @@ local BlockViewportCreator = require(ReplicatedStorage.Shared.VoxelWorld.Renderi
 local BlockRegistry = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockRegistry)
 local TextureManager = require(ReplicatedStorage.Shared.VoxelWorld.Rendering.TextureManager)
 local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
+local SpawnEggConfig = require(ReplicatedStorage.Configs.SpawnEggConfig)
 local EventManager = require(ReplicatedStorage.Shared.EventManager)
 local GameConfig = require(ReplicatedStorage.Configs.GameConfig)
+local SpawnEggIcon = require(script.Parent.SpawnEggIcon)
 
 local ChestUI = {}
 ChestUI.__index = ChestUI
@@ -681,6 +683,17 @@ function ChestUI:UpdateChestSlotDisplay(index)
 					newImage.ScaleType = Enum.ScaleType.Fit
 					newImage.Parent = iconContainer
 				end
+			elseif SpawnEggConfig.IsSpawnEgg(itemId) then
+				-- Render spawn eggs as 2D icons (same as inventory)
+				for _, child in ipairs(iconContainer:GetChildren()) do
+					if not child:IsA("UILayout") and not child:IsA("UIPadding") and not child:IsA("UICorner") then
+						child:Destroy()
+					end
+				end
+				local icon = SpawnEggIcon.Create(itemId, UDim2.new(1, -6, 1, -6))
+				icon.Position = UDim2.new(0.5, 0, 0.5, 0)
+				icon.AnchorPoint = Vector2.new(0.5, 0.5)
+				icon.Parent = iconContainer
 			else
 				-- Decide between flat image vs 3D block and rebuild on type mismatch
 				local blockDef = BlockRegistry.Blocks[itemId]
@@ -769,6 +782,27 @@ function ChestUI:UpdateInventorySlotDisplay(index)
 					newImage.ScaleType = Enum.ScaleType.Fit
 					newImage.Parent = iconContainer
 				end
+			elseif SpawnEggConfig.IsSpawnEgg(itemId) then
+				-- Render spawn eggs in hotbar inside chest UI as 2D icons
+				for _, child in ipairs(iconContainer:GetChildren()) do
+					if not child:IsA("UILayout") and not child:IsA("UIPadding") and not child:IsA("UICorner") then
+						child:Destroy()
+					end
+				end
+				local icon = SpawnEggIcon.Create(itemId, UDim2.new(1, -6, 1, -6))
+				icon.Position = UDim2.new(0.5, 0, 0.5, 0)
+				icon.AnchorPoint = Vector2.new(0.5, 0.5)
+				icon.Parent = iconContainer
+			elseif SpawnEggConfig.IsSpawnEgg(itemId) then
+				for _, child in ipairs(iconContainer:GetChildren()) do
+					if not child:IsA("UILayout") and not child:IsA("UIPadding") and not child:IsA("UICorner") then
+						child:Destroy()
+					end
+				end
+				local icon = SpawnEggIcon.Create(itemId, UDim2.new(1, -6, 1, -6))
+				icon.Position = UDim2.new(0.5, 0, 0.5, 0)
+				icon.AnchorPoint = Vector2.new(0.5, 0.5)
+				icon.Parent = iconContainer
 			else
 				-- Decide between flat image vs 3D block and rebuild on type mismatch
 				local blockDef = BlockRegistry.Blocks[itemId]

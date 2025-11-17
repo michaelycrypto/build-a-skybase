@@ -431,6 +431,9 @@ function MobAnimator:Step(deltaTime)
 		else
 			animateChicken(self, now)
 		end
+	elseif self.definition.id == "COBBLE_MINION" then
+		-- Simple idle animation for minion (slight arm swing when mining)
+		animateZombie(self, now)
 	else
 		-- Reset transforms for unsupported mobs
 		for _, motor in pairs(self.motors) do

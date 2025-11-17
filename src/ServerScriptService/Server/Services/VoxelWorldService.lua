@@ -113,6 +113,14 @@ function VoxelWorldService:Init()
 	-- Chunk modifications tracking (for saving)
 	self.modifiedChunks = {} -- Set of chunk keys that need saving
 
+	-- Cobblestone Minion tracking
+	self.minionByBlockKey = {} -- "x,y,z" -> entityId
+	self.blockKeyByMinion = {} -- entityId -> "x,y,z"
+	self.minionStateByBlockKey = {} -- "x,y,z" -> {level=1..4, slotsUnlocked=1..4}
+	-- Minion UI viewer tracking
+	self.minionViewers = {} -- "x,y,z" -> { [player] = true }
+	self.playerMinionView = {} -- player -> "x,y,z"
+
 	print("VoxelWorldService: Initialized (single player-owned world)")
 end
 
@@ -224,6 +232,459 @@ function VoxelWorldService:HandlePlayerMeleeHit(player: Player, data)
 
     -- Apply combat tags and victim flash
     self:_tagCombat(attackerChar, victimChar)
+end
+
+-- Handle client request to open minion UI
+function VoxelWorldService:HandleOpenMinion(player, data)
+	if not data or not data.x or not data.y or not data.z then
+		return
+	end
+	-- No longer require a special block; use anchor position instead.
+	local key = string.format("%d,%d,%d", data.x, data.y, data.z)
+	local state = self.minionStateByBlockKey[key]
+	if not state then
+		state = { level = 1, slotsUnlocked = 1, type = "COBBLESTONE" }
+		self.minionStateByBlockKey[key] = state
+	end
+	-- Compute timing/costs from MinionConfig
+	local MinionConfig = require(game.ReplicatedStorage.Configs.MinionConfig)
+	state.type = state.type or "COBBLESTONE"
+	local maxLevel = (MinionConfig.GetTypeDef(state.type).maxLevel or 4)
+	local waitSec = MinionConfig.GetWaitSeconds(state.type, state.level)
+	local costNext = (state.level < maxLevel) and MinionConfig.GetUpgradeCost(state.type, state.level) or 0
+
+	-- Initialize slots if absent
+	if not state.slots then
+		state.slots = {}
+		for i = 1, 12 do
+			state.slots[i] = { itemId = 0, count = 0 }
+		end
+	end
+
+	-- Serialize slots for client
+	local slotsData = {}
+	for i = 1, 12 do
+		if state.slots[i] then
+			slotsData[i] = {
+				itemId = state.slots[i].itemId or 0,
+				count = state.slots[i].count or 0
+			}
+		end
+	end
+
+	-- If player is already viewing this minion, avoid re-sending MinionOpened (prevents duplicate UI)
+	if self.playerMinionView[player] == key then
+		local EventManager = require(game.ReplicatedStorage.Shared.EventManager)
+		EventManager:FireEvent("MinionUpdated", player, {
+			state = {
+				level = state.level,
+				slotsUnlocked = state.slotsUnlocked,
+				waitSeconds = waitSec,
+				nextUpgradeCost = costNext,
+				slots = slotsData
+			}
+		})
+		return
+	end
+
+	local EventManager = require(game.ReplicatedStorage.Shared.EventManager)
+	EventManager:FireEvent("MinionOpened", player, {
+		anchorPos = { x = data.x, y = data.y, z = data.z },
+		state = {
+			level = state.level,
+			slotsUnlocked = state.slotsUnlocked,
+			waitSeconds = waitSec,
+			nextUpgradeCost = costNext,
+			slots = slotsData
+		}
+	})
+
+	-- Track viewer subscription
+	self.minionViewers[key] = self.minionViewers[key] or {}
+	self.minionViewers[key][player] = true
+	self.playerMinionView[player] = key
+end
+
+-- Handle open UI by entity id (clicking the mob model)
+function VoxelWorldService:HandleOpenMinionByEntity(player, data)
+	if not data or not data.entityId then return end
+	local entityId = data.entityId
+	-- Try both string and numeric keys
+	local key = nil
+	local isMinionEntity = false
+	if self.blockKeyByMinion then
+		key = self.blockKeyByMinion[entityId] or self.blockKeyByMinion[tonumber(entityId)] or self.blockKeyByMinion[tostring(entityId)]
+		if key then
+			isMinionEntity = true
+		end
+	end
+	if not key then
+		-- Fallback: try to locate mob and infer anchor from spawnPosition
+		local mobService = self.Deps and self.Deps.MobEntityService
+		if mobService and mobService._worlds then
+			for _, ctx in pairs(mobService._worlds) do
+				local mob = ctx.mobsById[tonumber(entityId)] or ctx.mobsById[tostring(entityId)]
+				if mob then
+					if mob.mobType ~= "COBBLE_MINION" then
+						-- Not a minion entity; ignore request
+						return
+					end
+					isMinionEntity = true
+				end
+				if mob and mob.spawnPosition then
+					local bs = require(game.ReplicatedStorage.Shared.VoxelWorld.Core.Constants).BLOCK_SIZE
+					local x = math.floor(mob.spawnPosition.X / bs)
+					local y = math.floor(mob.spawnPosition.Y / bs) - 1
+					local z = math.floor(mob.spawnPosition.Z / bs)
+					key = string.format("%d,%d,%d", x, y, z)
+					break
+				end
+			end
+		end
+	end
+	-- If we still haven't confirmed it's a minion entity, reject
+	if not isMinionEntity then
+		return
+	end
+	if not key then return end
+	local x, y, z = string.match(key, "(-?%d+),(-?%d+),(-?%d+)")
+	x, y, z = tonumber(x), tonumber(y), tonumber(z)
+	if not x then return end
+	-- Reuse HandleOpenMinion state logic but with derived coordinates
+	return self:HandleOpenMinion(player, { x = x, y = y, z = z })
+end
+
+-- Handle minion upgrade: spend cobblestone, level up, unlock slot, lower wait
+function VoxelWorldService:HandleMinionUpgrade(player, data)
+	if not data or not data.x or not data.y or not data.z then
+		return
+	end
+	local key = string.format("%d,%d,%d", data.x, data.y, data.z)
+	local state = self.minionStateByBlockKey[key]
+	if not state then
+		state = { level = 1, slotsUnlocked = 1, type = "COBBLESTONE" }
+		self.minionStateByBlockKey[key] = state
+	end
+	local MinionConfig = require(game.ReplicatedStorage.Configs.MinionConfig)
+	state.type = state.type or "COBBLESTONE"
+	local maxLevel = (MinionConfig.GetTypeDef(state.type).maxLevel or 4)
+	if state.level >= maxLevel then
+		return
+	end
+	local cost = MinionConfig.GetUpgradeCost(state.type, state.level)
+	-- Charge appropriate item from inventory
+	if self.Deps and self.Deps.PlayerInventoryService then
+		local inv = self.Deps.PlayerInventoryService
+		local itemId = MinionConfig.GetUpgradeItemId(state.type)
+		local have = inv:GetItemCount(player, itemId)
+		if have < cost then
+			local EventManager = require(game.ReplicatedStorage.Shared.EventManager)
+			EventManager:FireEvent("ShowError", player, { message = "Not enough materials" })
+			return
+		end
+		local ok = inv:RemoveItem(player, itemId, cost)
+		if not ok then
+			local EventManager = require(game.ReplicatedStorage.Shared.EventManager)
+			EventManager:FireEvent("ShowError", player, { message = "Failed to consume materials" })
+			return
+		end
+	end
+	-- Apply upgrade
+	state.level = math.min(maxLevel, state.level + 1)
+	state.slotsUnlocked = math.min(12, (state.slotsUnlocked or 1) + 1)
+	local waitSec = MinionConfig.GetWaitSeconds(state.type, state.level)
+	local nextCost = (state.level < maxLevel) and MinionConfig.GetUpgradeCost(state.type, state.level) or 0
+	-- Broadcast to all viewers for this anchor
+	self:_broadcastMinionState(key)
+end
+
+-- Handle collect all items from minion
+function VoxelWorldService:HandleMinionCollectAll(player, data)
+	if not data or not data.x or not data.y or not data.z then return end
+
+	local key = string.format("%d,%d,%d", data.x, data.y, data.z)
+	local state = self.minionStateByBlockKey[key]
+	if not state or not state.slots then
+		print(string.format("[Minion] CollectAll: no state for %s by %s", key, player and player.Name or "?"))
+		local EventManager = require(game.ReplicatedStorage.Shared.EventManager)
+		EventManager:FireEvent("ShowError", player, { message = "Minion not found or empty" })
+		return
+	end
+
+	local inv = self.Deps and self.Deps.PlayerInventoryService
+	if not inv then
+		print("[Minion] CollectAll: PlayerInventoryService not available")
+		return
+	end
+
+	print(string.format("[Minion] CollectAll: %s requested at %s", player.Name, key))
+
+	-- Collect all items from unlocked slots
+	local collected = 0
+	local attempted = 0
+	for i = 1, math.min(12, state.slotsUnlocked or 1) do
+		local slot = state.slots[i]
+		if slot and slot.itemId and slot.itemId > 0 and slot.count and slot.count > 0 then
+			attempted += slot.count
+			-- Add as much as possible respecting stack limits; clear or reduce slot
+			local toMove = slot.count
+			local addedCount = inv.AddItemCount and inv:AddItemCount(player, slot.itemId, toMove) or (inv:AddItem(player, slot.itemId, toMove) and toMove or 0)
+			if addedCount > 0 then
+				collected = collected + addedCount
+				local remaining = slot.count - addedCount
+				if remaining <= 0 then
+					slot.itemId = 0
+					slot.count = 0
+				else
+					slot.count = remaining
+				end
+			end
+		end
+	end
+
+	-- Always sync updated slots to client (even if nothing was collected) to reflect partial moves
+	-- Broadcast to all viewers (reflect partial or full moves)
+	self:_broadcastMinionState(key)
+
+	-- Feedback to requester
+	local EventManager = require(game.ReplicatedStorage.Shared.EventManager)
+	if collected > 0 then
+		print(string.format("[Minion] CollectAll: moved %d/%d items at %s for %s", collected, attempted, key, player.Name))
+		EventManager:FireEvent("ShowNotification", player, {
+			title = "Minion",
+			message = string.format("Collected %d item(s)", collected)
+		})
+	end
+	-- If nothing moved but there were items, show an error (likely inventory full)
+	if collected == 0 and attempted > 0 then
+		print(string.format("[Minion] CollectAll: inventory full for %s at %s (attempted %d)", player.Name, key, attempted))
+		EventManager:FireEvent("ShowError", player, { message = "Inventory full" })
+	end
+end
+
+-- Handle pickup minion: despawn, remove state, return item to player
+function VoxelWorldService:HandleMinionPickup(player, data)
+	if not data or not data.x or not data.y or not data.z then return end
+
+	local key = string.format("%d,%d,%d", data.x, data.y, data.z)
+	local state = self.minionStateByBlockKey[key]
+
+	-- Check if minion has items and warn player
+	if state and state.slots then
+		local hasItems = false
+		for i = 1, (state.slotsUnlocked or 1) do
+			local slot = state.slots[i]
+			if slot and slot.itemId and slot.itemId > 0 and slot.count and slot.count > 0 then
+				hasItems = true
+				break
+			end
+		end
+		if hasItems then
+			local EventManager = require(game.ReplicatedStorage.Shared.EventManager)
+			EventManager:FireEvent("ShowError", player, {
+				message = "Minion has items! Collect them first or they will be lost."
+			})
+			-- Still allow pickup, but warned
+		end
+	end
+
+	local entityId = self.minionByBlockKey[key]
+	-- Fallback: if mapping lost, locate the minion entity by anchorKey metadata
+	if (not entityId) and self.Deps and self.Deps.MobEntityService then
+		local mobService = self.Deps.MobEntityService
+		if mobService._worlds then
+			for _, ctx in pairs(mobService._worlds) do
+				for id, mob in pairs(ctx.mobsById) do
+					if mob and mob.mobType == "COBBLE_MINION" and mob.metadata and mob.metadata.anchorKey == key then
+						entityId = id
+						break
+					end
+				end
+			end
+		end
+	end
+
+	-- Despawn minion entity
+	if entityId then
+		local mobService = self.Deps and self.Deps.MobEntityService
+		if mobService and mobService.DespawnMob then
+			mobService:DespawnMob(entityId)
+		end
+		self.minionByBlockKey[key] = nil
+		self.blockKeyByMinion[entityId] = nil
+	end
+	-- Also clear mapping if no entity found to avoid stale references
+	self.minionByBlockKey[key] = nil
+
+	-- Remove state
+	self.minionStateByBlockKey[key] = nil
+
+	-- Remove any leftover minion block at anchor
+	do
+		local wm = self.worldManager
+		if wm then
+			local Constants = require(game.ReplicatedStorage.Shared.VoxelWorld.Core.Constants)
+			if wm:GetBlock(data.x, data.y, data.z) == Constants.BlockType.COBBLESTONE_MINION then
+				wm:SetBlock(data.x, data.y, data.z, Constants.BlockType.AIR)
+			end
+		end
+	end
+
+	-- Close UI for all viewers and unsubscribe them
+	do
+		local viewers = self.minionViewers and self.minionViewers[key]
+		if viewers then
+			local EventManager = require(game.ReplicatedStorage.Shared.EventManager)
+			for viewer in pairs(viewers) do
+				-- Clear reverse mapping
+				if self.playerMinionView then
+					self.playerMinionView[viewer] = nil
+				end
+				-- Notify viewer to close UI
+				EventManager:FireEvent("MinionClosed", viewer)
+			end
+			self.minionViewers[key] = nil
+		end
+	end
+
+	-- Return minion item to player
+	local inv = self.Deps and self.Deps.PlayerInventoryService
+	if inv then
+		local MinionConfig = require(game.ReplicatedStorage.Configs.MinionConfig)
+		local t = (state and state.type) or "COBBLESTONE"
+		local itemId = MinionConfig.GetPickupItemId(t)
+			-- Include level/type in returned item's metadata (non-stackable item)
+			local metadata = {
+				level = (state and state.level) or 1,
+				minionType = t,
+				slotsUnlocked = (state and state.slotsUnlocked) or MinionConfig.GetSlotsUnlocked(t, (state and state.level) or 1)
+			}
+			if inv.AddItemWithMetadata then
+				local ok = inv:AddItemWithMetadata(player, itemId, metadata)
+				if not ok then
+					-- Inventory full: drop on ground as a fallback (optional)
+					local EventManager = require(game.ReplicatedStorage.Shared.EventManager)
+					EventManager:FireEvent("ShowError", player, { message = "Inventory full" })
+				end
+			else
+				inv:AddItem(player, itemId, 1)
+			end
+	end
+
+	-- Close UI
+	local EventManager = require(game.ReplicatedStorage.Shared.EventManager)
+	EventManager:FireEvent("MinionClosed", player)
+end
+
+-- Close minion UI for a player (unsubscribe)
+function VoxelWorldService:HandleCloseMinion(player, data)
+	-- Remove viewer subscription if present
+	local key = self.playerMinionView[player]
+	if key and self.minionViewers[key] then
+		self.minionViewers[key][player] = nil
+		if next(self.minionViewers[key]) == nil then
+			self.minionViewers[key] = nil
+		end
+	end
+	self.playerMinionView[player] = nil
+	-- Acknowledge close back to client
+	local EventManager = require(game.ReplicatedStorage.Shared.EventManager)
+	EventManager:FireEvent("MinionClosed", player)
+end
+
+-- Add item to minion's internal storage (called when minion mines)
+function VoxelWorldService:AddItemToMinion(anchorKey, itemId, count)
+	if not anchorKey or not itemId or not count or count <= 0 then
+		return false
+	end
+
+	local state = self.minionStateByBlockKey[anchorKey]
+	if not state then
+		return false
+	end
+
+	-- Initialize slots if absent
+	if not state.slots then
+		state.slots = {}
+		for i = 1, 12 do
+			state.slots[i] = { itemId = 0, count = 0 }
+		end
+	end
+
+	local slotsUnlocked = state.slotsUnlocked or 1
+	local remaining = count
+
+	-- Try to stack with existing slots first
+	for i = 1, slotsUnlocked do
+		if remaining <= 0 then break end
+		local slot = state.slots[i]
+		if slot.itemId == itemId and slot.count < 64 then
+			local canAdd = math.min(64 - slot.count, remaining)
+			slot.count = slot.count + canAdd
+			remaining = remaining - canAdd
+		end
+	end
+
+	-- Fill empty slots
+	for i = 1, slotsUnlocked do
+		if remaining <= 0 then break end
+		local slot = state.slots[i]
+		if slot.itemId == 0 or slot.count == 0 then
+			local canAdd = math.min(64, remaining)
+			slot.itemId = itemId
+			slot.count = canAdd
+			remaining = remaining - canAdd
+		end
+	end
+
+	-- Return true if all added, false if some remained (minion full)
+	local allAdded = (remaining == 0)
+
+	-- Broadcast updated state to any viewers of this minion
+	self:_broadcastMinionState(anchorKey)
+
+	return allAdded
+end
+
+-- Build state payload for a minion anchor
+function VoxelWorldService:_buildMinionStatePayload(state)
+	local MinionConfig = require(game.ReplicatedStorage.Configs.MinionConfig)
+	local t = (state and state.type) or "COBBLESTONE"
+	local maxLevel = (MinionConfig.GetTypeDef(t).maxLevel or 4)
+	local waitSec = MinionConfig.GetWaitSeconds(t, state.level or 1)
+	local nextCost = ((state.level or 1) < maxLevel) and MinionConfig.GetUpgradeCost(t, state.level or 1) or 0
+	-- Serialize slots
+	local slotsData = {}
+	if state and state.slots then
+		for i = 1, 12 do
+			if state.slots[i] then
+				slotsData[i] = {
+					itemId = state.slots[i].itemId or 0,
+					count = state.slots[i].count or 0
+				}
+			end
+		end
+	end
+	return {
+		level = state.level or 1,
+		slotsUnlocked = state.slotsUnlocked or 1,
+		waitSeconds = waitSec,
+		nextUpgradeCost = nextCost,
+		slots = slotsData
+	}
+end
+
+-- Broadcast current minion state to all viewers of the anchor
+function VoxelWorldService:_broadcastMinionState(anchorKey)
+	local state = self.minionStateByBlockKey[anchorKey]
+	if not state then return end
+	local viewers = self.minionViewers[anchorKey]
+	if not viewers then return end
+	local payload = self:_buildMinionStatePayload(state)
+	local EventManager = require(game.ReplicatedStorage.Shared.EventManager)
+	for viewer, _ in pairs(viewers) do
+		EventManager:FireEvent("MinionUpdated", viewer, { state = payload })
+	end
 end
 
 -- Cancel block breaking immediately for a specific block
@@ -590,6 +1051,26 @@ function VoxelWorldService:SetBlock(x, y, z, blockId, player, metadata)
 	if cropService and cropService.OnBlockChanged then
 		local metaNow = metadata or self.worldManager:GetBlockMetadata(x, y, z) or 0
 		cropService:OnBlockChanged(x, y, z, blockId, metaNow, prevBlockId)
+	end
+
+	-- Cobblestone Minion: if removed/replaced, despawn linked minion
+	do
+		local BLOCK = Constants.BlockType
+		if prevBlockId == BLOCK.COBBLESTONE_MINION and blockId ~= BLOCK.COBBLESTONE_MINION then
+			local key = string.format("%d,%d,%d", x, y, z)
+			local entityId = self.minionByBlockKey and self.minionByBlockKey[key]
+			if entityId and self.Deps and self.Deps.MobEntityService and self.Deps.MobEntityService.DespawnMob then
+				pcall(function()
+					self.Deps.MobEntityService:DespawnMob(entityId)
+				end)
+			end
+			if self.minionByBlockKey then
+				self.minionByBlockKey[key] = nil
+			end
+			if self.blockKeyByMinion and entityId then
+				self.blockKeyByMinion[entityId] = nil
+			end
+		end
 	end
 
 	-- After changing a block, update nearby stair shapes
@@ -1021,6 +1502,17 @@ function VoxelWorldService:RequestBlockPlace(player, placeData)
 	-- For potential slab merges, we'll validate after checking if they can actually merge
 	local canPlace, reason
 	if not isPotentialSlabMerge then
+		-- Special rule: Cobblestone Minion must be placed by clicking a TOP face
+		do
+			local BLOCK = Constants.BlockType
+			local fn = placeData.faceNormal
+			if placeData.blockId == BLOCK.COBBLESTONE_MINION then
+				if not (fn and fn.Y and fn.Y == 1) then
+					self:RejectBlockChange(player, {x = x, y = y, z = z}, "minion_top_face_only")
+					return
+				end
+			end
+		end
 		canPlace, reason = BlockPlacementRules:CanPlace(
 			self.worldManager,
 			x, y, z,
@@ -1442,6 +1934,100 @@ function VoxelWorldService:RequestBlockPlace(player, placeData)
 		end
 	end
 
+	-- Special-case: Minion placement behaves like a spawn (no block created)
+	if blockId == Constants.BlockType.COBBLESTONE_MINION then
+		-- Only allow placing into air with solid support below (top surface)
+		local atId = self.worldManager:GetBlock(x, y, z)
+		local belowId = self.worldManager:GetBlock(x, y - 1, z)
+		if atId ~= Constants.BlockType.AIR then
+			self:RejectBlockChange(player, {x = x, y = y, z = z}, "space_occupied")
+			return
+		end
+		if belowId == Constants.BlockType.AIR then
+			self:RejectBlockChange(player, {x = x, y = y - 1, z = z}, "no_support")
+			return
+		end
+
+		-- Consume one item from hotbar
+		if self.Deps and self.Deps.PlayerInventoryService then
+			local inventoryService = self.Deps.PlayerInventoryService
+			local hotbarSlot = placeData.hotbarSlot or 1
+			-- Peek metadata before consuming
+			local sourceStack = inventoryService.GetHotbarSlot and inventoryService:GetHotbarSlot(player, hotbarSlot)
+			local itemMeta = (sourceStack and sourceStack.metadata) or {}
+			if not inventoryService:HasItem(player, blockId) then
+				self:RejectBlockChange(player, {x = x, y = y, z = z}, "no_item")
+				return
+			end
+			if not inventoryService:ConsumeFromHotbar(player, hotbarSlot, blockId) then
+				self:RejectBlockChange(player, {x = x, y = y, z = z}, "consume_failed")
+				return
+			end
+			-- After consume, itemMeta still holds pre-consumption metadata
+
+		-- No prefill platform; minion will place blocks over time
+
+		-- Spawn the minion mob at block top center (feet on surface)
+		do
+			local mobService = self.Deps and self.Deps.MobEntityService
+			if mobService and mobService.SpawnMob then
+				local bs = Constants.BLOCK_SIZE
+				local worldPos = Vector3.new(
+					x * bs + bs * 0.5,
+					(y) * bs,
+					z * bs + bs * 0.5
+				)
+				-- Anchor key should reference the supporting platform block (one below target air)
+				local key = string.format("%d,%d,%d", x, y - 1, z)
+				-- Ensure minion state exists and has a type
+				local state = self.minionStateByBlockKey[key]
+				if not state then
+					local initLevel = tonumber(itemMeta.level) or 1
+					local initType = tostring(itemMeta.minionType or itemMeta.type or "COBBLESTONE")
+					local MinionConfig = require(game.ReplicatedStorage.Configs.MinionConfig)
+					local initSlots = tonumber(itemMeta.slotsUnlocked)
+					if not initSlots or initSlots < 1 then
+						initSlots = MinionConfig.GetSlotsUnlocked(initType, initLevel)
+					end
+					state = { level = initLevel, slotsUnlocked = initSlots, type = initType, slots = {}, lastActiveAt = os.clock() }
+					for i = 1, 12 do
+						state.slots[i] = { itemId = 0, count = 0 }
+					end
+					self.minionStateByBlockKey[key] = state
+				else
+					state.type = state.type or "COBBLESTONE"
+				end
+				local mob = mobService:SpawnMob("COBBLE_MINION", worldPos, {
+					metadata = {
+						unattackable = true,
+						stationary = true,
+						anchorKey = key,
+						minionType = state.type
+					}
+				})
+				if mob and mob.entityId then
+					self.minionByBlockKey[key] = mob.entityId
+					self.blockKeyByMinion[mob.entityId] = key
+					-- Initialize minion state at this anchor if absent
+					if not self.minionStateByBlockKey[key] then
+						self.minionStateByBlockKey[key] = {
+							level = 1,
+							slotsUnlocked = 1,
+							slots = {}
+						}
+						for i = 1, 12 do
+							self.minionStateByBlockKey[key].slots[i] = { itemId = 0, count = 0 }
+						end
+					end
+				end
+			end
+		end
+
+		-- Do not place a block; end request
+		return
+		end
+	end
+
 	-- Check inventory (consume the original slab item from player's hotbar)
 	if self.Deps and self.Deps.PlayerInventoryService then
 		local inventoryService = self.Deps.PlayerInventoryService
@@ -1471,6 +2057,73 @@ function VoxelWorldService:RequestBlockPlace(player, placeData)
 		else
 			print(string.format("Player %s placed block %d at (%d, %d, %d) with metadata %d",
 				player.Name, actualBlockId, actualX, actualY, actualZ, actualMetadata))
+		end
+
+		-- Special behavior: Cobblestone Minion
+		if actualBlockId == Constants.BlockType.COBBLESTONE_MINION then
+			-- Fill 5x5 layer beneath with cobblestone where air
+			local BLOCK = Constants.BlockType
+			for dx = -2, 2 do
+				for dz = -2, 2 do
+					local tx = actualX + dx
+					local tz = actualZ + dz
+					local ty = actualY - 1
+					local existing = self.worldManager:GetBlock(tx, ty, tz)
+					if existing == BLOCK.AIR then
+						self.worldManager:SetBlock(tx, ty, tz, BLOCK.COBBLESTONE)
+						-- mark modified for save/stream
+						local chunkX = math.floor(tx / Constants.CHUNK_SIZE_X)
+						local chunkZ = math.floor(tz / Constants.CHUNK_SIZE_Z)
+						local key = string.format("%d,%d", chunkX, chunkZ)
+						self.modifiedChunks[key] = true
+						-- Broadcast change
+						for otherPlayer, _ in pairs(self.players) do
+							pcall(function()
+								EventManager:FireEvent("BlockChanged", otherPlayer, {
+									x = tx, y = ty, z = tz,
+									blockId = BLOCK.COBBLESTONE,
+									metadata = 0
+								})
+							end)
+						end
+					end
+				end
+			end
+
+			-- Spawn the minion mob at block center
+			local mobService = self.Deps and self.Deps.MobEntityService
+			if mobService and mobService.SpawnMob then
+				local BLOCK_SIZE = Constants.BLOCK_SIZE
+				local pos = Vector3.new(
+					actualX * BLOCK_SIZE + BLOCK_SIZE * 0.5,
+					(actualY + 1) * BLOCK_SIZE, -- block top (feet on surface)
+					actualZ * BLOCK_SIZE + BLOCK_SIZE * 0.5
+				)
+				local key = string.format("%d,%d,%d", actualX, actualY, actualZ)
+				-- Ensure minion state exists and has a type
+				local state = self.minionStateByBlockKey[key]
+				if not state then
+					state = { level = 1, slotsUnlocked = 1, type = "COBBLESTONE", slots = {} }
+					for i = 1, 12 do
+						state.slots[i] = { itemId = 0, count = 0 }
+					end
+					self.minionStateByBlockKey[key] = state
+				else
+					state.type = state.type or "COBBLESTONE"
+				end
+				local mob = mobService:SpawnMob("COBBLE_MINION", pos, {
+					metadata = {
+						unattackable = true,
+						stationary = true,
+						anchorKey = key,
+						minionType = state.type
+					}
+				})
+				if mob and mob.entityId then
+					self.minionByBlockKey[key] = mob.entityId
+					self.blockKeyByMinion[mob.entityId] = key
+				end
+			end
 		end
 	end
 end
@@ -1841,6 +2494,22 @@ function VoxelWorldService:SaveWorldData()
 		print(string.format("Saved %d chests", worldData.chests and #worldData.chests or 0))
 	end
 
+		-- Save minion states
+	if self.minionStateByBlockKey then
+		worldData.minions = {}
+		for anchorKey, state in pairs(self.minionStateByBlockKey) do
+			table.insert(worldData.minions, {
+				anchorKey = anchorKey,
+				type = state.type or "COBBLESTONE",
+				level = state.level,
+				slotsUnlocked = state.slotsUnlocked,
+					slots = state.slots,
+					lastActiveAt = state.lastActiveAt
+			})
+		end
+		print(string.format("Saved %d minion states", #worldData.minions))
+	end
+
 	-- Save through ownership service
 	print("Calling WorldOwnershipService:SaveWorldData...")
 	local success = ownershipService:SaveWorldData(worldData)
@@ -1938,6 +2607,37 @@ function VoxelWorldService:LoadWorldData()
 		self.Deps.ChestStorageService:LoadChestData(worldData.chests)
 	end
 
+	-- Load minion states
+	if worldData.minions then
+		print(string.format("Loading %d minion states...", #worldData.minions))
+		for _, minionData in ipairs(worldData.minions) do
+			if minionData.anchorKey then
+				self.minionStateByBlockKey[minionData.anchorKey] = {
+					type = minionData.type or "COBBLESTONE",
+					level = minionData.level or 1,
+					slotsUnlocked = minionData.slotsUnlocked or 1,
+					slots = minionData.slots or {},
+					lastActiveAt = minionData.lastActiveAt or os.clock()
+				}
+				-- Ensure slots are initialized as proper array
+				local slots = self.minionStateByBlockKey[minionData.anchorKey].slots
+				if not slots or type(slots) ~= "table" then
+					self.minionStateByBlockKey[minionData.anchorKey].slots = {}
+					for i = 1, 12 do
+						self.minionStateByBlockKey[minionData.anchorKey].slots[i] = { itemId = 0, count = 0 }
+					end
+				else
+					-- Verify all 12 slots exist
+					for i = 1, 12 do
+						if not slots[i] then
+							slots[i] = { itemId = 0, count = 0 }
+						end
+					end
+				end
+			end
+		end
+	end
+
 	print("=====================================")
 end
 
@@ -1973,6 +2673,164 @@ function VoxelWorldService:_addViewer(player, key)
 		local cx, cz = string.match(key, "(-?%d+),(-?%d+)")
 		if cx and cz then
 			self.Deps.MobEntityService:OnChunkLoaded(tonumber(cx), tonumber(cz))
+		end
+	end
+
+	-- Check for minions that need respawning in this chunk
+	if isNew then
+		self:RespawnMinionsInChunk(key)
+	end
+end
+
+-- Respawn minions in a chunk if state exists but entity is missing
+function VoxelWorldService:RespawnMinionsInChunk(chunkKey)
+	if not self.minionStateByBlockKey then return end
+
+	local cx, cz = string.match(chunkKey, "(-?%d+),(-?%d+)")
+	if not cx or not cz then return end
+	cx, cz = tonumber(cx), tonumber(cz)
+
+	local Constants = require(game.ReplicatedStorage.Shared.VoxelWorld.Core.Constants)
+	local bs = Constants.BLOCK_SIZE
+
+	-- Helper: apply offline fast-forward for a single minion at anchor
+	local function fastForwardMinion(anchorKey, state)
+		if not state then return end
+		-- Determine elapsed time since last activity
+		local now = os.clock()
+		local last = tonumber(state.lastActiveAt) or now
+		local elapsed = math.max(0, now - last)
+		if elapsed < 2 then return end -- ignore trivial gaps
+
+		local MinionConfig = require(game.ReplicatedStorage.Configs.MinionConfig)
+		local minionType = state.type or "COBBLESTONE"
+		local waitSec = MinionConfig.GetWaitSeconds(minionType, state.level or 1)
+		if waitSec <= 0 then waitSec = 15 end
+
+		-- Cap offline simulation (e.g., 8 hours)
+		local maxSeconds = 8 * 3600
+		local simSeconds = math.min(elapsed, maxSeconds)
+		local cycles = math.floor(simSeconds / waitSec)
+		if cycles <= 0 then
+			state.lastActiveAt = now
+			return
+		end
+
+		-- Derive platform from anchor
+		local ax, ay, az = string.match(anchorKey, "(-?%d+),(-?%d+),(-?%d+)")
+		if not ax or not ay or not az then
+			state.lastActiveAt = now
+			return
+		end
+		ax, ay, az = tonumber(ax), tonumber(ay), tonumber(az)
+
+		local BLOCK = Constants.BlockType
+		local placeId = MinionConfig.GetPlaceBlockId(minionType)
+		local mineId = MinionConfig.GetMineBlockId(minionType)
+
+		local acted = 0
+		for i = 1, cycles do
+			-- Scan 5x5 footprint on platform Y
+			local targetForPlace
+			local targetForMine
+			for dz = -2, 2 do
+				for dx = -2, 2 do
+					local bx = ax + dx
+					local bz = az + dz
+					local id = self.worldManager:GetBlock(bx, ay, bz)
+					if id == BLOCK.AIR and not targetForPlace then
+						targetForPlace = { x = bx, y = ay, z = bz }
+					elseif id == mineId and not targetForMine then
+						targetForMine = { x = bx, y = ay, z = bz }
+					end
+				end
+			end
+			local target = targetForPlace or targetForMine
+			if not target then
+				break
+			end
+			if targetForPlace and target == targetForPlace then
+				-- Place
+				if self.worldManager:GetBlock(target.x, target.y, target.z) == BLOCK.AIR then
+					-- Use SetBlock to broadcast
+					self:SetBlock(target.x, target.y, target.z, placeId, nil, 0)
+					acted += 1
+				end
+			else
+				-- Mine (if storage can accept)
+				if self.worldManager:GetBlock(target.x, target.y, target.z) == mineId then
+					local added = self.AddItemToMinion and self:AddItemToMinion(anchorKey, mineId, 1)
+					if added then
+						self:SetBlock(target.x, target.y, target.z, BLOCK.AIR, nil, 0)
+						acted += 1
+					else
+						-- storage full; stop mining further
+						break
+					end
+				end
+			end
+		end
+
+		-- Update last active time
+		state.lastActiveAt = now
+	end
+
+	-- Check all minion states to see if any are in this chunk
+	for anchorKey, state in pairs(self.minionStateByBlockKey) do
+		local x, y, z = string.match(anchorKey, "(-?%d+),(-?%d+),(-?%d+)")
+		if x and y and z then
+			x, y, z = tonumber(x), tonumber(y), tonumber(z)
+			local minionChunkX = math.floor(x / Constants.CHUNK_SIZE_X)
+			local minionChunkZ = math.floor(z / Constants.CHUNK_SIZE_Z)
+
+			if minionChunkX == cx and minionChunkZ == cz then
+				-- Apply offline catch-up upon chunk availability
+				fastForwardMinion(anchorKey, state)
+				-- This minion should be in this chunk
+				-- Check if entity exists
+				local entityId = self.minionByBlockKey[anchorKey]
+				local entityExists = false
+				if entityId and self.Deps.MobEntityService then
+					local mobService = self.Deps.MobEntityService
+					if mobService._worlds then
+						for _, ctx in pairs(mobService._worlds) do
+							if ctx.mobsById[entityId] then
+								entityExists = true
+								break
+							end
+						end
+					end
+				end
+
+				if not entityExists then
+					-- Respawn the minion
+					print(string.format("[Minion] Respawning minion at anchor %s", anchorKey))
+					local mobService = self.Deps.MobEntityService
+					if mobService and mobService.SpawnMob then
+						-- Derive minion type for this anchor
+						local state = self.minionStateByBlockKey[anchorKey]
+						local minionType = (state and state.type) or "COBBLESTONE"
+						local worldPos = Vector3.new(
+							x * bs + bs * 0.5,
+							(y + 1) * bs,
+							z * bs + bs * 0.5
+						)
+						local mob = mobService:SpawnMob("COBBLE_MINION", worldPos, {
+							metadata = {
+								unattackable = true,
+								stationary = true,
+								anchorKey = anchorKey,
+								minionType = minionType
+							}
+						})
+						if mob and mob.entityId then
+							self.minionByBlockKey[anchorKey] = mob.entityId
+							self.blockKeyByMinion[mob.entityId] = anchorKey
+							print(string.format("[Minion] Successfully respawned minion entity %s", tostring(mob.entityId)))
+						end
+					end
+				end
+			end
 		end
 	end
 end

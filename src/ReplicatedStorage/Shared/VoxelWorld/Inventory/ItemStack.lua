@@ -6,6 +6,7 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
+local Constants = require(ReplicatedStorage.Shared.VoxelWorld.Core.Constants)
 
 local ItemStack = {}
 ItemStack.__index = ItemStack
@@ -16,6 +17,12 @@ local MAX_STACK_SIZES = {
 	-- Tools and special items don't stack
 	-- Add custom stack sizes here if needed
 }
+
+-- Configure per-item max stacks (non-tools)
+do
+	-- Minion item is non-stackable
+	MAX_STACK_SIZES[Constants.BlockType.COBBLESTONE_MINION] = 1
+end
 
 function ItemStack.new(itemId, count, maxStack)
     local self = setmetatable({}, ItemStack)

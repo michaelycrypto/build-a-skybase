@@ -22,9 +22,11 @@ local GameState = require(script.Parent.Parent.Managers.GameState)
 local ItemStack = require(ReplicatedStorage.Shared.VoxelWorld.Inventory.ItemStack)
 local BlockViewportCreator = require(ReplicatedStorage.Shared.VoxelWorld.Rendering.BlockViewportCreator)
 local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
+local SpawnEggConfig = require(ReplicatedStorage.Configs.SpawnEggConfig)
 local EventManager = require(ReplicatedStorage.Shared.EventManager)
 local GameConfig = require(ReplicatedStorage.Configs.GameConfig)
 local IconManager = require(script.Parent.Parent.Managers.IconManager)
+local SpawnEggIcon = require(script.Parent.SpawnEggIcon)
 
 local VoxelInventoryPanel = {}
 VoxelInventoryPanel.__index = VoxelInventoryPanel
@@ -734,6 +736,11 @@ function VoxelInventoryPanel:UpdateInventorySlotDisplay(index)
 				image.Image = info and info.image or ""
 				image.ScaleType = Enum.ScaleType.Fit
 				image.Parent = slotFrame.iconContainer
+			elseif SpawnEggConfig.IsSpawnEgg(itemId) then
+				local icon = SpawnEggIcon.Create(itemId, UDim2.new(1, -6, 1, -6))
+				icon.Position = UDim2.new(0.5, 0, 0.5, 0)
+				icon.AnchorPoint = Vector2.new(0.5, 0.5)
+				icon.Parent = slotFrame.iconContainer
 			else
 				BlockViewportCreator.CreateBlockViewport(
 					slotFrame.iconContainer,
@@ -796,6 +803,11 @@ function VoxelInventoryPanel:UpdateHotbarSlotDisplay(index, slot, iconContainer,
 				image.Image = info and info.image or ""
 				image.ScaleType = Enum.ScaleType.Fit
 				image.Parent = iconContainer
+			elseif SpawnEggConfig.IsSpawnEgg(itemId) then
+				local icon = SpawnEggIcon.Create(itemId, UDim2.new(1, -6, 1, -6))
+				icon.Position = UDim2.new(0.5, 0, 0.5, 0)
+				icon.AnchorPoint = Vector2.new(0.5, 0.5)
+				icon.Parent = iconContainer
 			else
 				BlockViewportCreator.CreateBlockViewport(
 					iconContainer,

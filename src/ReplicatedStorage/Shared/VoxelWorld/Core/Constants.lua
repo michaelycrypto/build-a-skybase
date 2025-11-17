@@ -151,7 +151,10 @@ local Constants = {
 		BEETROOT_CROP_3 = 95,
 
 		-- Compost item (used to convert grass/dirt to farmland)
-		COMPOST = 96
+		COMPOST = 96,
+
+		-- Utility: visual minion block (spawns a mini zombie)
+		COBBLESTONE_MINION = 97
 	},
 
 	-- Mapping: Slab block ID → Full block ID (when two slabs combine)

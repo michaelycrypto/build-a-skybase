@@ -276,10 +276,7 @@ function ShopService:ProcessPurchase(player, itemId, quantity)
 	-- Add item to inventory
 	self.Deps.PlayerService:AddItem(player, itemId, quantity)
 
-	-- Sync player tools to add mob head to backpack
-	if self.Deps.SpawnerToolService then
-		self.Deps.SpawnerToolService:SyncPlayerTools(player)
-	end
+	-- Spawner tool sync removed
 
 	-- Reduce stock
 	self:ReduceStock(itemId, quantity)

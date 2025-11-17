@@ -118,6 +118,34 @@ MobRegistry.Definitions = {
 			cframe = CFrame.new(0, studs(1.95) / 2, 0)
 		}
 	},
+	COBBLE_MINION = {
+		id = "COBBLE_MINION",
+		displayName = "Cobblestone Minion",
+		category = MobRegistry.Categories.PASSIVE,
+		maxHealth = 9999,
+		baseDamage = 0,
+		walkSpeed = 0,
+		runSpeed = 0,
+		attackCooldown = 1.5,
+		attackRange = blocks(0),
+		aggroRange = 0,
+		useAdvancedPathfinding = false,
+		wanderRadius = blocks(0),
+		wanderInterval = { min = 999, max = 999 },
+		fleeDistance = 0,
+		spawnRules = {
+			biomes = { "ANY" },
+			lightLevel = { min = 0, max = 15 },
+			groundBlocks = { "ANY" },
+			packSize = { min = 1, max = 1 },
+			chance = 1.0
+		},
+		drops = {},
+		variants = {
+			{ id = "default", weight = 1 }
+		},
+		model = MinecraftBoneTranslator.BuildMinionModel(0.6)
+	},
 	COW = {
 		id = "COW",
 		displayName = "Cow",

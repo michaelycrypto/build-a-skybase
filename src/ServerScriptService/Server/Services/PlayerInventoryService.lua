@@ -84,24 +84,30 @@ function PlayerInventoryService:OnPlayerAdded(player: Player)
 		inventory[i] = ItemStack.new(0, 0)
 	end
 
-	-- Starter building resources: fill hotbar with common blocks and wood families
-	local B = Constants.BlockType
+	-- Redo starter loadout: tools + spawn eggs for all mobs
+	local ReplicatedStorage = game:GetService("ReplicatedStorage")
+	local SpawnEggConfig = require(ReplicatedStorage.Configs.SpawnEggConfig)
+	local eggIds = SpawnEggConfig.GetAllEggItemIds()
+
+	-- Hotbar: diamond tools (first 4) + first few eggs
 	local function setHot(slot, id, count)
 		if slot >= 1 and slot <= 9 then
 			hotbar[slot] = ItemStack.new(id, count)
 		end
 	end
-	setHot(1, B.OAK_PLANKS, 64)
-	setHot(2, B.SPRUCE_PLANKS, 64)
-	setHot(3, B.JUNGLE_PLANKS, 64)
-	setHot(4, B.DARK_OAK_PLANKS, 64)
-	setHot(5, B.BIRCH_PLANKS, 64)
-	setHot(6, B.ACACIA_PLANKS, 64)
-	setHot(7, B.COBBLESTONE, 64)
-	setHot(8, B.STONE_BRICKS, 64)
-	setHot(9, B.BRICKS, 64)
+	setHot(1, 1044, 1) -- Diamond Sword
+	setHot(2, 1004, 1) -- Diamond Pickaxe
+	setHot(3, 1014, 1) -- Diamond Axe
+	setHot(4, 1024, 1) -- Diamond Shovel
+	for i = 5, 9 do
+		local eggIndex = i - 4
+		local eggId = eggIds[eggIndex]
+		if eggId then
+			setHot(i, eggId, 64)
+		end
+	end
 
-	-- Fill inventory with additional resource stacks (27 slots)
+	-- Inventory: remaining eggs
 	local invIndex = 1
 	local function pushInv(id, count)
 		if invIndex <= 27 then
@@ -109,36 +115,10 @@ function PlayerInventoryService:OnPlayerAdded(player: Player)
 			invIndex += 1
 		end
 	end
-	-- Core resources
-	pushInv(B.STONE, 64)
-	pushInv(B.DIRT, 64)
-	pushInv(B.GRASS, 64)
-	pushInv(B.SAND, 64)
-	pushInv(B.GLASS, 64)
-	-- Logs for each family
-	pushInv(B.WOOD, 64) -- Oak logs
-	pushInv(B.SPRUCE_LOG, 64)
-	pushInv(B.JUNGLE_LOG, 64)
-	pushInv(B.DARK_OAK_LOG, 64)
-	pushInv(B.BIRCH_LOG, 64)
-	pushInv(B.ACACIA_LOG, 64)
-	-- Extra planks
-	pushInv(B.OAK_PLANKS, 64)
-	pushInv(B.SPRUCE_PLANKS, 64)
-	pushInv(B.JUNGLE_PLANKS, 64)
-	pushInv(B.DARK_OAK_PLANKS, 64)
-	pushInv(B.BIRCH_PLANKS, 64)
-	pushInv(B.ACACIA_PLANKS, 64)
-	-- Stone variants
-	pushInv(B.COBBLESTONE, 64)
-	pushInv(B.STONE_BRICKS, 64)
-	pushInv(B.BRICKS, 64)
-
-	-- Diamond tools (non-stackable)
-	pushInv(1004, 1) -- Diamond Pickaxe
-	pushInv(1014, 1) -- Diamond Axe
-	pushInv(1024, 1) -- Diamond Shovel
-	pushInv(1044, 1) -- Diamond Sword
+	for idx = 6, #eggIds do
+		if invIndex > 27 then break end
+		pushInv(eggIds[idx], 64)
+	end
 
 	self.inventories[player] = {
 		hotbar = hotbar,
@@ -276,12 +256,20 @@ end
 
 -- Add item to inventory (finds best slot)
 function PlayerInventoryService:AddItem(player: Player, itemId: number, count: number): boolean
+	-- Backwards-compatible wrapper: returns true if any amount added
+	local added = self:AddItemCount(player, itemId, count)
+	return added > 0
+end
+
+-- Add item and return the exact amount added (0..count)
+function PlayerInventoryService:AddItemCount(player: Player, itemId: number, count: number): number
 	itemId = tonumber(itemId) or 0
 	count = tonumber(count) or 0
 	local playerInv = self.inventories[player]
-	if not playerInv then return false end
+	if not playerInv then return 0 end
 
 	local remaining = count
+	local addedTotal = 0
 
 	-- Tools are non-stackable: place one per empty slot; never merge counts > 1
 	if ToolConfig.IsTool(itemId) then
@@ -291,6 +279,7 @@ function PlayerInventoryService:AddItem(player: Player, itemId: number, count: n
 				stack.itemId = itemId
 				stack:SetCount(1)
 				remaining -= 1
+				addedTotal += 1
 				self:TrackSlotChange(player, "hotbar", i)
 			end
 		end
@@ -300,11 +289,12 @@ function PlayerInventoryService:AddItem(player: Player, itemId: number, count: n
 				stack.itemId = itemId
 				stack:SetCount(1)
 				remaining -= 1
+				addedTotal += 1
 				self:TrackSlotChange(player, "inventory", i)
 			end
 		end
 
-		return remaining < count
+		return addedTotal
 	end
 
 	-- Try to stack with existing items first
@@ -315,6 +305,7 @@ function PlayerInventoryService:AddItem(player: Player, itemId: number, count: n
 			local toAdd = math.min(space, remaining)
 			stack:AddCount(toAdd)
 			remaining = remaining - toAdd
+			addedTotal += toAdd
 			self:TrackSlotChange(player, "hotbar", i)
 		end
 	end
@@ -326,6 +317,7 @@ function PlayerInventoryService:AddItem(player: Player, itemId: number, count: n
 			local toAdd = math.min(space, remaining)
 			stack:AddCount(toAdd)
 			remaining = remaining - toAdd
+			addedTotal += toAdd
 			self:TrackSlotChange(player, "inventory", i)
 		end
 	end
@@ -339,6 +331,7 @@ function PlayerInventoryService:AddItem(player: Player, itemId: number, count: n
 				stack.itemId = itemId
 				stack:SetCount(toAdd)
 				remaining = remaining - toAdd
+				addedTotal += toAdd
 				self:TrackSlotChange(player, "hotbar", i)
 			end
 		end
@@ -350,13 +343,14 @@ function PlayerInventoryService:AddItem(player: Player, itemId: number, count: n
 				stack.itemId = itemId
 				stack:SetCount(toAdd)
 				remaining = remaining - toAdd
+				addedTotal += toAdd
 				self:TrackSlotChange(player, "inventory", i)
 			end
 		end
 	end
 
 	-- Granular sync will be triggered automatically by TrackSlotChange
-	return remaining < count
+	return addedTotal
 end
 
 -- Remove item from inventory (removes from any slot)
@@ -599,6 +593,35 @@ function PlayerInventoryService:ExecuteGranularSync(player: Player)
 
 	-- Clear pending syncs
 	self.pendingSyncs[player] = {hotbar = {}, inventory = {}}
+end
+
+-- Add single item into an empty slot with metadata (server-authoritative)
+function PlayerInventoryService:AddItemWithMetadata(player: Player, itemId: number, metadata: any): boolean
+	itemId = tonumber(itemId) or 0
+	local playerInv = self.inventories[player]
+	if not playerInv then return false end
+
+	-- Construct a 1-count stack with resolved maxStack (ItemStack will clamp)
+	local stack = ItemStack.new(itemId, 1)
+	stack.metadata = metadata or {}
+
+	-- Prefer hotbar empty slot
+	for i, slot in ipairs(playerInv.hotbar) do
+		if slot:IsEmpty() then
+			playerInv.hotbar[i] = stack
+			self:TrackSlotChange(player, "hotbar", i)
+			return true
+		end
+	end
+	-- Fallback to inventory empty slot
+	for i, slot in ipairs(playerInv.inventory) do
+		if slot:IsEmpty() then
+			playerInv.inventory[i] = stack
+			self:TrackSlotChange(player, "inventory", i)
+			return true
+		end
+	end
+	return false
 end
 
 -- Handle inventory update from client (for drag-and-drop sync)

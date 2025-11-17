@@ -470,6 +470,17 @@ BlockRegistry.Blocks = {
 	}
 ,
 
+	-- Utility: Cobblestone Minion block (visual mob, block itself is invisible)
+	[Constants.BlockType.COBBLESTONE_MINION] = {
+		name = "Cobblestone Minion",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(255, 255, 255),
+		textures = nil, -- invisible like AIR
+		crossShape = false,
+		interactable = true
+	},
+
 	[Constants.BlockType.APPLE] = {
 		name = "Apple",
 		solid = false,

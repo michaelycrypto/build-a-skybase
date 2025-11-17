@@ -16,6 +16,8 @@ local ItemStack = require(ReplicatedStorage.Shared.VoxelWorld.Inventory.ItemStac
 local BlockViewportCreator = require(ReplicatedStorage.Shared.VoxelWorld.Rendering.BlockViewportCreator)
 local EventManager = require(ReplicatedStorage.Shared.EventManager)
 local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
+local SpawnEggConfig = require(ReplicatedStorage.Configs.SpawnEggConfig)
+local SpawnEggIcon = require(script.Parent.SpawnEggIcon)
 
 local VoxelHotbar = {}
 VoxelHotbar.__index = VoxelHotbar
@@ -76,6 +78,7 @@ local BLOCK_INFO = {
 	[34] = {name = "Diamond", icon = "💠", category = "Materials"},
 	[35] = {name = "Furnace", icon = "🔥", category = "Utility"},
 	[36] = {name = "Glass", icon = "🪟", category = "Building"},
+	[97] = {name = "Cobblestone Minion", icon = "🧟‍♂️", category = "Utility"}
 }
 
 function VoxelHotbar.new()
@@ -135,6 +138,7 @@ function VoxelHotbar:SetupStarterBlocks()
 	self:SetSlot(5, ItemStack.new(6, 64)) -- Leaves
 	self:SetSlot(6, ItemStack.new(7, 64)) -- Tall Grass
 	self:SetSlot(7, ItemStack.new(9, 1))  -- Chest
+	self:SetSlot(8, ItemStack.new(97, 1)) -- Cobblestone Minion (for testing)
 end
 
 function VoxelHotbar:CreateHotbar()
@@ -305,6 +309,12 @@ function VoxelHotbar:UpdateSlotDisplay(index)
 				image.Image = info and info.image or ""
 				image.ScaleType = Enum.ScaleType.Fit
 				image.Parent = slotFrame.iconContainer
+			elseif SpawnEggConfig.IsSpawnEgg(itemId) then
+				-- Render spawn egg (two-layer)
+				local icon = SpawnEggIcon.Create(itemId, UDim2.new(1, -8, 1, -8))
+				icon.Position = UDim2.new(0.5, 0, 0.5, 0)
+				icon.AnchorPoint = Vector2.new(0.5, 0.5)
+				icon.Parent = slotFrame.iconContainer
 			else
 				-- Render block viewport
 				BlockViewportCreator.CreateBlockViewport(

@@ -502,6 +502,9 @@ end
 function EventManager:CreateServerEventConfig(services)
 	assert(type(services) == "table", "Services must be a table")
 
+	-- Expose services to handlers that reference self._services
+	self._services = services
+
 	local config = {
 		-- Client ready event
 		{
@@ -671,40 +674,7 @@ function EventManager:CreateServerEventConfig(services)
 				end
 			end
 		},
-		{
-			name = "SpawnerToolEquipped",
-			handler = function(player, toolData)
-				if services.SpawnerToolService and services.SpawnerToolService._onToolEquipped then
-					services.SpawnerToolService:_onToolEquipped(player, toolData)
-				end
-			end
-		},
-		{
-			name = "SpawnerToolUnequipped",
-			handler = function(player, toolData)
-				if services.SpawnerToolService and services.SpawnerToolService._onToolUnequipped then
-					services.SpawnerToolService:_onToolUnequipped(player, toolData)
-				end
-			end
-		},
-		{
-			name = "DebugSyncTools",
-			handler = function(player)
-				if services.SpawnerToolService and services.SpawnerToolService.RefreshPlayerTools then
-					print("Debug: Manual tool sync requested for", player.Name)
-					services.SpawnerToolService:RefreshPlayerTools(player)
-				end
-			end
-		},
-		{
-			name = "DebugRemoveTools",
-			handler = function(player)
-				if services.SpawnerToolService and services.SpawnerToolService.RemoveAllSpawnerTools then
-					print("Debug: Manual tool removal requested for", player.Name)
-					services.SpawnerToolService:RemoveAllSpawnerTools(player)
-				end
-			end
-		},
+		-- Spawner tool events removed
 
 
 		-- Emote events
@@ -792,6 +762,14 @@ function EventManager:CreateServerEventConfig(services)
 			handler = function(player, blockData)
 				if services.VoxelWorldService and services.VoxelWorldService.RequestBlockPlace then
 					services.VoxelWorldService:RequestBlockPlace(player, blockData)
+				end
+			end
+		},
+		{
+			name = "RequestSpawnMobAt",
+			handler = function(player, data)
+				if services.MobEntityService and services.MobEntityService.HandleSpawnEggUse then
+					services.MobEntityService:HandleSpawnEggUse(player, data)
 				end
 			end
 		},
@@ -898,6 +876,64 @@ function EventManager:CreateServerEventConfig(services)
 				end)
 				if not ok then
 					-- Swallow errors; no-op on invalid requests
+				end
+			end
+		},
+		-- Minion open request
+		{
+			name = "RequestOpenMinion",
+			handler = function(player, data)
+				if not data or not data.x or not data.y or not data.z then
+					return
+				end
+				if services and services.VoxelWorldService and services.VoxelWorldService.HandleOpenMinion then
+					services.VoxelWorldService:HandleOpenMinion(player, data)
+				end
+			end
+		},
+		-- Minion open request by entity id
+		{
+			name = "RequestOpenMinionByEntity",
+			handler = function(player, data)
+				if services and services.VoxelWorldService and services.VoxelWorldService.HandleOpenMinionByEntity then
+					services.VoxelWorldService:HandleOpenMinionByEntity(player, data)
+				end
+			end
+		},
+		-- Minion upgrade request
+		{
+			name = "RequestMinionUpgrade",
+			handler = function(player, data)
+				local services = self._services
+				if services and services.VoxelWorldService and services.VoxelWorldService.HandleMinionUpgrade then
+					services.VoxelWorldService:HandleMinionUpgrade(player, data)
+				end
+			end
+		},
+		{
+			name = "RequestMinionCollectAll",
+			handler = function(player, data)
+				local services = self._services
+				if services and services.VoxelWorldService and services.VoxelWorldService.HandleMinionCollectAll then
+					services.VoxelWorldService:HandleMinionCollectAll(player, data)
+				end
+			end
+		},
+		{
+			name = "RequestMinionPickup",
+			handler = function(player, data)
+				local services = self._services
+				if services and services.VoxelWorldService and services.VoxelWorldService.HandleMinionPickup then
+					services.VoxelWorldService:HandleMinionPickup(player, data)
+				end
+			end
+		},
+		{
+			name = "RequestCloseMinion",
+			handler = function(player, data)
+				local services = self._services
+				if services and services.VoxelWorldService and services.VoxelWorldService.HandleCloseMinion then
+					services.VoxelWorldService:HandleCloseMinion(player, data)
 				end
 			end
 		},

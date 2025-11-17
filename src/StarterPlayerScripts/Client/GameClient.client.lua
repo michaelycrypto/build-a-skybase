@@ -430,6 +430,13 @@ local function completeInitialization(EmoteManager)
 	Client.mobReplicationController = MobReplicationController
 	print("👾 Mob Replication Controller initialized")
 
+	-- Initialize Minion UI (open/close like chest/workbench)
+	local MinionUI = require(script.Parent.UI.MinionUI)
+	local minionUI = MinionUI.new(inventoryManager, inventory, chestUI)
+	minionUI:Initialize()
+	Client.minionUI = minionUI
+	print("🧱 Minion UI initialized")
+
 	-- Initialize Tool Visual Controller (attach placeholder handle for equipped tools)
 	local ToolVisualController = require(script.Parent.Controllers.ToolVisualController)
 	ToolVisualController:Initialize()
@@ -481,7 +488,9 @@ local function completeInitialization(EmoteManager)
 	UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		if gameProcessed then return end
 		if input.KeyCode == Enum.KeyCode.E then
-			if chestUI and chestUI.isOpen then
+			if minionUI and minionUI.isOpen then
+				minionUI:Close()
+			elseif chestUI and chestUI.isOpen then
 				chestUI:Close()
 			else
 				if inventory then
@@ -489,7 +498,9 @@ local function completeInitialization(EmoteManager)
 				end
 			end
 		elseif input.KeyCode == Enum.KeyCode.Escape then
-			if chestUI and chestUI.isOpen then
+			if minionUI and minionUI.isOpen then
+				minionUI:Close()
+			elseif chestUI and chestUI.isOpen then
 				chestUI:Close()
 			elseif inventory and inventory.isOpen then
 				inventory:Close()

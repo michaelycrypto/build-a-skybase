@@ -22,7 +22,7 @@ local PlayerDataStoreService = setmetatable({}, BaseService)
 PlayerDataStoreService.__index = PlayerDataStoreService
 
 -- DataStore configuration
-local DATA_STORE_NAME = "PlayerData_v22"  -- Changed to v5 to reset all data
+local DATA_STORE_NAME = "PlayerData_v29"  -- Changed to v5 to reset all data
 local DATA_VERSION = 5
 
 -- Retry configuration for DataStore operations

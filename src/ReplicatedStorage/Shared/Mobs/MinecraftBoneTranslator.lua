@@ -443,6 +443,7 @@ end
 
 -- Build complete Zombie model spec using ProcessGeometry for accurate pivots
 function MinecraftBoneTranslator.BuildZombieModel(scale)
+    local s = (type(scale) == "number" and scale > 0) and scale or 1
     local geometry = MinecraftBoneTranslator.BuildZombieGeometry()
     local processed = MinecraftBoneTranslator.ProcessGeometry(geometry)
 
@@ -454,14 +455,21 @@ function MinecraftBoneTranslator.BuildZombieModel(scale)
 
     local parts = {}
 
+    local function scaleCFrame(cf)
+        if not cf then return nil end
+        local pos = cf.Position
+        local rot = cf - cf.Position
+        return CFrame.new(pos.X * s, pos.Y * s, pos.Z * s) * rot
+    end
+
     local function addFrom(nameKey, tag, motorName, color)
         local d = processed[nameKey]
         if not d then return end
         parts[tag] = {
-            size = d.size,
-            cframe = d.cframe,
-            c0 = d.c0,
-            c1 = d.c1,
+            size = d.size * s,
+            cframe = scaleCFrame(d.cframe),
+            c0 = scaleCFrame(d.c0),
+            c1 = scaleCFrame(d.c1),
             material = Enum.Material.Plastic,
             color = color,
             tag = tag,
@@ -475,6 +483,81 @@ function MinecraftBoneTranslator.BuildZombieModel(scale)
     addFrom("rightArm_1_skin", "RightArm", "RightArmMotor", limbColor)
     addFrom("leftLeg_1_skin", "LeftLeg", "LeftLegMotor", legColor)
     addFrom("rightLeg_1_skin", "RightLeg", "RightLegMotor", legColor)
+
+    -- Simple pickaxe visual attached to RightArm
+    parts.Pickaxe = {
+        size = Vector3.new(0.2, 1.2, 0.2) * s,
+        cframe = CFrame.new(0, 0, 0), -- will be positioned via c0 relative to arm
+        material = Enum.Material.Metal,
+        color = Color3.fromRGB(180, 180, 180),
+        tag = "Pickaxe",
+        motorName = "PickaxeMotor",
+        parent = "RightArm",
+        c0 = CFrame.new(0, -0.6 * s, -0.3 * s) * CFrame.Angles(math.rad(45), 0, 0),
+        jointC1 = CFrame.new()
+    }
+
+    return {
+        rootOffset = Vector3.new(0, 0, 0),
+        parts = parts
+    }
+end
+
+-- Build a Minion model (zombie-based proportions) with skin tone and blue outfit
+function MinecraftBoneTranslator.BuildMinionModel(scale)
+    local s = (type(scale) == "number" and scale > 0) and scale or 1
+    local geometry = MinecraftBoneTranslator.BuildZombieGeometry()
+    local processed = MinecraftBoneTranslator.ProcessGeometry(geometry)
+
+    -- Colors for minion: skin + blue outfit
+    local skinColor = Color3.fromRGB(245, 224, 200)
+    local outfitBlue = Color3.fromRGB(60, 120, 220)
+
+    local parts = {}
+
+    local function scaleCFrame(cf)
+        if not cf then return nil end
+        local pos = cf.Position
+        local rot = cf - cf.Position
+        return CFrame.new(pos.X * s, pos.Y * s, pos.Z * s) * rot
+    end
+
+    local function addFrom(nameKey, tag, motorName, color)
+        local d = processed[nameKey]
+        if not d then return end
+        parts[tag] = {
+            size = d.size * s,
+            cframe = scaleCFrame(d.cframe),
+            c0 = scaleCFrame(d.c0),
+            c1 = scaleCFrame(d.c1),
+            material = Enum.Material.Plastic,
+            color = color,
+            tag = tag,
+            motorName = motorName
+        }
+    end
+
+    -- Head skin
+    addFrom("head_1_skin", "Head", "HeadMotor", skinColor)
+    -- Torso and limbs as blue outfit
+    addFrom("body_1_skin", "Torso", "TorsoMotor", outfitBlue)
+    addFrom("leftArm_1_skin", "LeftArm", "LeftArmMotor", outfitBlue)
+    addFrom("rightArm_1_skin", "RightArm", "RightArmMotor", outfitBlue)
+    addFrom("leftLeg_1_skin", "LeftLeg", "LeftLegMotor", outfitBlue)
+    addFrom("rightLeg_1_skin", "RightLeg", "RightLegMotor", outfitBlue)
+
+    -- Keep pickaxe prop for visual mining
+    parts.Pickaxe = {
+        size = Vector3.new(0.2, 1.2, 0.2) * s,
+        cframe = CFrame.new(0, 0, 0),
+        material = Enum.Material.Metal,
+        color = Color3.fromRGB(180, 180, 180),
+        tag = "Pickaxe",
+        motorName = "PickaxeMotor",
+        parent = "RightArm",
+        c0 = CFrame.new(0, -0.6 * s, -0.3 * s) * CFrame.Angles(math.rad(45), 0, 0),
+        jointC1 = CFrame.new()
+    }
 
     return {
         rootOffset = Vector3.new(0, 0, 0),

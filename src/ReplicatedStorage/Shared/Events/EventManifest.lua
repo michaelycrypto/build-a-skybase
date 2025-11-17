@@ -26,10 +26,7 @@ local Manifest = {
 		RequestSlotUnlock = {"any"},
 		DepositMobHead = {"any", "any"},
 		RemoveMobHead = {"any"},
-		SpawnerToolEquipped = {"any"},
-		SpawnerToolUnequipped = {"any"},
-		DebugSyncTools = {},
-		DebugRemoveTools = {},
+		-- Spawner tool events removed
 		ToolbarModeChanged = {"any"},
 		ToolActivated = {"any"},
 
@@ -56,8 +53,18 @@ local Manifest = {
 		PlayerInventoryUpdate = {"any"}, -- {inventory} - Client updated player inventory (from chest UI) (LEGACY)
 		InventoryUpdate = {"any"}, -- {inventory, hotbar} - Client updated inventory (from inventory panel)
 
+		-- Spawn egg usage
+		RequestSpawnMobAt = {"any"}, -- {x, y, z, eggItemId, hotbarSlot, targetBlockPos?, faceNormal?, hitPosition?}
+
 		-- Workbench interaction
 		RequestOpenWorkbench = {"any"}, -- {x, y, z} - Request to open workbench at position
+		-- Minion interaction
+		RequestOpenMinion = {"any"}, -- {x, y, z}
+		RequestOpenMinionByEntity = {"any"}, -- {entityId}
+		RequestMinionUpgrade = {"any"}, -- {x, y, z}
+		RequestMinionCollectAll = {"any"}, -- {x, y, z}
+		RequestMinionPickup = {"any"}, -- {x, y, z}
+		RequestCloseMinion = {"any"}, -- {x, y, z} optional; server unsubscribes regardless
 
 		-- Dropped item interactions
 		RequestItemPickup = {"any"}, -- {id} - Request to pick up item by ID
@@ -110,6 +117,10 @@ local Manifest = {
 		ChestActionResult = {"any"}, -- NEW: {chestPosition, chestContents, playerInventory, cursorItem} - Server-authoritative result
 		-- Workbench open
 		WorkbenchOpened = {"any"}, -- {x, y, z}
+		-- Minion UI
+		MinionOpened = {"any"}, -- {anchorPos, state}
+		MinionUpdated = {"any"}, -- {state}
+		MinionClosed = {}, -- Close minion UI
 		-- Dropped item events (server calculates, client simulates)
 		ItemSpawned = {"any"}, -- {id, itemId, count, startPos, finalPos, velocity}
 		ItemRemoved = {"any"}, -- {id}
