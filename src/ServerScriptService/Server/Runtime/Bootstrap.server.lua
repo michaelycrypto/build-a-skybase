@@ -20,6 +20,11 @@ local logger = Logger:CreateContext("Bootstrap")
 
 logger.Info("🚀 Starting server...")
 
+-- Place role config
+local LOBBY_PLACE_ID = 139848475014328
+local WORLDS_PLACE_ID = 111115817294342
+local IS_LOBBY = (game.PlaceId == LOBBY_PLACE_ID)
+
 -- Disable overhead name/health display to avoid CoreScript CharacterNameHandler lookups in Studio
 pcall(function()
 	game:GetService("Players").NameDisplayDistance = 0
@@ -31,86 +36,83 @@ Logger:Initialize(Config.LOGGING, Network)
 EventManager:Initialize(Network)
 
 -- Bind all services with dependencies
-
--- PlayerDataStoreService - handles player data persistence
+-- Common services (both places)
 Injector:Bind("PlayerDataStoreService", script.Parent.Parent.Services.PlayerDataStoreService, {
 	dependencies = {},
 	mixins = {}
 })
-
--- PlayerInventoryService - server-side inventory authority (must be bound before PlayerService)
 Injector:Bind("PlayerInventoryService", script.Parent.Parent.Services.PlayerInventoryService, {
 	dependencies = {"PlayerDataStoreService"},
 	mixins = {}
 })
-
--- CraftingService - server-authoritative crafting system
 Injector:Bind("CraftingService", script.Parent.Parent.Services.CraftingService, {
 	dependencies = {"PlayerInventoryService"},
 	mixins = {}
 })
-
--- PlayerService - core service for player management
 Injector:Bind("PlayerService", script.Parent.Parent.Services.PlayerService, {
 	dependencies = {"PlayerDataStoreService", "PlayerInventoryService"},
 	mixins = {"RateLimited", "Cooldownable"}
 })
-
--- ShopService - depends on PlayerService for currency management
 Injector:Bind("ShopService", script.Parent.Parent.Services.ShopService, {
 	dependencies = {"PlayerService"},
 	mixins = {"RateLimited", "Cooldownable"}
 })
-
--- QuestService - depends on PlayerService for data and rewards
 Injector:Bind("QuestService", script.Parent.Parent.Services.QuestService, {
 	dependencies = {"PlayerService"},
 	mixins = {"RateLimited", "Cooldownable"}
 })
 
--- World and grid services removed as part of architecture reduction
-
--- Bind WorldOwnershipService (manages server instance ownership)
-Injector:Bind("WorldOwnershipService", script.Parent.Parent.Services.WorldOwnershipService, {
+-- Cross-place helper (both places)
+Injector:Bind("CrossPlaceTeleportService", script.Parent.Parent.Services.CrossPlaceTeleportService, {
 	dependencies = {},
 	mixins = {}
 })
 
--- Bind VoxelWorldService (depends on inventory for block placement validation)
-Injector:Bind("VoxelWorldService", script.Parent.Parent.Services.VoxelWorldService, {
-	dependencies = {"PlayerInventoryService", "WorldOwnershipService"},
-	mixins = {}
-})
-
--- Bind SaplingService (depends on voxel world to set/get blocks)
-Injector:Bind("SaplingService", script.Parent.Parent.Services.SaplingService, {
-	dependencies = {"VoxelWorldService", "WorldOwnershipService"},
-	mixins = {}
-})
-
--- Bind CropService (depends on voxel world)
-Injector:Bind("CropService", script.Parent.Parent.Services.CropService, {
-	dependencies = {"VoxelWorldService", "WorldOwnershipService"},
-	mixins = {}
-})
-
--- Bind ChestStorageService (manages chest inventories)
-Injector:Bind("ChestStorageService", script.Parent.Parent.Services.ChestStorageService, {
-	dependencies = {"VoxelWorldService", "PlayerInventoryService"},
-	mixins = {}
-})
-
--- Bind DroppedItemService (manages dropped items in world)
-Injector:Bind("DroppedItemService", script.Parent.Parent.Services.DroppedItemService, {
-	dependencies = {"VoxelWorldService", "PlayerInventoryService"},
-	mixins = {}
-})
-
--- Bind MobEntityService (new mob system)
-Injector:Bind("MobEntityService", script.Parent.Parent.Services.MobEntityService, {
-	dependencies = {"VoxelWorldService", "WorldOwnershipService", "DroppedItemService", "PlayerInventoryService"},
-	mixins = {}
-})
+if IS_LOBBY then
+	-- Lobby-only
+	Injector:Bind("LobbyWorldTeleportService", script.Parent.Parent.Services.LobbyWorldTeleportService, {
+		dependencies = {},
+		mixins = {}
+	})
+	Injector:Bind("WorldsListService", script.Parent.Parent.Services.WorldsListService, {
+		dependencies = {},
+		mixins = {}
+	})
+else
+	-- Worlds place services
+	Injector:Bind("WorldOwnershipService", script.Parent.Parent.Services.WorldOwnershipService, {
+		dependencies = {},
+		mixins = {}
+	})
+	Injector:Bind("VoxelWorldService", script.Parent.Parent.Services.VoxelWorldService, {
+		dependencies = {"PlayerInventoryService", "WorldOwnershipService"},
+		mixins = {}
+	})
+	Injector:Bind("SaplingService", script.Parent.Parent.Services.SaplingService, {
+		dependencies = {"VoxelWorldService", "WorldOwnershipService"},
+		mixins = {}
+	})
+	Injector:Bind("CropService", script.Parent.Parent.Services.CropService, {
+		dependencies = {"VoxelWorldService", "WorldOwnershipService"},
+		mixins = {}
+	})
+	Injector:Bind("ChestStorageService", script.Parent.Parent.Services.ChestStorageService, {
+		dependencies = {"VoxelWorldService", "PlayerInventoryService"},
+		mixins = {}
+	})
+	Injector:Bind("DroppedItemService", script.Parent.Parent.Services.DroppedItemService, {
+		dependencies = {"VoxelWorldService", "PlayerInventoryService"},
+		mixins = {}
+	})
+	Injector:Bind("MobEntityService", script.Parent.Parent.Services.MobEntityService, {
+		dependencies = {"VoxelWorldService", "WorldOwnershipService", "DroppedItemService", "PlayerInventoryService"},
+		mixins = {}
+	})
+	Injector:Bind("ActiveWorldRegistryService", script.Parent.Parent.Services.ActiveWorldRegistryService, {
+		dependencies = {},
+		mixins = {}
+	})
+end
 
 -- Initialize all services
 logger.Info("Initializing all services...")
@@ -124,26 +126,38 @@ local shopService = Injector:Resolve("ShopService")
 local questService = Injector:Resolve("QuestService")
 local playerInventoryService = Injector:Resolve("PlayerInventoryService")
 local craftingService = Injector:Resolve("CraftingService")
-local voxelWorldService = Injector:Resolve("VoxelWorldService")
-local saplingService = Injector:Resolve("SaplingService")
-local cropService = Injector:Resolve("CropService")
-local worldOwnershipService = Injector:Resolve("WorldOwnershipService")
-local chestStorageService = Injector:Resolve("ChestStorageService")
-local droppedItemService = Injector:Resolve("DroppedItemService")
-local mobEntityService = Injector:Resolve("MobEntityService")
+local voxelWorldService = not IS_LOBBY and Injector:Resolve("VoxelWorldService") or nil
+local saplingService = not IS_LOBBY and Injector:Resolve("SaplingService") or nil
+local cropService = not IS_LOBBY and Injector:Resolve("CropService") or nil
+local worldOwnershipService = not IS_LOBBY and Injector:Resolve("WorldOwnershipService") or nil
+local chestStorageService = not IS_LOBBY and Injector:Resolve("ChestStorageService") or nil
+local droppedItemService = not IS_LOBBY and Injector:Resolve("DroppedItemService") or nil
+local mobEntityService = not IS_LOBBY and Injector:Resolve("MobEntityService") or nil
+local activeWorldRegistryService = not IS_LOBBY and Injector:Resolve("ActiveWorldRegistryService") or nil
+local lobbyWorldTeleportService = IS_LOBBY and Injector:Resolve("LobbyWorldTeleportService") or nil
+local worldsListService = IS_LOBBY and Injector:Resolve("WorldsListService") or nil
+local crossPlaceTeleportService = Injector:Resolve("CrossPlaceTeleportService")
 
 -- Manually inject ChestStorageService into VoxelWorldService (to avoid circular dependency during init)
-voxelWorldService.Deps.ChestStorageService = chestStorageService
+if voxelWorldService and chestStorageService then
+	voxelWorldService.Deps.ChestStorageService = chestStorageService
+end
 
 -- Manually inject DroppedItemService into VoxelWorldService
-voxelWorldService.Deps.DroppedItemService = droppedItemService
-voxelWorldService.Deps.MobEntityService = mobEntityService
+if voxelWorldService then
+	voxelWorldService.Deps.DroppedItemService = droppedItemService
+	voxelWorldService.Deps.MobEntityService = mobEntityService
+end
 
 -- Manually inject SaplingService into VoxelWorldService for block-change notifications
-voxelWorldService.Deps.SaplingService = saplingService
+if voxelWorldService then
+	voxelWorldService.Deps.SaplingService = saplingService
+end
 
 -- Manually inject CropService into VoxelWorldService
-voxelWorldService.Deps.CropService = cropService
+if voxelWorldService then
+	voxelWorldService.Deps.CropService = cropService
+end
 
 -- Create services table for EventManager
 local servicesTable = {
@@ -158,6 +172,10 @@ local servicesTable = {
 	ChestStorageService = chestStorageService,
 	DroppedItemService = droppedItemService,
 	MobEntityService = mobEntityService,
+	ActiveWorldRegistryService = activeWorldRegistryService,
+	LobbyWorldTeleportService = lobbyWorldTeleportService,
+	WorldsListService = worldsListService,
+	CrossPlaceTeleportService = crossPlaceTeleportService,
 }
 
 -- Register all events first (defines RemoteEvents with proper parameter signatures)
@@ -174,6 +192,10 @@ logger.Info("🔌 Server event handlers registered")
 -- Define client-bound events that the server will fire to clients
 logger.Info("Defining client-bound events...")
 local clientEvents = {
+	-- Cross-place UI/support
+	"WorldListUpdated",
+	"WorldJoinError",
+	"ReturnToLobbyAcknowledged",
     "PlayerDataUpdated",
     "CurrencyUpdated",
     "InventoryUpdated",
@@ -234,9 +256,42 @@ end
 -- Start all services
 services:Start()
 
--- NOTE: Voxel world will be initialized when first player (owner) joins
--- This ensures the world is only generated ONCE with the correct seed
-logger.Info("VoxelWorldService ready - waiting for owner to join...")
+if IS_LOBBY then
+	-- Ensure simple ground and spawn for lobby
+	local Workspace = game:GetService("Workspace")
+	local baseplate = Workspace:FindFirstChild("LobbyBaseplate")
+	if not baseplate then
+		local part = Instance.new("Part")
+		part.Name = "LobbyBaseplate"
+		part.Anchored = true
+		part.Size = Vector3.new(512, 1, 512)
+		part.Position = Vector3.new(0, 0, 0)
+		part.Material = Enum.Material.SmoothPlastic
+		part.Color = Color3.fromRGB(163, 162, 165) -- Classic baseplate grey
+		part.Locked = true
+		part.Parent = Workspace
+		baseplate = part
+	end
+	local spawn = Workspace:FindFirstChild("LobbySpawn")
+	if not spawn then
+		local s = Instance.new("SpawnLocation")
+		s.Name = "LobbySpawn"
+		s.Enabled = true
+		s.Neutral = true
+		s.Size = Vector3.new(6, 1, 6)
+		s.BrickColor = BrickColor.new("Bright green")
+		s.Position = Vector3.new(0, 5, 0)
+		s.Parent = Workspace
+		spawn = s
+	end
+	logger.Info("✅ Lobby baseplate and spawn ensured")
+	logger.Info("✅ Lobby server ready")
+	return
+end
+
+-- Worlds place:
+-- NOTE: Voxel world will be initialized when first player joins (using teleport data if provided)
+logger.Info("VoxelWorldService ready - waiting for first player...")
 
 -- Start chunk streaming loop with rate limiting
 local vwCoreConfig = require(game.ReplicatedStorage.Shared.VoxelWorld.Core.Config)
@@ -315,38 +370,51 @@ local Players = game:GetService("Players")
 -- Track first player flag and world ready state
 local firstPlayerHasJoined = false
 local worldReady = false
+local configuredFromTeleport = false
+local configuredWorldId = nil
 
 Players.PlayerAdded:Connect(function(player)
 	logger.Info("Player joined:", player.Name)
 
-	-- First player becomes the owner
+	-- Configure from TeleportData on first join (worlds place)
 	if not firstPlayerHasJoined then
 		firstPlayerHasJoined = true
-
-		-- Claim ownership (this loads or creates world data including seed)
-		worldOwnershipService:ClaimOwnership(player)
-		logger.Info("🏠 " .. player.Name .. " is now the owner of this world!")
-
-		-- Get the owner's seed (from saved data or newly generated)
+		local joinData = player:GetJoinData()
+		local td = joinData and joinData.TeleportData
+		if td and td.ownerUserId then
+			configuredFromTeleport = true
+			configuredWorldId = td.worldId or (tostring(td.ownerUserId) .. ":1")
+			worldOwnershipService:SetOwnerById(td.ownerUserId, td.ownerName, configuredWorldId)
+			-- Load or create world data for owner
+			worldOwnershipService:LoadWorldData()
+			-- Configure registry (access code from teleport)
+			if activeWorldRegistryService then
+				activeWorldRegistryService:Configure(configuredWorldId, td.ownerUserId, td.ownerName, td.accessCode)
+			end
+			logger.Info("📦 World configured from teleport data", { worldId = configuredWorldId })
+		else
+			-- Fallback: claim ownership as first player
+			worldOwnershipService:ClaimOwnership(player)
+			local ownerId = worldOwnershipService:GetOwnerId()
+			configuredWorldId = tostring(ownerId)
+			if activeWorldRegistryService then
+				activeWorldRegistryService:Configure(configuredWorldId, ownerId, worldOwnershipService:GetOwnerName(), nil)
+			end
+			logger.Info("🏠 " .. player.Name .. " is now the owner of this world!")
+		end
+		-- Initialize world with seed (from owner)
 		local seed = worldOwnershipService:GetWorldSeed()
 		local worldData = worldOwnershipService:GetWorldData()
-
-		-- Initialize world ONCE with correct seed (smaller render distance for Skyblock/sparse worlds)
 		voxelWorldService:InitializeWorld(seed, 3)
 		logger.Info("🌍 World initialized with owner's seed:", seed)
-
-		-- Load owner's saved world data (chunks and chests) if they have any
-		-- IMPORTANT: Must complete BEFORE adding player so they see saved blocks
+		-- Load saved data if any
 		if worldData and worldData.chunks and #worldData.chunks > 0 then
-			-- Load data immediately - no wait needed, LoadWorldData is synchronous
 			voxelWorldService:LoadWorldData()
 			logger.Info("📦 Loaded owner's saved world data (" .. #worldData.chunks .. " chunks)")
 		else
 			logger.Info("📦 New world - no saved data to load")
-			-- Initialize starter chest for new worlds (Skyblock mode)
 			voxelWorldService:InitializeStarterChest()
 		end
-
 		-- Mark world as ready for players (owner and visitors)
 		worldReady = true
 		logger.Info("✅ World is ready for players!")
@@ -406,7 +474,9 @@ Players.PlayerRemoving:Connect(function(player)
 	end
 
 	-- Clean up chest viewing
-	chestStorageService:OnPlayerRemoved(player)
+	if chestStorageService then
+		chestStorageService:OnPlayerRemoved(player)
+	end
 	-- Remove player from voxel world
 	voxelWorldService:OnPlayerRemoved(player)
 	-- Clean up player inventory
@@ -424,31 +494,37 @@ for i, player in ipairs(existingPlayers) do
 	-- First player becomes the owner
 	if i == 1 and not firstPlayerHasJoined then
 		firstPlayerHasJoined = true
-
-		-- Claim ownership (this loads or creates world data including seed)
-		worldOwnershipService:ClaimOwnership(player)
-		logger.Info("🏠 " .. player.Name .. " is now the owner of this world!")
-
-		-- Get the owner's seed (from saved data or newly generated)
+		local joinData = player:GetJoinData()
+		local td = joinData and joinData.TeleportData
+		if td and td.ownerUserId then
+			configuredFromTeleport = true
+			configuredWorldId = td.worldId or (tostring(td.ownerUserId) .. ":1")
+			worldOwnershipService:SetOwnerById(td.ownerUserId, td.ownerName, configuredWorldId)
+			worldOwnershipService:LoadWorldData()
+			if activeWorldRegistryService then
+				activeWorldRegistryService:Configure(configuredWorldId, td.ownerUserId, td.ownerName, td.accessCode)
+			end
+			logger.Info("📦 World configured from teleport data", { worldId = configuredWorldId })
+		else
+			worldOwnershipService:ClaimOwnership(player)
+			local ownerId = worldOwnershipService:GetOwnerId()
+			configuredWorldId = tostring(ownerId)
+			if activeWorldRegistryService then
+				activeWorldRegistryService:Configure(configuredWorldId, ownerId, worldOwnershipService:GetOwnerName(), nil)
+			end
+			logger.Info("🏠 " .. player.Name .. " is now the owner of this world!")
+		end
 		local seed = worldOwnershipService:GetWorldSeed()
 		local worldData = worldOwnershipService:GetWorldData()
-
-		-- Initialize world ONCE with correct seed (smaller render distance for Skyblock/sparse worlds)
 		voxelWorldService:InitializeWorld(seed, 3)
 		logger.Info("🌍 World initialized with owner's seed:", seed)
-
-		-- Load owner's saved world data (chunks and chests) if they have any
-		-- IMPORTANT: Must complete BEFORE adding player so they see saved blocks
 		if worldData and worldData.chunks and #worldData.chunks > 0 then
-			-- Load data immediately - no wait needed, LoadWorldData is synchronous
 			voxelWorldService:LoadWorldData()
 			logger.Info("📦 Loaded owner's saved world data (" .. #worldData.chunks .. " chunks)")
 		else
 			logger.Info("📦 New world - no saved data to load")
-			-- Initialize starter chest for new worlds (Skyblock mode)
 			voxelWorldService:InitializeStarterChest()
 		end
-
 		-- Mark world as ready for players (owner and visitors)
 		worldReady = true
 		logger.Info("✅ World is ready for players!")

@@ -15,7 +15,8 @@ local WorldOwnershipService = setmetatable({}, BaseService)
 WorldOwnershipService.__index = WorldOwnershipService
 
 -- DataStore for world ownership
-local WORLD_DATA_STORE_NAME = "PlayerOwnedWorlds_v56"  -- Changed to v4 to reset all data
+local Config = require(game.ReplicatedStorage.Shared.Config)
+local WORLD_DATA_STORE_NAME = Config.Worlds.DataStoreVersion
 
 function WorldOwnershipService.new()
 	local self = setmetatable(BaseService.new(), WorldOwnershipService)
@@ -24,6 +25,7 @@ function WorldOwnershipService.new()
 	self._worldDataStore = nil
 	self._ownerId = nil -- UserId of the owner
 	self._ownerName = nil -- Display name of the owner
+	self._worldId = nil -- Full worldId (e.g., "12345:1")
 	self._worldData = nil -- Cached world data
 	self._initialized = false
 
@@ -104,6 +106,43 @@ function WorldOwnershipService:GetOwnerName()
 end
 
 --[[
+	Set owner by UserId (used when owner is defined by teleport data)
+	@param ownerUserId: number - The owner's UserId
+	@param ownerName: string? - The owner's display name (optional)
+	@param worldId: string? - The full worldId (e.g., "12345:1"), defaults to userId:1
+--]]
+function WorldOwnershipService:SetOwnerById(ownerUserId: number, ownerName: string?, worldId: string?)
+	if self._ownerId then
+		-- Already set; do not overwrite
+		return false
+	end
+
+	self._ownerId = ownerUserId
+	self._worldId = worldId or (tostring(ownerUserId) .. ":1") -- Default to slot 1
+
+	-- Try to resolve name if not provided
+	if ownerName and #ownerName > 0 then
+		self._ownerName = ownerName
+	else
+		local Players = game:GetService("Players")
+		local ok, resolved = pcall(function()
+			if Players.GetNameFromUserIdAsync then
+				return Players:GetNameFromUserIdAsync(ownerUserId)
+			end
+			return nil
+		end)
+		self._ownerName = (ok and resolved) or ("User_" .. tostring(ownerUserId))
+	end
+
+	self._logger.Info("🏷️ Owner set by id", {
+		owner = self._ownerName,
+		userId = self._ownerId,
+		worldId = self._worldId
+	})
+	return true
+end
+
+--[[
 	Check if a player is the owner
 --]]
 function WorldOwnershipService:IsOwner(player: Player)
@@ -125,25 +164,30 @@ end
 	Load world data from the owner's datastore
 --]]
 function WorldOwnershipService:LoadWorldData()
-	if not self._ownerId or not self._worldDataStore then
-		self._logger.Warn("Cannot load world data - no owner or datastore")
+	if not self._worldId or not self._worldDataStore then
+		self._logger.Warn("Cannot load world data - no worldId or datastore")
 		return nil
 	end
 
 	local success, data = pcall(function()
-		local key = "World_" .. tostring(self._ownerId)
+		local key = "World_" .. self._worldId
 		return self._worldDataStore:GetAsync(key)
 	end)
 
 	if success and data then
 		self._worldData = data
-		self._logger.Info("✅ Loaded world data for owner", {
+		self._logger.Info("✅ Loaded world data", {
+			worldId = self._worldId,
 			owner = self._ownerName,
 			chunkCount = (data.chunks and #data.chunks) or 0
 		})
 	else
+		-- Extract slot number from worldId (e.g., "12345:2" -> slot 2)
+		local slot = tonumber(string.match(self._worldId, ":(%d+)$")) or 1
+
 		-- Create new world data
 		self._worldData = {
+			worldId = self._worldId,
 			ownerId = self._ownerId,
 			ownerName = self._ownerName,
 			created = os.time(),
@@ -152,12 +196,14 @@ function WorldOwnershipService:LoadWorldData()
 			chunks = {},
 			mobs = {},
 			metadata = {
-				name = self._ownerName .. "'s World",
+				name = "World " .. slot,
 				description = "A player-owned world",
 			}
 		}
-		self._logger.Info("📝 Created new world data for owner", {
+		self._logger.Info("📝 Created new world data", {
+			worldId = self._worldId,
 			owner = self._ownerName,
+			slot = slot,
 			seed = self._worldData.seed
 		})
 	end
@@ -169,8 +215,8 @@ end
 	Save world data to the owner's datastore
 --]]
 function WorldOwnershipService:SaveWorldData(worldData)
-	if not self._ownerId or not self._worldDataStore then
-		self._logger.Warn("Cannot save world data - no owner or datastore")
+	if not self._worldId or not self._worldDataStore then
+		self._logger.Warn("Cannot save world data - no worldId or datastore")
 		return false
 	end
 
@@ -188,18 +234,20 @@ function WorldOwnershipService:SaveWorldData(worldData)
 	self._worldData.lastSaved = os.time()
 
 	local success, err = pcall(function()
-		local key = "World_" .. tostring(self._ownerId)
+		local key = "World_" .. self._worldId
 		self._worldDataStore:SetAsync(key, self._worldData)
 	end)
 
 	if success then
-		self._logger.Info("💾 Saved world data for owner", {
+		self._logger.Info("💾 Saved world data", {
+			worldId = self._worldId,
 			owner = self._ownerName,
 			chunkCount = (self._worldData.chunks and #self._worldData.chunks) or 0
 		})
 		return true
 	else
 		self._logger.Error("Failed to save world data", {
+			worldId = self._worldId,
 			owner = self._ownerName,
 			error = tostring(err)
 		})

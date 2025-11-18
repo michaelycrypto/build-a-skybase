@@ -526,18 +526,7 @@ local function completeInitialization(EmoteManager)
 	EventManager:RegisterEvents(completeEventConfig)
 	print("🔌 Complete event handlers registered (with ToastManager and ToolAnimationController)")
 
-	-- Create main HUD
-	local MainHUD = require(script.Parent.UI.MainHUD)
-	if MainHUD.Create then
-		MainHUD:Create()
-	end
-
-	-- Link inventory to MainHUD for button access
-	if MainHUD.SetInventoryReference and inventory then
-		MainHUD:SetInventoryReference(inventory)
-	end
-
-	-- Initialize UI panels
+	-- Initialize UI panels BEFORE MainHUD (so they're registered with PanelManager)
 	local DailyRewardsPanel = require(script.Parent.UI.DailyRewardsPanel)
 	if DailyRewardsPanel.Initialize then
 		DailyRewardsPanel:Initialize()
@@ -555,6 +544,44 @@ local function completeInitialization(EmoteManager)
 		ShopPanel:Initialize()
 	end
 	Client.managers.ShopPanel = ShopPanel
+
+	-- Initialize and register WorldsPanel with PanelManager (lobby only)
+	local LOBBY_PLACE_ID = 139848475014328
+	if game.PlaceId == LOBBY_PLACE_ID then
+		local WorldsPanel = require(script.Parent.UI.WorldsPanel)
+		if WorldsPanel.Initialize then
+			WorldsPanel:Initialize()
+		end
+		Client.managers.WorldsPanel = WorldsPanel
+
+		-- Register with PanelManager
+		PanelManager:RegisterPanel("worlds", {
+			title = "My Worlds",
+			type = "overlay",
+			size = "large",
+			icon = {category = "General", name = "Home"},
+			create = function(contentFrame, data)
+				WorldsPanel:CreateContent(contentFrame, data)
+			end,
+			onShow = function(data)
+				-- Request fresh worlds list from server when panel opens
+				print("[WorldsPanel] Panel opened, requesting worlds list...")
+				EventManager:SendToServer("RequestWorldsList", {})
+			end
+		})
+		print("WorldsPanel: Initialized and registered with PanelManager")
+	end
+
+	-- Create main HUD (after panels are registered)
+	local MainHUD = require(script.Parent.UI.MainHUD)
+	if MainHUD.Create then
+		MainHUD:Create()
+	end
+
+	-- Link inventory to MainHUD for button access
+	if MainHUD.SetInventoryReference and inventory then
+		MainHUD:SetInventoryReference(inventory)
+	end
 
 	-- Setup character handling
 	player.CharacterAdded:Connect(function(character)

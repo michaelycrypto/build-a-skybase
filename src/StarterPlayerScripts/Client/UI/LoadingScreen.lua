@@ -9,12 +9,12 @@ local Players = game:GetService("Players")
 local ContentProvider = game:GetService("ContentProvider")
 local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
 
 -- Import dependencies
 local Config = require(ReplicatedStorage.Shared.Config)
 local IconManager = require(script.Parent.Parent.Managers.IconManager)
 local TextureManager = require(ReplicatedStorage.Shared.VoxelWorld.Rendering.TextureManager)
+local FontBinder = require(ReplicatedStorage.Shared.UI.FontBinder)
 
 -- Services
 local player = Players.LocalPlayer
@@ -22,26 +22,62 @@ local playerGui = player:WaitForChild("PlayerGui")
 
 -- UI Elements
 local loadingGui
-local progressBar
 local progressFill
-local statusLabel
-local logoLabel
-local dotsAnimation
+local titleLabel
 
 -- State
 local isLoading = false
 local loadingComplete = false
 
+local CUSTOM_FONT_NAME = "Zephyrean BRK"
+
+local CUSTOM_FONT_THEME = {
+	logo = CUSTOM_FONT_NAME,
+	status = CUSTOM_FONT_NAME
+}
+
+local function applyFontMetadata(target, fontName, fontPx)
+	if not target then return end
+
+	if fontName then
+		pcall(function()
+			target.FontName = fontName
+		end)
+	end
+
+	if fontPx then
+		pcall(function()
+			target.FontPx = fontPx
+		end)
+	end
+end
+
+local function setTextContent(target, text)
+	if not target then return end
+
+	pcall(function()
+		target.Text = text
+	end)
+
+	pcall(function()
+		target.FullText = text
+	end)
+end
+
+local function setStatusText()
+	-- Intentionally blank: new UI does not surface status copy
+end
+
 -- Animation constants
 local FADE_DURATION = 0.8
 local PROGRESS_DURATION = 0.3
-local DOT_CYCLE_TIME = 1.2
 
 --[[
 	Create the loading screen
 --]]
 function LoadingScreen:Create()
-	-- Create loading screen GUI
+	FontBinder.preload(CUSTOM_FONT_THEME)
+
 	loadingGui = Instance.new("ScreenGui")
 	loadingGui.Name = "LoadingScreen"
 	loadingGui.ResetOnSpawn = false
@@ -49,182 +85,80 @@ function LoadingScreen:Create()
 	loadingGui.IgnoreGuiInset = true
 	loadingGui.Parent = playerGui
 
-	-- Elegant backdrop with subtle gradient effect
 	local backdrop = Instance.new("Frame")
 	backdrop.Name = "Backdrop"
 	backdrop.Size = UDim2.new(1, 0, 1, 0)
-	backdrop.BackgroundColor3 = Color3.fromRGB(8, 8, 15)
-	backdrop.Transparency = 0.5
+	backdrop.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 	backdrop.BorderSizePixel = 0
 	backdrop.Parent = loadingGui
 
-	-- Subtle animated gradient overlay
-	local gradientOverlay = Instance.new("Frame")
-	gradientOverlay.Name = "GradientOverlay"
-	gradientOverlay.Size = UDim2.new(1, 0, 1, 0)
-	gradientOverlay.BackgroundTransparency = 0.7
-	gradientOverlay.BorderSizePixel = 0
-	gradientOverlay.Parent = backdrop
+	local centerContainer = Instance.new("Frame")
+	centerContainer.Name = "CenterContainer"
+	centerContainer.AnchorPoint = Vector2.new(0.5, 0.5)
+	centerContainer.Position = UDim2.new(0.5, 0, 0.5, 0)
+	centerContainer.Size = UDim2.new(0, 240, 0, 80)
+	centerContainer.BackgroundTransparency = 1
+	centerContainer.Parent = backdrop
 
-	local gradient = Instance.new("UIGradient")
-	gradient.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(138, 43, 226)),
-		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(75, 0, 130)),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(138, 43, 226))
-	})
-	gradient.Rotation = 45
-	gradient.Parent = gradientOverlay
+	local layout = Instance.new("UIListLayout")
+	layout.FillDirection = Enum.FillDirection.Vertical
+	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	layout.VerticalAlignment = Enum.VerticalAlignment.Center
+	layout.Padding = UDim.new(0, 20)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Parent = centerContainer
 
-	-- Animate gradient rotation
-	local gradientTween = TweenService:Create(gradient,
-		TweenInfo.new(4, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1),
-		{Rotation = 405}
-	)
-	gradientTween:Play()
+	local heroFontName = CUSTOM_FONT_THEME.logo
+	local titleFontPx = Config.UI_SETTINGS.typography.sizes.body.base
 
-	-- Main content container
-	local contentFrame = Instance.new("Frame")
-	contentFrame.Name = "ContentFrame"
-	contentFrame.Size = UDim2.new(0, 400, 0, 200)
-	contentFrame.Position = UDim2.new(0.5, -200, 0.5, -100)
-	contentFrame.BackgroundTransparency = 1
-	contentFrame.Parent = loadingGui
+	titleLabel = Instance.new("TextLabel")
+	titleLabel.Name = "TitleLabel"
+	titleLabel.Size = UDim2.new(1, 0, 0, 32)
+	titleLabel.BackgroundTransparency = 1
+	titleLabel.BorderSizePixel = 0
+	titleLabel.TextXAlignment = Enum.TextXAlignment.Center
+	titleLabel.TextYAlignment = Enum.TextYAlignment.Center
+	titleLabel.TextWrapped = false
+	titleLabel.RichText = false
+	titleLabel.AutoLocalize = false
+	titleLabel.ClipsDescendants = true
+	titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	titleLabel.TextSize = titleFontPx
+	titleLabel.LayoutOrder = 1
+	titleLabel.Parent = centerContainer
 
-	-- Game logo/title
-	logoLabel = Instance.new("TextLabel")
-	logoLabel.Name = "LogoLabel"
-	logoLabel.Size = UDim2.new(1, 0, 0, 60)
-	logoLabel.Position = UDim2.new(0, 0, 0, 0)
-	logoLabel.BackgroundTransparency = 1
-	logoLabel.Text = "AuraSystem"
-	logoLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-	logoLabel.TextSize = Config.UI_SETTINGS.typography.sizes.display.hero  -- 36px - hero branding
-	logoLabel.Font = Config.UI_SETTINGS.typography.fonts.bold
-	logoLabel.TextStrokeTransparency = 0.5
-	logoLabel.TextStrokeColor3 = Color3.fromRGB(138, 43, 226)
-	logoLabel.Parent = contentFrame
+	FontBinder.apply(titleLabel, heroFontName)
+	setTextContent(titleLabel, "Build a Sky Kingdom")
+	applyFontMetadata(titleLabel, heroFontName, titleFontPx)
 
-	-- Progress container
 	local progressContainer = Instance.new("Frame")
 	progressContainer.Name = "ProgressContainer"
-	progressContainer.Size = UDim2.new(1, 0, 0, 8)
-	progressContainer.Position = UDim2.new(0, 0, 0, 100)
-	progressContainer.BackgroundColor3 = Config.UI_SETTINGS.colors.backgroundSecondary
-	progressContainer.BackgroundTransparency = 0.3
+	progressContainer.Size = UDim2.new(0, 180, 0, 4)
+	progressContainer.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	progressContainer.BackgroundTransparency = 0.75
 	progressContainer.BorderSizePixel = 0
-	progressContainer.Parent = contentFrame
+	progressContainer.LayoutOrder = 2
+	progressContainer.Parent = centerContainer
 
 	local progressCorner = Instance.new("UICorner")
-	progressCorner.CornerRadius = UDim.new(0, 4)
+	progressCorner.CornerRadius = UDim.new(0, 2)
 	progressCorner.Parent = progressContainer
 
-	-- Progress fill bar
 	progressFill = Instance.new("Frame")
 	progressFill.Name = "ProgressFill"
 	progressFill.Size = UDim2.new(0, 0, 1, 0)
-	progressFill.BackgroundColor3 = Config.UI_SETTINGS.colors.primary
+	progressFill.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 	progressFill.BorderSizePixel = 0
 	progressFill.Parent = progressContainer
 
 	local fillCorner = Instance.new("UICorner")
-	fillCorner.CornerRadius = UDim.new(0, 4)
+	fillCorner.CornerRadius = UDim.new(0, 2)
 	fillCorner.Parent = progressFill
-
-	-- Subtle glow effect on progress bar
-	local glowEffect = Instance.new("Frame")
-	glowEffect.Name = "GlowEffect"
-	glowEffect.Size = UDim2.new(1, 4, 1, 4)
-	glowEffect.Position = UDim2.new(0, -2, 0, -2)
-	glowEffect.BackgroundColor3 = Config.UI_SETTINGS.colors.primary
-	glowEffect.BackgroundTransparency = 0.8
-	glowEffect.BorderSizePixel = 0
-	glowEffect.Parent = progressFill
-
-	local glowCorner = Instance.new("UICorner")
-	glowCorner.CornerRadius = UDim.new(0, 6)
-	glowCorner.Parent = glowEffect
-
-	-- Status label with animated dots
-	statusLabel = Instance.new("TextLabel")
-	statusLabel.Name = "StatusLabel"
-	statusLabel.Size = UDim2.new(1, 0, 0, 30)
-	statusLabel.Position = UDim2.new(0, 0, 0, 130)
-	statusLabel.BackgroundTransparency = 1
-	statusLabel.Text = "Loading assets"
-	statusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-	statusLabel.TextSize = Config.UI_SETTINGS.typography.sizes.body.base  -- 14px - status text
-	statusLabel.Font = Config.UI_SETTINGS.typography.fonts.regular
-	statusLabel.Parent = contentFrame
-
-	-- Start dots animation
-	self:StartDotsAnimation()
-
-		-- Initial fade in
-	contentFrame.BackgroundTransparency = 1
-	logoLabel.TextTransparency = 1
-	statusLabel.TextTransparency = 1
-	progressContainer.BackgroundTransparency = 1
-
-	-- Start fade in animation sequence
-	task.spawn(function()
-		-- Fade in logo first
-		local fadeInTween = TweenService:Create(logoLabel,
-			TweenInfo.new(FADE_DURATION, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
-			{TextTransparency = 0}
-		)
-		fadeInTween:Play()
-
-		task.wait(0.2)
-
-		-- Fade in status label
-		TweenService:Create(statusLabel,
-			TweenInfo.new(FADE_DURATION, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
-			{TextTransparency = 0}
-		):Play()
-
-		task.wait(0.2)
-
-		-- Fade in progress container
-		TweenService:Create(progressContainer,
-			TweenInfo.new(FADE_DURATION, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
-			{BackgroundTransparency = 0.3}
-		):Play()
-	end)
-
-	-- Loading interface created
 end
 
 --[[
 	Start animated dots for loading text
 --]]
-function LoadingScreen:StartDotsAnimation()
-	if dotsAnimation then
-		dotsAnimation:Disconnect()
-	end
-
-	local dotCount = 0
-	local lastUpdate = 0
-
-	dotsAnimation = RunService.Heartbeat:Connect(function()
-		if not statusLabel or not statusLabel.Parent then
-			if dotsAnimation then
-				dotsAnimation:Disconnect()
-				dotsAnimation = nil
-			end
-			return
-		end
-
-		local currentTime = tick()
-		if currentTime - lastUpdate > DOT_CYCLE_TIME / 4 then
-			dotCount = (dotCount + 1) % 4
-			local baseText = isLoading and "Loading assets" or "Preparing"
-			local dots = string.rep(".", dotCount)
-			statusLabel.Text = baseText .. dots
-			lastUpdate = currentTime
-		end
-	end)
-end
-
 --[[
 	Load block texture assets with progress tracking
 --]]
@@ -293,7 +227,7 @@ function LoadingScreen:LoadBlockTextures(onProgress, onComplete)
 
 		-- Update status for current batch
 		if assetsToLoad[startIndex] then
-			statusLabel.Text = "Loading " .. assetsToLoad[startIndex].name:gsub("_", " ")
+			setStatusText("Loading " .. assetsToLoad[startIndex].name:gsub("_", " "))
 		end
 
 		-- Load current batch with timeout protection
@@ -331,71 +265,6 @@ function LoadingScreen:LoadBlockTextures(onProgress, onComplete)
 end
 
 --[[
-	Load Vector Icons that are registered for use
---]]
-function LoadingScreen:LoadVectorIcons(onProgress, onComplete)
-	if isLoading then return end
-
-	isLoading = true
-	statusLabel.Text = "Loading icons"
-
-	-- Initialize IconManager if not already done
-	IconManager:Initialize()
-
-	-- Load registered icons with progress tracking
-	IconManager:PreloadRegisteredIcons(
-		function(loadedCount, totalCount, progress)
-			-- Update progress bar
-			if progressFill and progressFill.Parent then
-				TweenService:Create(progressFill,
-					TweenInfo.new(PROGRESS_DURATION, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
-					{Size = UDim2.new(progress, 0, 1, 0)}
-				):Play()
-			end
-
-			-- Update status
-			statusLabel.Text = "Loading icons (" .. loadedCount .. "/" .. totalCount .. ")"
-
-			-- Call progress callback
-			if onProgress then
-				pcall(onProgress, loadedCount, totalCount, progress)
-			end
-		end,
-		function(loadedCount, failedCount)
-			-- Icons loading complete
-			self:OnIconLoadingComplete(loadedCount, failedCount, onComplete)
-		end
-	)
-end
-
---[[
-	Handle icon loading completion
---]]
-function LoadingScreen:OnIconLoadingComplete(loadedCount, failedCount, onComplete)
-	-- Icon loading complete
-
-	loadingComplete = true
-	isLoading = false
-
-	-- Update final status
-	if failedCount > 0 then
-		statusLabel.Text = "Loaded " .. loadedCount .. " icons (" .. failedCount .. " failed)"
-	else
-		statusLabel.Text = "All icons loaded successfully!"
-	end
-
-	-- Brief pause to show completion
-	task.wait(0.5)
-
-	-- Fade out and call completion callback
-	self:FadeOut(function()
-		if onComplete then
-			onComplete(loadedCount, failedCount)
-		end
-	end)
-end
-
---[[
 	Load both block textures and icons (sequential for reliability)
 --]]
 function LoadingScreen:LoadAllAssets(onProgress, onComplete, onBeforeFadeOut)
@@ -404,6 +273,8 @@ function LoadingScreen:LoadAllAssets(onProgress, onComplete, onBeforeFadeOut)
 		return
 	end
 
+	setStatusText("Loading fonts...")
+	FontBinder.preload(CUSTOM_FONT_THEME)
 	isLoading = true
 
 	-- Count total assets
@@ -435,13 +306,13 @@ function LoadingScreen:LoadAllAssets(onProgress, onComplete, onBeforeFadeOut)
 	task.spawn(function()
 		-- Load block textures first
 		if totalTextures > 0 then
-			statusLabel.Text = "Loading block textures..."
+			setStatusText("Loading block textures...")
 
 			self:LoadBlockTextures(
 				function(loaded, total, progress)
 					-- Update status and overall progress
-					statusLabel.Text = "Loading textures (" .. loaded .. "/" .. total .. ")"
-					local overallProgress = loaded / totalAssets
+					setStatusText("Loading textures (" .. loaded .. "/" .. total .. ")")
+					local overallProgress = math.clamp(loaded / totalAssets, 0, 1)
 
 					-- Update progress bar
 					if progressFill and progressFill.Parent then
@@ -476,15 +347,15 @@ end
 --]]
 function LoadingScreen:LoadIconsAfterTextures(totalIcons, texturesLoaded, texturesFailed, totalAssets, onProgress, onComplete, onBeforeFadeOut)
 	if totalIcons > 0 then
-		statusLabel.Text = "Loading icons..."
+		setStatusText("Loading icons...")
 
 		IconManager:PreloadRegisteredIcons(
 			function(loaded, total, progress)
 				local totalLoaded = texturesLoaded + loaded
-				statusLabel.Text = "Loading icons (" .. loaded .. "/" .. total .. ")"
+				setStatusText("Loading icons (" .. loaded .. "/" .. total .. ")")
 
 				-- Update overall progress
-				local overallProgress = totalLoaded / totalAssets
+				local overallProgress = math.clamp(totalLoaded / totalAssets, 0, 1)
 				if progressFill and progressFill.Parent then
 					TweenService:Create(progressFill,
 						TweenInfo.new(PROGRESS_DURATION, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
@@ -523,9 +394,9 @@ function LoadingScreen:CompleteAllAssetLoading(totalLoaded, totalFailed, onCompl
 
 	-- Update final status
 	if totalFailed > 0 then
-		statusLabel.Text = "Loaded " .. totalLoaded .. " assets (" .. totalFailed .. " failed)"
+		setStatusText("Loaded " .. totalLoaded .. " assets (" .. totalFailed .. " failed)")
 	else
-		statusLabel.Text = "All assets loaded successfully!"
+		setStatusText("All assets loaded successfully!")
 	end
 
 	-- Brief pause to show completion
@@ -545,33 +416,6 @@ function LoadingScreen:CompleteAllAssetLoading(totalLoaded, totalFailed, onCompl
 end
 
 --[[
-	Handle loading completion (legacy method - kept for compatibility)
---]]
-function LoadingScreen:OnLoadingComplete(loadedCount, failedCount, totalAssets, onComplete)
-	-- Loading complete
-
-	loadingComplete = true
-	isLoading = false
-
-	-- Update final status
-	if failedCount > 0 then
-		statusLabel.Text = "Loaded " .. loadedCount .. "/" .. totalAssets .. " assets"
-	else
-		statusLabel.Text = "All assets loaded successfully!"
-	end
-
-	-- Brief pause to show completion
-	task.wait(0.5)
-
-	-- Fade out and call completion callback
-	self:FadeOut(function()
-		if onComplete then
-			onComplete(loadedCount, failedCount, totalAssets)
-		end
-	end)
-end
-
---[[
 	Fade out the loading screen
 --]]
 function LoadingScreen:FadeOut(onComplete)
@@ -580,28 +424,8 @@ function LoadingScreen:FadeOut(onComplete)
 		return
 	end
 
-	-- Stop dots animation
-	if dotsAnimation then
-		dotsAnimation:Disconnect()
-		dotsAnimation = nil
-	end
-
 	-- Fade out all elements
-	local fadeOutInfo = TweenInfo.new(FADE_DURATION, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
-
-	local logoFade = TweenService:Create(logoLabel, fadeOutInfo, {TextTransparency = 1})
-	local statusFade = TweenService:Create(statusLabel, fadeOutInfo, {TextTransparency = 1})
-	local progressFade = TweenService:Create(progressBar or progressFill.Parent, fadeOutInfo, {BackgroundTransparency = 1})
-	local backdropFade = TweenService:Create(loadingGui:FindFirstChild("Backdrop"), fadeOutInfo, {BackgroundTransparency = 1})
-
-	logoFade:Play()
-	statusFade:Play()
-	progressFade:Play()
-	backdropFade:Play()
-
-	-- Wait for fade completion then destroy
-	backdropFade.Completed:Connect(function()
-		task.wait(0.1)
+	local function finalize()
 		if loadingGui then
 			loadingGui:Destroy()
 			loadingGui = nil
@@ -610,7 +434,9 @@ function LoadingScreen:FadeOut(onComplete)
 		if onComplete then
 			onComplete()
 		end
-	end)
+	end
+
+	finalize()
 end
 
 --[[

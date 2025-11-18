@@ -66,20 +66,22 @@ function WorldOwnershipDisplay:UpdateDisplay(data)
 	if not ownerLabel then return end
 
 	local ownerName = data.ownerName or "Unknown"
+	local worldName = data.worldName or "World"
 
-	-- Update label (single-line, minimal)
-	ownerLabel.Text = "🏠 " .. ownerName
+	-- Update label with format: World Name [World Owner]
+	local displayText = worldName .. " [" .. ownerName .. "]"
 
 	-- Check if local player is the owner
 	local localPlayer = Players.LocalPlayer
 	if localPlayer.UserId == data.ownerId then
 		ownerLabel.TextColor3 = Color3.fromRGB(120, 255, 120)
-		ownerLabel.Text = "🏠 " .. ownerName .. " (You)"
+		ownerLabel.Text = displayText .. " (You)"
 	else
 		ownerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+		ownerLabel.Text = displayText
 	end
 
-	print(string.format("WorldOwnershipDisplay: World owned by %s", ownerName))
+	print(string.format("WorldOwnershipDisplay: %s owned by %s", worldName, ownerName))
 end
 
 function WorldOwnershipDisplay:Cleanup()

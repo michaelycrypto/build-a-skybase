@@ -27,6 +27,9 @@ local EventManager = require(ReplicatedStorage.Shared.EventManager)
 local GameConfig = require(ReplicatedStorage.Configs.GameConfig)
 local IconManager = require(script.Parent.Parent.Managers.IconManager)
 local SpawnEggIcon = require(script.Parent.SpawnEggIcon)
+local FontBinder = require(ReplicatedStorage.Shared.UI.FontBinder)
+
+local CUSTOM_FONT_NAME = "Zephyrean BRK"
 
 local VoxelInventoryPanel = {}
 VoxelInventoryPanel.__index = VoxelInventoryPanel
@@ -86,6 +89,8 @@ function VoxelInventoryPanel.new(inventoryManager)
 end
 
 function VoxelInventoryPanel:Initialize()
+	FontBinder.preload(CUSTOM_FONT_NAME)
+
 	-- Create ScreenGui for inventory panel
 	self.gui = Instance.new("ScreenGui")
 	self.gui.Name = "VoxelInventory"
@@ -133,10 +138,11 @@ function VoxelInventoryPanel:CreatePanel()
 	local equipmentTotalHeight = (INVENTORY_CONFIG.EQUIPMENT_SLOT_SIZE * 4) +
 	                             (INVENTORY_CONFIG.EQUIPMENT_SPACING * 3)
 
+	local headerHeight = 44
+
 	-- Calculate proper height accounting for all elements (ultra-compact layout):
-	-- Top Padding (30) + Inv Label (18) + Storage + Spacing + Hotbar Label (18) + Hotbar + Bottom Padding (10)
-	-- Note: Title is positioned above the panel with -0.5 offset, so not included in panel height
-	local totalHeight = 30 + 18 + storageHeight + INVENTORY_CONFIG.SECTION_SPACING + 18 + hotbarHeight + 10
+	-- Header + Top Padding (10) + Inv Label (18) + Storage + Spacing + Hotbar Label (18) + Hotbar + Bottom Padding (10)
+	local totalHeight = headerHeight + 10 + 18 + storageHeight + INVENTORY_CONFIG.SECTION_SPACING + 18 + hotbarHeight + 10
 
 	-- Crafting section dimensions (ultra-compact)
 	local CRAFTING_WIDTH = 230  -- Ultra-compact width (detail page overlays anyway)
@@ -178,23 +184,23 @@ function VoxelInventoryPanel:CreatePanel()
 	-- Header frame (transparent, for title positioning)
 	local headerFrame = Instance.new("Frame")
 	headerFrame.Name = "Header"
-	headerFrame.Size = UDim2.new(1, 0, 0, 1)
+	headerFrame.Size = UDim2.new(1, 0, 0, headerHeight)
 	headerFrame.BackgroundTransparency = 1
 	headerFrame.BorderSizePixel = 0
 	headerFrame.Parent = self.panel
 
-	-- Title container (positioned above the panel like SettingsPanel)
+	-- Title container (inside header for compact layout)
 	local titleContainer = Instance.new("Frame")
 	titleContainer.Name = "TitleContainer"
-	titleContainer.Size = UDim2.new(1, -64 - 16, 1, 0) -- Reserve space for close button
-	titleContainer.Position = UDim2.new(0, 0, -0.5, 0) -- 50% offset above the panel
+	titleContainer.Size = UDim2.new(1, -72, 1, 0)
+	titleContainer.Position = UDim2.new(0, 12, 0, 0)
 	titleContainer.BackgroundTransparency = 1
 	titleContainer.Parent = headerFrame
 
 	-- Title container padding
 	local titlePadding = Instance.new("UIPadding")
-	titlePadding.PaddingLeft = UDim.new(0, 6)
-	titlePadding.PaddingRight = UDim.new(0, 16)
+	titlePadding.PaddingLeft = UDim.new(0, 0)
+	titlePadding.PaddingRight = UDim.new(0, 0)
 	titlePadding.Parent = titleContainer
 
 	-- Horizontal layout for title
@@ -205,39 +211,24 @@ function VoxelInventoryPanel:CreatePanel()
 	titleLayout.Padding = UDim.new(0, 12)
 	titleLayout.Parent = titleContainer
 
-	-- Backpack icon for Inventory
-	local titleIcon = IconManager:CreateIcon(titleContainer, "Clothing", "Backpack", {
-		size = 36,
-		position = UDim2.new(0, 0, 0.5, 0),
-		anchorPoint = Vector2.new(0, 0.5)
-	})
-	titleIcon.LayoutOrder = 1
-
-	-- Keep reference for dynamic icon updates
-	self.titleIcon = titleIcon
-
 	-- Title text (styled like SettingsPanel)
 	local title = Instance.new("TextLabel")
 	title.Name = "Title"
-	title.Size = UDim2.new(0, 200, 1, 0)
+	title.Size = UDim2.new(1, 0, 1, 0)
 	title.BackgroundTransparency = 1
-	title.RichText = true
-	title.Text = "<b><i>Inventory</i></b>"
+	title.RichText = false
+	title.Text = "Inventory"
 	title.TextColor3 = Color3.fromRGB(255, 255, 255)
 	title.TextSize = 36
 	title.Font = Enum.Font.GothamBold
 	title.TextXAlignment = Enum.TextXAlignment.Left
-	title.LayoutOrder = 2
+	title.LayoutOrder = 1
 	title.Parent = titleContainer
+
+	FontBinder.apply(title, CUSTOM_FONT_NAME)
 
 	-- Keep reference for dynamic title updates (Inventory vs Workbench)
 	self.titleLabel = title
-
-	-- Title stroke
-	local titleStroke = Instance.new("UIStroke")
-	titleStroke.Color = Color3.fromRGB(0, 0, 0)
-	titleStroke.Thickness = 2
-	titleStroke.Parent = title
 
 	-- Close button (same style as SettingsPanel) - positioned to stick out of top right corner
 	local closeIcon = IconManager:CreateIcon(headerFrame, "UI", "X", {
@@ -286,7 +277,8 @@ function VoxelInventoryPanel:CreatePanel()
 	-- Remove original icon
 	closeIcon:Destroy()
 
-	local yOffset = 30  -- Top padding for whitespace below header
+	local contentStartY = headerHeight + 12
+	local yOffset = contentStartY  -- Top padding below header
 
 	-- Equipment base X position (left side)
 	local equipmentX = INVENTORY_CONFIG.PADDING
@@ -353,8 +345,8 @@ function VoxelInventoryPanel:CreatePanel()
 	-- Equipment divider (between equipment and inventory)
 	local equipmentDivider = Instance.new("Frame")
 	equipmentDivider.Name = "EquipmentDivider"
-	equipmentDivider.Size = UDim2.new(0, 2, 0, totalHeight - 48)
-	equipmentDivider.Position = UDim2.new(0, equipmentX + equipmentWidth + INVENTORY_CONFIG.EQUIPMENT_GAP/2 - 1, 0, 42)
+	equipmentDivider.Size = UDim2.new(0, 2, 0, totalHeight - contentStartY - 18)
+	equipmentDivider.Position = UDim2.new(0, equipmentX + equipmentWidth + INVENTORY_CONFIG.EQUIPMENT_GAP/2 - 1, 0, contentStartY - 4)
 	equipmentDivider.BackgroundColor3 = INVENTORY_CONFIG.BORDER_COLOR
 	equipmentDivider.BackgroundTransparency = 0.5
 	equipmentDivider.BorderSizePixel = 0
@@ -364,7 +356,7 @@ function VoxelInventoryPanel:CreatePanel()
 	local craftingLabel = Instance.new("TextLabel")
 	craftingLabel.Name = "CraftingLabel"
 	craftingLabel.Size = UDim2.new(0, CRAFTING_WIDTH, 0, 14)
-	craftingLabel.Position = UDim2.new(0, inventoryBaseX + slotWidth + CRAFTING_GAP, 0, 30)
+	craftingLabel.Position = UDim2.new(0, inventoryBaseX + slotWidth + CRAFTING_GAP, 0, contentStartY - 2)
 	craftingLabel.BackgroundTransparency = 1
 	craftingLabel.Font = Enum.Font.GothamMedium
 	craftingLabel.TextSize = 11
@@ -376,16 +368,16 @@ function VoxelInventoryPanel:CreatePanel()
 	-- Crafting section (right side, expanded)
 	local craftingSection = Instance.new("Frame")
 	craftingSection.Name = "CraftingSection"
-	craftingSection.Size = UDim2.new(0, CRAFTING_WIDTH, 0, totalHeight - 50)
-	craftingSection.Position = UDim2.new(0, inventoryBaseX + slotWidth + CRAFTING_GAP, 0, 44)
+	craftingSection.Size = UDim2.new(0, CRAFTING_WIDTH, 0, totalHeight - contentStartY - 20)
+	craftingSection.Position = UDim2.new(0, inventoryBaseX + slotWidth + CRAFTING_GAP, 0, contentStartY + 14)
 	craftingSection.BackgroundTransparency = 1
 	craftingSection.Parent = self.panel
 
 	-- Crafting divider (between inventory and crafting)
 	local craftingDivider = Instance.new("Frame")
 	craftingDivider.Name = "CraftingDivider"
-	craftingDivider.Size = UDim2.new(0, 2, 0, totalHeight - 48)
-	craftingDivider.Position = UDim2.new(0, inventoryBaseX + slotWidth + CRAFTING_GAP/2 - 1, 0, 42)
+	craftingDivider.Size = UDim2.new(0, 2, 0, totalHeight - contentStartY - 18)
+	craftingDivider.Position = UDim2.new(0, inventoryBaseX + slotWidth + CRAFTING_GAP/2 - 1, 0, contentStartY - 4)
 	craftingDivider.BackgroundColor3 = INVENTORY_CONFIG.BORDER_COLOR
 	craftingDivider.BackgroundTransparency = 0.5
 	craftingDivider.BorderSizePixel = 0
@@ -1383,20 +1375,12 @@ function VoxelInventoryPanel:SetWorkbenchMode(enabled)
 	-- Update title text
 	if self.titleLabel then
 		if self.isWorkbenchMode then
-			self.titleLabel.Text = "<b><i>Workbench</i></b>"
+			self.titleLabel.Text = "Workbench"
 		else
-			self.titleLabel.Text = "<b><i>Inventory</i></b>"
+			self.titleLabel.Text = "Inventory"
 		end
 	end
 
-	-- Update title icon
-	if self.titleIcon then
-		if self.isWorkbenchMode then
-			IconManager:ApplyIcon(self.titleIcon, "Tools", "Anvil")
-		else
-			IconManager:ApplyIcon(self.titleIcon, "Clothing", "Backpack")
-		end
-	end
 end
 
 function VoxelInventoryPanel:Cleanup()

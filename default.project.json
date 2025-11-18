@@ -5,8 +5,15 @@
 
     "ReplicatedStorage": {
       "$className": "ReplicatedStorage",
+      "$ignoreUnknownInstances": true,
       "Shared": {
         "$path": "src/ReplicatedStorage/Shared"
+      },
+      "Fonts": {
+        "$path": "src/ReplicatedStorage/Fonts"
+      },
+      "RBX_CustomFont": {
+        "$path": "src/ReplicatedStorage/RBX_CustomFont.lua"
       },
       "Tools": {
         "$path": "src/ReplicatedStorage/Tools",

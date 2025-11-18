@@ -52,6 +52,18 @@ function EventManager:CreateClientEventConfig(managers)
 	assert(type(managers) == "table", "Managers must be a table")
 
 	local config = {
+		-- World join error feedback (server -> client)
+		{
+			name = "WorldJoinError",
+			handler = function(errorData)
+				if managers.ToastManager then
+					managers.ToastManager:Error(
+						(errorData and errorData.message) or "Teleport failed.",
+						4
+					)
+				end
+			end
+		},
 		-- Player data events
 		{
 			name = "PlayerDataUpdated",
@@ -506,6 +518,61 @@ function EventManager:CreateServerEventConfig(services)
 	self._services = services
 
 	local config = {
+		-- Cross-place lobby/world navigation
+		{
+			name = "RequestJoinWorld",
+			handler = function(player, data)
+				print("[EventManager] Server received RequestJoinWorld from", player and player.Name)
+				if services.LobbyWorldTeleportService and services.LobbyWorldTeleportService.RequestJoinWorld then
+					services.LobbyWorldTeleportService:RequestJoinWorld(player, data)
+				end
+			end
+		},
+		{
+			name = "RequestCreateWorld",
+			handler = function(player, data)
+				print("[EventManager] Server received RequestCreateWorld from", player and player.Name)
+				if services.LobbyWorldTeleportService and services.LobbyWorldTeleportService.RequestCreateWorld then
+					services.LobbyWorldTeleportService:RequestCreateWorld(player, data)
+				end
+			end
+		},
+		{
+			name = "ReturnToLobby",
+			handler = function(player)
+				if services.CrossPlaceTeleportService and services.CrossPlaceTeleportService.ReturnToLobby then
+					services.CrossPlaceTeleportService:ReturnToLobby(player)
+				end
+			end
+		},
+		-- World management (lobby)
+		{
+			name = "RequestWorldsList",
+			handler = function(player)
+				print("[EventManager] Server received RequestWorldsList from", player and player.Name)
+				if services.WorldsListService and services.WorldsListService.SendWorldsList then
+					services.WorldsListService:SendWorldsList(player)
+				end
+			end
+		},
+		{
+			name = "DeleteWorld",
+			handler = function(player, data)
+				print("[EventManager] Server received DeleteWorld from", player and player.Name)
+				if services.WorldsListService and services.WorldsListService.DeleteWorld then
+					services.WorldsListService:DeleteWorld(player, data.worldId)
+				end
+			end
+		},
+		{
+			name = "UpdateWorldMetadata",
+			handler = function(player, data)
+				print("[EventManager] Server received UpdateWorldMetadata from", player and player.Name)
+				if services.WorldsListService and services.WorldsListService.UpdateWorldMetadata then
+					services.WorldsListService:UpdateWorldMetadata(player, data.worldId, data.metadata)
+				end
+			end
+		},
 		-- Client ready event
 		{
 			name = "ClientReady",

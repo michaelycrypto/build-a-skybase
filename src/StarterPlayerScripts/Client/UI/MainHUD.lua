@@ -35,6 +35,7 @@ local hudGui
 local leftSidebar
 local moneyLabel
 local gemsLabel
+local topCenterBar
 
 -- UI State
 local menuButtons = {}
@@ -344,6 +345,9 @@ function MainHUD:Create()
 	-- Right-side quick actions (mobile)
 	self:CreateRightQuickActions()
 
+	-- Top center teleport to world (lobby only)
+	self:CreateTopCenterTeleport()
+
 	-- Center crosshair (Minecraft-style)
 	Crosshair:Create(hudGui)
 
@@ -358,6 +362,79 @@ function MainHUD:Create()
 	print("MainHUD: Created simplified HUD with Vector Icons")
 end
 
+
+--[[
+	Create a top-center "Teleport to World" button (shows only in lobby place)
+--]]
+function MainHUD:CreateTopCenterTeleport()
+	-- Lobby place id
+	local LOBBY_PLACE_ID = 139848475014328
+	local isLobby = (game.PlaceId == LOBBY_PLACE_ID)
+	if not isLobby then
+		return
+	end
+
+	topCenterBar = Instance.new("Frame")
+	topCenterBar.Name = "TopCenterBar"
+	topCenterBar.Size = UDim2.new(0, 420, 0, 56)
+	topCenterBar.Position = UDim2.new(0.5, 0, 0, 10)
+	topCenterBar.AnchorPoint = Vector2.new(0.5, 0)
+	topCenterBar.BackgroundTransparency = 1
+	topCenterBar.BorderSizePixel = 0
+	topCenterBar.Parent = hudGui
+
+	local teleportBtn = Instance.new("TextButton")
+	teleportBtn.Name = "TeleportToWorld"
+	teleportBtn.Size = UDim2.new(1, 0, 1, 0)
+	teleportBtn.Position = UDim2.new(0, 0, 0, 0)
+	teleportBtn.BackgroundColor3 = Config.UI_SETTINGS.colors.semantic.button.success
+	teleportBtn.AutoButtonColor = true
+	teleportBtn.Text = "<b><i>Teleport to World</i></b>"
+	teleportBtn.RichText = true
+	teleportBtn.TextSize = 24
+	teleportBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	teleportBtn.Font = Enum.Font.Gotham
+	teleportBtn.Parent = topCenterBar
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, Config.UI_SETTINGS.designSystem.borderRadius.lg)
+	corner.Parent = teleportBtn
+
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = Config.UI_SETTINGS.colors.semantic.borders.default
+	stroke.Thickness = Config.UI_SETTINGS.designSystem.borderWidth.medium
+	stroke.Parent = teleportBtn
+
+	-- Restore button if server reports error
+	local function restore()
+		teleportBtn.Active = true
+		teleportBtn.AutoButtonColor = true
+		teleportBtn.Text = "<b><i>Teleport to World</i></b>"
+	end
+	local okConn = pcall(function()
+		return EventManager:ConnectToServer("WorldJoinError", function()
+			restore()
+		end)
+	end)
+
+	teleportBtn.MouseButton1Click:Connect(function()
+		-- Debounce quickly to avoid spam
+		teleportBtn.Active = false
+		teleportBtn.AutoButtonColor = false
+		teleportBtn.Text = "<b><i>Teleporting...</i></b>"
+		print("[MainHUD] Sending RequestCreateWorld to server")
+		local ok, err = pcall(function()
+			EventManager:SendToServer("RequestCreateWorld", {})
+		end)
+		if not ok then
+			warn("Failed to send RequestCreateWorld:", err)
+			teleportBtn.Active = true
+			teleportBtn.AutoButtonColor = true
+			teleportBtn.Text = "<b><i>Teleport to World</i></b>"
+		end
+	end)
+
+end
 
 
 --[[
@@ -523,34 +600,51 @@ function MainHUD:CreateLeftSidebar()
 	sidebarLayout.Parent = leftSidebar
 
 	-- Create menu buttons (using Vector Icons) - Simplified for mobile
-	menuButtons = {
-		{
-			iconCategory = "Clothing",
-			iconName = "Backpack",
-			text = "Inventory",
-			buttonText = "Inventory",
-			shortcut = "E",
-			callback = function()
-				-- Toggle voxel inventory
-				if voxelInventoryRef then
-					voxelInventoryRef:Toggle()
-				else
-					warn("Inventory reference not set in MainHUD")
-				end
-			end
-		},
-		{
+	menuButtons = {}
+
+	-- Add Worlds button (lobby only)
+	local LOBBY_PLACE_ID = 139848475014328
+	if game.PlaceId == LOBBY_PLACE_ID then
+		table.insert(menuButtons, {
 			iconCategory = "General",
-			iconName = "Settings",
-			text = "Settings",
-			buttonText = "Settings",
-			shortcut = "ESC",
+			iconName = "Home",
+			text = "Worlds",
+			buttonText = "Worlds",
 			callback = function()
-				-- Use PanelManager to toggle settings panel
-				PanelManager:TogglePanel("settings")
+				PanelManager:TogglePanel("worlds")
 			end
-		}
-	}
+		})
+	end
+
+	-- Inventory button
+	table.insert(menuButtons, {
+		iconCategory = "Clothing",
+		iconName = "Backpack",
+		text = "Inventory",
+		buttonText = "Inventory",
+		shortcut = "E",
+		callback = function()
+			-- Toggle voxel inventory
+			if voxelInventoryRef then
+				voxelInventoryRef:Toggle()
+			else
+				warn("Inventory reference not set in MainHUD")
+			end
+		end
+	})
+
+	-- Settings button
+	table.insert(menuButtons, {
+		iconCategory = "General",
+		iconName = "Settings",
+		text = "Settings",
+		buttonText = "Settings",
+		shortcut = "ESC",
+		callback = function()
+			-- Use PanelManager to toggle settings panel
+			PanelManager:TogglePanel("settings")
+		end
+	})
 
 	for i, buttonData in ipairs(menuButtons) do
 		local button = self:CreateMenuButton(buttonData)

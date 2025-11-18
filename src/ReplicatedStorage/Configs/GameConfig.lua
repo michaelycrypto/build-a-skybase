@@ -440,6 +440,12 @@ local GameConfig = {
 				thickness = 2 -- 2px stroke
 			}
 		}
+	},
+
+	-- World system configuration
+	Worlds = {
+		MaxWorldsPerPlayer = 5, -- Maximum worlds a player can create
+		DataStoreVersion = "PlayerOwnedWorlds_v57" -- Updated for multi-world support
 	}
 }
 

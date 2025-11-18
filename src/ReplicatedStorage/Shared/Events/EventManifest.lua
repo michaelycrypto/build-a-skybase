@@ -6,6 +6,15 @@
 local Manifest = {
 	-- Client -> Server events and their parameter type signatures
 	ClientToServer = {
+		-- Cross-place/lobby-world navigation
+		RequestJoinWorld = {"any"},   -- {worldId?, ownerUserId?}
+		RequestCreateWorld = {"any"}, -- {slot?}
+		ReturnToLobby = {},           -- no args
+		-- World management (lobby)
+		RequestWorldsList = {},       -- Request list of player's worlds and friends' worlds
+		DeleteWorld = {"any"},        -- {worldId}
+		UpdateWorldMetadata = {"any"}, -- {worldId, metadata}
+
 		ClientReady = {},
 		RequestDataRefresh = {},
 		RequestDailyRewardData = {},
@@ -76,6 +85,16 @@ local Manifest = {
 
 	-- Server -> Client events and their parameter type signatures
 	ServerToClient = {
+		-- Cross-place/lobby-world navigation
+		WorldListUpdated = {"any"}, -- optional UI support: {worlds=[{worldId, name, online, playerCount}]}
+		WorldJoinError = {"any"},   -- {message}
+		-- Return flow can reuse ShowNotification/ShowError; explicit here for clarity
+		ReturnToLobbyAcknowledged = {"any"},
+		-- World management responses
+		WorldsListUpdated = {"any"}, -- {myWorlds = [...], friendsWorlds = [...]}
+		WorldDeleted = {"any"},      -- {worldId, success}
+		WorldMetadataUpdated = {"any"}, -- {worldId, metadata}
+
 		PlayerDataUpdated = {"any"},
 		CurrencyUpdated = {"any"},
 		InventoryUpdated = {"any"},
