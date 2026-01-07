@@ -4,7 +4,7 @@
 	The crosshair is composed of a vertical and horizontal bar in light grey,
 	flat, matching Minecraft's minimal aesthetic.
 
-	NOTE: This crosshair is only shown in FIRST PERSON mode.
+	NOTE: Crosshair shown in FIRST PERSON and THIRD PERSON LOCK modes.
 --]]
 
 local Players = game:GetService("Players")
@@ -73,19 +73,27 @@ function Crosshair:Create(parentHudGui)
 	createBar(crosshairContainer, true)
 	createBar(crosshairContainer, false)
 
+	-- Camera mode constants (must match CameraController)
+	local CAMERA_MODE_FIRST_PERSON = 1
+	local CAMERA_MODE_THIRD_PERSON_FREE = 2
+	local CAMERA_MODE_THIRD_PERSON_LOCK = 3
+
 	-- Update visibility based on camera mode
 	task.spawn(function()
 		while true do
 			task.wait(0.1)
 
 			if crosshairContainer then
-				local isFirstPerson = GameState:Get("camera.isFirstPerson")
+				local cameraMode = GameState:Get("camera.mode") or CAMERA_MODE_FIRST_PERSON
 				local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
 
 				-- Show crosshair:
-				-- - Always in first person mode
+				-- - In first person mode
+				-- - In third person lock mode (mouse locked, aiming with camera)
 				-- - On mobile devices (for tap targeting)
-				local shouldShow = (isFirstPerson ~= false) or isMobile
+				local shouldShow = (cameraMode == CAMERA_MODE_FIRST_PERSON)
+					or (cameraMode == CAMERA_MODE_THIRD_PERSON_LOCK)
+					or isMobile
 				crosshairContainer.Visible = shouldShow
 			end
 		end

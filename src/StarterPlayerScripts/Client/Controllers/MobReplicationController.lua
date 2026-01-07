@@ -14,6 +14,8 @@ local EventManager = require(ReplicatedStorage.Shared.EventManager)
 local CombatConfig = require(ReplicatedStorage.Configs.CombatConfig)
 local MobModel = require(ReplicatedStorage.Shared.Mobs.MobModel)
 local MobAnimator = require(ReplicatedStorage.Shared.Mobs.MobAnimator)
+local MobSoundConfig = require(ReplicatedStorage.Configs.MobSoundConfig)
+local SoundManager = require(script.Parent.Parent.Managers.SoundManager)
 
 local MobReplicationController = {}
 MobReplicationController.__index = MobReplicationController
@@ -33,6 +35,8 @@ local INTERP_SPEEDS = {
 	DEFAULT = 18
 }
 
+local AMBIENT_HEAR_DISTANCE = 90
+
 local function ensureFolder()
 	local folder = workspace:FindFirstChild("MobEntities")
 	if not folder then
@@ -41,6 +45,13 @@ local function ensureFolder()
 		folder.Parent = workspace
 	end
 	return folder
+end
+
+local function randomAmbientDelaySeconds(mobType)
+	local minInterval, maxInterval = MobSoundConfig.GetAmbientInterval(mobType)
+	local minMs = math.max(1, math.floor(math.clamp(minInterval or 6, 0, 60) * 100))
+	local maxMs = math.max(minMs, math.floor(math.clamp(maxInterval or minInterval or 6, 0, 60) * 100))
+	return math.random(minMs, maxMs) / 100
 end
 
 function MobReplicationController.new()
@@ -53,6 +64,59 @@ function MobReplicationController.new()
 	self:_startRenderLoop()
 
 	return self
+end
+
+function MobReplicationController:_playMobSound(mob, category)
+	if not mob or not mob.mobType then
+		return
+	end
+
+	local soundName = MobSoundConfig.GetRandomSoundName(mob.mobType, category)
+	if not soundName then
+		return
+	end
+
+	local model = mob.build and mob.build.model
+	if not model then
+		return
+	end
+
+	local parent = model.PrimaryPart
+	if not parent then
+		parent = model:FindFirstChildWhichIsA("BasePart", true)
+	end
+
+	if not parent then
+		return
+	end
+
+	SoundManager:PlaySFX3D(soundName, parent)
+end
+
+function MobReplicationController:_handleAmbientSay(mob, now, lpPos)
+	if not mob or mob.mobType == "COBBLE_MINION" then
+		return
+	end
+
+	if not MobSoundConfig.HasCategory(mob.mobType, "say") then
+		return
+	end
+
+	mob.nextSoundTime = mob.nextSoundTime or (now + randomAmbientDelaySeconds(mob.mobType))
+	if now < mob.nextSoundTime then
+		return
+	end
+
+	if lpPos and mob.currentCFrame then
+		local mobPos = mob.currentCFrame.Position
+		if (mobPos - lpPos).Magnitude > AMBIENT_HEAR_DISTANCE then
+			mob.nextSoundTime = now + 2
+			return
+		end
+	end
+
+	self:_playMobSound(mob, "say")
+	mob.nextSoundTime = now + randomAmbientDelaySeconds(mob.mobType)
 end
 
 function MobReplicationController:_registerEvents()
@@ -210,7 +274,7 @@ function MobReplicationController:_onMobSpawned(data)
 		currentYawDeg = data.rotation or 0,
 		snapshots = {},
 		sounds = build.sounds or {},
-		nextSoundTime = 0, -- For random sound timing
+		nextSoundTime = os.clock() + randomAmbientDelaySeconds(data.mobType), -- Ambient sound timer
 	}
 
 	build.root.CFrame = mobState.currentCFrame
@@ -330,6 +394,8 @@ function MobReplicationController:_onMobDamaged(data)
 			end
 		end)
 	end
+
+	self:_playMobSound(mob, "hurt")
 end
 
 function MobReplicationController:_onMobDied(data)
@@ -345,6 +411,7 @@ function MobReplicationController:_onMobDied(data)
 	local model = mob.build.model
 	-- Stop tracking this mob so the render loop doesn't move it during the animation
 	self.mobs[data.entityId] = nil
+	self:_playMobSound(mob, "death")
 	-- Run animation, then destroy the model
 	task.spawn(function()
 		pcall(function()
@@ -493,15 +560,7 @@ function MobReplicationController:_onRenderStep(deltaTime)
 			end
 		end
 
-		-- Handle mob sounds (skip for minions)
-		if mob.mobType ~= "COBBLE_MINION" and mob.sounds and mob.state == "graze" and now >= mob.nextSoundTime then
-			local grazeSound = mob.sounds.GrazeSound
-			if grazeSound and not grazeSound.IsPlaying then
-				grazeSound:Play()
-				-- Schedule next sound randomly between 2-5 seconds
-				mob.nextSoundTime = now + math.random(200, 500) / 100
-			end
-		end
+		self:_handleAmbientSay(mob, now, lpPos)
 	end
 
 	-- Second pass: animate remaining near-but-farther mobs until budget is met

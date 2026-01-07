@@ -166,9 +166,9 @@ INGREDIENT_ICON_SIZE = 24         -- Mini block viewport
 ```
 
 ### Fonts
-- **Recipe Name**: GothamBold, Size 14
+- **Recipe Name**: BuilderSansBold, Size 14
 - **Ingredient Text**: Gotham, Size 11
-- **Craft Button**: GothamBold, Size 14 ("►")
+- **Craft Button**: BuilderSansBold, Size 14 ("►")
 
 ---
 

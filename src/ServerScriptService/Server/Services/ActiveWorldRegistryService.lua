@@ -11,8 +11,6 @@ local Logger = require(game.ReplicatedStorage.Shared.Logger)
 
 local Players = game:GetService("Players")
 local MemoryStoreService = game:GetService("MemoryStoreService")
-local TeleportService = game:GetService("TeleportService")
-
 local REGISTRY_NAME = "ActiveWorlds_v1"
 local HEARTBEAT_INTERVAL = 30 -- seconds
 local ENTRY_TTL = 90 -- seconds
@@ -34,6 +32,8 @@ function ActiveWorldRegistryService.new()
 	self._heartbeatTask = nil
 
 	self._playerCount = 0
+	self._claimToken = nil
+	self._configured = false
 
 	return self
 end
@@ -59,12 +59,66 @@ end
 
 -- Configure world identity and reserved access (first-player join from teleport data)
 function ActiveWorldRegistryService:Configure(worldId: string, ownerUserId: number, ownerName: string?, accessCode: string?)
+	if self._configured then
+		return true
+	end
+
+	if not worldId or not ownerUserId then
+		self._logger.Error("Cannot configure registry - missing identifiers", {
+			worldId = worldId,
+			ownerUserId = ownerUserId
+		})
+		return false, "invalid_parameters"
+	end
+
+	if not self._map then
+		self._logger.Error("Cannot configure registry - MemoryStore unavailable")
+		return false, "registry_unavailable"
+	end
+
+	local claimToken = self._instanceId
+	local claimed = false
+	local now = os.time()
+
+	local ok, err = pcall(function()
+		self._map:UpdateAsync(worldId, function(prev)
+			prev = prev or {}
+
+			if prev.claimToken and prev.claimToken ~= claimToken then
+				return prev
+			end
+
+			claimed = true
+			prev.placeId = self._placeId
+			prev.instanceId = self._instanceId
+			prev.ownerUserId = ownerUserId
+			prev.ownerName = ownerName
+			prev.accessCode = prev.accessCode or accessCode
+			prev.updatedAt = now
+			prev.playerCount = #Players:GetPlayers()
+			prev.version = 1
+			prev.claimToken = claimToken
+			return prev
+		end, ENTRY_TTL)
+	end)
+
+	if not ok or not claimed then
+		self._logger.Error("Failed to claim registry entry", {
+			worldId = worldId,
+			error = err or "claim_failed"
+		})
+		return false, err or "claim_failed"
+	end
+
 	self._worldId = worldId
 	self._ownerUserId = ownerUserId
 	self._ownerName = ownerName
 	self._accessCode = accessCode
 	self._playerCount = #Players:GetPlayers()
+	self._claimToken = claimToken
+	self._configured = true
 	self:_writeHeartbeat(true)
+	return true
 end
 
 function ActiveWorldRegistryService:Start()
@@ -83,11 +137,16 @@ function ActiveWorldRegistryService:Start()
 end
 
 function ActiveWorldRegistryService:_writeHeartbeat(force)
-	if not self._map or not self._worldId then return end
+	if not self._configured or not self._map or not self._worldId then
+		return
+	end
 
 	local ok, err = pcall(function()
 		self._map:UpdateAsync(self._worldId, function(prev)
 			local entry = prev or {}
+			if entry.claimToken and entry.claimToken ~= self._claimToken then
+				return entry
+			end
 			entry.placeId = self._placeId
 			entry.instanceId = self._instanceId
 			entry.ownerUserId = self._ownerUserId
@@ -99,6 +158,7 @@ function ActiveWorldRegistryService:_writeHeartbeat(force)
 			if self._accessCode then
 				entry.accessCode = self._accessCode
 			end
+			entry.claimToken = self._claimToken
 			return entry
 		end, ENTRY_TTL)
 	end)
@@ -108,9 +168,17 @@ function ActiveWorldRegistryService:_writeHeartbeat(force)
 end
 
 function ActiveWorldRegistryService:Remove()
-	if not self._map or not self._worldId then return end
+	if not self._map or not self._worldId or not self._claimToken then
+		return
+	end
+
 	local ok, err = pcall(function()
-		self._map:RemoveAsync(self._worldId)
+		self._map:UpdateAsync(self._worldId, function(prev)
+			if prev and prev.claimToken == self._claimToken then
+				return nil
+			end
+			return prev
+		end)
 	end)
 	if not ok then
 		self._logger.Warn("Failed to remove registry entry", { error = tostring(err) })

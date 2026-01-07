@@ -234,6 +234,52 @@ function SoundManager:PlaySFX(soundName, pitch, volume)
 end
 
 --[[
+	Play a sound effect attached to a world instance (BasePart/Attachment)
+	@param soundName: string
+	@param parentInstance: Instance - BasePart or Attachment to parent the sound to
+	@param pitch: number? - Optional pitch modifier
+	@param volume: number? - Multiplier applied to base volume
+--]]
+function SoundManager:PlaySFX3D(soundName, parentInstance, pitch, volume)
+	if not soundEnabled then return end
+
+	if not parentInstance or not parentInstance.Parent then
+		self:PlaySFX(soundName, pitch, volume)
+		return
+	end
+
+	local soundData = sounds[soundName]
+	if not soundData or not soundData.sound then
+		safeLog("Debug", "3D sound not found", {soundName = soundName})
+		return
+	end
+
+	local clone = soundData.sound:Clone()
+	clone.Looped = false
+	if pitch then
+		clone.Pitch = pitch
+	end
+	clone.Volume = soundData.baseVolume * sfxVolume * (volume or 1)
+	clone.Parent = parentInstance
+
+	local function cleanup()
+		if clone then
+			clone:Destroy()
+			clone = nil
+		end
+	end
+
+	clone.Ended:Connect(cleanup)
+	clone.Stopped:Connect(cleanup)
+
+	clone:Play()
+
+	task.delay(10, function()
+		cleanup()
+	end)
+end
+
+--[[
 	Safely play a sound effect (creates temporary sound if not loaded)
 	@param soundName: string - Name of the sound effect
 	@param pitch: number - Optional pitch modifier (default: 1)

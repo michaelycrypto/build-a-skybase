@@ -39,7 +39,7 @@ COMPONENT BREAKDOWN:
 ├─────────────────────────────────────────────────────────────────────────────────┤
 │                                                                                 │
 │   ╔══════════════════════════════════════════════════════════════════════╗     │
-│   ║ Recipe Name (GothamBold, 14px)                    x4 (output qty)   ║     │
+│   ║ Recipe Name (BuilderSansBold, 14px)                    x4 (output qty)   ║     │
 │   ║                                                                      ║     │
 │   ║ ┌────┐                                                               ║     │
 │   ║ │Icon│ x Count (ingredient)                            [Craft Btn]  ║     │

@@ -5,6 +5,106 @@
 	Easy for AI to understand and modify.
 --]]
 
+local SOUND_LIBRARY = {
+	-- Background music tracks
+	music = {
+		[1] = {
+			id = "rbxassetid://6324790483", -- Background music track 1
+			volume = 0.3
+		},
+		[2] = {
+			id = "rbxassetid://10066947742", -- Background music track 2
+			volume = 0.3
+		}
+	},
+
+	-- Named sound effects
+		effects = {
+		buttonClick = {id = "rbxassetid://6324790483", volume = 0.5}, -- Click sound
+		buttonHover = {id = "rbxassetid://6324790483", volume = 0.3}, -- Hover sound
+		purchase = {id = "rbxassetid://10066947742", volume = 0.7}, -- Purchase sound
+		error = {id = "rbxassetid://8466981206", volume = 0.6}, -- Error sound
+		coinCollect = {id = "rbxassetid://8646410774", volume = 0.4}, -- Coin collect
+		levelUp = {id = "rbxassetid://17648982831", volume = 0.8}, -- Level up
+		notification = {id = "rbxassetid://18595195017", volume = 0.4}, -- Notification
+		achievement = {id = "rbxassetid://17648982831", volume = 0.8}, -- Achievement (same as level up)
+		rewardClaim = {id = "rbxassetid://10066947742", volume = 0.6}, -- Reward claim (same as purchase)
+		blockPlace = {id = "rbxassetid://6324790483", volume = 0.5}, -- Block placement sound
+		blockBreak = {id = "rbxassetid://6324790483", volume = 0.5}, -- Block break sound
+			inventoryPop = {id = "rbxassetid://116766040641694", volume = 0.65}, -- Inventory add/drop confirmation
+			hitConfirm1 = {id = "rbxassetid://80622415030550", volume = 0.8}, -- Successful hit confirmation (variant 1)
+			hitConfirm2 = {id = "rbxassetid://137305868942109", volume = 0.8}, -- Successful hit confirmation (variant 2)
+			hitConfirm3 = {id = "rbxassetid://131614675021657", volume = 0.8}, -- Successful hit confirmation (variant 3)
+			zombieDeath = {id = "rbxassetid://76518122006577", volume = 0.8}, -- Zombie death
+			zombieSay1 = {id = "rbxassetid://123137984396272", volume = 0.7},
+			zombieSay2 = {id = "rbxassetid://84419437806718", volume = 0.7},
+			zombieSay3 = {id = "rbxassetid://135638254815605", volume = 0.7},
+			zombieHurt1 = {id = "rbxassetid://96721285901178", volume = 0.75},
+			zombieHurt2 = {id = "rbxassetid://70383423672318", volume = 0.75}
+	},
+
+	-- Block break specific audio (hit sounds + crack overlays)
+	blockBreak = {
+		defaultMaterial = "STONE",
+		materials = {
+			CLOTH = {
+				"rbxassetid://81861806871886",
+				"rbxassetid://123427473982725",
+				"rbxassetid://73699577303099",
+				"rbxassetid://97951769547033"
+			},
+			GRASS = {
+				"rbxassetid://75505061544532",
+				"rbxassetid://124882222888442",
+				"rbxassetid://119971320422272",
+				"rbxassetid://98041171530531"
+			},
+			GRAVEL = {
+				"rbxassetid://137217647022562",
+				"rbxassetid://133325038915077",
+				"rbxassetid://85677719368412",
+				"rbxassetid://85677719368412"
+			},
+			SAND = {
+				"rbxassetid://117297811836351",
+				"rbxassetid://112394400270897",
+				"rbxassetid://133436973630142",
+				"rbxassetid://113442257849670"
+			},
+			SNOW = {
+				"rbxassetid://96086276839473",
+				"rbxassetid://135139115397346",
+				"rbxassetid://98591241368478",
+				"rbxassetid://77291695981596"
+			},
+			STONE = {
+				"rbxassetid://90449580070492",
+				"rbxassetid://113945567384752",
+				"rbxassetid://133928494021309",
+				"rbxassetid://136166769778734"
+			},
+			WOOD = {
+				"rbxassetid://104636919169799",
+				"rbxassetid://80052678002221",
+				"rbxassetid://100021273321115",
+				"rbxassetid://74239169447328"
+			}
+		},
+		destroyStages = {
+			"rbxassetid://125479763188196", -- Stage 0
+			"rbxassetid://122437960590463", -- Stage 1
+			"rbxassetid://87494235425051", -- Stage 2
+			"rbxassetid://86331071302668", -- Stage 3
+			"rbxassetid://139320505726774", -- Stage 4
+			"rbxassetid://124395945436399", -- Stage 5
+			"rbxassetid://129303387455522", -- Stage 6
+			"rbxassetid://140150860430907", -- Stage 7
+			"rbxassetid://86006077340395",  -- Stage 8
+			"rbxassetid://71974612582615"   -- Stage 9
+		}
+	}
+}
+
 local GameConfig = {
 	-- Currency settings
 	Currency = {
@@ -16,30 +116,8 @@ local GameConfig = {
 
 	-- Audio settings
 	AUDIO_SETTINGS = {
-		backgroundMusic = {
-			[1] = {
-				id = "rbxassetid://6324790483", -- Background music track 1
-				volume = 0.3
-			},
-			[2] = {
-				id = "rbxassetid://10066947742", -- Background music track 2
-				volume = 0.3
-			}
-		},
-		soundEffects = {
-			buttonClick = {id = "rbxassetid://6324790483", volume = 0.5}, -- Click sound
-			buttonHover = {id = "rbxassetid://6324790483", volume = 0.3}, -- Hover sound
-			purchase = {id = "rbxassetid://10066947742", volume = 0.7}, -- Purchase sound
-			error = {id = "rbxassetid://8466981206", volume = 0.6}, -- Error sound
-			coinCollect = {id = "rbxassetid://8646410774", volume = 0.4}, -- Coin collect
-			levelUp = {id = "rbxassetid://17648982831", volume = 0.8}, -- Level up
-			notification = {id = "rbxassetid://18595195017", volume = 0.4}, -- Notification
-			achievement = {id = "rbxassetid://17648982831", volume = 0.8}, -- Achievement (same as level up)
-			rewardClaim = {id = "rbxassetid://10066947742", volume = 0.6}, -- Reward claim (same as purchase)
-				-- Voxel World Sounds
-				blockPlace = {id = "rbxassetid://6324790483", volume = 0.5}, -- Block placement sound
-				blockBreak = {id = "rbxassetid://6324790483", volume = 0.5} -- Block break sound
-		}
+		backgroundMusic = SOUND_LIBRARY.music,
+		soundEffects = SOUND_LIBRARY.effects
 	},
 
 	-- Default player data
@@ -57,43 +135,60 @@ local GameConfig = {
 
 	-- Data Store settings
 	DataStore = {
-		AutoSaveInterval = 300, -- 5 minutes in seconds
-		DataStoreKey = "1DATA", -- DataStore2 combine key
-		PlayerDataKeys = {"PlayerData", "Inventory", "Statistics"}
+		PlayerData = {
+			DataStoreVersion = "PlayerData_v58", -- Keep in sync with PlayerDataStoreService (updated for 6-tier system)
+			SchemaVersion = 5, -- Increment to force migrations/default resets
+			AutoSaveInterval = 300 -- 5 minutes in seconds
+		},
 	},
 
 	-- Inventory settings
 	Inventory = {
-		DefaultCapacity = 30,
-		MaxCapacity = 100,
-		StackSizeLimits = {
-			RESOURCE = 1000,
-			CRYSTAL = 100,
-			BLUEPRINT = 1,
-			CRATE = 10
-		}
-	},
-
-
-
-
-
-
-	-- Rate limiting settings
-	RateLimits = {
-		InventoryOperations = {
-			add_item = {calls = 20, window = 10},
-			remove_item = {calls = 20, window = 10},
-			move_item = {calls = 30, window = 10}
+		-- Starter loadouts (shared between hub + player-owned worlds)
+		StarterHotbar = {
+			{slot = 1, itemId = 1051, count = 1}, -- Bow
+			{slot = 2, itemId = 2001, count = 64},
+			{slot = 3, itemId = 2001, count = 64}, -- Arrows
 		},
-		ShopOperations = {
-			buy_crate = {calls = 10, window = 60},
-			sell_items = {calls = 50, window = 60},
-			bulk_sell = {calls = 5, window = 60}
-		},
-		WorldOperations = {
-			teleport_player = {calls = 10, window = 60},
-			world_regeneration = {calls = 1, window = 3600} -- Once per hour
+		StarterInventory = {
+			-- ═══════════════════════════════════════════════════════════════
+			-- FULL BLOCKS (9x ingots each)
+			-- ═══════════════════════════════════════════════════════════════
+			{itemId = 116, count = 64}, -- Copper Blocks
+			{itemId = 117, count = 64}, -- Coal Blocks
+			{itemId = 118, count = 64}, -- Iron Blocks
+			{itemId = 119, count = 64}, -- Steel Blocks
+			{itemId = 120, count = 64}, -- Bluesteel Blocks
+			{itemId = 121, count = 64}, -- Tungsten Blocks
+			{itemId = 122, count = 64}, -- Titanium Blocks
+
+			-- ═══════════════════════════════════════════════════════════════
+			-- SPECIAL MATERIALS
+			-- ═══════════════════════════════════════════════════════════════
+			{itemId = 115, count = 64}, -- Bluesteel Dust
+
+			-- ═══════════════════════════════════════════════════════════════
+			-- CRAFTING MATERIALS
+			-- ═══════════════════════════════════════════════════════════════
+			{itemId = 28, count = 64},  -- Sticks (stack 1)
+			{itemId = 28, count = 64},  -- Sticks (stack 2)
+			{itemId = 12, count = 64},  -- Oak Planks (for more sticks)
+
+			-- ═══════════════════════════════════════════════════════════════
+			-- PRE-MADE INGOTS (for quick crafting)
+			-- ═══════════════════════════════════════════════════════════════
+			{itemId = 105, count = 64}, -- Copper Ingots
+			{itemId = 33, count = 64},  -- Iron Ingots
+			{itemId = 108, count = 64}, -- Steel Ingots
+			{itemId = 109, count = 64}, -- Bluesteel Ingots
+			{itemId = 110, count = 64}, -- Tungsten Ingots
+			{itemId = 111, count = 64}, -- Titanium Ingots
+
+			-- ═══════════════════════════════════════════════════════════════
+			-- UTILITY BLOCKS
+			-- ═══════════════════════════════════════════════════════════════
+			{itemId = 13, count = 4},   -- Crafting Tables
+			{itemId = 35, count = 4},   -- Furnaces
 		}
 	},
 
@@ -150,6 +245,21 @@ local GameConfig = {
 			purchaseDuration = 2, -- Seconds
 			restockDuration = 3   -- Seconds
 		}
+	},
+
+	-- Combat/Animation settings
+	Combat = {
+		SWING_SPEED = 18, -- Animation playback speed (higher = faster)
+		SWING_COOLDOWN = 0.22, -- Cooldown between swings (seconds)
+	},
+
+	-- Minecraft-style character proportions
+	-- Applied to all player characters (Hub, Player World, Armor UI viewmodel)
+	CharacterScale = {
+		HEIGHT = 1.2,   -- Taller (Minecraft Steve is 2 blocks = 6 studs, Roblox is ~5 studs)
+		WIDTH = 0.85,   -- Narrower limbs (Steve's arms/legs are 4 pixels wide vs 8 pixel body)
+		DEPTH = 0.85,   -- Same as width for uniform limb thinning
+		HEAD = 1.1,     -- Slightly larger head like Minecraft
 	},
 
 	-- Cooldown settings
@@ -399,10 +509,10 @@ local GameConfig = {
 		-- Typography system
 		typography = {
 			fonts = {
-				regular = Enum.Font.Gotham,
-				bold = Enum.Font.GothamBold,
-				italicBold = Enum.Font.GothamBold, -- Using GothamBold as base for italic bold styling
-				mono = Enum.Font.RobotoMono
+				regular = Enum.Font.BuilderSansBold,
+				bold = Enum.Font.BuilderSansBold,
+				italicBold = Enum.Font.BuilderSansBold, -- Using BuilderSansBold as base for italic bold styling
+				mono = Enum.Font.BuilderSansBold
 			},
 			sizes = {
 				display = {
@@ -444,10 +554,12 @@ local GameConfig = {
 
 	-- World system configuration
 	Worlds = {
-		MaxWorldsPerPlayer = 5, -- Maximum worlds a player can create
-		DataStoreVersion = "PlayerOwnedWorlds_v57" -- Updated for multi-world support
+		MaxWorldsPerPlayer = 10, -- Maximum worlds a player can create
+		DataStoreVersion = "PlayerOwnedWorlds_v59" -- Updated for multi-world support
 	}
 }
+
+GameConfig.SOUND_LIBRARY = SOUND_LIBRARY
 
 function GameConfig.IsFeatureEnabled(featureName)
 	return GameConfig.Features[featureName] == true

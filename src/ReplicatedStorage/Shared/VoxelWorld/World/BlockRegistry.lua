@@ -60,7 +60,7 @@ BlockRegistry.Blocks = {
 		transparent = false,
 		color = Color3.fromRGB(127, 127, 127),
 		textures = {
-			all = "stone"
+			all = "rbxassetid://122997720050182"
 		},
 		crossShape = false
 	},
@@ -375,7 +375,7 @@ BlockRegistry.Blocks = {
 		transparent = false,
 		color = Color3.fromRGB(67, 67, 67),
 		textures = {
-			all = "rbxassetid://118777349989858"
+			all = "rbxassetid://79950940655441"
 		},
 		crossShape = false
 	},
@@ -384,23 +384,13 @@ BlockRegistry.Blocks = {
 		name = "Iron Ore",
 		solid = true,
 		transparent = false,
-		color = Color3.fromRGB(216, 175, 147),
+		color = Color3.fromRGB(122, 122, 122),
 		textures = {
-			all = "rbxassetid://138483550577203"
+			all = "rbxassetid://97259156198539"
 		},
 		crossShape = false
 	},
 
-	[Constants.BlockType.DIAMOND_ORE] = {
-		name = "Diamond Ore",
-		solid = true,
-		transparent = false,
-		color = Color3.fromRGB(92, 219, 213),
-		textures = {
-			all = "rbxassetid://136130618299236"
-		},
-		crossShape = false
-	},
 
 	-- Refined materials
 	[Constants.BlockType.COAL] = {
@@ -409,7 +399,7 @@ BlockRegistry.Blocks = {
 		transparent = true,
 		color = Color3.fromRGB(40, 40, 40),
 		textures = {
-			all = "rbxassetid://86641031324394"
+			all = "rbxassetid://139096196695198"
 		},
 		crossShape = true,
 		craftingMaterial = true
@@ -419,25 +409,14 @@ BlockRegistry.Blocks = {
 		name = "Iron Ingot",
 		solid = false,
 		transparent = true,
-		color = Color3.fromRGB(220, 220, 220),
+		color = Color3.fromRGB(122, 122, 122), -- #7a7a7a
 		textures = {
-			all = "rbxassetid://113304461668716"
+			all = "rbxassetid://116257653070196"
 		},
 		crossShape = true,
 		craftingMaterial = true
 	},
 
-	[Constants.BlockType.DIAMOND] = {
-		name = "Diamond",
-		solid = false,
-		transparent = true,
-		color = Color3.fromRGB(92, 219, 213),
-		textures = {
-			all = "rbxassetid://115923690467793"
-		},
-		crossShape = true,
-		craftingMaterial = true
-	},
 
 	-- Utility blocks
 	[Constants.BlockType.FURNACE] = {
@@ -949,7 +928,164 @@ BlockRegistry.Blocks = {
 	[Constants.BlockType.BEETROOT_CROP_0] = { name = "Beetroots (Stage 0)", solid = false, transparent = true, color = Color3.fromRGB(180, 200, 120), textures = { all = "rbxassetid://79781523080066" }, crossShape = true },
 	[Constants.BlockType.BEETROOT_CROP_1] = { name = "Beetroots (Stage 1)", solid = false, transparent = true, color = Color3.fromRGB(180, 200, 120), textures = { all = "rbxassetid://81286687752129" }, crossShape = true },
 	[Constants.BlockType.BEETROOT_CROP_2] = { name = "Beetroots (Stage 2)", solid = false, transparent = true, color = Color3.fromRGB(180, 200, 120), textures = { all = "rbxassetid://119272458748743" }, crossShape = true },
-	[Constants.BlockType.BEETROOT_CROP_3] = { name = "Beetroots (Stage 3)", solid = false, transparent = true, color = Color3.fromRGB(180, 200, 120), textures = { all = "rbxassetid://105511567346427" }, crossShape = true }
+	[Constants.BlockType.BEETROOT_CROP_3] = { name = "Beetroots (Stage 3)", solid = false, transparent = true, color = Color3.fromRGB(180, 200, 120), textures = { all = "rbxassetid://105511567346427" }, crossShape = true },
+
+	-- ═══════════════════════════════════════════════════════════════════════════
+	-- ORES (6-tier progression: Copper → Iron → Steel → Bluesteel → Tungsten → Titanium)
+	-- ═══════════════════════════════════════════════════════════════════════════
+
+	[Constants.BlockType.COPPER_ORE] = {
+		name = "Copper Ore",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(188, 105, 47), -- #bc692f
+		textures = { all = "rbxassetid://136807077587468" },
+		crossShape = false
+	},
+	[Constants.BlockType.BLUESTEEL_ORE] = {
+		name = "Bluesteel Ore",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(149, 190, 246), -- #95bef6
+		textures = { all = "rbxassetid://101828645932065" },
+		crossShape = false
+	},
+	[Constants.BlockType.TUNGSTEN_ORE] = {
+		name = "Tungsten Ore",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(232, 244, 255), -- #e8f4ff
+		textures = { all = "rbxassetid://133328089014739" },
+		crossShape = false
+	},
+	[Constants.BlockType.TITANIUM_ORE] = {
+		name = "Titanium Ore",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(193, 242, 242), -- #c1f2f2
+		textures = { all = "rbxassetid://70831716548382" },
+		crossShape = false
+	},
+
+	-- ═══════════════════════════════════════════════════════════════════════════
+	-- INGOTS/MATERIALS (crafting materials - not placeable)
+	-- ═══════════════════════════════════════════════════════════════════════════
+
+	[Constants.BlockType.COPPER_INGOT] = {
+		name = "Copper Ingot",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(188, 105, 47), -- #bc692f
+		textures = { all = "rbxassetid://117987670821375" },
+		crossShape = true,
+		craftingMaterial = true
+	},
+	[Constants.BlockType.STEEL_INGOT] = {
+		name = "Steel Ingot",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(173, 173, 173), -- #adadad
+		textures = { all = "rbxassetid://103080988701146" },
+		crossShape = true,
+		craftingMaterial = true
+	},
+	[Constants.BlockType.BLUESTEEL_INGOT] = {
+		name = "Bluesteel Ingot",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(149, 190, 246), -- #95bef6
+		textures = { all = "rbxassetid://121436448752857" },
+		crossShape = true,
+		craftingMaterial = true
+	},
+	[Constants.BlockType.TUNGSTEN_INGOT] = {
+		name = "Tungsten Ingot",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(232, 244, 255), -- #e8f4ff
+		textures = { all = "rbxassetid://136722055090955" },
+		crossShape = true,
+		craftingMaterial = true
+	},
+	[Constants.BlockType.TITANIUM_INGOT] = {
+		name = "Titanium Ingot",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(193, 242, 242), -- #c1f2f2
+		textures = { all = "rbxassetid://72533241452362" },
+		crossShape = true,
+		craftingMaterial = true
+	},
+	[Constants.BlockType.BLUESTEEL_DUST] = {
+		name = "Bluesteel Dust",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(149, 190, 246), -- #95bef6
+		textures = { all = "rbxassetid://122819289085836" },
+		crossShape = true,
+		craftingMaterial = true
+	},
+
+	-- ═══════════════════════════════════════════════════════════════════════════
+	-- FULL BLOCKS (9x ingots/items)
+	-- ═══════════════════════════════════════════════════════════════════════════
+
+	[Constants.BlockType.COPPER_BLOCK] = {
+		name = "Copper Block",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(188, 105, 47), -- #bc692f
+		textures = { all = "rbxassetid://115933247878677" },
+		crossShape = false
+	},
+	[Constants.BlockType.COAL_BLOCK] = {
+		name = "Coal Block",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(40, 40, 40),
+		textures = { all = "rbxassetid://74344180768881" },
+		crossShape = false
+	},
+	[Constants.BlockType.IRON_BLOCK] = {
+		name = "Iron Block",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(122, 122, 122), -- #7a7a7a
+		textures = { all = "rbxassetid://105161132495681" },
+		crossShape = false
+	},
+	[Constants.BlockType.STEEL_BLOCK] = {
+		name = "Steel Block",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(173, 173, 173), -- #adadad
+		textures = { all = "rbxassetid://76501364497397" },
+		crossShape = false
+	},
+	[Constants.BlockType.BLUESTEEL_BLOCK] = {
+		name = "Bluesteel Block",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(149, 190, 246), -- #95bef6
+		textures = { all = "rbxassetid://74339957046108" },
+		crossShape = false
+	},
+	[Constants.BlockType.TUNGSTEN_BLOCK] = {
+		name = "Tungsten Block",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(232, 244, 255), -- #e8f4ff
+		textures = { all = "rbxassetid://91018177845956" },
+		crossShape = false
+	},
+	[Constants.BlockType.TITANIUM_BLOCK] = {
+		name = "Titanium Block",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(193, 242, 242), -- #c1f2f2
+		textures = { all = "rbxassetid://120386947860707" },
+		crossShape = false
+	}
 }
 
 -- Get block definition by ID

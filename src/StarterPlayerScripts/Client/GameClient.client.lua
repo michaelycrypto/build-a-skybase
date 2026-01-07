@@ -12,6 +12,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local StarterGui = game:GetService("StarterGui")
 local Lighting = game:GetService("Lighting")
 local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
 
 local player = Players.LocalPlayer
 
@@ -25,6 +26,8 @@ local CameraFrustum = require(ReplicatedStorage.Shared.VoxelWorld.Rendering.Cull
 
 -- Texture system (verify it loads)
 local TextureManager = require(ReplicatedStorage.Shared.VoxelWorld.Rendering.TextureManager)
+local BlockBreakOverlayController = require(script.Parent.Controllers.BlockBreakOverlayController)
+local CloudController = require(script.Parent.Controllers.CloudController)
 print("[VoxelTextures] Texture system loaded. Enabled:", TextureManager:IsEnabled())
 local voxelWorldHandle = nil
 local boxMesher = BoxMesher.new()
@@ -34,6 +37,18 @@ local chunkFolders = {}
 local colliderFolders = {}
 local frustum = CameraFrustum.new()
 local _lastFogEnd
+local isHubWorld = Workspace:GetAttribute("IsHubWorld") == true
+local hubRenderDistance = Workspace:GetAttribute("HubRenderDistance")
+local hubInitialMeshPending = isHubWorld
+Workspace:GetAttributeChangedSignal("IsHubWorld"):Connect(function()
+	isHubWorld = Workspace:GetAttribute("IsHubWorld") == true
+	if isHubWorld then
+		hubInitialMeshPending = true
+	end
+end)
+Workspace:GetAttributeChangedSignal("HubRenderDistance"):Connect(function()
+	hubRenderDistance = Workspace:GetAttribute("HubRenderDistance")
+end)
 
 local function updateVoxelWorld()
 	if not voxelWorldHandle then
@@ -68,6 +83,11 @@ local function updateVoxelWorld()
 		local vwConfig = require(ReplicatedStorage.Shared.VoxelWorld.Core.Config)
 		local budget = (vwConfig.PERFORMANCE.MAX_MESH_UPDATES_PER_FRAME or 2)
 		local timeBudgetSec = (vwConfig.PERFORMANCE.MESH_UPDATE_BUDGET_MS or 5) / 1000
+		local hubFastMesh = isHubWorld and hubInitialMeshPending
+		if hubFastMesh then
+			budget = math.max(budget, 200)
+			timeBudgetSec = math.max(timeBudgetSec, 0.3)
+		end
 		local frameStart = os.clock()
 
 		-- Client-side visual radius gate (prevents meshing/keeping far-away chunks)
@@ -75,6 +95,9 @@ local function updateVoxelWorld()
 			(voxelWorldHandle and voxelWorldHandle.chunkManager and voxelWorldHandle.chunkManager.renderDistance) or 8,
 			(vwConfig.PERFORMANCE.MAX_RENDER_DISTANCE or 8)
 		)
+		if isHubWorld and hubRenderDistance then
+			clientVisualRadius = math.max(clientVisualRadius, hubRenderDistance)
+		end
 
 		-- Dynamic horizon fog to mask pop-in based on effective render distance
 		local rd = (voxelWorldHandle and voxelWorldHandle.chunkManager and voxelWorldHandle.chunkManager.renderDistance) or clientVisualRadius
@@ -146,6 +169,9 @@ local function updateVoxelWorld()
 			local dxChunks = chunk.x - pcx
 			local dzChunks = chunk.z - pcz
 			local withinVisualRadius = (dxChunks * dxChunks + dzChunks * dzChunks) <= (clientVisualRadius * clientVisualRadius)
+			if isHubWorld then
+				withinVisualRadius = true
+			end
 			if withinVisualRadius and (mustInclude or vwDebug.DISABLE_FRUSTUM_CULLING or frustum:IsAABBVisible(minExp, maxExp)) then
 				local center = Vector3.new(chunkWorldX + sizeX * 0.5, pos.Y, chunkWorldZ + sizeZ * 0.5)
 				local dist = (center - pos).Magnitude
@@ -230,7 +256,14 @@ local function updateVoxelWorld()
                     for _, child in ipairs(part:GetChildren()) do
                         if child:IsA("Texture") then
                             textureCount = textureCount + 1
-                        end
+        end
+
+		if hubFastMesh then
+			if not next(cm.meshUpdateQueue) then
+				hubInitialMeshPending = false
+				print("[VoxelWorld] Hub voxel mesh build complete")
+			end
+		end
                     end
                 end
             end
@@ -282,6 +315,7 @@ RunService.RenderStepped:Connect(updateVoxelWorld)
 
 -- Load shared modules
 local Config = require(ReplicatedStorage.Shared.Config)
+local BOLD_FONT = Config.UI_SETTINGS.typography.fonts.bold
 local Logger = require(ReplicatedStorage.Shared.Logger)
 local Network = require(ReplicatedStorage.Shared.Network)
 local EventManager = require(ReplicatedStorage.Shared.EventManager)
@@ -352,6 +386,13 @@ local function completeInitialization(EmoteManager)
 	end
 	Client.managers.UIManager = UIManager
 
+	-- Initialize UIVisibilityManager (BEFORE other UI components)
+	local UIVisibilityManager = require(script.Parent.Managers.UIVisibilityManager)
+	if UIVisibilityManager.Initialize then
+		UIVisibilityManager:Initialize()
+	end
+	Client.managers.UIVisibilityManager = UIVisibilityManager
+
 	-- Initialize PanelManager
 	local PanelManager = require(script.Parent.Managers.PanelManager)
 	if PanelManager.Initialize then
@@ -396,6 +437,9 @@ local function completeInitialization(EmoteManager)
 	inventory:Initialize()
 	Client.voxelInventory = inventory
 
+	-- Set inventory reference in hotbar for inventory button
+	hotbar:SetInventoryReference(inventory)
+
 	print("🎮 Voxel Hotbar, Inventory Manager, and Inventory Panel initialized")
 
 	-- Initialize World Ownership Display
@@ -419,6 +463,24 @@ local function completeInitialization(EmoteManager)
 	Client.blockBreakProgress = BlockBreakProgress
 	print("💥 Block Break Progress UI initialized")
 
+	-- Initialize Status Bars HUD (Minecraft-style health/armor/hunger)
+	local statusBarsSuccess, statusBarsError = pcall(function()
+		local StatusBarsHUD = require(script.Parent.UI.StatusBarsHUD)
+		local statusBars = StatusBarsHUD.new()
+		statusBars:Initialize()
+		Client.statusBarsHUD = statusBars
+	end)
+	if statusBarsSuccess then
+		print("❤️ Status Bars HUD (health/armor/hunger) initialized")
+	else
+		warn("⚠️ Status Bars HUD failed to initialize:", statusBarsError)
+	end
+
+	-- Initialize Block Break Overlay (crack stages)
+	BlockBreakOverlayController:Initialize()
+	Client.blockBreakOverlayController = BlockBreakOverlayController
+	print("🧱 Block Break Overlay controller initialized")
+
 	-- Initialize Dropped Item Controller (rendering dropped items)
 	local DroppedItemController = require(script.Parent.Controllers.DroppedItemController)
 	DroppedItemController:Initialize(voxelWorldHandle)
@@ -430,12 +492,7 @@ local function completeInitialization(EmoteManager)
 	Client.mobReplicationController = MobReplicationController
 	print("👾 Mob Replication Controller initialized")
 
-	-- Initialize Minion UI (open/close like chest/workbench)
-	local MinionUI = require(script.Parent.UI.MinionUI)
-	local minionUI = MinionUI.new(inventoryManager, inventory, chestUI)
-	minionUI:Initialize()
-	Client.minionUI = minionUI
-	print("🧱 Minion UI initialized")
+	-- Note: MinionUI is initialized after ChestUI due to dependency
 
 	-- Initialize Tool Visual Controller (attach placeholder handle for equipped tools)
 	local ToolVisualController = require(script.Parent.Controllers.ToolVisualController)
@@ -463,6 +520,18 @@ local function completeInitialization(EmoteManager)
 	Client.combatController = CombatController
 	print("⚔️ Combat Controller initialized")
 
+	-- Initialize Bow Controller (ranged hold-to-draw)
+	local BowController = require(script.Parent.Controllers.BowController)
+	BowController:Initialize(inventoryManager)
+	Client.bowController = BowController
+	print("🏹 Bow Controller initialized")
+
+	-- Initialize Armor Visual Controller (render armor on character)
+	local ArmorVisualController = require(script.Parent.Controllers.ArmorVisualController)
+	ArmorVisualController.Init()
+	Client.armorVisualController = ArmorVisualController
+	print("🛡️ Armor Visual Controller initialized")
+
 	-- Initialize Camera Controller (3rd person camera locked 2 studs above head)
 	local CameraController = require(script.Parent.Controllers.CameraController)
 	CameraController:Initialize()
@@ -473,21 +542,56 @@ local function completeInitialization(EmoteManager)
 	SprintController:Initialize()
 	Client.sprintController = SprintController
 
+	-- Initialize Cloud Controller (Minecraft-style layered clouds)
+	CloudController:Initialize()
+	Client.cloudController = CloudController
+	print("☁️ Cloud Controller initialized")
+
+	local worldsPanel = nil
+	local UI_TOGGLE_DEBOUNCE = 0.3
+	local lastUiToggleTime = 0
+
+	local function canProcessUiToggle()
+		local now = tick()
+		if now - lastUiToggleTime < UI_TOGGLE_DEBOUNCE then
+			return false
+		end
+		lastUiToggleTime = now
+		return true
+	end
+
 	-- Initialize Chest UI (pass inventory manager for integration)
 	local ChestUI = require(script.Parent.UI.ChestUI)
-	local chestUI = ChestUI.new(inventoryManager, inventory)
+	local chestUI = ChestUI.new(inventoryManager)
 	chestUI:Initialize()
 	Client.chestUI = chestUI
 
-	-- Link inventory panel to chest UI for mutual exclusion
-	inventory.chestUI = chestUI
-
 	print("📦 Chest UI initialized")
+
+	-- Initialize Minion UI (after ChestUI due to dependency)
+	local MinionUI = require(script.Parent.UI.MinionUI)
+	local minionUI = MinionUI.new(inventoryManager, inventory, chestUI)
+	minionUI:Initialize()
+	Client.minionUI = minionUI
+	print("🧱 Minion UI initialized")
 
 	-- Centralize inventory/chest key handling to avoid duplicate listeners
 	UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		if gameProcessed then return end
 		if input.KeyCode == Enum.KeyCode.E then
+			if not canProcessUiToggle() then
+				return
+			end
+			if worldsPanel and worldsPanel:IsOpen() then
+				worldsPanel:Close("inventory")
+				if inventory and not inventory.isOpen then
+					inventory:Open()
+				end
+				return
+			end
+			if worldsPanel and worldsPanel.IsClosing and worldsPanel:IsClosing() then
+				worldsPanel:SetPendingCloseMode("inventory")
+			end
 			if minionUI and minionUI.isOpen then
 				minionUI:Close()
 			elseif chestUI and chestUI.isOpen then
@@ -497,6 +601,33 @@ local function completeInitialization(EmoteManager)
 					inventory:Toggle()
 				end
 			end
+		elseif input.KeyCode == Enum.KeyCode.B then
+			if not canProcessUiToggle() then
+				return
+			end
+			if minionUI and minionUI.isOpen then
+				minionUI:Close()
+			end
+			if chestUI and chestUI.isOpen then
+				local targetMode = worldsPanel and "worlds" or nil
+				chestUI:Close(targetMode)
+			end
+			if inventory then
+				if inventory.isOpen then
+					inventory:Close("worlds")
+				elseif inventory.IsClosing and inventory:IsClosing() then
+					inventory:SetPendingCloseMode("worlds")
+				end
+			end
+			if worldsPanel then
+				if worldsPanel:IsOpen() then
+					worldsPanel:Close()
+				else
+					worldsPanel:Open()
+				end
+			else
+				warn("Worlds panel is not available in this place.")
+			end
 		elseif input.KeyCode == Enum.KeyCode.Escape then
 			if minionUI and minionUI.isOpen then
 				minionUI:Close()
@@ -504,6 +635,8 @@ local function completeInitialization(EmoteManager)
 				chestUI:Close()
 			elseif inventory and inventory.isOpen then
 				inventory:Close()
+			elseif worldsPanel and worldsPanel:IsOpen() then
+				worldsPanel:Close()
 			end
 		end
 	end)
@@ -513,7 +646,7 @@ local function completeInitialization(EmoteManager)
 		if inventory then
 			-- Close chest if open
 			if chestUI and chestUI.isOpen then
-				chestUI:Close()
+				chestUI:Close("inventory")
 			end
 			-- Enable workbench filter and open
 			inventory:SetWorkbenchMode(true)
@@ -545,42 +678,20 @@ local function completeInitialization(EmoteManager)
 	end
 	Client.managers.ShopPanel = ShopPanel
 
-	-- Initialize and register WorldsPanel with PanelManager (lobby only)
-	local LOBBY_PLACE_ID = 139848475014328
-	if game.PlaceId == LOBBY_PLACE_ID then
-		local WorldsPanel = require(script.Parent.UI.WorldsPanel)
-		if WorldsPanel.Initialize then
-			WorldsPanel:Initialize()
-		end
-		Client.managers.WorldsPanel = WorldsPanel
-
-		-- Register with PanelManager
-		PanelManager:RegisterPanel("worlds", {
-			title = "My Worlds",
-			type = "overlay",
-			size = "large",
-			icon = {category = "General", name = "Home"},
-			create = function(contentFrame, data)
-				WorldsPanel:CreateContent(contentFrame, data)
-			end,
-			onShow = function(data)
-				-- Request fresh worlds list from server when panel opens
-				print("[WorldsPanel] Panel opened, requesting worlds list...")
-				EventManager:SendToServer("RequestWorldsList", {})
-			end
-		})
-		print("WorldsPanel: Initialized and registered with PanelManager")
+	-- Initialize standalone Worlds panel (available in all places, not just lobby)
+	local WorldsPanelModule = require(script.Parent.UI.WorldsPanel)
+	local worldsPanelInstance = WorldsPanelModule.new()
+	worldsPanelInstance:Initialize()
+	Client.managers.WorldsPanel = worldsPanelInstance
+	worldsPanel = worldsPanelInstance
+	if hotbar then
+		hotbar:SetWorldsPanel(worldsPanelInstance)
 	end
 
 	-- Create main HUD (after panels are registered)
 	local MainHUD = require(script.Parent.UI.MainHUD)
 	if MainHUD.Create then
 		MainHUD:Create()
-	end
-
-	-- Link inventory to MainHUD for button access
-	if MainHUD.SetInventoryReference and inventory then
-		MainHUD:SetInventoryReference(inventory)
 	end
 
 	-- Setup character handling
@@ -634,7 +745,11 @@ local function initialize()
 
 	-- Initialize voxel world in SERVER-AUTHORITATIVE mode
 	print("🌍 Initializing voxel world (server-authoritative mode)...")
-    voxelWorldHandle = VoxelWorld.CreateClientView(3)
+	local clientRenderDistance = hubRenderDistance or 3
+    voxelWorldHandle = VoxelWorld.CreateClientView(clientRenderDistance)
+	if hubRenderDistance and voxelWorldHandle and voxelWorldHandle.chunkManager then
+		voxelWorldHandle.chunkManager.renderDistance = hubRenderDistance
+	end
 
 	-- Initialize player systems (DISABLED - using pure Roblox)
 	-- clientPlayerController:Initialize(voxelWorldHandle)
@@ -995,6 +1110,7 @@ local REMESH_DEBOUNCE_TIME = 0.15 -- Wait 150ms after last edit before remeshing
 			function(loadedCount, failedCount)
 				-- Completion callback (called after fade-out)
 				print("Asset loading complete:", loadedCount, "loaded,", failedCount, "failed")
+				EventManager:SendToServer("ClientLoadingComplete")
 			end,
 			function()
 				-- Run heavy UI initialization while loading screen is still visible
@@ -1040,7 +1156,7 @@ local function safeInitialize()
 		titleLabel.Text = "Initialization Failed"
 		titleLabel.TextColor3 = Color3.fromRGB(255, 200, 100)
 		titleLabel.TextScaled = true
-		titleLabel.Font = Enum.Font.GothamBold
+		titleLabel.Font = BOLD_FONT
 		titleLabel.Parent = errorFrame
 
 		local errorLabel = Instance.new("TextLabel")
@@ -1050,7 +1166,7 @@ local function safeInitialize()
 		errorLabel.Text = "Please rejoin the game.\n\nError: " .. tostring(error)
 		errorLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 		errorLabel.TextScaled = true
-		errorLabel.Font = Enum.Font.Gotham
+		errorLabel.Font = BOLD_FONT
 		errorLabel.TextWrapped = true
 		errorLabel.Parent = errorFrame
 	else

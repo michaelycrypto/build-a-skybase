@@ -487,39 +487,37 @@ Currency = {
     MaxGems = 9999
 }
 
--- Dungeon settings
-Dungeon = {
-    MaxSpawnerSlots = 8,
-    DefaultEnergyCapacity = 100,
-    EnergyRegenRate = 1, -- per minute
-    MaxDurability = 100
+-- Audio settings
+AUDIO_SETTINGS = {
+    backgroundMusic = {
+        [1] = {id = "rbxassetid://6324790483", volume = 0.3},
+        [2] = {id = "rbxassetid://10066947742", volume = 0.3}
+    },
+    soundEffects = {
+        buttonClick = {id = "rbxassetid://6324790483", volume = 0.5},
+        purchase = {id = "rbxassetid://10066947742", volume = 0.7}
+    }
 }
 
--- Rate limiting
-RateLimits = {
-    DungeonOperations = {
-        deploy_spawner = {calls = 10, window = 30},
-        remove_spawner = {calls = 10, window = 30}
-    },
-    ShopOperations = {
-        buy_crate = {calls = 10, window = 60},
-        sell_items = {calls = 50, window = 60}
-    }
+-- Inventory settings
+Inventory = {
+    StarterHotbar = {},
+    StarterInventory = {}
 }
 
 -- World system
 World = {
-    GridSize = {width = 95, height = 81},
-    BaseTileSize = 5,
-    MaxDungeonSlots = 6,
-    DungeonSize = {width = 23, height = 23}
+    GridSize = {width = 52, height = 80},
+    BaseTileSize = 4,
+    TileTypes = {"Baseplate", "LargeBaseplate"},
+    RegenerateOnStart = true
 }
 
 -- Feature toggles
 Features = {
     Currency = true,
     Shop = true,
-    DungeonSystem = true,
+    InventorySystem = true,
     WorldSystem = true
 }
 ```

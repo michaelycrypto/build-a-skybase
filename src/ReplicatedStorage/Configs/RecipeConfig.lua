@@ -2,6 +2,16 @@
 	RecipeConfig.lua
 	Defines all crafting recipes for the simplified crafting system
 
+	6-tier progression: Copper → Iron → Steel → Bluesteel → Tungsten → Titanium
+
+	Smelting (Furnace):
+	- Copper Ingot: Copper Ore + 1 Coal
+	- Iron Ingot: Iron Ore + 1 Coal
+	- Steel Ingot: Iron Ore + 2 Coal
+	- Bluesteel Ingot: Iron Ore + 3 Coal + 1 Bluesteel Dust
+	- Tungsten Ingot: Tungsten Ore + 4 Coal
+	- Titanium Ingot: Titanium Ore + 5 Coal
+
 	Recipe Format:
 	{
 		id = "recipe_id",
@@ -17,13 +27,17 @@ local RecipeConfig = {}
 -- Recipe categories for UI organization
 RecipeConfig.Categories = {
 	MATERIALS = "Materials",
+	SMELTING = "Smelting",
 	TOOLS = "Tools",
+	ARMOR = "Armor",
 	BUILDING = "Building Blocks"
 }
 
 -- Recipe definitions
 RecipeConfig.Recipes = {
-	-- Basic material conversions
+	-- ═══════════════════════════════════════════════════════════════════════════
+	-- BASIC MATERIAL CONVERSIONS
+	-- ═══════════════════════════════════════════════════════════════════════════
 	oak_planks = {
 		id = "oak_planks",
 		name = "Oak Planks",
@@ -48,121 +62,206 @@ RecipeConfig.Recipes = {
 		}
 	},
 
-	-- Tools
-	wood_pickaxe = {
-		id = "wood_pickaxe",
-		name = "Wood Pickaxe",
+	-- ═══════════════════════════════════════════════════════════════════════════
+	-- SMELTING RECIPES (Furnace: Ore + Coal → Ingot)
+	-- ═══════════════════════════════════════════════════════════════════════════
+
+	smelt_copper = {
+		id = "smelt_copper",
+		name = "Copper Ingot",
+		category = RecipeConfig.Categories.SMELTING,
+		requiresFurnace = true,
+		inputs = {
+			{itemId = 98, count = 1},  -- 1x Copper Ore
+			{itemId = 32, count = 1}   -- 1x Coal
+		},
+		outputs = { {itemId = 105, count = 1} }  -- 1x Copper Ingot
+	},
+
+	smelt_iron = {
+		id = "smelt_iron",
+		name = "Iron Ingot",
+		category = RecipeConfig.Categories.SMELTING,
+		requiresFurnace = true,
+		inputs = {
+			{itemId = 30, count = 1},  -- 1x Iron Ore
+			{itemId = 32, count = 1}   -- 1x Coal
+		},
+		outputs = { {itemId = 33, count = 1} }  -- 1x Iron Ingot
+	},
+
+	smelt_steel = {
+		id = "smelt_steel",
+		name = "Steel Ingot",
+		category = RecipeConfig.Categories.SMELTING,
+		requiresFurnace = true,
+		inputs = {
+			{itemId = 30, count = 1},  -- 1x Iron Ore
+			{itemId = 32, count = 2}   -- 2x Coal
+		},
+		outputs = { {itemId = 108, count = 1} }  -- 1x Steel Ingot
+	},
+
+	smelt_bluesteel = {
+		id = "smelt_bluesteel",
+		name = "Bluesteel Ingot",
+		category = RecipeConfig.Categories.SMELTING,
+		requiresFurnace = true,
+		inputs = {
+			{itemId = 30, count = 1},   -- 1x Iron Ore
+			{itemId = 32, count = 3},   -- 3x Coal
+			{itemId = 115, count = 1}   -- 1x Bluesteel Dust
+		},
+		outputs = { {itemId = 109, count = 1} }  -- 1x Bluesteel Ingot
+	},
+
+	smelt_tungsten = {
+		id = "smelt_tungsten",
+		name = "Tungsten Ingot",
+		category = RecipeConfig.Categories.SMELTING,
+		requiresFurnace = true,
+		inputs = {
+			{itemId = 102, count = 1},  -- 1x Tungsten Ore
+			{itemId = 32, count = 4}    -- 4x Coal
+		},
+		outputs = { {itemId = 110, count = 1} }  -- 1x Tungsten Ingot
+	},
+
+	smelt_titanium = {
+		id = "smelt_titanium",
+		name = "Titanium Ingot",
+		category = RecipeConfig.Categories.SMELTING,
+		requiresFurnace = true,
+		inputs = {
+			{itemId = 103, count = 1},  -- 1x Titanium Ore
+			{itemId = 32, count = 5}    -- 5x Coal
+		},
+		outputs = { {itemId = 111, count = 1} }  -- 1x Titanium Ingot
+	},
+
+	-- ═══════════════════════════════════════════════════════════════════════════
+	-- FULL BLOCKS (9x ingots/items → 1 block)
+	-- ═══════════════════════════════════════════════════════════════════════════
+
+	copper_block = {
+		id = "copper_block",
+		name = "Copper Block",
+		category = RecipeConfig.Categories.BUILDING,
+		requiresWorkbench = true,
+		inputs = { {itemId = 105, count = 9} },  -- 9x Copper Ingot
+		outputs = { {itemId = 116, count = 1} }  -- 1x Copper Block
+	},
+
+	coal_block = {
+		id = "coal_block",
+		name = "Coal Block",
+		category = RecipeConfig.Categories.BUILDING,
+		requiresWorkbench = true,
+		inputs = { {itemId = 32, count = 9} },   -- 9x Coal
+		outputs = { {itemId = 117, count = 1} }  -- 1x Coal Block
+	},
+
+	iron_block = {
+		id = "iron_block",
+		name = "Iron Block",
+		category = RecipeConfig.Categories.BUILDING,
+		requiresWorkbench = true,
+		inputs = { {itemId = 33, count = 9} },   -- 9x Iron Ingot
+		outputs = { {itemId = 118, count = 1} }  -- 1x Iron Block
+	},
+
+	steel_block = {
+		id = "steel_block",
+		name = "Steel Block",
+		category = RecipeConfig.Categories.BUILDING,
+		requiresWorkbench = true,
+		inputs = { {itemId = 108, count = 9} },  -- 9x Steel Ingot
+		outputs = { {itemId = 119, count = 1} }  -- 1x Steel Block
+	},
+
+	bluesteel_block = {
+		id = "bluesteel_block",
+		name = "Bluesteel Block",
+		category = RecipeConfig.Categories.BUILDING,
+		requiresWorkbench = true,
+		inputs = { {itemId = 109, count = 9} },  -- 9x Bluesteel Ingot
+		outputs = { {itemId = 120, count = 1} }  -- 1x Bluesteel Block
+	},
+
+	tungsten_block = {
+		id = "tungsten_block",
+		name = "Tungsten Block",
+		category = RecipeConfig.Categories.BUILDING,
+		requiresWorkbench = true,
+		inputs = { {itemId = 110, count = 9} },  -- 9x Tungsten Ingot
+		outputs = { {itemId = 121, count = 1} }  -- 1x Tungsten Block
+	},
+
+	titanium_block = {
+		id = "titanium_block",
+		name = "Titanium Block",
+		category = RecipeConfig.Categories.BUILDING,
+		requiresWorkbench = true,
+		inputs = { {itemId = 111, count = 9} },  -- 9x Titanium Ingot
+		outputs = { {itemId = 122, count = 1} }  -- 1x Titanium Block
+	},
+
+	-- ═══════════════════════════════════════════════════════════════════════════
+	-- COPPER TOOLS (Tier 1)
+	-- ═══════════════════════════════════════════════════════════════════════════
+
+	copper_pickaxe = {
+		id = "copper_pickaxe",
+		name = "Copper Pickaxe",
 		category = RecipeConfig.Categories.TOOLS,
 		requiresWorkbench = true,
 		inputs = {
-			{itemId = 12, count = 3},  -- 3x Oak Planks
-			{itemId = 28, count = 2}   -- 2x Sticks
+			{itemId = 105, count = 3},  -- 3x Copper Ingot
+			{itemId = 28, count = 2}    -- 2x Sticks
 		},
-		outputs = {
-			{itemId = 1001, count = 1}  -- 1x Wood Pickaxe (ToolConfig)
-		}
+		outputs = { {itemId = 1001, count = 1} }
 	},
 
-	wood_axe = {
-		id = "wood_axe",
-		name = "Wood Axe",
+	copper_axe = {
+		id = "copper_axe",
+		name = "Copper Axe",
 		category = RecipeConfig.Categories.TOOLS,
 		requiresWorkbench = true,
 		inputs = {
-			{itemId = 12, count = 3},  -- 3x Oak Planks
-			{itemId = 28, count = 2}   -- 2x Sticks
+			{itemId = 105, count = 3},
+			{itemId = 28, count = 2}
 		},
-		outputs = {
-			{itemId = 1011, count = 1}  -- 1x Wood Axe (ToolConfig)
-		}
+		outputs = { {itemId = 1011, count = 1} }
 	},
 
-	wood_shovel = {
-		id = "wood_shovel",
-		name = "Wood Shovel",
+	copper_shovel = {
+		id = "copper_shovel",
+		name = "Copper Shovel",
 		category = RecipeConfig.Categories.TOOLS,
 		requiresWorkbench = true,
 		inputs = {
-			{itemId = 12, count = 1},  -- 1x Oak Planks
-			{itemId = 28, count = 2}   -- 2x Sticks
+			{itemId = 105, count = 1},
+			{itemId = 28, count = 2}
 		},
-		outputs = {
-			{itemId = 1021, count = 1}  -- 1x Wood Shovel (ToolConfig)
-		}
+		outputs = { {itemId = 1021, count = 1} }
 	},
 
-	wood_sword = {
-		id = "wood_sword",
-		name = "Wood Sword",
+	copper_sword = {
+		id = "copper_sword",
+		name = "Copper Sword",
 		category = RecipeConfig.Categories.TOOLS,
 		requiresWorkbench = true,
 		inputs = {
-			{itemId = 12, count = 2},  -- 2x Oak Planks
-			{itemId = 28, count = 1}   -- 1x Stick
+			{itemId = 105, count = 2},
+			{itemId = 28, count = 1}
 		},
-		outputs = {
-			{itemId = 1041, count = 1}  -- 1x Wood Sword (ToolConfig)
-		}
+		outputs = { {itemId = 1041, count = 1} }
 	},
 
-	-- Stone Tools
-	stone_pickaxe = {
-		id = "stone_pickaxe",
-		name = "Stone Pickaxe",
-		category = RecipeConfig.Categories.TOOLS,
-		requiresWorkbench = true,
-		inputs = {
-			{itemId = 14, count = 3},  -- 3x Cobblestone
-			{itemId = 28, count = 2}   -- 2x Sticks
-		},
-		outputs = {
-			{itemId = 1002, count = 1}  -- 1x Stone Pickaxe
-		}
-	},
+	-- ═══════════════════════════════════════════════════════════════════════════
+	-- IRON TOOLS (Tier 2)
+	-- ═══════════════════════════════════════════════════════════════════════════
 
-	stone_axe = {
-		id = "stone_axe",
-		name = "Stone Axe",
-		category = RecipeConfig.Categories.TOOLS,
-		requiresWorkbench = true,
-		inputs = {
-			{itemId = 14, count = 3},  -- 3x Cobblestone
-			{itemId = 28, count = 2}   -- 2x Sticks
-		},
-		outputs = {
-			{itemId = 1012, count = 1}  -- 1x Stone Axe
-		}
-	},
-
-	stone_shovel = {
-		id = "stone_shovel",
-		name = "Stone Shovel",
-		category = RecipeConfig.Categories.TOOLS,
-		requiresWorkbench = true,
-		inputs = {
-			{itemId = 14, count = 1},  -- 1x Cobblestone
-			{itemId = 28, count = 2}   -- 2x Sticks
-		},
-		outputs = {
-			{itemId = 1022, count = 1}  -- 1x Stone Shovel
-		}
-	},
-
-	stone_sword = {
-		id = "stone_sword",
-		name = "Stone Sword",
-		category = RecipeConfig.Categories.TOOLS,
-		requiresWorkbench = true,
-		inputs = {
-			{itemId = 14, count = 2},  -- 2x Cobblestone
-			{itemId = 28, count = 1}   -- 1x Stick
-		},
-		outputs = {
-			{itemId = 1042, count = 1}  -- 1x Stone Sword
-		}
-	},
-
-	-- Iron Tools
 	iron_pickaxe = {
 		id = "iron_pickaxe",
 		name = "Iron Pickaxe",
@@ -170,11 +269,9 @@ RecipeConfig.Recipes = {
 		requiresWorkbench = true,
 		inputs = {
 			{itemId = 33, count = 3},  -- 3x Iron Ingot
-			{itemId = 28, count = 2}   -- 2x Sticks
+			{itemId = 28, count = 2}
 		},
-		outputs = {
-			{itemId = 1003, count = 1}  -- 1x Iron Pickaxe
-		}
+		outputs = { {itemId = 1002, count = 1} }
 	},
 
 	iron_axe = {
@@ -183,12 +280,10 @@ RecipeConfig.Recipes = {
 		category = RecipeConfig.Categories.TOOLS,
 		requiresWorkbench = true,
 		inputs = {
-			{itemId = 33, count = 3},  -- 3x Iron Ingot
-			{itemId = 28, count = 2}   -- 2x Sticks
+			{itemId = 33, count = 3},
+			{itemId = 28, count = 2}
 		},
-		outputs = {
-			{itemId = 1013, count = 1}  -- 1x Iron Axe
-		}
+		outputs = { {itemId = 1012, count = 1} }
 	},
 
 	iron_shovel = {
@@ -197,12 +292,10 @@ RecipeConfig.Recipes = {
 		category = RecipeConfig.Categories.TOOLS,
 		requiresWorkbench = true,
 		inputs = {
-			{itemId = 33, count = 1},  -- 1x Iron Ingot
-			{itemId = 28, count = 2}   -- 2x Sticks
+			{itemId = 33, count = 1},
+			{itemId = 28, count = 2}
 		},
-		outputs = {
-			{itemId = 1023, count = 1}  -- 1x Iron Shovel
-		}
+		outputs = { {itemId = 1022, count = 1} }
 	},
 
 	iron_sword = {
@@ -211,72 +304,433 @@ RecipeConfig.Recipes = {
 		category = RecipeConfig.Categories.TOOLS,
 		requiresWorkbench = true,
 		inputs = {
-			{itemId = 33, count = 2},  -- 2x Iron Ingot
-			{itemId = 28, count = 1}   -- 1x Stick
+			{itemId = 33, count = 2},
+			{itemId = 28, count = 1}
 		},
-		outputs = {
-			{itemId = 1043, count = 1}  -- 1x Iron Sword
-		}
+		outputs = { {itemId = 1042, count = 1} }
 	},
 
-	-- Diamond Tools
-	diamond_pickaxe = {
-		id = "diamond_pickaxe",
-		name = "Diamond Pickaxe",
+	-- ═══════════════════════════════════════════════════════════════════════════
+	-- STEEL TOOLS (Tier 3)
+	-- ═══════════════════════════════════════════════════════════════════════════
+
+	steel_pickaxe = {
+		id = "steel_pickaxe",
+		name = "Steel Pickaxe",
 		category = RecipeConfig.Categories.TOOLS,
 		requiresWorkbench = true,
 		inputs = {
-			{itemId = 34, count = 3},  -- 3x Diamond
-			{itemId = 28, count = 2}   -- 2x Sticks
+			{itemId = 108, count = 3},  -- 3x Steel Ingot
+			{itemId = 28, count = 2}
 		},
-		outputs = {
-			{itemId = 1004, count = 1}  -- 1x Diamond Pickaxe
-		}
+		outputs = { {itemId = 1003, count = 1} }
 	},
 
-	diamond_axe = {
-		id = "diamond_axe",
-		name = "Diamond Axe",
+	steel_axe = {
+		id = "steel_axe",
+		name = "Steel Axe",
 		category = RecipeConfig.Categories.TOOLS,
 		requiresWorkbench = true,
 		inputs = {
-			{itemId = 34, count = 3},  -- 3x Diamond
-			{itemId = 28, count = 2}   -- 2x Sticks
+			{itemId = 108, count = 3},
+			{itemId = 28, count = 2}
 		},
-		outputs = {
-			{itemId = 1014, count = 1}  -- 1x Diamond Axe
-		}
+		outputs = { {itemId = 1013, count = 1} }
 	},
 
-	diamond_shovel = {
-		id = "diamond_shovel",
-		name = "Diamond Shovel",
+	steel_shovel = {
+		id = "steel_shovel",
+		name = "Steel Shovel",
 		category = RecipeConfig.Categories.TOOLS,
 		requiresWorkbench = true,
 		inputs = {
-			{itemId = 34, count = 1},  -- 1x Diamond
-			{itemId = 28, count = 2}   -- 2x Sticks
+			{itemId = 108, count = 1},
+			{itemId = 28, count = 2}
 		},
-		outputs = {
-			{itemId = 1024, count = 1}  -- 1x Diamond Shovel
-		}
+		outputs = { {itemId = 1023, count = 1} }
 	},
 
-	diamond_sword = {
-		id = "diamond_sword",
-		name = "Diamond Sword",
+	steel_sword = {
+		id = "steel_sword",
+		name = "Steel Sword",
 		category = RecipeConfig.Categories.TOOLS,
 		requiresWorkbench = true,
 		inputs = {
-			{itemId = 34, count = 2},  -- 2x Diamond
-			{itemId = 28, count = 1}   -- 1x Stick
+			{itemId = 108, count = 2},
+			{itemId = 28, count = 1}
 		},
-		outputs = {
-			{itemId = 1044, count = 1}  -- 1x Diamond Sword
-		}
+		outputs = { {itemId = 1043, count = 1} }
 	},
 
-	-- Building blocks
+	-- ═══════════════════════════════════════════════════════════════════════════
+	-- BLUESTEEL TOOLS (Tier 4)
+	-- ═══════════════════════════════════════════════════════════════════════════
+
+	bluesteel_pickaxe = {
+		id = "bluesteel_pickaxe",
+		name = "Bluesteel Pickaxe",
+		category = RecipeConfig.Categories.TOOLS,
+		requiresWorkbench = true,
+		inputs = {
+			{itemId = 109, count = 3},  -- 3x Bluesteel Ingot
+			{itemId = 28, count = 2}
+		},
+		outputs = { {itemId = 1004, count = 1} }
+	},
+
+	bluesteel_axe = {
+		id = "bluesteel_axe",
+		name = "Bluesteel Axe",
+		category = RecipeConfig.Categories.TOOLS,
+		requiresWorkbench = true,
+		inputs = {
+			{itemId = 109, count = 3},
+			{itemId = 28, count = 2}
+		},
+		outputs = { {itemId = 1014, count = 1} }
+	},
+
+	bluesteel_shovel = {
+		id = "bluesteel_shovel",
+		name = "Bluesteel Shovel",
+		category = RecipeConfig.Categories.TOOLS,
+		requiresWorkbench = true,
+		inputs = {
+			{itemId = 109, count = 1},
+			{itemId = 28, count = 2}
+		},
+		outputs = { {itemId = 1024, count = 1} }
+	},
+
+	bluesteel_sword = {
+		id = "bluesteel_sword",
+		name = "Bluesteel Sword",
+		category = RecipeConfig.Categories.TOOLS,
+		requiresWorkbench = true,
+		inputs = {
+			{itemId = 109, count = 2},
+			{itemId = 28, count = 1}
+		},
+		outputs = { {itemId = 1044, count = 1} }
+	},
+
+	-- ═══════════════════════════════════════════════════════════════════════════
+	-- TUNGSTEN TOOLS (Tier 5)
+	-- ═══════════════════════════════════════════════════════════════════════════
+
+	tungsten_pickaxe = {
+		id = "tungsten_pickaxe",
+		name = "Tungsten Pickaxe",
+		category = RecipeConfig.Categories.TOOLS,
+		requiresWorkbench = true,
+		inputs = {
+			{itemId = 110, count = 3},  -- 3x Tungsten Ingot
+			{itemId = 28, count = 2}
+		},
+		outputs = { {itemId = 1005, count = 1} }
+	},
+
+	tungsten_axe = {
+		id = "tungsten_axe",
+		name = "Tungsten Axe",
+		category = RecipeConfig.Categories.TOOLS,
+		requiresWorkbench = true,
+		inputs = {
+			{itemId = 110, count = 3},
+			{itemId = 28, count = 2}
+		},
+		outputs = { {itemId = 1015, count = 1} }
+	},
+
+	tungsten_shovel = {
+		id = "tungsten_shovel",
+		name = "Tungsten Shovel",
+		category = RecipeConfig.Categories.TOOLS,
+		requiresWorkbench = true,
+		inputs = {
+			{itemId = 110, count = 1},
+			{itemId = 28, count = 2}
+		},
+		outputs = { {itemId = 1025, count = 1} }
+	},
+
+	tungsten_sword = {
+		id = "tungsten_sword",
+		name = "Tungsten Sword",
+		category = RecipeConfig.Categories.TOOLS,
+		requiresWorkbench = true,
+		inputs = {
+			{itemId = 110, count = 2},
+			{itemId = 28, count = 1}
+		},
+		outputs = { {itemId = 1045, count = 1} }
+	},
+
+	-- ═══════════════════════════════════════════════════════════════════════════
+	-- TITANIUM TOOLS (Tier 6)
+	-- ═══════════════════════════════════════════════════════════════════════════
+
+	titanium_pickaxe = {
+		id = "titanium_pickaxe",
+		name = "Titanium Pickaxe",
+		category = RecipeConfig.Categories.TOOLS,
+		requiresWorkbench = true,
+		inputs = {
+			{itemId = 111, count = 3},  -- 3x Titanium Ingot
+			{itemId = 28, count = 2}
+		},
+		outputs = { {itemId = 1006, count = 1} }
+	},
+
+	titanium_axe = {
+		id = "titanium_axe",
+		name = "Titanium Axe",
+		category = RecipeConfig.Categories.TOOLS,
+		requiresWorkbench = true,
+		inputs = {
+			{itemId = 111, count = 3},
+			{itemId = 28, count = 2}
+		},
+		outputs = { {itemId = 1016, count = 1} }
+	},
+
+	titanium_shovel = {
+		id = "titanium_shovel",
+		name = "Titanium Shovel",
+		category = RecipeConfig.Categories.TOOLS,
+		requiresWorkbench = true,
+		inputs = {
+			{itemId = 111, count = 1},
+			{itemId = 28, count = 2}
+		},
+		outputs = { {itemId = 1026, count = 1} }
+	},
+
+	titanium_sword = {
+		id = "titanium_sword",
+		name = "Titanium Sword",
+		category = RecipeConfig.Categories.TOOLS,
+		requiresWorkbench = true,
+		inputs = {
+			{itemId = 111, count = 2},
+			{itemId = 28, count = 1}
+		},
+		outputs = { {itemId = 1046, count = 1} }
+	},
+
+	-- ═══════════════════════════════════════════════════════════════════════════
+	-- ARMOR RECIPES
+	-- Helmet: 5 ingots, Chestplate: 8 ingots, Leggings: 7 ingots, Boots: 4 ingots
+	-- ═══════════════════════════════════════════════════════════════════════════
+
+	-- COPPER ARMOR (Tier 1) - ID 105 = Copper Ingot
+	copper_helmet = {
+		id = "copper_helmet",
+		name = "Copper Helmet",
+		category = RecipeConfig.Categories.ARMOR,
+		requiresWorkbench = true,
+		inputs = { {itemId = 105, count = 5} },
+		outputs = { {itemId = 3001, count = 1} }
+	},
+	copper_chestplate = {
+		id = "copper_chestplate",
+		name = "Copper Chestplate",
+		category = RecipeConfig.Categories.ARMOR,
+		requiresWorkbench = true,
+		inputs = { {itemId = 105, count = 8} },
+		outputs = { {itemId = 3002, count = 1} }
+	},
+	copper_leggings = {
+		id = "copper_leggings",
+		name = "Copper Leggings",
+		category = RecipeConfig.Categories.ARMOR,
+		requiresWorkbench = true,
+		inputs = { {itemId = 105, count = 7} },
+		outputs = { {itemId = 3003, count = 1} }
+	},
+	copper_boots = {
+		id = "copper_boots",
+		name = "Copper Boots",
+		category = RecipeConfig.Categories.ARMOR,
+		requiresWorkbench = true,
+		inputs = { {itemId = 105, count = 4} },
+		outputs = { {itemId = 3004, count = 1} }
+	},
+
+	-- IRON ARMOR (Tier 2) - ID 33 = Iron Ingot
+	iron_helmet = {
+		id = "iron_helmet",
+		name = "Iron Helmet",
+		category = RecipeConfig.Categories.ARMOR,
+		requiresWorkbench = true,
+		inputs = { {itemId = 33, count = 5} },
+		outputs = { {itemId = 3005, count = 1} }
+	},
+	iron_chestplate = {
+		id = "iron_chestplate",
+		name = "Iron Chestplate",
+		category = RecipeConfig.Categories.ARMOR,
+		requiresWorkbench = true,
+		inputs = { {itemId = 33, count = 8} },
+		outputs = { {itemId = 3006, count = 1} }
+	},
+	iron_leggings = {
+		id = "iron_leggings",
+		name = "Iron Leggings",
+		category = RecipeConfig.Categories.ARMOR,
+		requiresWorkbench = true,
+		inputs = { {itemId = 33, count = 7} },
+		outputs = { {itemId = 3007, count = 1} }
+	},
+	iron_boots = {
+		id = "iron_boots",
+		name = "Iron Boots",
+		category = RecipeConfig.Categories.ARMOR,
+		requiresWorkbench = true,
+		inputs = { {itemId = 33, count = 4} },
+		outputs = { {itemId = 3008, count = 1} }
+	},
+
+	-- STEEL ARMOR (Tier 3) - ID 108 = Steel Ingot
+	steel_helmet = {
+		id = "steel_helmet",
+		name = "Steel Helmet",
+		category = RecipeConfig.Categories.ARMOR,
+		requiresWorkbench = true,
+		inputs = { {itemId = 108, count = 5} },
+		outputs = { {itemId = 3009, count = 1} }
+	},
+	steel_chestplate = {
+		id = "steel_chestplate",
+		name = "Steel Chestplate",
+		category = RecipeConfig.Categories.ARMOR,
+		requiresWorkbench = true,
+		inputs = { {itemId = 108, count = 8} },
+		outputs = { {itemId = 3010, count = 1} }
+	},
+	steel_leggings = {
+		id = "steel_leggings",
+		name = "Steel Leggings",
+		category = RecipeConfig.Categories.ARMOR,
+		requiresWorkbench = true,
+		inputs = { {itemId = 108, count = 7} },
+		outputs = { {itemId = 3011, count = 1} }
+	},
+	steel_boots = {
+		id = "steel_boots",
+		name = "Steel Boots",
+		category = RecipeConfig.Categories.ARMOR,
+		requiresWorkbench = true,
+		inputs = { {itemId = 108, count = 4} },
+		outputs = { {itemId = 3012, count = 1} }
+	},
+
+	-- BLUESTEEL ARMOR (Tier 4) - ID 109 = Bluesteel Ingot
+	bluesteel_helmet = {
+		id = "bluesteel_helmet",
+		name = "Bluesteel Helmet",
+		category = RecipeConfig.Categories.ARMOR,
+		requiresWorkbench = true,
+		inputs = { {itemId = 109, count = 5} },
+		outputs = { {itemId = 3013, count = 1} }
+	},
+	bluesteel_chestplate = {
+		id = "bluesteel_chestplate",
+		name = "Bluesteel Chestplate",
+		category = RecipeConfig.Categories.ARMOR,
+		requiresWorkbench = true,
+		inputs = { {itemId = 109, count = 8} },
+		outputs = { {itemId = 3014, count = 1} }
+	},
+	bluesteel_leggings = {
+		id = "bluesteel_leggings",
+		name = "Bluesteel Leggings",
+		category = RecipeConfig.Categories.ARMOR,
+		requiresWorkbench = true,
+		inputs = { {itemId = 109, count = 7} },
+		outputs = { {itemId = 3015, count = 1} }
+	},
+	bluesteel_boots = {
+		id = "bluesteel_boots",
+		name = "Bluesteel Boots",
+		category = RecipeConfig.Categories.ARMOR,
+		requiresWorkbench = true,
+		inputs = { {itemId = 109, count = 4} },
+		outputs = { {itemId = 3016, count = 1} }
+	},
+
+	-- TUNGSTEN ARMOR (Tier 5) - ID 110 = Tungsten Ingot
+	tungsten_helmet = {
+		id = "tungsten_helmet",
+		name = "Tungsten Helmet",
+		category = RecipeConfig.Categories.ARMOR,
+		requiresWorkbench = true,
+		inputs = { {itemId = 110, count = 5} },
+		outputs = { {itemId = 3017, count = 1} }
+	},
+	tungsten_chestplate = {
+		id = "tungsten_chestplate",
+		name = "Tungsten Chestplate",
+		category = RecipeConfig.Categories.ARMOR,
+		requiresWorkbench = true,
+		inputs = { {itemId = 110, count = 8} },
+		outputs = { {itemId = 3018, count = 1} }
+	},
+	tungsten_leggings = {
+		id = "tungsten_leggings",
+		name = "Tungsten Leggings",
+		category = RecipeConfig.Categories.ARMOR,
+		requiresWorkbench = true,
+		inputs = { {itemId = 110, count = 7} },
+		outputs = { {itemId = 3019, count = 1} }
+	},
+	tungsten_boots = {
+		id = "tungsten_boots",
+		name = "Tungsten Boots",
+		category = RecipeConfig.Categories.ARMOR,
+		requiresWorkbench = true,
+		inputs = { {itemId = 110, count = 4} },
+		outputs = { {itemId = 3020, count = 1} }
+	},
+
+	-- TITANIUM ARMOR (Tier 6) - ID 111 = Titanium Ingot
+	titanium_helmet = {
+		id = "titanium_helmet",
+		name = "Titanium Helmet",
+		category = RecipeConfig.Categories.ARMOR,
+		requiresWorkbench = true,
+		inputs = { {itemId = 111, count = 5} },
+		outputs = { {itemId = 3021, count = 1} }
+	},
+	titanium_chestplate = {
+		id = "titanium_chestplate",
+		name = "Titanium Chestplate",
+		category = RecipeConfig.Categories.ARMOR,
+		requiresWorkbench = true,
+		inputs = { {itemId = 111, count = 8} },
+		outputs = { {itemId = 3022, count = 1} }
+	},
+	titanium_leggings = {
+		id = "titanium_leggings",
+		name = "Titanium Leggings",
+		category = RecipeConfig.Categories.ARMOR,
+		requiresWorkbench = true,
+		inputs = { {itemId = 111, count = 7} },
+		outputs = { {itemId = 3023, count = 1} }
+	},
+	titanium_boots = {
+		id = "titanium_boots",
+		name = "Titanium Boots",
+		category = RecipeConfig.Categories.ARMOR,
+		requiresWorkbench = true,
+		inputs = { {itemId = 111, count = 4} },
+		outputs = { {itemId = 3024, count = 1} }
+	},
+
+	-- ═══════════════════════════════════════════════════════════════════════════
+	-- BUILDING BLOCKS
+	-- ═══════════════════════════════════════════════════════════════════════════
+
 	crafting_table = {
 		id = "crafting_table",
 		name = "Crafting Table",
@@ -342,77 +796,6 @@ RecipeConfig.Recipes = {
 		}
 	},
 
-	-- Fences from any wood planks (2 planks + 4 sticks -> 3 fences)
-	spruce_fence = {
-		id = "spruce_fence",
-		name = "Spruce Fence",
-		category = RecipeConfig.Categories.BUILDING,
-		requiresWorkbench = true,
-		inputs = {
-			{itemId = 39, count = 2},  -- 2x Spruce Planks
-			{itemId = 28, count = 4}   -- 4x Sticks
-		},
-		outputs = {
-			{itemId = 27, count = 3}  -- 3x Fence (currently Oak Fence)
-		}
-	},
-
-	jungle_fence = {
-		id = "jungle_fence",
-		name = "Jungle Fence",
-		category = RecipeConfig.Categories.BUILDING,
-		requiresWorkbench = true,
-		inputs = {
-			{itemId = 44, count = 2},  -- 2x Jungle Planks
-			{itemId = 28, count = 4}
-		},
-		outputs = {
-			{itemId = 27, count = 3}
-		}
-	},
-
-	dark_oak_fence = {
-		id = "dark_oak_fence",
-		name = "Dark Oak Fence",
-		category = RecipeConfig.Categories.BUILDING,
-		requiresWorkbench = true,
-		inputs = {
-			{itemId = 49, count = 2},  -- 2x Dark Oak Planks
-			{itemId = 28, count = 4}
-		},
-		outputs = {
-			{itemId = 27, count = 3}
-		}
-	},
-
-	birch_fence = {
-		id = "birch_fence",
-		name = "Birch Fence",
-		category = RecipeConfig.Categories.BUILDING,
-		requiresWorkbench = true,
-		inputs = {
-			{itemId = 54, count = 2},  -- 2x Birch Planks
-			{itemId = 28, count = 4}
-		},
-		outputs = {
-			{itemId = 27, count = 3}
-		}
-	},
-
-	acacia_fence = {
-		id = "acacia_fence",
-		name = "Acacia Fence",
-		category = RecipeConfig.Categories.BUILDING,
-		requiresWorkbench = true,
-		inputs = {
-			{itemId = 59, count = 2},  -- 2x Acacia Planks
-			{itemId = 28, count = 4}
-		},
-		outputs = {
-			{itemId = 27, count = 3}
-		}
-	},
-
 	furnace = {
 		id = "furnace",
 		name = "Furnace",
@@ -426,65 +809,49 @@ RecipeConfig.Recipes = {
 		}
 	},
 
-	-- New wood families: Logs -> Planks (4)
-	spuce_planks = { -- typo-safe note: actual id below is 'spruce_planks'
+	-- ═══════════════════════════════════════════════════════════════════════════
+	-- WOOD FAMILY RECIPES
+	-- ═══════════════════════════════════════════════════════════════════════════
+
+	-- Logs -> Planks (4)
+	spruce_planks = {
 		id = "spruce_planks",
 		name = "Spruce Planks",
 		category = RecipeConfig.Categories.MATERIALS,
-		inputs = {
-			{itemId = 38, count = 1}  -- 1x Spruce Log
-		},
-		outputs = {
-			{itemId = 39, count = 4}  -- 4x Spruce Planks
-		}
+		inputs = { {itemId = 38, count = 1} },
+		outputs = { {itemId = 39, count = 4} }
 	},
 
 	jungle_planks = {
 		id = "jungle_planks",
 		name = "Jungle Planks",
 		category = RecipeConfig.Categories.MATERIALS,
-		inputs = {
-			{itemId = 43, count = 1}  -- 1x Jungle Log
-		},
-		outputs = {
-			{itemId = 44, count = 4}  -- 4x Jungle Planks
-		}
+		inputs = { {itemId = 43, count = 1} },
+		outputs = { {itemId = 44, count = 4} }
 	},
 
 	dark_oak_planks = {
 		id = "dark_oak_planks",
 		name = "Dark Oak Planks",
 		category = RecipeConfig.Categories.MATERIALS,
-		inputs = {
-			{itemId = 48, count = 1}  -- 1x Dark Oak Log
-		},
-		outputs = {
-			{itemId = 49, count = 4}  -- 4x Dark Oak Planks
-		}
+		inputs = { {itemId = 48, count = 1} },
+		outputs = { {itemId = 49, count = 4} }
 	},
 
 	birch_planks = {
 		id = "birch_planks",
 		name = "Birch Planks",
 		category = RecipeConfig.Categories.MATERIALS,
-		inputs = {
-			{itemId = 53, count = 1}  -- 1x Birch Log
-		},
-		outputs = {
-			{itemId = 54, count = 4}  -- 4x Birch Planks
-		}
+		inputs = { {itemId = 53, count = 1} },
+		outputs = { {itemId = 54, count = 4} }
 	},
 
 	acacia_planks = {
 		id = "acacia_planks",
 		name = "Acacia Planks",
 		category = RecipeConfig.Categories.MATERIALS,
-		inputs = {
-			{itemId = 58, count = 1}  -- 1x Acacia Log
-		},
-		outputs = {
-			{itemId = 59, count = 4}  -- 4x Acacia Planks
-		}
+		inputs = { {itemId = 58, count = 1} },
+		outputs = { {itemId = 59, count = 4} }
 	},
 
 	-- Sticks from any planks (2 -> 4)
@@ -492,60 +859,40 @@ RecipeConfig.Recipes = {
 		id = "sticks_spruce",
 		name = "Sticks (Spruce)",
 		category = RecipeConfig.Categories.MATERIALS,
-		inputs = {
-			{itemId = 39, count = 2}  -- 2x Spruce Planks
-		},
-		outputs = {
-			{itemId = 28, count = 4}  -- 4x Sticks
-		}
+		inputs = { {itemId = 39, count = 2} },
+		outputs = { {itemId = 28, count = 4} }
 	},
 
 	sticks_jungle = {
 		id = "sticks_jungle",
 		name = "Sticks (Jungle)",
 		category = RecipeConfig.Categories.MATERIALS,
-		inputs = {
-			{itemId = 44, count = 2}  -- 2x Jungle Planks
-		},
-		outputs = {
-			{itemId = 28, count = 4}
-		}
+		inputs = { {itemId = 44, count = 2} },
+		outputs = { {itemId = 28, count = 4} }
 	},
 
 	sticks_dark_oak = {
 		id = "sticks_dark_oak",
 		name = "Sticks (Dark Oak)",
 		category = RecipeConfig.Categories.MATERIALS,
-		inputs = {
-			{itemId = 49, count = 2}  -- 2x Dark Oak Planks
-		},
-		outputs = {
-			{itemId = 28, count = 4}
-		}
+		inputs = { {itemId = 49, count = 2} },
+		outputs = { {itemId = 28, count = 4} }
 	},
 
 	sticks_birch = {
 		id = "sticks_birch",
 		name = "Sticks (Birch)",
 		category = RecipeConfig.Categories.MATERIALS,
-		inputs = {
-			{itemId = 54, count = 2}  -- 2x Birch Planks
-		},
-		outputs = {
-			{itemId = 28, count = 4}
-		}
+		inputs = { {itemId = 54, count = 2} },
+		outputs = { {itemId = 28, count = 4} }
 	},
 
 	sticks_acacia = {
 		id = "sticks_acacia",
 		name = "Sticks (Acacia)",
 		category = RecipeConfig.Categories.MATERIALS,
-		inputs = {
-			{itemId = 59, count = 2}  -- 2x Acacia Planks
-		},
-		outputs = {
-			{itemId = 28, count = 4}
-		}
+		inputs = { {itemId = 59, count = 2} },
+		outputs = { {itemId = 28, count = 4} }
 	},
 
 	-- Crafting Table from any planks (4 -> 1)
@@ -553,60 +900,40 @@ RecipeConfig.Recipes = {
 		id = "crafting_table_spruce",
 		name = "Crafting Table (Spruce)",
 		category = RecipeConfig.Categories.BUILDING,
-		inputs = {
-			{itemId = 39, count = 4}
-		},
-		outputs = {
-			{itemId = 13, count = 1}
-		}
+		inputs = { {itemId = 39, count = 4} },
+		outputs = { {itemId = 13, count = 1} }
 	},
 
 	crafting_table_jungle = {
 		id = "crafting_table_jungle",
 		name = "Crafting Table (Jungle)",
 		category = RecipeConfig.Categories.BUILDING,
-		inputs = {
-			{itemId = 44, count = 4}
-		},
-		outputs = {
-			{itemId = 13, count = 1}
-		}
+		inputs = { {itemId = 44, count = 4} },
+		outputs = { {itemId = 13, count = 1} }
 	},
 
 	crafting_table_dark_oak = {
 		id = "crafting_table_dark_oak",
 		name = "Crafting Table (Dark Oak)",
 		category = RecipeConfig.Categories.BUILDING,
-		inputs = {
-			{itemId = 49, count = 4}
-		},
-		outputs = {
-			{itemId = 13, count = 1}
-		}
+		inputs = { {itemId = 49, count = 4} },
+		outputs = { {itemId = 13, count = 1} }
 	},
 
 	crafting_table_birch = {
 		id = "crafting_table_birch",
 		name = "Crafting Table (Birch)",
 		category = RecipeConfig.Categories.BUILDING,
-		inputs = {
-			{itemId = 54, count = 4}
-		},
-		outputs = {
-			{itemId = 13, count = 1}
-		}
+		inputs = { {itemId = 54, count = 4} },
+		outputs = { {itemId = 13, count = 1} }
 	},
 
 	crafting_table_acacia = {
 		id = "crafting_table_acacia",
 		name = "Crafting Table (Acacia)",
 		category = RecipeConfig.Categories.BUILDING,
-		inputs = {
-			{itemId = 59, count = 4}
-		},
-		outputs = {
-			{itemId = 13, count = 1}
-		}
+		inputs = { {itemId = 59, count = 4} },
+		outputs = { {itemId = 13, count = 1} }
 	},
 
 	-- Chest from any planks (8 -> 1)
@@ -615,12 +942,8 @@ RecipeConfig.Recipes = {
 		name = "Chest (Spruce)",
 		category = RecipeConfig.Categories.BUILDING,
 		requiresWorkbench = true,
-		inputs = {
-			{itemId = 39, count = 8}
-		},
-		outputs = {
-			{itemId = 9, count = 1}
-		}
+		inputs = { {itemId = 39, count = 8} },
+		outputs = { {itemId = 9, count = 1} }
 	},
 
 	chest_jungle = {
@@ -628,12 +951,8 @@ RecipeConfig.Recipes = {
 		name = "Chest (Jungle)",
 		category = RecipeConfig.Categories.BUILDING,
 		requiresWorkbench = true,
-		inputs = {
-			{itemId = 44, count = 8}
-		},
-		outputs = {
-			{itemId = 9, count = 1}
-		}
+		inputs = { {itemId = 44, count = 8} },
+		outputs = { {itemId = 9, count = 1} }
 	},
 
 	chest_dark_oak = {
@@ -641,12 +960,8 @@ RecipeConfig.Recipes = {
 		name = "Chest (Dark Oak)",
 		category = RecipeConfig.Categories.BUILDING,
 		requiresWorkbench = true,
-		inputs = {
-			{itemId = 49, count = 8}
-		},
-		outputs = {
-			{itemId = 9, count = 1}
-		}
+		inputs = { {itemId = 49, count = 8} },
+		outputs = { {itemId = 9, count = 1} }
 	},
 
 	chest_birch = {
@@ -654,12 +969,8 @@ RecipeConfig.Recipes = {
 		name = "Chest (Birch)",
 		category = RecipeConfig.Categories.BUILDING,
 		requiresWorkbench = true,
-		inputs = {
-			{itemId = 54, count = 8}
-		},
-		outputs = {
-			{itemId = 9, count = 1}
-		}
+		inputs = { {itemId = 54, count = 8} },
+		outputs = { {itemId = 9, count = 1} }
 	},
 
 	chest_acacia = {
@@ -667,12 +978,8 @@ RecipeConfig.Recipes = {
 		name = "Chest (Acacia)",
 		category = RecipeConfig.Categories.BUILDING,
 		requiresWorkbench = true,
-		inputs = {
-			{itemId = 59, count = 8}
-		},
-		outputs = {
-			{itemId = 9, count = 1}
-		}
+		inputs = { {itemId = 59, count = 8} },
+		outputs = { {itemId = 9, count = 1} }
 	},
 
 	-- Stairs (6 planks -> 4 stairs)
@@ -681,12 +988,8 @@ RecipeConfig.Recipes = {
 		name = "Spruce Stairs",
 		category = RecipeConfig.Categories.BUILDING,
 		requiresWorkbench = true,
-		inputs = {
-			{itemId = 39, count = 6}
-		},
-		outputs = {
-			{itemId = 41, count = 4}
-		}
+		inputs = { {itemId = 39, count = 6} },
+		outputs = { {itemId = 41, count = 4} }
 	},
 
 	jungle_stairs = {
@@ -694,12 +997,8 @@ RecipeConfig.Recipes = {
 		name = "Jungle Stairs",
 		category = RecipeConfig.Categories.BUILDING,
 		requiresWorkbench = true,
-		inputs = {
-			{itemId = 44, count = 6}
-		},
-		outputs = {
-			{itemId = 46, count = 4}
-		}
+		inputs = { {itemId = 44, count = 6} },
+		outputs = { {itemId = 46, count = 4} }
 	},
 
 	dark_oak_stairs = {
@@ -707,12 +1006,8 @@ RecipeConfig.Recipes = {
 		name = "Dark Oak Stairs",
 		category = RecipeConfig.Categories.BUILDING,
 		requiresWorkbench = true,
-		inputs = {
-			{itemId = 49, count = 6}
-		},
-		outputs = {
-			{itemId = 51, count = 4}
-		}
+		inputs = { {itemId = 49, count = 6} },
+		outputs = { {itemId = 51, count = 4} }
 	},
 
 	birch_stairs = {
@@ -720,12 +1015,8 @@ RecipeConfig.Recipes = {
 		name = "Birch Stairs",
 		category = RecipeConfig.Categories.BUILDING,
 		requiresWorkbench = true,
-		inputs = {
-			{itemId = 54, count = 6}
-		},
-		outputs = {
-			{itemId = 56, count = 4}
-		}
+		inputs = { {itemId = 54, count = 6} },
+		outputs = { {itemId = 56, count = 4} }
 	},
 
 	acacia_stairs = {
@@ -733,12 +1024,8 @@ RecipeConfig.Recipes = {
 		name = "Acacia Stairs",
 		category = RecipeConfig.Categories.BUILDING,
 		requiresWorkbench = true,
-		inputs = {
-			{itemId = 59, count = 6}
-		},
-		outputs = {
-			{itemId = 61, count = 4}
-		}
+		inputs = { {itemId = 59, count = 6} },
+		outputs = { {itemId = 61, count = 4} }
 	},
 
 	-- Slabs (3 planks -> 6 slabs)
@@ -747,12 +1034,8 @@ RecipeConfig.Recipes = {
 		name = "Spruce Slab",
 		category = RecipeConfig.Categories.BUILDING,
 		requiresWorkbench = true,
-		inputs = {
-			{itemId = 39, count = 3}
-		},
-		outputs = {
-			{itemId = 42, count = 6}
-		}
+		inputs = { {itemId = 39, count = 3} },
+		outputs = { {itemId = 42, count = 6} }
 	},
 
 	jungle_slab = {
@@ -760,12 +1043,8 @@ RecipeConfig.Recipes = {
 		name = "Jungle Slab",
 		category = RecipeConfig.Categories.BUILDING,
 		requiresWorkbench = true,
-		inputs = {
-			{itemId = 44, count = 3}
-		},
-		outputs = {
-			{itemId = 47, count = 6}
-		}
+		inputs = { {itemId = 44, count = 3} },
+		outputs = { {itemId = 47, count = 6} }
 	},
 
 	dark_oak_slab = {
@@ -773,12 +1052,8 @@ RecipeConfig.Recipes = {
 		name = "Dark Oak Slab",
 		category = RecipeConfig.Categories.BUILDING,
 		requiresWorkbench = true,
-		inputs = {
-			{itemId = 49, count = 3}
-		},
-		outputs = {
-			{itemId = 52, count = 6}
-		}
+		inputs = { {itemId = 49, count = 3} },
+		outputs = { {itemId = 52, count = 6} }
 	},
 
 	birch_slab = {
@@ -786,12 +1061,8 @@ RecipeConfig.Recipes = {
 		name = "Birch Slab",
 		category = RecipeConfig.Categories.BUILDING,
 		requiresWorkbench = true,
-		inputs = {
-			{itemId = 54, count = 3}
-		},
-		outputs = {
-			{itemId = 57, count = 6}
-		}
+		inputs = { {itemId = 54, count = 3} },
+		outputs = { {itemId = 57, count = 6} }
 	},
 
 	acacia_slab = {
@@ -799,12 +1070,69 @@ RecipeConfig.Recipes = {
 		name = "Acacia Slab",
 		category = RecipeConfig.Categories.BUILDING,
 		requiresWorkbench = true,
+		inputs = { {itemId = 59, count = 3} },
+		outputs = { {itemId = 62, count = 6} }
+	},
+
+	-- Fences from any wood planks (2 planks + 4 sticks -> 3 fences)
+	spruce_fence = {
+		id = "spruce_fence",
+		name = "Spruce Fence",
+		category = RecipeConfig.Categories.BUILDING,
+		requiresWorkbench = true,
 		inputs = {
-			{itemId = 59, count = 3}
+			{itemId = 39, count = 2},
+			{itemId = 28, count = 4}
 		},
-		outputs = {
-			{itemId = 62, count = 6}
-		}
+		outputs = { {itemId = 27, count = 3} }
+	},
+
+	jungle_fence = {
+		id = "jungle_fence",
+		name = "Jungle Fence",
+		category = RecipeConfig.Categories.BUILDING,
+		requiresWorkbench = true,
+		inputs = {
+			{itemId = 44, count = 2},
+			{itemId = 28, count = 4}
+		},
+		outputs = { {itemId = 27, count = 3} }
+	},
+
+	dark_oak_fence = {
+		id = "dark_oak_fence",
+		name = "Dark Oak Fence",
+		category = RecipeConfig.Categories.BUILDING,
+		requiresWorkbench = true,
+		inputs = {
+			{itemId = 49, count = 2},
+			{itemId = 28, count = 4}
+		},
+		outputs = { {itemId = 27, count = 3} }
+	},
+
+	birch_fence = {
+		id = "birch_fence",
+		name = "Birch Fence",
+		category = RecipeConfig.Categories.BUILDING,
+		requiresWorkbench = true,
+		inputs = {
+			{itemId = 54, count = 2},
+			{itemId = 28, count = 4}
+		},
+		outputs = { {itemId = 27, count = 3} }
+	},
+
+	acacia_fence = {
+		id = "acacia_fence",
+		name = "Acacia Fence",
+		category = RecipeConfig.Categories.BUILDING,
+		requiresWorkbench = true,
+		inputs = {
+			{itemId = 59, count = 2},
+			{itemId = 28, count = 4}
+		},
+		outputs = { {itemId = 27, count = 3} }
 	}
 }
 
@@ -845,4 +1173,3 @@ function RecipeConfig:GetRecipesByCategory(category)
 end
 
 return RecipeConfig
-

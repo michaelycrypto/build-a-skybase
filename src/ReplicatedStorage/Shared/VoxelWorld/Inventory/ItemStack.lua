@@ -6,6 +6,8 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
+local ArmorConfig = require(ReplicatedStorage.Configs.ArmorConfig)
+local BowConfig = require(ReplicatedStorage.Configs.BowConfig)
 local Constants = require(ReplicatedStorage.Shared.VoxelWorld.Core.Constants)
 
 local ItemStack = {}
@@ -14,11 +16,11 @@ ItemStack.__index = ItemStack
 -- Default max stack sizes
 local DEFAULT_MAX_STACK = 64
 local MAX_STACK_SIZES = {
-	-- Tools and special items don't stack
-	-- Add custom stack sizes here if needed
+	-- Stackable ammo (even though they're in ToolConfig for display)
+	[BowConfig.ARROW_ITEM_ID] = 64,
 }
 
--- Configure per-item max stacks (non-tools)
+-- Configure per-item max stacks
 do
 	-- Minion item is non-stackable
 	MAX_STACK_SIZES[Constants.BlockType.COBBLESTONE_MINION] = 1
@@ -30,13 +32,16 @@ function ItemStack.new(itemId, count, maxStack)
     self.itemId = tonumber(itemId) or 0
     self.count = tonumber(count) or 1
 
-    -- Tools are non-stackable (max 1). Otherwise use configured/default max.
+    -- Check explicit max stack first, then tools/armor default to 1, else default stack
     local resolvedMax = maxStack
     if not resolvedMax then
-        if ToolConfig.IsTool(self.itemId) then
+        local explicit = MAX_STACK_SIZES[self.itemId]
+        if explicit then
+            resolvedMax = explicit
+        elseif ToolConfig.IsTool(self.itemId) or ArmorConfig.IsArmor(self.itemId) then
             resolvedMax = 1
         else
-            resolvedMax = MAX_STACK_SIZES[self.itemId] or DEFAULT_MAX_STACK
+            resolvedMax = DEFAULT_MAX_STACK
         end
     end
     self.maxStack = resolvedMax
@@ -91,8 +96,10 @@ function ItemStack:CanStack(other)
 	if not other or other:IsEmpty() then return false end
 	if self.itemId ~= other.itemId then return false end
 
-	-- Tools cannot stack (Minecraft parity)
-	if ToolConfig.IsTool(self.itemId) then return false end
+	-- Tools and armor cannot stack except items with explicit stack sizes (like arrows)
+	if (ToolConfig.IsTool(self.itemId) or ArmorConfig.IsArmor(self.itemId)) and not MAX_STACK_SIZES[self.itemId] then
+		return false
+	end
 
 	return true
 end
@@ -170,10 +177,13 @@ function ItemStack.Deserialize(data)
 
     -- Re-resolve maxStack based on current config to avoid persisting wrong max values
     local resolvedMax
-    if ToolConfig.IsTool(itemId) then
+    local explicit = MAX_STACK_SIZES[itemId]
+    if explicit then
+        resolvedMax = explicit
+    elseif ToolConfig.IsTool(itemId) or ArmorConfig.IsArmor(itemId) then
         resolvedMax = 1
     else
-        resolvedMax = MAX_STACK_SIZES[itemId] or DEFAULT_MAX_STACK
+        resolvedMax = DEFAULT_MAX_STACK
     end
 
     local stack = ItemStack.new(itemId, count, resolvedMax)

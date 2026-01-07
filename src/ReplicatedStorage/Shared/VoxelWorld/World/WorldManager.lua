@@ -5,22 +5,53 @@
 
 local Constants = require(script.Parent.Parent.Core.Constants)
 local Chunk = require(script.Parent.Chunk)
-local SkyblockGenerator = require(script.Parent.Parent.Generation.SkyblockGenerator)
+local WorldTypes = require(script.Parent.Parent.Core.WorldTypes)
 
 local WorldManager = {}
 WorldManager.__index = WorldManager
 
-function WorldManager.new(seed: number)
+function WorldManager.new(seed: number, worldTypeId: string?)
+	local descriptor = WorldTypes:Get(worldTypeId)
+	local generatorModule = descriptor.generatorModule
+	local generatorOptions = descriptor.generatorOptions
+
 	local self = setmetatable({
 		seed = seed or 0, -- Default seed if none provided
         chunks = {}, -- Map of chunk coordinates to chunk data
-		generator = SkyblockGenerator.new(seed or 0),
+		generator = generatorModule.new(seed or 0, generatorOptions),
         modifiedChunks = {}, -- Set of chunks that need saving
         chunkDataCache = {}, -- In-memory cache of unloaded modified chunks
-        network = nil -- Optional network interface for streaming
+        network = nil, -- Optional network interface for streaming
+		worldTypeId = descriptor.id,
+		worldDescriptor = descriptor,
+		chunkBounds = nil,
 	}, WorldManager)
 
+	if self.generator and self.generator.GetChunkBounds then
+		self.chunkBounds = self.generator:GetChunkBounds()
+	end
+
 	return self
+end
+
+function WorldManager:_isChunkOutsideBounds(chunkX: number, chunkZ: number): boolean
+	local bounds = self.chunkBounds
+	if not bounds then
+		return false
+	end
+	if bounds.minChunkX and chunkX < bounds.minChunkX then
+		return true
+	end
+	if bounds.maxChunkX and chunkX > bounds.maxChunkX then
+		return true
+	end
+	if bounds.minChunkZ and chunkZ < bounds.minChunkZ then
+		return true
+	end
+	if bounds.maxChunkZ and chunkZ > bounds.maxChunkZ then
+		return true
+	end
+	return false
 end
 
 -- Get chunk key from coordinates
@@ -41,6 +72,9 @@ end
 
 -- Quick test: is this chunk known-empty according to the generator?
 function WorldManager:IsChunkEmpty(x: number, z: number): boolean
+	if self:_isChunkOutsideBounds(math.floor(x), math.floor(z)) then
+		return true
+	end
     local key = self:GetChunkKey(x, z)
     local loaded = self.chunks[key]
     if loaded and loaded.IsEmpty and (not loaded:IsEmpty()) then
@@ -58,7 +92,7 @@ function WorldManager:IsChunkEmpty(x: number, z: number): boolean
 end
 
 -- Get or create chunk at coordinates
-function WorldManager:GetChunk(x: number, z: number)
+function WorldManager:GetChunk(x: number, z: number, skipGeneration: boolean?)
 	if not x or not z then
 		warn("Invalid chunk request coordinates:", x, z)
 		return nil
@@ -67,27 +101,22 @@ function WorldManager:GetChunk(x: number, z: number)
 	local key = self:GetChunkKey(x, z)
 
 	if not self.chunks[key] then
+		local chunk = Chunk.new(x, z)
+		self.chunks[key] = chunk
+
 		-- Check if we have cached data for this chunk
 		local cachedData = self.chunkDataCache[key]
 
 		if cachedData then
 			-- Restore chunk from cache
-			local chunk = Chunk.new(x, z)
 			chunk:deserialize(cachedData)
-			self.chunks[key] = chunk
 			-- Keep it marked as modified since it has edits
 			self.modifiedChunks[key] = true
 			-- Remove from cache as it's now loaded
 			self.chunkDataCache[key] = nil
-		else
-			-- Create new chunk and generate terrain
-			local chunk = Chunk.new(x, z)
-			self.chunks[key] = chunk
-
-			-- Generate terrain
-			if self.generator then
-				self:GenerateChunk(chunk)
-			end
+		elseif not skipGeneration and self.generator then
+			-- Generate terrain for brand new chunk
+			self:GenerateChunk(chunk)
 		end
 	end
 

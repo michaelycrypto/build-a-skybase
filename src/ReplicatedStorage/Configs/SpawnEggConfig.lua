@@ -15,7 +15,8 @@ SpawnEggConfig.BaseImageId = "rbxassetid://75183565228794"
 SpawnEggConfig.OverlayImageId = "rbxassetid://129253357973352"
 
 -- Numeric id range reserved for spawn eggs
-local EGG_ID_START = 2001
+-- NOTE: 2001 is reserved for Arrows, so spawn eggs start at 4001
+local EGG_ID_START = 4001
 
 -- Deterministic color generation from mobType when not explicitly mapped
 local function hashStringToHue(str)

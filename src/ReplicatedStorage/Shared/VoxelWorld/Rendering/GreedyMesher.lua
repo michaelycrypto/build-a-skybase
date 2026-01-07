@@ -3,11 +3,15 @@
 	Implements greedy meshing algorithm to merge block faces into larger surfaces
 ]]
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local GlobalConfig = require(ReplicatedStorage.Shared.Config)
 local Constants = require(script.Parent.Parent.Core.Constants)
 local Config = require(script.Parent.Parent.Core.Config)
 local BlockRegistry = require(script.Parent.Parent.World.BlockRegistry)
 local PartPool = require(script.Parent.PartPool)
 local Blocks = BlockRegistry.Blocks
+local BOLD_FONT = GlobalConfig.UI_SETTINGS.typography.fonts.bold
 
 -- Texture system
 local TextureApplicator = require(script.Parent.TextureApplicator)
@@ -216,7 +220,7 @@ function GreedyMesher:GenerateMesh(chunk, worldManager, options)
 				local tl = Instance.new("TextLabel")
 				tl.BackgroundTransparency = 1
 				tl.Text = labelText
-				tl.Font = Enum.Font.GothamBold
+				tl.Font = BOLD_FONT
 				tl.TextScaled = true
 				tl.TextColor3 = color
 				tl.Size = UDim2.new(1, 0, 1, 0)

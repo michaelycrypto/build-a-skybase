@@ -6,6 +6,7 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
 
 -- Core voxel modules
 local VoxelWorld = require(ReplicatedStorage.Shared.VoxelWorld)
@@ -13,6 +14,7 @@ local Logger = require(ReplicatedStorage.Shared.Logger)
 local EventManager = require(ReplicatedStorage.Shared.EventManager)
 local Constants = require(ReplicatedStorage.Shared.VoxelWorld.Core.Constants)
 local Config = require(ReplicatedStorage.Shared.VoxelWorld.Core.Config)
+local WorldTypes = require(ReplicatedStorage.Shared.VoxelWorld.Core.WorldTypes)
 local ChunkCompressor = require(ReplicatedStorage.Shared.VoxelWorld.Memory.ChunkCompressor)
 local BlockProperties = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockProperties)
 local BlockBreakTracker = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockBreakTracker)
@@ -24,6 +26,8 @@ local SaplingConfig = require(ReplicatedStorage.Configs.SaplingConfig)
 local VoxelWorldService = {
 	Name = "VoxelWorldService"
 }
+
+local SPAWN_CHUNK_STREAM_WAIT = 0.15
 
 -- Standardize and gate module-local prints through Logger at DEBUG level
 local _logger = Logger:CreateContext("VoxelWorldService")
@@ -89,6 +93,9 @@ function VoxelWorldService:Init()
 	self.world = nil
 	self.worldManager = nil
 	self.renderDistance = 6
+	self.worldTypeId = "player_world"
+	self.worldDescriptor = WorldTypes:Get("player_world")
+	self.isHubWorld = false
 
 	-- Player tracking
 	self.players = {} -- Map of Player -> {position, chunks, tool}
@@ -205,8 +212,17 @@ function VoxelWorldService:HandlePlayerMeleeHit(player: Player, data)
     end
 
     -- Compute damage using unified config (supports swords, axes, pickaxes, shovels, or hand)
-    local dmg = CombatConfig.GetMeleeDamage(toolType, toolTier)
-    victimHum:TakeDamage(dmg)
+    local rawDmg = CombatConfig.GetMeleeDamage(toolType, toolTier)
+
+    -- Apply damage through DamageService (handles armor reduction)
+    local DamageService = self.Deps and self.Deps.DamageService
+    local finalDmg = rawDmg
+    if DamageService then
+        finalDmg = DamageService:DamagePlayer(victim, rawDmg, "melee", player)
+    else
+        -- Fallback if DamageService not available
+        victimHum:TakeDamage(rawDmg)
+    end
 
     -- Optional knockback
     local kb = CombatConfig.KNOCKBACK_STRENGTH or 0
@@ -218,12 +234,12 @@ function VoxelWorldService:HandlePlayerMeleeHit(player: Player, data)
         game:GetService("Debris"):AddItem(bodyVel, 0.2)
     end
 
-    -- Broadcast damage event for feedback
+    -- Broadcast damage event for feedback (legacy event for animations)
     pcall(function()
         require(ReplicatedStorage.Shared.EventManager):FireEventToAll("PlayerDamaged", {
             attackerUserId = player.UserId,
             victimUserId = victim.UserId,
-            amount = dmg
+            amount = finalDmg
         })
         require(ReplicatedStorage.Shared.EventManager):FireEventToAll("PlayerSwordSwing", {
             userId = player.UserId
@@ -728,13 +744,21 @@ function VoxelWorldService:IsWorldReady()
 end
 
 -- Initialize world with seed and render distance
-function VoxelWorldService:InitializeWorld(seed, renderDistance)
-	self.renderDistance = renderDistance or 6
+function VoxelWorldService:InitializeWorld(seed, renderDistance, worldTypeId)
+	local descriptor = WorldTypes:Get(worldTypeId or self.worldTypeId)
+	self.worldTypeId = descriptor.id
+	self.worldDescriptor = descriptor
+
+	local desiredRenderDistance = renderDistance or descriptor.renderDistance or self.renderDistance
+	self.renderDistance = desiredRenderDistance
 
 	-- Create world instance
 	local worldSeed = seed or 12345
-	self.world = VoxelWorld.CreateWorld(worldSeed, self.renderDistance)
+	self.world = VoxelWorld.CreateWorld(worldSeed, desiredRenderDistance, descriptor.id)
 	self.worldManager = self.world:GetWorldManager()
+	self.isHubWorld = descriptor.isHub == true
+	self:_applyWorldAttributes(descriptor)
+	self._spawnChunkCoords = nil
 
 	print(string.format("VoxelWorldService: World initialized (seed: %d, render distance: %d)",
 		worldSeed, self.renderDistance))
@@ -757,6 +781,70 @@ function VoxelWorldService:InitializeStarterChest()
 	end
 end
 
+function VoxelWorldService:_applyWorldAttributes(descriptor)
+	local attrs = (descriptor and descriptor.workspaceAttributes) or {}
+	local isHub = attrs.IsHubWorld == true
+	Workspace:SetAttribute("IsHubWorld", isHub)
+	if attrs.HubRenderDistance ~= nil then
+		Workspace:SetAttribute("HubRenderDistance", attrs.HubRenderDistance)
+	else
+		Workspace:SetAttribute("HubRenderDistance", nil)
+	end
+end
+
+function VoxelWorldService:IsHubWorld()
+	return self.isHubWorld == true
+end
+
+function VoxelWorldService:_getCurrentSpawnPosition()
+	if self.worldManager and self.worldManager.generator and self.worldManager.generator.GetSpawnPosition then
+		local ok, result = pcall(function()
+			return self.worldManager.generator:GetSpawnPosition()
+		end)
+		if ok and result then
+			return result
+		end
+	end
+	return Vector3.new(0, 300, 0)
+end
+
+function VoxelWorldService:_ensureSpawnChunkReady(spawnPosition: Vector3?)
+	if not self.worldManager then
+		return nil, nil
+	end
+
+	if self._spawnChunkCoords then
+		return self._spawnChunkCoords.x, self._spawnChunkCoords.z
+	end
+
+	local spawnPos = spawnPosition or self:_getCurrentSpawnPosition()
+	local blockX = math.floor(spawnPos.X / Constants.BLOCK_SIZE + 0.5)
+	local blockZ = math.floor(spawnPos.Z / Constants.BLOCK_SIZE + 0.5)
+	local chunkX = math.floor(blockX / Constants.CHUNK_SIZE_X)
+	local chunkZ = math.floor(blockZ / Constants.CHUNK_SIZE_Z)
+
+	local chunk = self.worldManager:GetChunk(chunkX, chunkZ)
+	local timeout = os.clock() + 2
+	while chunk and chunk.state ~= Constants.ChunkState.READY and os.clock() < timeout do
+		task.wait()
+	end
+
+	self._spawnChunkCoords = { x = chunkX, z = chunkZ }
+	return chunkX, chunkZ
+end
+
+function VoxelWorldService:_streamSpawnChunksForPlayer(player, chunkX, chunkZ)
+	if not chunkX or not chunkZ then
+		return
+	end
+
+	for dx = -1, 1 do
+		for dz = -1, 1 do
+			self:StreamChunkToPlayer(player, chunkX + dx, chunkZ + dz)
+		end
+	end
+end
+
 -- Update world seed (called when owner joins)
 function VoxelWorldService:UpdateWorldSeed(seed)
 	if not seed then return end
@@ -767,8 +855,9 @@ function VoxelWorldService:UpdateWorldSeed(seed)
 	end
 
 	-- Recreate world with new seed
-	self.world = VoxelWorld.CreateWorld(seed, self.renderDistance)
+	self.world = VoxelWorld.CreateWorld(seed, self.renderDistance, self.worldTypeId)
 	self.worldManager = self.world:GetWorldManager()
+	self._spawnChunkCoords = nil
 
 	print(string.format("VoxelWorldService: World recreated with owner's seed: %d", seed))
 end
@@ -1136,6 +1225,10 @@ function VoxelWorldService:HandlePlayerPunch(player, punchData)
 	end
 
 	local x, y, z = punchData.x, punchData.y, punchData.z
+	if self:IsHubWorld() then
+		self:RejectBlockChange(player, { x = x, y = y, z = z }, "hub_read_only")
+		return
+	end
 	local playerData = self.players[player]
 	if not playerData then return end
 
@@ -1178,6 +1271,8 @@ function VoxelWorldService:HandlePlayerPunch(player, punchData)
 	if not blockId or blockId == Constants.BlockType.AIR then
 		return
 	end
+	local blockMetadata = self.worldManager:GetBlockMetadata(x, y, z) or 0
+	local dropService = self.Deps and self.Deps.DroppedItemService
 
 	-- Check if breakable
 	if not BlockProperties:IsBreakable(blockId) then
@@ -1259,7 +1354,7 @@ function VoxelWorldService:HandlePlayerPunch(player, punchData)
 		})
 
         -- Spawn dropped items
-		if self.Deps and self.Deps.DroppedItemService then
+		if dropService then
             -- Special-case leaves (all variants): drop saplings/apples by chance, not the leaf block itself
             local isLeaf = (
                 blockId == Constants.BlockType.LEAVES or
@@ -1352,12 +1447,12 @@ function VoxelWorldService:HandlePlayerPunch(player, punchData)
 					end
 				end
 
-				if saplingId and (math.random() < saplingChance) then
-					self.Deps.DroppedItemService:SpawnItem(saplingId, 1, Vector3.new(x, y, z), Vector3.new(0,0,0), true)
+				if dropService and saplingId and (math.random() < saplingChance) then
+					dropService:SpawnItem(saplingId, 1, Vector3.new(x, y, z), Vector3.new(0,0,0), true)
 				end
 				-- Only oak leaves drop apples (no generic fallback)
-				if (blockId == Constants.BlockType.OAK_LEAVES) and (math.random() < appleChance) then
-					self.Deps.DroppedItemService:SpawnItem(Constants.BlockType.APPLE, 1, Vector3.new(x, y, z), Vector3.new(0,0,0), true)
+				if dropService and (blockId == Constants.BlockType.OAK_LEAVES) and (math.random() < appleChance) then
+					dropService:SpawnItem(Constants.BlockType.APPLE, 1, Vector3.new(x, y, z), Vector3.new(0,0,0), true)
 				end
 			-- Otherwise, default drop path (only if harvestable)
 			elseif canHarvest then
@@ -1383,32 +1478,49 @@ function VoxelWorldService:HandlePlayerPunch(player, punchData)
 			if isWheatStage(blockId) then
 				if blockId == BLOCK.WHEAT_CROP_7 then
 					-- Mature: 1 wheat + 1 seeds
-					self.Deps.DroppedItemService:SpawnItem(BLOCK.WHEAT, 1, Vector3.new(x, y, z), Vector3.new(0,0,0), true)
-					self.Deps.DroppedItemService:SpawnItem(BLOCK.WHEAT_SEEDS, 1, Vector3.new(x, y, z), Vector3.new(0,0,0), true)
+					if dropService then
+						dropService:SpawnItem(BLOCK.WHEAT, 1, Vector3.new(x, y, z), Vector3.new(0,0,0), true)
+						dropService:SpawnItem(BLOCK.WHEAT_SEEDS, 1, Vector3.new(x, y, z), Vector3.new(0,0,0), true)
+					end
 				else
 					-- Immature: seeds only
-					self.Deps.DroppedItemService:SpawnItem(BLOCK.WHEAT_SEEDS, 1, Vector3.new(x, y, z), Vector3.new(0,0,0), true)
+					if dropService then
+						dropService:SpawnItem(BLOCK.WHEAT_SEEDS, 1, Vector3.new(x, y, z), Vector3.new(0,0,0), true)
+					end
 				end
 				handled = true
 			elseif isPotatoStage(blockId) then
 				local count = (blockId == BLOCK.POTATO_CROP_3) and math.random(1, 3) or 1
-				self.Deps.DroppedItemService:SpawnItem(BLOCK.POTATO, count, Vector3.new(x, y, z), Vector3.new(0,0,0), true)
+				if dropService then
+					dropService:SpawnItem(BLOCK.POTATO, count, Vector3.new(x, y, z), Vector3.new(0,0,0), true)
+				end
 				handled = true
 			elseif isCarrotStage(blockId) then
 				local count = (blockId == BLOCK.CARROT_CROP_3) and math.random(1, 3) or 1
-				self.Deps.DroppedItemService:SpawnItem(BLOCK.CARROT, count, Vector3.new(x, y, z), Vector3.new(0,0,0), true)
+				if dropService then
+					dropService:SpawnItem(BLOCK.CARROT, count, Vector3.new(x, y, z), Vector3.new(0,0,0), true)
+				end
 				handled = true
 			elseif isBeetStage(blockId) then
 				if blockId == BLOCK.BEETROOT_CROP_3 then
-					self.Deps.DroppedItemService:SpawnItem(BLOCK.BEETROOT, 1, Vector3.new(x, y, z), Vector3.new(0,0,0), true)
-					self.Deps.DroppedItemService:SpawnItem(BLOCK.BEETROOT_SEEDS, 1, Vector3.new(x, y, z), Vector3.new(0,0,0), true)
+					if dropService then
+						dropService:SpawnItem(BLOCK.BEETROOT, 1, Vector3.new(x, y, z), Vector3.new(0,0,0), true)
+						dropService:SpawnItem(BLOCK.BEETROOT_SEEDS, 1, Vector3.new(x, y, z), Vector3.new(0,0,0), true)
+					end
 				else
-					self.Deps.DroppedItemService:SpawnItem(BLOCK.BEETROOT_SEEDS, 1, Vector3.new(x, y, z), Vector3.new(0,0,0), true)
+					if dropService then
+						dropService:SpawnItem(BLOCK.BEETROOT_SEEDS, 1, Vector3.new(x, y, z), Vector3.new(0,0,0), true)
+					end
 				end
 				handled = true
 			end
 
-			if not handled and Constants.ShouldDropAsSlabs(blockId) then
+			if not handled and Constants.ShouldTransformBlockDrop(blockId) then
+				-- Blocks that transform when broken (e.g., stone → cobblestone)
+				dropItemId = Constants.GetBlockDrop(blockId)
+				dropCount = 1
+				print(string.format("🪨 Block %d drops as %d", blockId, dropItemId))
+			elseif not handled and Constants.ShouldDropAsSlabs(blockId, blockMetadata) then
 				-- This full block (e.g., Oak Planks) should drop as 2 slabs (e.g., Oak Slabs)
 				dropItemId = Constants.GetSlabFromFullBlock(blockId)
 				dropCount = 2
@@ -1420,14 +1532,14 @@ function VoxelWorldService:HandlePlayerPunch(player, punchData)
 				print(string.format("⛏️ Ore block %d drops as material %d", blockId, dropItemId))
 			end
 
-			if not handled then
+			if not handled and dropService then
 				-- Minimal velocity - just let it drop naturally
 				local popVelocity = Vector3.new(
 					math.random(-1, 1) * 0.5,
 					0, -- No upward velocity - spawn and drop
 					math.random(-1, 1) * 0.5
 				)
-				self.Deps.DroppedItemService:SpawnItem(
+				dropService:SpawnItem(
 					dropItemId,
 					dropCount,
 					Vector3.new(x, y, z),
@@ -1456,6 +1568,11 @@ function VoxelWorldService:RequestBlockPlace(player, placeData)
 	local x, y, z, blockId = placeData.x, placeData.y, placeData.z, placeData.blockId
 	local playerData = self.players[player]
 	if not playerData then return end
+
+	if self:IsHubWorld() then
+		self:RejectBlockChange(player, { x = x, y = y, z = z }, "hub_read_only")
+		return
+	end
 
 	-- Debug: Log placement request
 	print(string.format("[BlockPlace] %s requesting placement at (%d,%d,%d) with blockId: %d",
@@ -1922,7 +2039,7 @@ function VoxelWorldService:RequestBlockPlace(player, placeData)
 			if canMerge then
 				-- Merge into full block
 				actualBlockId = fullBlockId
-				actualMetadata = 0  -- Full blocks don't need orientation metadata
+				actualMetadata = Constants.SetDoubleSlabFlag(0, true)
 				print(string.format("[BlockPlace] 🧱 Slab merging! Converting slabs at (%d,%d,%d) into full block %d",
 					actualX, actualY, actualZ, fullBlockId))
 			else
@@ -2270,35 +2387,24 @@ function VoxelWorldService:OnPlayerAdded(player)
 
 	print(string.format("[VoxelWorldService] Adding player %s to world", player.Name))
 
+	local spawnPos = self:_getCurrentSpawnPosition()
+	local spawnChunkX, spawnChunkZ = self:_ensureSpawnChunkReady(spawnPos)
+	print(string.format("[VoxelWorldService] Spawn position for %s: (%.1f, %.1f, %.1f)",
+		player.Name, spawnPos.X, spawnPos.Y, spawnPos.Z))
+
 	self.players[player] = {
-		position = Vector3.new(0, 0, 0),
+		position = Vector3.new(spawnPos.X, spawnPos.Y, spawnPos.Z),
 		chunks = {},
 		lastUpdate = os.clock(),
-		tool = nil
+		tool = nil,
 	}
 
-	-- Get spawn position from generator (Skyblock island)
-	local spawnPos = Vector3.new(0, 350, 0) -- Default fallback
-	if self.worldManager and self.worldManager.generator and self.worldManager.generator.GetSpawnPosition then
-		local success, result = pcall(function()
-			return self.worldManager.generator:GetSpawnPosition()
-		end)
-		if success then
-			spawnPos = result
-			print(string.format("[VoxelWorldService] Spawn position for %s: (%.1f, %.1f, %.1f)",
-				player.Name, spawnPos.X, spawnPos.Y, spawnPos.Z))
-		else
-			warn(string.format("[VoxelWorldService] Failed to get spawn position for %s: %s - using fallback",
-				player.Name, tostring(result)))
-		end
-	else
-		warn(string.format("[VoxelWorldService] Generator not available for %s - using fallback spawn position",
-			player.Name))
-	end
+	self:_streamSpawnChunksForPlayer(player, spawnChunkX, spawnChunkZ)
 
 	-- Spawn player after character loads
 	player.CharacterAdded:Connect(function(character)
-		task.wait(0.5)
+		self:_streamSpawnChunksForPlayer(player, spawnChunkX, spawnChunkZ)
+		task.wait(SPAWN_CHUNK_STREAM_WAIT)
 
 		local rootPart = character:WaitForChild("HumanoidRootPart", 5)
 		if rootPart then
@@ -2317,7 +2423,8 @@ function VoxelWorldService:OnPlayerAdded(player)
 	end)
 
 	if player.Character then
-		task.wait(0.5)
+		self:_streamSpawnChunksForPlayer(player, spawnChunkX, spawnChunkZ)
+		task.wait(SPAWN_CHUNK_STREAM_WAIT)
 		local rootPart = player.Character:FindFirstChild("HumanoidRootPart")
 		if rootPart then
 			rootPart.CFrame = CFrame.new(spawnPos)
@@ -2345,13 +2452,26 @@ function VoxelWorldService:OnEquipTool(player, data)
 	if not stack or stack:IsEmpty() then
 		-- Empty slot -> treat as unequip
 		local state = self.players[player]
-		if state then state.tool = nil end
+		if state and state.tool then
+			state.tool = nil
+			-- Broadcast unequip to all clients
+			EventManager:FireEventToAll("PlayerToolUnequipped", {
+				userId = player.UserId
+			})
+		end
 		return
 	end
 
 	local itemId = stack:GetItemId()
 	if not ToolConfig.IsTool(itemId) then
-		-- Not a tool
+		-- Not a tool -> unequip current tool if any
+		local state = self.players[player]
+		if state and state.tool then
+			state.tool = nil
+			EventManager:FireEventToAll("PlayerToolUnequipped", {
+				userId = player.UserId
+			})
+		end
 		return
 	end
 
@@ -2361,9 +2481,14 @@ function VoxelWorldService:OnEquipTool(player, data)
 		state.tool = {
 			type = toolType,
 			tier = toolTier,
-			slotIndex = slotIndex
+			slotIndex = slotIndex,
+			itemId = itemId
 		}
-		print(string.format("[VoxelWorldService] %s equipped %s tier %d in slot %d", player.Name, tostring(toolType), toolTier, slotIndex))
+		-- Broadcast to all clients so they can render the tool on this player
+		EventManager:FireEventToAll("PlayerToolEquipped", {
+			userId = player.UserId,
+			itemId = itemId
+		})
 	end
 end
 
@@ -2372,11 +2497,31 @@ function VoxelWorldService:OnUnequipTool(player)
 	local state = self.players[player]
 	if state and state.tool then
 		state.tool = nil
-		-- Debug print removed to reduce console spam
+		-- Broadcast unequip to all clients
+		EventManager:FireEventToAll("PlayerToolUnequipped", {
+			userId = player.UserId
+		})
 	end
 end
 
--- Track client hotbar selection (blocks-in-hand)
+-- Sync all players' equipped tools to a requesting client (for late joiners)
+-- Also supports the new heldItem field (for blocks)
+function VoxelWorldService:OnRequestToolSync(player)
+	local toolStates = {}
+	for otherPlayer, state in pairs(self.players) do
+		-- Check new heldItem field first (unified: tools + blocks)
+		if state.heldItem and state.heldItem > 0 then
+			toolStates[tostring(otherPlayer.UserId)] = state.heldItem
+		-- Fallback to legacy tool field
+		elseif state.tool and state.tool.itemId then
+			toolStates[tostring(otherPlayer.UserId)] = state.tool.itemId
+		end
+	end
+	EventManager:FireEvent("ToolSync", player, toolStates)
+end
+
+-- Track client hotbar selection and broadcast held item to all clients
+-- This handles BOTH tools AND blocks in a unified way
 function VoxelWorldService:OnSelectHotbarSlot(player, data)
     if not data or type(data.slotIndex) ~= "number" then return end
     local slotIndex = data.slotIndex
@@ -2386,6 +2531,32 @@ function VoxelWorldService:OnSelectHotbarSlot(player, data)
     if not state then return end
 
     state.selectedSlot = slotIndex
+
+    -- Get the item in the selected slot
+    if not self.Deps or not self.Deps.PlayerInventoryService then return end
+    local invService = self.Deps.PlayerInventoryService
+    local stack = invService:GetHotbarSlot(player, slotIndex)
+
+    local itemId = nil
+    if stack and not stack:IsEmpty() then
+        itemId = stack:GetItemId()
+    end
+
+    -- Store held item (can be tool, block, or nil)
+    state.heldItem = itemId
+
+    -- Broadcast to all clients so they can render the held item
+    if itemId and itemId > 0 then
+        EventManager:FireEventToAll("PlayerHeldItemChanged", {
+            userId = player.UserId,
+            itemId = itemId
+        })
+    else
+        EventManager:FireEventToAll("PlayerHeldItemChanged", {
+            userId = player.UserId,
+            itemId = nil
+        })
+    end
 end
 
 function VoxelWorldService:GetSelectedHotbarSlot(player)
@@ -2397,6 +2568,19 @@ end
 function VoxelWorldService:OnPlayerRemoved(player)
 	if self.players[player] then
 		local state = self.players[player]
+
+		-- Broadcast held item cleared (unified: supports both tools and blocks)
+		if state and (state.heldItem or state.tool) then
+			EventManager:FireEventToAll("PlayerHeldItemChanged", {
+				userId = player.UserId,
+				itemId = nil
+			})
+			-- Also fire legacy event for compatibility
+			EventManager:FireEventToAll("PlayerToolUnequipped", {
+				userId = player.UserId
+			})
+		end
+
 		if state and state.chunks then
 			for key in pairs(state.chunks) do
 				self:_removeViewer(player, key)
@@ -2559,7 +2743,7 @@ function VoxelWorldService:LoadWorldData()
 	for i, chunkData in ipairs(worldData.chunks) do
 		if chunkData.x and chunkData.z and chunkData.data then
 			print(string.format("  Loading chunk %d/%d at (%d,%d)", i, #worldData.chunks, chunkData.x, chunkData.z))
-			local chunk = self.worldManager:GetChunk(chunkData.x, chunkData.z)
+			local chunk = self.worldManager:GetChunk(chunkData.x, chunkData.z, true)
 			if chunk then
 				chunk:DeserializeLinear(chunkData.data)
 				loadedCount += 1

@@ -14,8 +14,10 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local EventManager = require(ReplicatedStorage.Shared.EventManager)
+local Config = require(ReplicatedStorage.Shared.Config)
 
 local MinionUIController = {}
+local BOLD_FONT = Config.UI_SETTINGS.typography.fonts.bold
 
 local gui -- ScreenGui
 local frame -- main frame
@@ -63,7 +65,7 @@ local function renderUI()
 	title.Size = UDim2.new(1, -20, 0, 28)
 	title.Position = UDim2.new(0, 10, 0, 10)
 	title.BackgroundTransparency = 1
-	title.Font = Enum.Font.GothamBold
+		title.Font = BOLD_FONT
 	title.TextSize = 18
 	title.TextColor3 = Color3.fromRGB(255, 255, 255)
 	title.TextXAlignment = Enum.TextXAlignment.Left
@@ -75,7 +77,7 @@ local function renderUI()
 	waitLabel.Size = UDim2.new(1, -20, 0, 22)
 	waitLabel.Position = UDim2.new(0, 10, 0, 40)
 	waitLabel.BackgroundTransparency = 1
-	waitLabel.Font = Enum.Font.Gotham
+	waitLabel.Font = BOLD_FONT
 	waitLabel.TextSize = 16
 	waitLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
 	waitLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -107,7 +109,7 @@ local function renderUI()
 		local label = Instance.new("TextLabel")
 		label.Size = UDim2.new(1, 0, 1, 0)
 		label.BackgroundTransparency = 1
-		label.Font = Enum.Font.GothamBold
+		label.Font = BOLD_FONT
 		label.TextSize = 16
 		label.TextColor3 = Color3.fromRGB(255, 255, 255)
 		label.Text = (i <= (state.slotsUnlocked or 1)) and "" or "Locked"
@@ -121,7 +123,7 @@ local function renderUI()
 	upgradeBtn.BackgroundColor3 = Color3.fromRGB(60, 120, 220)
 	upgradeBtn.BorderSizePixel = 0
 	upgradeBtn.AutoButtonColor = true
-	upgradeBtn.Font = Enum.Font.GothamBold
+	upgradeBtn.Font = BOLD_FONT
 	upgradeBtn.TextSize = 16
 	upgradeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 	local maxLevel = state.maxLevel or 4
@@ -145,7 +147,7 @@ local function renderUI()
 	closeBtn.BackgroundColor3 = Color3.fromRGB(90, 90, 90)
 	closeBtn.BorderSizePixel = 0
 	closeBtn.AutoButtonColor = true
-	closeBtn.Font = Enum.Font.GothamBold
+	closeBtn.Font = BOLD_FONT
 	closeBtn.TextSize = 18
 	closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 	closeBtn.Text = "X"

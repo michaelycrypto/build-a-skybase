@@ -7,17 +7,22 @@ local UserInputService = game:GetService("UserInputService")
 local ContextActionService = game:GetService("ContextActionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Debris = game:GetService("Debris")
 
 local EventManager = require(ReplicatedStorage.Shared.EventManager)
 local SpawnEggConfig = require(ReplicatedStorage.Configs.SpawnEggConfig)
 local Constants = require(ReplicatedStorage.Shared.VoxelWorld.Core.Constants)
 local VoxelConfig = require(ReplicatedStorage.Shared.VoxelWorld.Core.Config)
 local GameState = require(script.Parent.Parent.Managers.GameState)
+local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
 local GameConfig = require(ReplicatedStorage.Configs.GameConfig)
+local BlockBreakFeedbackConfig = require(ReplicatedStorage.Configs.BlockBreakFeedbackConfig)
 local BlockAPI = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockAPI)
 local BlockRegistry = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockRegistry)
+local BlockProperties = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockProperties)
 local ToolAnimationController = require(script.Parent.ToolAnimationController)
 local BlockBreakProgress = require(script.Parent.Parent.UI.BlockBreakProgress)
+local UIVisibilityManager = require(script.Parent.Parent.Managers.UIVisibilityManager)
 
 local BlockInteraction = {}
 BlockInteraction.isReady = false
@@ -54,6 +59,107 @@ local DRAG_MOVEMENT_THRESHOLD = 10 -- Min movement in pixels to be considered a 
 -- Constants
 local BREAK_INTERVAL = 0.1 -- How often to send punch events (server allows >=0.1s)
 local PLACE_COOLDOWN = 0.2 -- Prevent spam
+local HIT_SOUND_COOLDOWN = 0.2 -- Match Minecraft cadence (~5 hits per second)
+
+local function _blockKey(vec3)
+	if not vec3 then return nil end
+	return string.format("%d,%d,%d", vec3.X, vec3.Y, vec3.Z)
+end
+
+local function _blockWorldCenter(blockPos)
+	local bs = Constants.BLOCK_SIZE
+	return Vector3.new(
+		blockPos.X * bs + bs * 0.5,
+		blockPos.Y * bs + bs * 0.5,
+		blockPos.Z * bs + bs * 0.5
+	)
+end
+
+local lastCancelKey = nil
+local lastCancelAt = 0
+local hitSoundTimestamps = {}
+
+local function isBowEquipped()
+	local holding = GameState:Get("voxelWorld.isHoldingTool") == true
+	if not holding then return false end
+	local itemId = GameState:Get("voxelWorld.selectedToolItemId")
+	if not itemId or not ToolConfig.IsTool(itemId) then
+		return false
+	end
+	local toolType = select(1, ToolConfig.GetBlockProps(itemId))
+	return toolType == BlockProperties.ToolType.BOW
+end
+
+local function sendCancelForBlock(blockPos)
+	if not blockPos then return end
+	local key = _blockKey(blockPos)
+	if not key then return end
+	local now = os.clock()
+	if lastCancelKey == key and (now - lastCancelAt) < 0.05 then
+		return
+	end
+	lastCancelKey = key
+	lastCancelAt = now
+	EventManager:SendToServer("CancelBlockBreak", {
+		x = blockPos.X,
+		y = blockPos.Y,
+		z = blockPos.Z,
+	})
+end
+
+local function playBlockHitSound(blockPos)
+	if not blockPos or not blockAPI or not blockAPI.worldManager then
+		return
+	end
+
+	local wm = blockAPI.worldManager
+	local blockId = wm:GetBlock(blockPos.X, blockPos.Y, blockPos.Z)
+	if not blockId or blockId == Constants.BlockType.AIR then
+		return
+	end
+
+	local key = _blockKey(blockPos)
+	local now = os.clock()
+	if key and hitSoundTimestamps[key] and (now - hitSoundTimestamps[key]) < HIT_SOUND_COOLDOWN then
+		return
+	end
+
+	local material = BlockProperties:GetHitMaterial(blockId)
+	local soundPool = BlockBreakFeedbackConfig.HitSounds[material]
+	if not soundPool or #soundPool == 0 then
+		soundPool = BlockBreakFeedbackConfig.HitSounds[BlockBreakFeedbackConfig.DEFAULT_MATERIAL]
+	end
+	if not soundPool or #soundPool == 0 then
+		return
+	end
+
+	local soundId = soundPool[math.random(1, #soundPool)]
+	if not soundId then return end
+
+	if key then
+		hitSoundTimestamps[key] = now
+	end
+
+	local anchor = Instance.new("Part")
+	anchor.Name = "BlockHitSound"
+	anchor.Transparency = 1
+	anchor.CanCollide = false
+	anchor.Anchored = true
+	anchor.Size = Vector3.new(0.1, 0.1, 0.1)
+	anchor.CFrame = CFrame.new(_blockWorldCenter(blockPos))
+	anchor.Parent = Workspace
+
+	local sound = Instance.new("Sound")
+	sound.SoundId = soundId
+	sound.RollOffMode = Enum.RollOffMode.Linear
+	sound.RollOffMinDistance = 5
+	sound.RollOffMaxDistance = 60
+	sound.Volume = 0.65
+	sound.Parent = anchor
+	sound:Play()
+
+	Debris:AddItem(anchor, 2)
+end
 
 -- Forward declarations
 local getTargetedBlock
@@ -368,6 +474,11 @@ local function startBreaking()
 	-- Guard: Don't allow breaking until system is ready
 	if not BlockInteraction.isReady then return end
 	if isBreaking then return end
+	if isBowEquipped() then return end
+
+	-- Block interactions when UI is open (inventory, chest, worlds, minion)
+	if UIVisibilityManager:GetMode() ~= "gameplay" then return end
+	if GameState:Get("voxelWorld.inventoryOpen") then return end
 
 	-- Prevent breaking when a sword is equipped (PvP mode)
 	local GameState = require(script.Parent.Parent.Managers.GameState)
@@ -402,6 +513,8 @@ local function startBreaking()
 		z = blockPos.Z,
 		dt = 0
 	})
+	ToolAnimationController:PlaySwing()
+	playBlockHitSound(blockPos)
 
 	-- Continue sending punches while mouse is held
 	task.spawn(function()
@@ -418,6 +531,9 @@ local function startBreaking()
 						if BlockBreakProgress and BlockBreakProgress.Reset then
 							BlockBreakProgress:Reset()
 						end
+						if breakingBlock then
+							sendCancelForBlock(breakingBlock)
+						end
 						breakingBlock = currentBlock
 						EventManager:SendToServer("PlayerPunch", {
 							x = breakingBlock.X,
@@ -426,6 +542,7 @@ local function startBreaking()
 							dt = 0
 						})
 						ToolAnimationController:PlaySwing()
+						playBlockHitSound(breakingBlock)
 						lastBreakTime = now
 					else
 						EventManager:SendToServer("PlayerPunch", {
@@ -435,12 +552,16 @@ local function startBreaking()
 							dt = dt
 						})
 						ToolAnimationController:PlaySwing()
+						playBlockHitSound(breakingBlock)
 						lastBreakTime = now
 					end
 				else
 					-- Nothing targeted: reset progress but keep mining state while mouse is held
 					if BlockBreakProgress and BlockBreakProgress.Reset then
 						BlockBreakProgress:Reset()
+					end
+					if breakingBlock then
+						sendCancelForBlock(breakingBlock)
 					end
 					breakingBlock = nil
 				end
@@ -452,6 +573,9 @@ local function startBreaking()
 end
 
 local function stopBreaking()
+	if breakingBlock then
+		sendCancelForBlock(breakingBlock)
+	end
 	isBreaking = false
 	breakingBlock = nil
 	-- Note: Progress bar will auto-hide via its built-in timeout when server stops sending progress updates
@@ -482,6 +606,11 @@ local function interactOrPlace()
 	end
 	-- Guard: Don't allow actions until system is ready
 	if not BlockInteraction.isReady or not blockAPI then return end
+	if isBowEquipped() then return end
+
+	-- Block interactions when UI is open (inventory, chest, worlds, minion)
+	if UIVisibilityManager:GetMode() ~= "gameplay" then return end
+	if GameState:Get("voxelWorld.inventoryOpen") then return end
 
 	-- Verify character still exists
 	local character = player.Character

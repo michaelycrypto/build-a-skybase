@@ -12,11 +12,15 @@ local BlockRegistry = require(script.Parent.Parent.World.BlockRegistry)
 local TextureApplicator = require(script.Parent.TextureApplicator)
 local TextureManager = require(script.Parent.TextureManager)
 local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
+local ArmorConfig = require(ReplicatedStorage.Configs.ArmorConfig)
 
 local BlockViewportCreator = {}
 
 -- Cache for viewport models to avoid recreating them
 local viewportModelCache = {}
+
+-- Item image overrides for special non-tool items (most items use ToolConfig or BlockRegistry)
+local ITEM_IMAGE_OVERRIDE = {}
 
 -- Centers a model or part so its bounding box center is at the origin
 local function centerViewportInstance(inst)
@@ -360,6 +364,39 @@ function BlockViewportCreator.CreateBlockViewport(parent, blockId, size, positio
 		return imageLabel
 	end
 
+	-- Check if this is armor
+	local armorInfo = ArmorConfig.GetArmorInfo(blockId)
+	if armorInfo and armorInfo.image then
+		-- Create an ImageLabel for armor
+		local imageLabel = Instance.new("ImageLabel")
+		imageLabel.Name = "ArmorImage"
+		imageLabel.Size = size or UDim2.new(1, 0, 1, 0)
+		imageLabel.Position = position or UDim2.new(0.5, 0, 0.5, 0)
+		imageLabel.AnchorPoint = anchorPoint or Vector2.new(0.5, 0.5)
+		imageLabel.BackgroundTransparency = 1
+		imageLabel.BorderSizePixel = 0
+		imageLabel.Image = armorInfo.image
+		imageLabel.ScaleType = Enum.ScaleType.Fit
+		imageLabel.Parent = parent
+		return imageLabel
+	end
+
+	-- Item-specific image overrides (non-tools)
+	local overrideImage = ITEM_IMAGE_OVERRIDE[blockId]
+	if overrideImage then
+		local imageLabel = Instance.new("ImageLabel")
+		imageLabel.Name = "ItemImage"
+		imageLabel.Size = size or UDim2.new(1, 0, 1, 0)
+		imageLabel.Position = position or UDim2.new(0.5, 0, 0.5, 0)
+		imageLabel.AnchorPoint = anchorPoint or Vector2.new(0.5, 0.5)
+		imageLabel.BackgroundTransparency = 1
+		imageLabel.BorderSizePixel = 0
+		imageLabel.Image = overrideImage
+		imageLabel.ScaleType = Enum.ScaleType.Fit
+		imageLabel.Parent = parent
+		return imageLabel
+	end
+
 	-- Check if this is an item (not a block) that should be displayed as a flat 2D image
 	-- This includes: crafting materials, saplings, flowers, tall grass, etc.
 	local blockDef = BlockRegistry.Blocks[blockId]
@@ -485,6 +522,19 @@ function BlockViewportCreator.UpdateBlockViewport(container, blockId)
 		-- Otherwise, we need to replace the viewport with an ImageLabel
 		-- This shouldn't happen in normal use, but handle it gracefully
 		warn("UpdateBlockViewport: Cannot update non-ImageLabel container to tool item")
+		return
+	end
+
+	-- Check if this is armor
+	local armorInfo = ArmorConfig.GetArmorInfo(blockId)
+	if armorInfo and armorInfo.image then
+		-- If container is an ImageLabel, just update the image
+		if container:IsA("ImageLabel") then
+			container.Image = armorInfo.image
+			return
+		end
+		-- Otherwise, we need to replace the viewport with an ImageLabel
+		warn("UpdateBlockViewport: Cannot update non-ImageLabel container to armor item")
 		return
 	end
 

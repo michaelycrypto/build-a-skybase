@@ -647,6 +647,7 @@ local IconMapping = {
         Premium = 119061018673116, -- Premium
         QuestionMark = 102170253203778, -- Question Mark
         Redo = 116821148342992, -- Redo
+        Refresh = 128982416935814, -- Refresh
         Save = 77491449629197, -- Save
         SkipBack = 127939953160025, -- Skip Back
         SkipForward = 114906421540419, -- Skip Forward

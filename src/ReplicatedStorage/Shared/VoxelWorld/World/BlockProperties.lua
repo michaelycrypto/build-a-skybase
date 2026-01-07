@@ -5,17 +5,26 @@
 	Break time is computed from hardness and tool speed using the Minecraft formula.
 ]]
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Constants = require(script.Parent.Parent.Core.Constants)
+local BlockBreakFeedbackConfig = require(ReplicatedStorage.Configs.BlockBreakFeedbackConfig)
 
 local BlockProperties = {}
 
 -- Tool tiers (affects mining speed multiplier)
+-- 6-tier progression: Copper → Iron → Steel → Bluesteel → Tungsten → Titanium
 BlockProperties.ToolTier = {
-	NONE = 0,     -- Hand/no tool
-	WOOD = 1,
-	STONE = 2,
-	IRON = 3,
-	DIAMOND = 4
+	NONE = 0,       -- Hand/no tool
+	COPPER = 1,     -- Tier 1 - Starter
+	IRON = 2,       -- Tier 2 - Standard
+	STEEL = 3,      -- Tier 3 - Iron + Coal alloy
+	BLUESTEEL = 4,  -- Tier 4 - Strong blue steel
+	TUNGSTEN = 5,   -- Tier 5 - Heavy metal
+	TITANIUM = 6,   -- Tier 6 - Ultimate
+	-- Legacy aliases for compatibility
+	WOOD = 1,       -- Alias for COPPER
+	STONE = 2,      -- Alias for IRON
+	DIAMOND = 6     -- Alias for TITANIUM
 }
 
 -- Tool types
@@ -25,7 +34,9 @@ BlockProperties.ToolType = {
 	AXE = "axe",
 	SHOVEL = "shovel",
 	HOE = "hoe",
-	SWORD = "sword"
+	SWORD = "sword",
+	BOW = "bow",
+	ARROW = "arrow",
 }
 
 -- Block property definitions
@@ -414,12 +425,6 @@ BlockProperties.Properties = {
 		minToolTier = BlockProperties.ToolTier.STONE,  -- Requires stone pickaxe
 		resistance = 3.0
 	},
-	[Constants.BlockType.DIAMOND_ORE] = {
-		hardness = 3.0,  -- Minecraft hardness
-		toolType = BlockProperties.ToolType.PICKAXE,
-		minToolTier = BlockProperties.ToolTier.IRON,  -- Requires iron pickaxe
-		resistance = 3.0
-	},
 	-- Utility blocks
 	[Constants.BlockType.FURNACE] = {
 		hardness = 3.5,  -- Minecraft hardness
@@ -474,7 +479,35 @@ BlockProperties.Properties = {
 	[Constants.BlockType.BEETROOT_CROP_0] = { hardness = 0, toolType = nil, minToolTier = nil, resistance = 0 },
 	[Constants.BlockType.BEETROOT_CROP_1] = { hardness = 0, toolType = nil, minToolTier = nil, resistance = 0 },
 	[Constants.BlockType.BEETROOT_CROP_2] = { hardness = 0, toolType = nil, minToolTier = nil, resistance = 0 },
-	[Constants.BlockType.BEETROOT_CROP_3] = { hardness = 0, toolType = nil, minToolTier = nil, resistance = 0 }
+	[Constants.BlockType.BEETROOT_CROP_3] = { hardness = 0, toolType = nil, minToolTier = nil, resistance = 0 },
+
+	-- ═══════════════════════════════════════════════════════════════════════════
+	-- ORES (6-tier progression: Copper → Iron → Steel → Bluesteel → Tungsten → Titanium)
+	-- ═══════════════════════════════════════════════════════════════════════════
+	[Constants.BlockType.COPPER_ORE] = {
+		hardness = 2.5,
+		toolType = BlockProperties.ToolType.PICKAXE,
+		minToolTier = BlockProperties.ToolTier.COPPER,
+		resistance = 3.0
+	},
+	[Constants.BlockType.BLUESTEEL_ORE] = {
+		hardness = 4.0,
+		toolType = BlockProperties.ToolType.PICKAXE,
+		minToolTier = BlockProperties.ToolTier.STEEL,
+		resistance = 4.0
+	},
+	[Constants.BlockType.TUNGSTEN_ORE] = {
+		hardness = 5.0,
+		toolType = BlockProperties.ToolType.PICKAXE,
+		minToolTier = BlockProperties.ToolTier.BLUESTEEL,
+		resistance = 5.0
+	},
+	[Constants.BlockType.TITANIUM_ORE] = {
+		hardness = 6.0,
+		toolType = BlockProperties.ToolType.PICKAXE,
+		minToolTier = BlockProperties.ToolTier.TUNGSTEN,
+		resistance = 6.0
+	}
 }
 
 -- Tool effectiveness multipliers (Minecraft-accurate)
@@ -488,8 +521,12 @@ BlockProperties.ToolEffectiveness = {
 		[Constants.BlockType.BRICKS] = 1.5,
 		[Constants.BlockType.COAL_ORE] = 1.5,
 		[Constants.BlockType.IRON_ORE] = 1.5,
-		[Constants.BlockType.DIAMOND_ORE] = 1.5,
 		[Constants.BlockType.FURNACE] = 1.5,
+		-- Tiered ores (6-tier)
+		[Constants.BlockType.COPPER_ORE] = 1.5,
+		[Constants.BlockType.BLUESTEEL_ORE] = 1.5,
+		[Constants.BlockType.TUNGSTEN_ORE] = 1.5,
+		[Constants.BlockType.TITANIUM_ORE] = 1.5,
 	},
 	-- Axe effectiveness
 	axe = {
@@ -540,12 +577,14 @@ BlockProperties.ToolEffectiveness = {
 	}
 }
 
--- Tool speed multipliers by tier (Minecraft values)
+-- Tool speed multipliers by tier (6-tier progression)
 BlockProperties.ToolSpeedMultipliers = {
-    [BlockProperties.ToolTier.WOOD] = 2.0,   -- Wooden
-    [BlockProperties.ToolTier.STONE] = 4.0,  -- Stone
-    [BlockProperties.ToolTier.IRON] = 6.0,   -- Iron
-    [BlockProperties.ToolTier.DIAMOND] = 7.0 -- Diamond slightly reduced to avoid "instant" feel
+    [BlockProperties.ToolTier.COPPER] = 2.0,     -- Tier 1: Copper
+    [BlockProperties.ToolTier.IRON] = 4.0,       -- Tier 2: Iron
+    [BlockProperties.ToolTier.STEEL] = 6.0,      -- Tier 3: Steel
+    [BlockProperties.ToolTier.BLUESTEEL] = 8.0,  -- Tier 4: Bluesteel
+    [BlockProperties.ToolTier.TUNGSTEN] = 10.0,  -- Tier 5: Tungsten
+    [BlockProperties.ToolTier.TITANIUM] = 12.0   -- Tier 6: Titanium
 }
 
 --[[
@@ -683,6 +722,13 @@ function BlockProperties:CanHarvest(blockId: number, toolType: string?, toolTier
 	local currentTier = toolTier or BlockProperties.ToolTier.NONE
 	local requiredTier = props.minToolTier or BlockProperties.ToolTier.NONE
 	return currentTier >= requiredTier
+end
+
+--[[
+	Get the hit sound material for a block (used by client feedback)
+]]
+function BlockProperties:GetHitMaterial(blockId: number): string
+	return BlockBreakFeedbackConfig.BlockMaterialMap[blockId] or BlockBreakFeedbackConfig.DEFAULT_MATERIAL
 end
 
 return BlockProperties

@@ -12,8 +12,12 @@
 
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
 
 local ActionButtons = {}
+local BOLD_FONT = Config.UI_SETTINGS.typography.fonts.bold
 ActionButtons.__index = ActionButtons
 
 -- Button types
@@ -119,7 +123,7 @@ function ActionButtons:CreateButton(buttonType, position, icon, label)
 	iconLabel.Text = icon or "●"
 	iconLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	iconLabel.TextScaled = true
-	iconLabel.Font = Enum.Font.GothamBold
+	iconLabel.Font = BOLD_FONT
 	iconLabel.Parent = button
 
 	-- Label (optional)
@@ -134,7 +138,7 @@ function ActionButtons:CreateButton(buttonType, position, icon, label)
 		labelText.Text = label
 		labelText.TextColor3 = Color3.fromRGB(255, 255, 255)
 		labelText.TextScaled = true
-		labelText.Font = Enum.Font.Gotham
+		labelText.Font = BOLD_FONT
 		labelText.TextTransparency = 0.3
 		labelText.Parent = button
 	end

@@ -19,12 +19,13 @@ local QuestsApi = require(ReplicatedStorage.Shared.Api.QuestsApi)
 local Config = require(ReplicatedStorage.Shared.Config)
 local GameState = require(script.Parent.Parent.Managers.GameState)
 local UIManager = require(script.Parent.Parent.Managers.UIManager)
+local UIVisibilityManager = require(script.Parent.Parent.Managers.UIVisibilityManager)
 local PanelManager = require(script.Parent.Parent.Managers.PanelManager)
 local SoundManager = require(script.Parent.Parent.Managers.SoundManager)
 local IconManager = require(script.Parent.Parent.Managers.IconManager)
 local UIComponents = require(script.Parent.Parent.Managers.UIComponents)
-local GameState = require(script.Parent.Parent.Managers.GameState)
 local Crosshair = require(script.Parent.Crosshair)
+local BOLD_FONT = Config.UI_SETTINGS.typography.fonts.bold
 
 -- Services and instances
 local player = Players.LocalPlayer
@@ -32,7 +33,6 @@ local playerGui = player:WaitForChild("PlayerGui")
 
 -- UI Elements
 local hudGui
-local leftSidebar
 local moneyLabel
 local gemsLabel
 local topCenterBar
@@ -40,14 +40,6 @@ local topCenterBar
 -- UI State
 local menuButtons = {}
 local currentValues = {coins = 0, gems = 0}
-
--- References to other UI components
-local voxelInventoryRef = nil
-
--- Public function to set inventory reference
-function MainHUD:SetInventoryReference(inventoryPanel)
-	voxelInventoryRef = inventoryPanel
-end
 
 -- Quests badge state
 local questBadge
@@ -175,7 +167,7 @@ local function ensureQuestBadge()
 	label.Text = "0"
 	label.TextColor3 = Color3.fromRGB(255, 255, 255)
 	label.TextScaled = true
-	label.Font = Enum.Font.GothamBold
+	label.Font = BOLD_FONT
 	label.ZIndex = badge.ZIndex + 1
 	label.Parent = badge
 
@@ -340,7 +332,6 @@ function MainHUD:Create()
 
 	-- Create components
 	self:CreateBottomLeftCurrency()
-	self:CreateLeftSidebar()
 
 	-- Right-side quick actions (mobile)
 	self:CreateRightQuickActions()
@@ -356,6 +347,13 @@ function MainHUD:Create()
 
 	-- Connect to game state
 	self:ConnectToGameState()
+
+	-- Register with UIVisibilityManager
+	UIVisibilityManager:RegisterComponent("mainHUD", self, {
+		showMethod = "Show",
+		hideMethod = "Hide",
+		priority = 10
+	})
 
 	-- Badge and quest/daily tracking removed for simplified mobile UI
 
@@ -393,7 +391,7 @@ function MainHUD:CreateTopCenterTeleport()
 	teleportBtn.RichText = true
 	teleportBtn.TextSize = 24
 	teleportBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-	teleportBtn.Font = Enum.Font.Gotham
+	teleportBtn.Font = BOLD_FONT
 	teleportBtn.Parent = topCenterBar
 
 	local corner = Instance.new("UICorner")
@@ -499,7 +497,7 @@ function MainHUD:CreateBottomLeftCurrency()
 	gemsLabel.RichText = true -- Enable RichText for bold+italic
 	gemsLabel.TextColor3 = Config.UI_SETTINGS.colors.semantic.game.gems -- Purple gems color
 	gemsLabel.TextSize = 64 -- Massive text size
-	gemsLabel.Font = Enum.Font.Gotham -- Base font for RichText
+	gemsLabel.Font = BOLD_FONT -- Base font for RichText
 	gemsLabel.TextXAlignment = Enum.TextXAlignment.Left
 	gemsLabel.TextYAlignment = Enum.TextYAlignment.Center
 	gemsLabel.TextStrokeTransparency = 0 -- Maximum opacity for thickest stroke
@@ -546,7 +544,7 @@ function MainHUD:CreateBottomLeftCurrency()
 	moneyLabel.RichText = true -- Enable RichText for bold+italic
 	moneyLabel.TextColor3 = Color3.fromRGB(34, 197, 94) -- Green color for money
 	moneyLabel.TextSize = 64 -- Massive text size
-	moneyLabel.Font = Enum.Font.Gotham -- Base font for RichText
+	moneyLabel.Font = BOLD_FONT -- Base font for RichText
 	moneyLabel.TextXAlignment = Enum.TextXAlignment.Left
 	moneyLabel.TextYAlignment = Enum.TextYAlignment.Center
 		moneyLabel.TextStrokeTransparency = 0 -- Maximum opacity for thickest stroke
@@ -562,105 +560,6 @@ function MainHUD:CreateBottomLeftCurrency()
 end
 
 
-
---[[
-	Create the left sidebar menu
---]]
-function MainHUD:CreateLeftSidebar()
-	leftSidebar = Instance.new("Frame")
-	leftSidebar.Name = "LeftSidebar"
-	leftSidebar.Size = UDim2.new(0, SIDEBAR_WIDTH, 0, 0) -- Width fixed, height automatic
-	leftSidebar.Position = UDim2.new(0, 10, 0.5, 0) -- Centered vertically with 10px offset from left
-	leftSidebar.AnchorPoint = Vector2.new(0, 0.5) -- Center anchor point
-	leftSidebar.AutomaticSize = Enum.AutomaticSize.Y -- Auto-size height based on content
-	leftSidebar.BackgroundColor3 = Config.UI_SETTINGS.colors.backgroundGlass
-	leftSidebar.BackgroundTransparency = 1 -- Make frame invisible
-	leftSidebar.BorderSizePixel = 0
-	leftSidebar.Parent = hudGui
-
-	-- Remove corner radius since frame is invisible
-	-- local sidebarCorner = Instance.new("UICorner")
-	-- sidebarCorner.CornerRadius = UDim.new(0, Config.UI_SETTINGS.designSystem.borderRadius.lg)
-	-- sidebarCorner.Parent = leftSidebar
-
-	-- Add padding to the sidebar
-	local sidebarPadding = Instance.new("UIPadding")
-	sidebarPadding.PaddingTop = UDim.new(0, CONTENT_PADDING)
-	sidebarPadding.PaddingBottom = UDim.new(0, CONTENT_PADDING)
-	sidebarPadding.PaddingLeft = UDim.new(0, CONTENT_PADDING)
-	sidebarPadding.PaddingRight = UDim.new(0, CONTENT_PADDING)
-	sidebarPadding.Parent = leftSidebar
-
-	-- Add vertical list layout for automatic button spacing
-	local sidebarLayout = Instance.new("UIListLayout")
-	sidebarLayout.SortOrder = Enum.SortOrder.LayoutOrder
-	sidebarLayout.Padding = UDim.new(0, CONTENT_PADDING + 6) -- Slightly reduced gap between buttons
-	sidebarLayout.FillDirection = Enum.FillDirection.Vertical
-	sidebarLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-	sidebarLayout.Parent = leftSidebar
-
-	-- Create menu buttons (using Vector Icons) - Simplified for mobile
-	menuButtons = {}
-
-	-- Add Worlds button (lobby only)
-	local LOBBY_PLACE_ID = 139848475014328
-	if game.PlaceId == LOBBY_PLACE_ID then
-		table.insert(menuButtons, {
-			iconCategory = "General",
-			iconName = "Home",
-			text = "Worlds",
-			buttonText = "Worlds",
-			callback = function()
-				PanelManager:TogglePanel("worlds")
-			end
-		})
-	end
-
-	-- Inventory button
-	table.insert(menuButtons, {
-		iconCategory = "Clothing",
-		iconName = "Backpack",
-		text = "Inventory",
-		buttonText = "Inventory",
-		shortcut = "E",
-		callback = function()
-			-- Toggle voxel inventory
-			if voxelInventoryRef then
-				voxelInventoryRef:Toggle()
-			else
-				warn("Inventory reference not set in MainHUD")
-			end
-		end
-	})
-
-	-- Settings button
-	table.insert(menuButtons, {
-		iconCategory = "General",
-		iconName = "Settings",
-		text = "Settings",
-		buttonText = "Settings",
-		shortcut = "ESC",
-		callback = function()
-			-- Use PanelManager to toggle settings panel
-			PanelManager:TogglePanel("settings")
-		end
-	})
-
-	for i, buttonData in ipairs(menuButtons) do
-		local button = self:CreateMenuButton(buttonData)
-		-- No manual positioning needed - UIListLayout handles it automatically
-		button.borderFrame.LayoutOrder = i
-		button.borderFrame.Parent = leftSidebar -- Parent directly to sidebar (UIListLayout handles spacing)
-
-		-- Store button reference for menu toggle functionality
-		menuButtons[i].buttonObj = button
-	end
-
-	-- Badges removed (quests and daily buttons removed for simplified mobile UI)
-
-	-- Removed expand/collapse functionality for simpler design
-	-- self:SetupMenuToggle()
-end
 
 --[[
 	Create right-side quick actions (mobile-only)
@@ -773,7 +672,7 @@ function MainHUD:CreateMenuButton(buttonData)
 		buttonTextLabel.RichText = true -- Enable RichText for bold+italic styling
 		buttonTextLabel.TextColor3 = Config.UI_SETTINGS.titleLabel.textColor
 		buttonTextLabel.TextSize = 22 -- Scaled up font for bigger buttons
-		buttonTextLabel.Font = Enum.Font.Gotham -- Same font as money/gems
+		buttonTextLabel.Font = BOLD_FONT -- Same font as money/gems
 		buttonTextLabel.TextXAlignment = Enum.TextXAlignment.Center
 		buttonTextLabel.TextYAlignment = Enum.TextYAlignment.Center
 		buttonTextLabel.TextScaled = false -- Disable scaling to use exact font size

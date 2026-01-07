@@ -13,6 +13,7 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local SoundManager = require(script.Parent.Parent.Managers.SoundManager)
 local UIComponents = require(script.Parent.Parent.Managers.UIComponents)
 local GameState = require(script.Parent.Parent.Managers.GameState)
+local BOLD_FONT = Config.UI_SETTINGS.typography.fonts.bold
 
 -- Services and instances
 local player = Players.LocalPlayer
@@ -47,7 +48,7 @@ function SettingsPanel:CreateContent(contentFrame, data)
 	header.Text = "🔊 Audio Settings"
 	header.TextColor3 = Color3.fromRGB(255, 255, 255)
 	header.TextSize = 20 -- Slightly larger text
-	header.Font = Enum.Font.GothamBold
+	header.Font = BOLD_FONT
 	header.TextXAlignment = Enum.TextXAlignment.Left
 	header.LayoutOrder = 1
 	header.Parent = mainContainer

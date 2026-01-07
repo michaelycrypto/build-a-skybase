@@ -50,7 +50,7 @@ Injector:Bind("CraftingService", script.Parent.Parent.Services.CraftingService, 
 	mixins = {}
 })
 Injector:Bind("PlayerService", script.Parent.Parent.Services.PlayerService, {
-	dependencies = {"PlayerDataStoreService", "PlayerInventoryService"},
+	dependencies = {"PlayerDataStoreService", "PlayerInventoryService", "ArmorEquipService"},
 	mixins = {"RateLimited", "Cooldownable"}
 })
 Injector:Bind("ShopService", script.Parent.Parent.Services.ShopService, {
@@ -60,6 +60,18 @@ Injector:Bind("ShopService", script.Parent.Parent.Services.ShopService, {
 Injector:Bind("QuestService", script.Parent.Parent.Services.QuestService, {
 	dependencies = {"PlayerService"},
 	mixins = {"RateLimited", "Cooldownable"}
+})
+Injector:Bind("ArmorEquipService", script.Parent.Parent.Services.ArmorEquipService, {
+	dependencies = {"PlayerInventoryService"},
+	mixins = {}
+})
+Injector:Bind("DamageService", script.Parent.Parent.Services.DamageService, {
+	dependencies = {"ArmorEquipService", "PlayerInventoryService", "DroppedItemService"},
+	mixins = {}
+})
+Injector:Bind("BowService", script.Parent.Parent.Services.BowService, {
+	dependencies = {"PlayerInventoryService", "VoxelWorldService", "DamageService"},
+	mixins = {}
 })
 
 -- Cross-place helper (both places)
@@ -78,14 +90,27 @@ if IS_LOBBY then
 		dependencies = {},
 		mixins = {}
 	})
+	Injector:Bind("VoxelWorldService", script.Parent.Parent.Services.VoxelWorldService, {
+		dependencies = {"PlayerInventoryService", "DamageService"},
+		mixins = {}
+	})
+	Injector:Bind("DroppedItemService", script.Parent.Parent.Services.DroppedItemService, {
+		dependencies = {"VoxelWorldService", "PlayerInventoryService"},
+		mixins = {}
+	})
 else
 	-- Worlds place services
+	-- Also bind WorldsListService so players can view/manage worlds from within their worlds
+	Injector:Bind("WorldsListService", script.Parent.Parent.Services.WorldsListService, {
+		dependencies = {},
+		mixins = {}
+	})
 	Injector:Bind("WorldOwnershipService", script.Parent.Parent.Services.WorldOwnershipService, {
 		dependencies = {},
 		mixins = {}
 	})
 	Injector:Bind("VoxelWorldService", script.Parent.Parent.Services.VoxelWorldService, {
-		dependencies = {"PlayerInventoryService", "WorldOwnershipService"},
+		dependencies = {"PlayerInventoryService", "WorldOwnershipService", "DamageService"},
 		mixins = {}
 	})
 	Injector:Bind("SaplingService", script.Parent.Parent.Services.SaplingService, {
@@ -126,16 +151,18 @@ local shopService = Injector:Resolve("ShopService")
 local questService = Injector:Resolve("QuestService")
 local playerInventoryService = Injector:Resolve("PlayerInventoryService")
 local craftingService = Injector:Resolve("CraftingService")
-local voxelWorldService = not IS_LOBBY and Injector:Resolve("VoxelWorldService") or nil
+local bowService = Injector:Resolve("BowService")
+local armorEquipService = Injector:Resolve("ArmorEquipService")
+local voxelWorldService = Injector:Resolve("VoxelWorldService")
 local saplingService = not IS_LOBBY and Injector:Resolve("SaplingService") or nil
 local cropService = not IS_LOBBY and Injector:Resolve("CropService") or nil
 local worldOwnershipService = not IS_LOBBY and Injector:Resolve("WorldOwnershipService") or nil
 local chestStorageService = not IS_LOBBY and Injector:Resolve("ChestStorageService") or nil
-local droppedItemService = not IS_LOBBY and Injector:Resolve("DroppedItemService") or nil
+local droppedItemService = Injector:Resolve("DroppedItemService")
 local mobEntityService = not IS_LOBBY and Injector:Resolve("MobEntityService") or nil
 local activeWorldRegistryService = not IS_LOBBY and Injector:Resolve("ActiveWorldRegistryService") or nil
 local lobbyWorldTeleportService = IS_LOBBY and Injector:Resolve("LobbyWorldTeleportService") or nil
-local worldsListService = IS_LOBBY and Injector:Resolve("WorldsListService") or nil
+local worldsListService = Injector:Resolve("WorldsListService") or nil  -- Available in both lobby and player-owned worlds
 local crossPlaceTeleportService = Injector:Resolve("CrossPlaceTeleportService")
 
 -- Manually inject ChestStorageService into VoxelWorldService (to avoid circular dependency during init)
@@ -167,6 +194,8 @@ local servicesTable = {
     QuestService = questService,
 	PlayerInventoryService = playerInventoryService,
 	CraftingService = craftingService,
+	BowService = bowService,
+	ArmorEquipService = armorEquipService,
 	VoxelWorldService = voxelWorldService,
 	WorldOwnershipService = worldOwnershipService,
 	ChestStorageService = chestStorageService,
@@ -240,7 +269,18 @@ local clientEvents = {
 	"MobBatchUpdate",
 	"MobDespawned",
 	"MobDamaged",
-	"MobDied"
+	"MobDied",
+	-- Armor events
+	"ArmorEquipped",
+	"ArmorUnequipped",
+	"ArmorSync",
+	"ArmorSlotResult",
+	-- Tool equip events (multiplayer tool visibility)
+	"PlayerToolEquipped",
+	"PlayerToolUnequipped",
+	"ToolSync",
+	-- Unified held item events (tools + blocks)
+	"PlayerHeldItemChanged"
 }
 
 -- Register each client-bound event (this will define them in the Network module)
@@ -256,36 +296,97 @@ end
 -- Start all services
 services:Start()
 
+-- ═══════════════════════════════════════════════════════════════════════════
+-- MINECRAFT CHARACTER SCALING (applies to both Hub and Player World)
+-- Uses values from GameConfig.CharacterScale
+-- ═══════════════════════════════════════════════════════════════════════════
+
+-- Apply Minecraft-accurate character scaling
+local function applyMinecraftScale(character)
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	if not humanoid then return end
+
+	local scale = GameConfig.CharacterScale
+	local function setOrCreateScale(name, value)
+		local scaleValue = humanoid:FindFirstChild(name)
+		if scaleValue and scaleValue:IsA("NumberValue") then
+			scaleValue.Value = value
+		end
+	end
+
+	task.defer(function()
+		setOrCreateScale("BodyHeightScale", scale.HEIGHT)
+		setOrCreateScale("BodyWidthScale", scale.WIDTH)
+		setOrCreateScale("BodyDepthScale", scale.DEPTH)
+		setOrCreateScale("HeadScale", scale.HEAD)
+	end)
+end
+
+-- Setup character scaling for all players
+local function setupPlayerCharacterScaling(plr)
+	local function onCharacterAdded(char)
+		if char then
+			applyMinecraftScale(char)
+		end
+	end
+
+	if plr.Character then
+		onCharacterAdded(plr.Character)
+	end
+	plr.CharacterAdded:Connect(onCharacterAdded)
+end
+
+for _, plr in ipairs(Players:GetPlayers()) do
+	setupPlayerCharacterScaling(plr)
+end
+
+Players.PlayerAdded:Connect(setupPlayerCharacterScaling)
+
+-- ═══════════════════════════════════════════════════════════════════════════
+
 if IS_LOBBY then
-	-- Ensure simple ground and spawn for lobby
-	local Workspace = game:GetService("Workspace")
-	local baseplate = Workspace:FindFirstChild("LobbyBaseplate")
-	if not baseplate then
-		local part = Instance.new("Part")
-		part.Name = "LobbyBaseplate"
-		part.Anchored = true
-		part.Size = Vector3.new(512, 1, 512)
-		part.Position = Vector3.new(0, 0, 0)
-		part.Material = Enum.Material.SmoothPlastic
-		part.Color = Color3.fromRGB(163, 162, 165) -- Classic baseplate grey
-		part.Locked = true
-		part.Parent = Workspace
-		baseplate = part
+	local HUB_WORLD_SEED = 3984757983459578
+	local HUB_RENDER_DISTANCE = 2
+	voxelWorldService:InitializeWorld(HUB_WORLD_SEED, HUB_RENDER_DISTANCE, "hub_world")
+	logger.Info("✅ Hub voxel world initialized (5x5 chunks)")
+
+	local function addHubPlayer(player)
+		voxelWorldService:OnPlayerAdded(player)
+		-- Initialize armor for hub player
+		if armorEquipService and armorEquipService.OnPlayerAdded then
+			armorEquipService:OnPlayerAdded(player)
+		end
 	end
-	local spawn = Workspace:FindFirstChild("LobbySpawn")
-	if not spawn then
-		local s = Instance.new("SpawnLocation")
-		s.Name = "LobbySpawn"
-		s.Enabled = true
-		s.Neutral = true
-		s.Size = Vector3.new(6, 1, 6)
-		s.BrickColor = BrickColor.new("Bright green")
-		s.Position = Vector3.new(0, 5, 0)
-		s.Parent = Workspace
-		spawn = s
+
+	for _, plr in ipairs(Players:GetPlayers()) do
+		addHubPlayer(plr)
 	end
-	logger.Info("✅ Lobby baseplate and spawn ensured")
-	logger.Info("✅ Lobby server ready")
+
+	Players.PlayerAdded:Connect(function(plr)
+		addHubPlayer(plr)
+	end)
+
+	Players.PlayerRemoving:Connect(function(plr)
+		voxelWorldService:OnPlayerRemoved(plr)
+		-- Note: Armor cleanup is handled by PlayerService:OnPlayerRemoving (which saves first)
+	end)
+
+	local hubConfig = require(game.ReplicatedStorage.Shared.VoxelWorld.Core.Config)
+	local HUB_STREAM_INTERVAL = 1/math.max(1, (hubConfig.NETWORK and hubConfig.NETWORK.CHUNK_STREAM_RATE) or 12)
+	local lastHubStream = 0
+
+	RunService.Heartbeat:Connect(function()
+		local now = os.clock()
+		if now - lastHubStream >= HUB_STREAM_INTERVAL then
+			lastHubStream = now
+			voxelWorldService:StreamChunksToPlayers()
+			if voxelWorldService._pruneUnusedChunks then
+				voxelWorldService:_pruneUnusedChunks()
+			end
+		end
+	end)
+
+	logger.Info("✅ Lobby hub streaming loop ready")
 	return
 end
 
@@ -328,9 +429,10 @@ pcall(function()
 	PhysicsService:CollisionGroupSetCollidable("DroppedItem", "Default", true)
 end)
 
--- Assign character parts to Character group
+-- Assign character parts to Character collision group (for Player World only)
 local function setCharGroup(char)
 	if not char then return end
+
 	for _, d in ipairs(char:GetDescendants()) do
 		if d:IsA("BasePart") then
 			pcall(function() d.CollisionGroup = "Character" end)
@@ -372,93 +474,303 @@ local firstPlayerHasJoined = false
 local worldReady = false
 local configuredFromTeleport = false
 local configuredWorldId = nil
+local WORLD_READY_TIMEOUT = 30 -- seconds
 
-Players.PlayerAdded:Connect(function(player)
-	logger.Info("Player joined:", player.Name)
+local STUDIO_PLACEHOLDER_JOB_ID = "00000000-0000-0000-0000-000000000000"
+local STUDIO_DEFAULT_SLOT = 1
 
-	-- Configure from TeleportData on first join (worlds place)
-	if not firstPlayerHasJoined then
-		firstPlayerHasJoined = true
-		local joinData = player:GetJoinData()
-		local td = joinData and joinData.TeleportData
-		if td and td.ownerUserId then
-			configuredFromTeleport = true
-			configuredWorldId = td.worldId or (tostring(td.ownerUserId) .. ":1")
-			worldOwnershipService:SetOwnerById(td.ownerUserId, td.ownerName, configuredWorldId)
-			-- Load or create world data for owner
-			worldOwnershipService:LoadWorldData()
-			-- Configure registry (access code from teleport)
-			if activeWorldRegistryService then
-				activeWorldRegistryService:Configure(configuredWorldId, td.ownerUserId, td.ownerName, td.accessCode)
-			end
-			logger.Info("📦 World configured from teleport data", { worldId = configuredWorldId })
-		else
-			-- Fallback: claim ownership as first player
-			worldOwnershipService:ClaimOwnership(player)
-			local ownerId = worldOwnershipService:GetOwnerId()
-			configuredWorldId = tostring(ownerId)
-			if activeWorldRegistryService then
-				activeWorldRegistryService:Configure(configuredWorldId, ownerId, worldOwnershipService:GetOwnerName(), nil)
-			end
-			logger.Info("🏠 " .. player.Name .. " is now the owner of this world!")
-		end
-		-- Initialize world with seed (from owner)
-		local seed = worldOwnershipService:GetWorldSeed()
-		local worldData = worldOwnershipService:GetWorldData()
-		voxelWorldService:InitializeWorld(seed, 3)
-		logger.Info("🌍 World initialized with owner's seed:", seed)
-		-- Load saved data if any
-		if worldData and worldData.chunks and #worldData.chunks > 0 then
-			voxelWorldService:LoadWorldData()
-			logger.Info("📦 Loaded owner's saved world data (" .. #worldData.chunks .. " chunks)")
-		else
-			logger.Info("📦 New world - no saved data to load")
-			voxelWorldService:InitializeStarterChest()
-		end
-		-- Mark world as ready for players (owner and visitors)
-		worldReady = true
-		logger.Info("✅ World is ready for players!")
+local function detectStudioPlayTestMode()
+	if RunService:IsStudio() then
+		return true, "RunService:IsStudio"
 	end
 
-	-- Wait for world to be fully initialized (with timeout)
-	local WORLD_READY_TIMEOUT = 30 -- seconds
+	local jobId = tostring(game.JobId or "")
+	if jobId == "" or jobId == STUDIO_PLACEHOLDER_JOB_ID then
+		return true, "EmptyJobId"
+	end
+
+	local testService = game:GetService("TestService")
+	if testService then
+		local okRun, isRunning = pcall(function()
+			return testService.IsRunning
+		end)
+		if okRun and isRunning then
+			return true, "TestService.IsRunning"
+		end
+
+		local okMode, isRunMode = pcall(function()
+			if testService.IsRunMode then
+				return testService:IsRunMode()
+			end
+			return false
+		end)
+		if okMode and isRunMode then
+			return true, "TestService:IsRunMode"
+		end
+	end
+
+	return false, nil
+end
+
+local IS_STUDIO_PLAYTEST, studioPlayTestReason = detectStudioPlayTestMode()
+logger.Info("Studio playtest detection", {
+	enabled = IS_STUDIO_PLAYTEST,
+	reason = studioPlayTestReason or "LiveServer",
+	jobId = tostring(game.JobId or "unknown")
+})
+
+local studioFallbackContext = {
+	ownerId = nil,
+	ownerName = nil,
+	slotId = STUDIO_DEFAULT_SLOT,
+	worldId = nil
+}
+
+local function resolveStudioFallbackContext(player)
+	if not IS_STUDIO_PLAYTEST or not player then
+		return nil
+	end
+
+	if not studioFallbackContext.ownerId then
+		local fallbackWorldId = string.format("%d:%d", player.UserId, STUDIO_DEFAULT_SLOT)
+		studioFallbackContext.ownerId = player.UserId
+		studioFallbackContext.ownerName = player.DisplayName or player.Name
+		studioFallbackContext.slotId = STUDIO_DEFAULT_SLOT
+		studioFallbackContext.worldId = fallbackWorldId
+
+		return {
+			ownerId = studioFallbackContext.ownerId,
+			ownerName = studioFallbackContext.ownerName,
+			slotId = studioFallbackContext.slotId,
+			worldId = studioFallbackContext.worldId,
+			visitingAsOwner = true,
+			accessCode = nil,
+			studioBypass = true,
+			studioRole = "owner"
+		}
+	end
+
+	return {
+		ownerId = studioFallbackContext.ownerId,
+		ownerName = studioFallbackContext.ownerName,
+		slotId = studioFallbackContext.slotId,
+		worldId = studioFallbackContext.worldId,
+		visitingAsOwner = false,
+		accessCode = nil,
+		studioBypass = true,
+		studioRole = "visitor"
+	}
+end
+
+local STUDIO_OWNER_WAIT_TIMEOUT = 10 -- seconds
+
+local function waitForStudioOwner(worldId)
+	if not IS_STUDIO_PLAYTEST then
+		return false
+	end
+
+	if not worldOwnershipService then
+		return false
+	end
+
+	local elapsed = 0
+	while elapsed < STUDIO_OWNER_WAIT_TIMEOUT do
+		if worldOwnershipService:GetOwnerId() and worldOwnershipService:GetWorldId() == worldId then
+			return true
+		end
+		task.wait(0.2)
+		elapsed += 0.2
+	end
+
+	return false
+end
+
+local function parseTeleportContext(player)
+	local joinData = player:GetJoinData()
+	if not joinData then
+		return nil, "missing_join_data"
+	end
+
+	if not IS_STUDIO_PLAYTEST then
+		local sourcePlaceId = joinData.SourcePlaceId
+		if sourcePlaceId and sourcePlaceId ~= LOBBY_PLACE_ID then
+			return nil, "invalid_source"
+		end
+	end
+
+	local td = joinData.TeleportData
+	if not td then
+		local studioCtx = resolveStudioFallbackContext(player)
+		if studioCtx then
+			return studioCtx
+		end
+		return nil, "missing_teleport_data"
+	end
+
+	local ownerId = td.ownerUserId
+	local slotId = td.slotId
+	local worldId = td.worldId
+
+	if worldId and not slotId then
+		slotId = tonumber(string.match(worldId, "[:_](%d+)$"))
+	end
+
+	if not worldId and ownerId and slotId then
+		worldId = string.format("%d:%d", ownerId, slotId)
+	end
+
+	if not ownerId or not slotId or not worldId then
+		return nil, "invalid_payload"
+	end
+
+	return {
+		ownerId = ownerId,
+		ownerName = td.ownerName,
+		slotId = slotId,
+		worldId = worldId,
+		visitingAsOwner = td.visitingAsOwner == true,
+		accessCode = td.accessCode,
+		studioBypass = false
+	}
+end
+
+local function configureOwnerIfNeeded(ctx)
+	if worldOwnershipService:GetOwnerId() then
+		if worldOwnershipService:GetOwnerId() ~= ctx.ownerId or worldOwnershipService:GetWorldId() ~= ctx.worldId then
+			return false, "world_already_active"
+		end
+		return true
+	end
+
+	if not worldOwnershipService:SetOwnerById(ctx.ownerId, ctx.ownerName, ctx.worldId) then
+		return false, "ownership_claim_failed"
+	end
+
+	worldOwnershipService:LoadWorldData()
+	configuredFromTeleport = true
+	configuredWorldId = ctx.worldId
+
+	if activeWorldRegistryService then
+		local ok, err = activeWorldRegistryService:Configure(ctx.worldId, ctx.ownerId, ctx.ownerName, ctx.accessCode)
+		if not ok then
+			return false, err or "registry_claim_failed"
+		end
+	end
+
+	logger.Info("👤 World ownership configured", {
+		ownerUserId = worldOwnershipService:GetOwnerId(),
+		ownerName = worldOwnershipService:GetOwnerName(),
+		worldId = worldOwnershipService:GetWorldId(),
+		slot = tonumber(string.match(worldOwnershipService:GetWorldId() or "", ":(%d+)$")) or ctx.slotId
+	})
+
+	return true
+end
+
+local function initializeVoxelWorld()
+	local seed = worldOwnershipService:GetWorldSeed()
+	local worldData = worldOwnershipService:GetWorldData()
+	voxelWorldService:InitializeWorld(seed, 3, "player_world")
+	logger.Info("🌍 World initialized with owner's seed:", seed)
+	if worldData and worldData.chunks and #worldData.chunks > 0 then
+		voxelWorldService:LoadWorldData()
+		logger.Info("📦 Loaded owner's saved world data (" .. #worldData.chunks .. " chunks)")
+	else
+		logger.Info("📦 New world - no saved data to load")
+		voxelWorldService:InitializeStarterChest()
+	end
+	worldReady = true
+	logger.Info("✅ World is ready for players!")
+end
+
+local function handlePlayerJoin(player, isExisting)
+	logger.Info(isExisting and "Initializing existing player:" or "Player joined:", player.Name)
+
+	local ctx, err = parseTeleportContext(player)
+	if not ctx then
+		logger.Error("Teleport validation failed", { player = player.Name, reason = err })
+		if not IS_STUDIO_PLAYTEST then
+			player:Kick("Failed to load world (missing teleport data). Please rejoin from the hub.")
+			return
+		end
+		ctx = resolveStudioFallbackContext(player) or {
+			ownerId = player.UserId,
+			ownerName = player.Name,
+			slotId = STUDIO_DEFAULT_SLOT,
+			worldId = string.format("%d:%d", player.UserId, STUDIO_DEFAULT_SLOT),
+			visitingAsOwner = true,
+			accessCode = nil,
+			studioBypass = true
+		}
+	end
+
+	local isOwner = player.UserId == ctx.ownerId
+
+	if isOwner then
+		if not ctx.visitingAsOwner and not ctx.studioBypass then
+			player:Kick("Invalid owner teleport data. Please rejoin from the hub.")
+			return
+		end
+		local ok, reason = configureOwnerIfNeeded(ctx)
+		if not ok then
+			player:Kick("Unable to start this world right now. (" .. tostring(reason) .. ")")
+			return
+		end
+	else
+		if ctx.visitingAsOwner and not ctx.studioBypass then
+			player:Kick("Invalid visitor teleport data.")
+			return
+		end
+		if not worldOwnershipService:GetOwnerId() or worldOwnershipService:GetWorldId() ~= ctx.worldId then
+			if ctx.studioBypass then
+				logger.Warn("Studio visitor waiting for owner context", {
+					player = player.Name,
+					worldId = ctx.worldId
+				})
+				if not waitForStudioOwner(ctx.worldId) then
+					player:Kick("Owner context unavailable in Studio Play Test. Restart the session.")
+					return
+				end
+			else
+				player:Kick("The owner has not started this world yet.")
+				return
+			end
+		end
+	end
+
+	if not firstPlayerHasJoined and isOwner then
+		firstPlayerHasJoined = true
+		initializeVoxelWorld()
+	end
+
 	local waitTime = 0
-	local isOwner = not firstPlayerHasJoined or player.UserId == worldOwnershipService:GetOwnerId()
-
-	logger.Info("⏳ Waiting for world to be ready for player:", player.Name, "(owner:", isOwner, ")")
-
 	while not worldReady and waitTime < WORLD_READY_TIMEOUT do
 		task.wait(0.1)
-		waitTime = waitTime + 0.1
-
-		-- Double-check using service method
+		waitTime += 0.1
 		if voxelWorldService:IsWorldReady() then
 			worldReady = true
 			break
 		end
 	end
 
-	if not worldReady then
-		logger.Error("❌ World failed to initialize within timeout for player:", player.Name)
-		player:Kick("World failed to load. Please try again.")
+	if not worldReady or not voxelWorldService:IsWorldReady() then
+		player:Kick("World failed to initialize. Please try again.")
 		return
 	end
 
-	-- Additional safety check before spawning
-	if not voxelWorldService:IsWorldReady() then
-		logger.Error("❌ World not ready despite flag - cannot spawn player:", player.Name)
-		player:Kick("World not ready. Please try again.")
-		return
-	end
-
-	logger.Info("✅ World ready! Spawning player:", player.Name, "(waited", waitTime, "seconds)")
-
-	-- NOTE: PlayerInventoryService:OnPlayerAdded is now called by PlayerService
-	-- to ensure proper load order (create inventory, then load data)
-
-	-- Add player to voxel world (saved chunks are now applied!)
 	voxelWorldService:OnPlayerAdded(player)
+
+	-- Initialize armor for player
+	if armorEquipService and armorEquipService.OnPlayerAdded then
+		armorEquipService:OnPlayerAdded(player)
+	end
+
 	logger.Info("✅ Player spawned successfully:", player.Name)
+end
+
+Players.PlayerAdded:Connect(function(player)
+	player.CharacterAdded:Connect(setCharGroup)
+	handlePlayerJoin(player, false)
 end)
 
 Players.PlayerRemoving:Connect(function(player)
@@ -468,9 +780,17 @@ Players.PlayerRemoving:Connect(function(player)
 
 	-- IMPORTANT: Save world data if this player is the owner
 	if worldOwnershipService:GetOwnerId() == player.UserId then
-		logger.Info("💾 Saving world data (owner leaving)...")
+		local currentWorldId = worldOwnershipService:GetWorldId() or "unknown"
+		logger.Info("💾 Saving world data (owner leaving)", {
+			player = player.Name,
+			ownerId = worldOwnershipService:GetOwnerId(),
+			worldId = currentWorldId,
+			configuredWorldId = configuredWorldId
+		})
 		voxelWorldService:SaveWorldData()
-		logger.Info("✅ World data saved")
+		logger.Info("✅ World data saved", {
+			worldId = currentWorldId
+		})
 	end
 
 	-- Clean up chest viewing
@@ -481,93 +801,16 @@ Players.PlayerRemoving:Connect(function(player)
 	voxelWorldService:OnPlayerRemoved(player)
 	-- Clean up player inventory
 	playerInventoryService:OnPlayerRemoved(player)
+	-- Note: Armor cleanup is handled by PlayerService:OnPlayerRemoving (which saves first)
 	-- Clean up crafting service
 	craftingService:OnPlayerRemoving(player)
 end)
 
 -- Initialize existing players (important for Studio testing when server reloads)
 logger.Info("Initializing existing players...")
-local existingPlayers = Players:GetPlayers()
-for i, player in ipairs(existingPlayers) do
-	logger.Info("Initializing existing player:", player.Name)
-
-	-- First player becomes the owner
-	if i == 1 and not firstPlayerHasJoined then
-		firstPlayerHasJoined = true
-		local joinData = player:GetJoinData()
-		local td = joinData and joinData.TeleportData
-		if td and td.ownerUserId then
-			configuredFromTeleport = true
-			configuredWorldId = td.worldId or (tostring(td.ownerUserId) .. ":1")
-			worldOwnershipService:SetOwnerById(td.ownerUserId, td.ownerName, configuredWorldId)
-			worldOwnershipService:LoadWorldData()
-			if activeWorldRegistryService then
-				activeWorldRegistryService:Configure(configuredWorldId, td.ownerUserId, td.ownerName, td.accessCode)
-			end
-			logger.Info("📦 World configured from teleport data", { worldId = configuredWorldId })
-		else
-			worldOwnershipService:ClaimOwnership(player)
-			local ownerId = worldOwnershipService:GetOwnerId()
-			configuredWorldId = tostring(ownerId)
-			if activeWorldRegistryService then
-				activeWorldRegistryService:Configure(configuredWorldId, ownerId, worldOwnershipService:GetOwnerName(), nil)
-			end
-			logger.Info("🏠 " .. player.Name .. " is now the owner of this world!")
-		end
-		local seed = worldOwnershipService:GetWorldSeed()
-		local worldData = worldOwnershipService:GetWorldData()
-		voxelWorldService:InitializeWorld(seed, 3)
-		logger.Info("🌍 World initialized with owner's seed:", seed)
-		if worldData and worldData.chunks and #worldData.chunks > 0 then
-			voxelWorldService:LoadWorldData()
-			logger.Info("📦 Loaded owner's saved world data (" .. #worldData.chunks .. " chunks)")
-		else
-			logger.Info("📦 New world - no saved data to load")
-			voxelWorldService:InitializeStarterChest()
-		end
-		-- Mark world as ready for players (owner and visitors)
-		worldReady = true
-		logger.Info("✅ World is ready for players!")
-	end
-
-	-- Wait for world to be fully initialized (with timeout)
-	local WORLD_READY_TIMEOUT = 30 -- seconds
-	local waitTime = 0
-
-	logger.Info("⏳ Waiting for world to be ready for existing player:", player.Name)
-
-	while not worldReady and waitTime < WORLD_READY_TIMEOUT do
-		task.wait(0.1)
-		waitTime = waitTime + 0.1
-
-		-- Double-check using service method
-		if voxelWorldService:IsWorldReady() then
-			worldReady = true
-			break
-		end
-	end
-
-	if not worldReady then
-		logger.Error("❌ World failed to initialize within timeout for existing player:", player.Name)
-		player:Kick("World failed to load. Please try again.")
-		return
-	end
-
-	-- Additional safety check before spawning
-	if not voxelWorldService:IsWorldReady() then
-		logger.Error("❌ World not ready despite flag - cannot spawn existing player:", player.Name)
-		player:Kick("World not ready. Please try again.")
-		return
-	end
-
-	logger.Info("✅ World ready! Spawning existing player:", player.Name, "(waited", waitTime, "seconds)")
-
-	-- NOTE: PlayerInventoryService:OnPlayerAdded is now called by PlayerService
-	-- to ensure proper load order (create inventory, then load data)
-
-	-- Add player to voxel world (saved chunks are now applied!)
-	voxelWorldService:OnPlayerAdded(player)
-	logger.Info("✅ Existing player spawned successfully:", player.Name)
+for _, player in ipairs(Players:GetPlayers()) do
+	player.CharacterAdded:Connect(setCharGroup)
+	handlePlayerJoin(player, true)
 end
 logger.Info("Existing players initialized")
 

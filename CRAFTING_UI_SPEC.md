@@ -323,7 +323,7 @@ function CraftingPanel:CreateRecipeCard(recipe, canCraft, maxCount)
     nameLabel.Size = UDim2.new(1, -60, 0, 20)
     nameLabel.Position = UDim2.new(0, 8, 0, 6)
     nameLabel.TextColor3 = canCraft and CRAFTING_CONFIG.TEXT_COLOR or CRAFTING_CONFIG.TEXT_DISABLED_COLOR
-    nameLabel.Font = Enum.Font.GothamBold
+    nameLabel.Font = Enum.Font.BuilderSansBold
     nameLabel.TextSize = 14
     nameLabel.TextXAlignment = Enum.TextXAlignment.Left
     nameLabel.BackgroundTransparency = 1
@@ -336,7 +336,7 @@ function CraftingPanel:CreateRecipeCard(recipe, canCraft, maxCount)
     badge.Size = UDim2.new(0, 40, 0, 20)
     badge.Position = UDim2.new(1, -48, 0, 6)
     badge.TextColor3 = Color3.fromRGB(100, 200, 100)
-    badge.Font = Enum.Font.GothamBold
+    badge.Font = Enum.Font.BuilderSansBold
     badge.TextSize = 12
     badge.BackgroundTransparency = 1
     badge.Parent = card
@@ -391,7 +391,7 @@ function CraftingPanel:CreateRecipeCard(recipe, canCraft, maxCount)
         countLabel.Size = UDim2.new(0, 50, 0, 24)
         countLabel.Position = UDim2.new(0, xOffset + 28, 0, 0)
         countLabel.TextColor3 = canCraft and CRAFTING_CONFIG.TEXT_COLOR or CRAFTING_CONFIG.TEXT_DISABLED_COLOR
-        countLabel.Font = Enum.Font.Gotham
+        countLabel.Font = Enum.Font.BuilderSansBold
         countLabel.TextSize = 11
         countLabel.TextXAlignment = Enum.TextXAlignment.Left
         countLabel.BackgroundTransparency = 1
@@ -408,7 +408,7 @@ function CraftingPanel:CreateRecipeCard(recipe, canCraft, maxCount)
     craftBtn.BackgroundColor3 = canCraft and Color3.fromRGB(80, 180, 80) or Color3.fromRGB(60, 60, 60)
     craftBtn.Text = "►"
     craftBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    craftBtn.Font = Enum.Font.GothamBold
+    craftBtn.Font = Enum.Font.BuilderSansBold
     craftBtn.TextSize = 14
     craftBtn.AutoButtonColor = false
     craftBtn.Parent = card

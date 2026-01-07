@@ -20,6 +20,15 @@ local SoundService = game:GetService("SoundService")
 -- Import dependencies
 local Config = require(game:GetService("ReplicatedStorage").Shared.Config)
 local IconManager = require(script.Parent.IconManager)
+local UI_SETTINGS = Config.UI_SETTINGS
+local Typography = UI_SETTINGS and UI_SETTINGS.typography or {}
+local Fonts = Typography.fonts or {}
+local TextSizes = Typography.sizes or {}
+local UISizes = TextSizes.ui or {}
+local BodySizes = TextSizes.body or {}
+local BOLD_FONT = Fonts.bold or Fonts.regular
+local TOAST_TEXT_SIZE = UISizes.toast or 14
+local BODY_BASE_TEXT_SIZE = BodySizes.base or 14
 
 -- Services
 local player = Players.LocalPlayer
@@ -32,6 +41,7 @@ local TOAST_CONFIG = {
 	spacing = 6,              -- Spacing between toasts
 	animationSpeed = 0.25,    -- Animation duration
 	queueLimit = 20,          -- Maximum queued toasts
+	displayOrder = 5000,      -- ScreenGui display order to stay on top of other GUIs
 
 	-- Positioning
 	container = {
@@ -93,11 +103,24 @@ local TOAST_CONFIG = {
 		shadowTransparency = 0.8,
 		-- Typography - using Config typography system with fallbacks
 		iconSize = 21,
-		iconFont = (Config.UI_SETTINGS and Config.UI_SETTINGS.typography and Config.UI_SETTINGS.typography.fonts and Config.UI_SETTINGS.typography.fonts.bold) or Enum.Font.GothamBold,
-		textSize = (Config.UI_SETTINGS and Config.UI_SETTINGS.typography and Config.UI_SETTINGS.typography.sizes and Config.UI_SETTINGS.typography.sizes.ui and Config.UI_SETTINGS.typography.sizes.ui.toast) or 14,  -- Fallback to 14px
-		textFont = (Config.UI_SETTINGS and Config.UI_SETTINGS.typography and Config.UI_SETTINGS.typography.fonts and Config.UI_SETTINGS.typography.fonts.bold) or Enum.Font.GothamBold,     -- Bold for better visibility
-		closeButtonSize = (Config.UI_SETTINGS and Config.UI_SETTINGS.typography and Config.UI_SETTINGS.typography.sizes and Config.UI_SETTINGS.typography.sizes.body and Config.UI_SETTINGS.typography.sizes.body.base) or 14,  -- Fallback to 14px
-		closeButtonFont = (Config.UI_SETTINGS and Config.UI_SETTINGS.typography and Config.UI_SETTINGS.typography.fonts and Config.UI_SETTINGS.typography.fonts.bold) or Enum.Font.GothamBold
+		iconFont = BOLD_FONT,
+		textSize = TOAST_TEXT_SIZE,  -- Fallback handled when deriving size
+		textFont = BOLD_FONT,     -- Bold for better visibility
+		closeButtonSize = BODY_BASE_TEXT_SIZE,  -- Fallback handled when deriving size
+		closeButtonFont = BOLD_FONT
+	},
+
+	-- Centralized z-index layering so toast UI always renders above other screens
+	zIndex = {
+		screenGui = 20000,
+		container = 20001,
+		toast = 20002,
+		content = 20003,
+		icon = 20004,
+		textShadow = 20005,
+		text = 20006,
+		closeButton = 20007,
+		hover = 20008
 	}
 }
 
@@ -187,8 +210,8 @@ function ToastManager:CreateToastContainer()
 	local toastGui = Instance.new("ScreenGui")
 	toastGui.Name = "ToastNotifications"
 	toastGui.ResetOnSpawn = false
-	toastGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-	toastGui.DisplayOrder = 100 -- High priority display
+	toastGui.ZIndexBehavior = Enum.ZIndexBehavior.Global -- Allow explicit z-index control
+	toastGui.DisplayOrder = TOAST_CONFIG.displayOrder -- High priority display
 	toastGui.Parent = playerGui
 
 	-- Create container frame
@@ -197,6 +220,7 @@ function ToastManager:CreateToastContainer()
 	toastContainer.Size = TOAST_CONFIG.container.size
 	toastContainer.Position = TOAST_CONFIG.container.position
 	toastContainer.BackgroundTransparency = 1
+	toastContainer.ZIndex = TOAST_CONFIG.zIndex.container
 	toastContainer.Parent = toastGui
 
 	-- Layout for toasts
@@ -488,6 +512,7 @@ function ToastManager:CreateToastUI(toast)
 	toastFrame.Size = UDim2.new(0, TOAST_CONFIG.toast.width, 0, TOAST_CONFIG.toast.height)
 	toastFrame.BorderSizePixel = 0
 	toastFrame.ClipsDescendants = true -- Prevent content overflow during animations
+	toastFrame.ZIndex = TOAST_CONFIG.zIndex.toast
 	toastFrame.Parent = toastContainer
 
 	-- Get styling
@@ -518,6 +543,7 @@ function ToastManager:CreateToastUI(toast)
 	contentFrame.Size = UDim2.new(1, -TOAST_CONFIG.toast.padding * 2, 1, -TOAST_CONFIG.toast.padding * 2)
 	contentFrame.Position = UDim2.new(0, TOAST_CONFIG.toast.padding, 0, TOAST_CONFIG.toast.padding)
 	contentFrame.BackgroundTransparency = 1
+	contentFrame.ZIndex = TOAST_CONFIG.zIndex.content
 	contentFrame.Parent = toastFrame
 
 	-- Standardized icon using IconManager
@@ -528,7 +554,8 @@ function ToastManager:CreateToastUI(toast)
 		size = "toast", -- Use semantic toast size (21px)
 		position = UDim2.new(0, TOAST_CONFIG.styling.iconSize / 2, 0.5, 0), -- Properly centered
 		anchorPoint = Vector2.new(0.5, 0.5), -- Center anchor point for clean positioning
-		imageColor3 = styleData.iconColor
+		imageColor3 = styleData.iconColor,
+		zIndex = TOAST_CONFIG.zIndex.icon
 	})
 
 	-- Fallback to text if icon creation fails
@@ -544,6 +571,7 @@ function ToastManager:CreateToastUI(toast)
 		iconLabel.Font = TOAST_CONFIG.styling.iconFont
 		iconLabel.TextXAlignment = Enum.TextXAlignment.Center
 		iconLabel.TextYAlignment = Enum.TextYAlignment.Center
+		iconLabel.ZIndex = TOAST_CONFIG.zIndex.icon
 		iconLabel.Parent = contentFrame
 	end
 
@@ -562,7 +590,7 @@ function ToastManager:CreateToastUI(toast)
 	shadowLabel.TextYAlignment = Enum.TextYAlignment.Center
 	shadowLabel.TextTruncate = Enum.TextTruncate.AtEnd
 	shadowLabel.TextWrapped = false
-	shadowLabel.ZIndex = 1 -- Behind main text
+	shadowLabel.ZIndex = TOAST_CONFIG.zIndex.textShadow -- Behind main text
 	shadowLabel.Parent = contentFrame
 
 	-- Standardized message - aligned with centered icon
@@ -578,7 +606,7 @@ function ToastManager:CreateToastUI(toast)
 	messageLabel.TextYAlignment = Enum.TextYAlignment.Center
 	messageLabel.TextTruncate = Enum.TextTruncate.AtEnd
 	messageLabel.TextWrapped = false
-	messageLabel.ZIndex = 2 -- In front of shadow
+	messageLabel.ZIndex = TOAST_CONFIG.zIndex.text -- In front of shadow
 	messageLabel.Parent = contentFrame
 
 	-- Standardized close button (only for persistent toasts)
@@ -597,6 +625,7 @@ function ToastManager:CreateToastUI(toast)
 		closeButton.TextXAlignment = Enum.TextXAlignment.Center
 		closeButton.TextYAlignment = Enum.TextYAlignment.Center
 		closeButton.AutoButtonColor = false -- Prevent default button highlighting
+		closeButton.ZIndex = TOAST_CONFIG.zIndex.closeButton
 		closeButton.Parent = contentFrame
 
 		-- Standardized close button interactions
@@ -737,6 +766,7 @@ function ToastManager:AddInteractiveEffects(toastFrame)
 	local hoverFrame = Instance.new("Frame")
 	hoverFrame.Size = UDim2.new(1, 0, 1, 0)
 	hoverFrame.BackgroundTransparency = 1
+	hoverFrame.ZIndex = TOAST_CONFIG.zIndex.hover
 	hoverFrame.Parent = toastFrame
 
 	-- Hover effects

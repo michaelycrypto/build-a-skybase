@@ -28,8 +28,8 @@ export type WorldHandle = {
 	@param renderDistance number - Chunk render distance
 	@return WorldHandle
 ]]
-function VoxelWorld.CreateWorld(seed: number, renderDistance: number): WorldHandle
-	local worldManager = WorldManager.new(seed)
+function VoxelWorld.CreateWorld(seed: number, renderDistance: number, worldTypeId: string?): WorldHandle
+	local worldManager = WorldManager.new(seed, worldTypeId)
 	local chunkManager = ChunkManager.new(worldManager, renderDistance)
 
 	local handle = {
@@ -58,8 +58,8 @@ end
 	@param renderDistance number - Chunk render distance
 	@return WorldHandle
 ]]
-function VoxelWorld.CreateClientView(renderDistance: number): WorldHandle
-	local worldManager = WorldManager.new(0) -- Seed not used on client
+function VoxelWorld.CreateClientView(renderDistance: number, worldTypeId: string?): WorldHandle
+	local worldManager = WorldManager.new(0, worldTypeId) -- Seed not used on client
 	local chunkManager = ChunkManager.new(worldManager, renderDistance)
 
     -- Client should never locally generate chunks; only deserialize server-streamed data

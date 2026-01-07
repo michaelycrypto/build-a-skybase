@@ -3,9 +3,13 @@
 	This file demonstrates the usage of different button types and color variants
 --]]
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local ButtonFactory = require(script.Parent.ButtonFactory)
+local Config = require(ReplicatedStorage.Shared.Config)
 
 local ButtonExamples = {}
+local BOLD_FONT = Config.UI_SETTINGS.typography.fonts.bold
 
 --[[
 	Create example buttons showing different types and variants
@@ -50,7 +54,7 @@ function ButtonExamples:CreateActionButtonExamples(parent)
 	header.Text = "Action Buttons"
 	header.TextColor3 = Color3.fromRGB(255, 255, 255)
 	header.TextSize = 18
-	header.Font = Enum.Font.GothamBold
+	header.Font = BOLD_FONT
 	header.TextXAlignment = Enum.TextXAlignment.Center
 	header.LayoutOrder = 1
 	header.Parent = parent
@@ -99,7 +103,7 @@ function ButtonExamples:CreateBuyButtonExamples(parent)
 	header.Text = "Buy Buttons"
 	header.TextColor3 = Color3.fromRGB(255, 255, 255)
 	header.TextSize = 18
-	header.Font = Enum.Font.GothamBold
+	header.Font = BOLD_FONT
 	header.TextXAlignment = Enum.TextXAlignment.Center
 	header.LayoutOrder = 3
 	header.Parent = parent
@@ -154,7 +158,7 @@ function ButtonExamples:CreatePanelButtonExamples(parent)
 	header.Text = "Panel Buttons"
 	header.TextColor3 = Color3.fromRGB(255, 255, 255)
 	header.TextSize = 18
-	header.Font = Enum.Font.GothamBold
+	header.Font = BOLD_FONT
 	header.TextXAlignment = Enum.TextXAlignment.Center
 	header.LayoutOrder = 5
 	header.Parent = parent

@@ -16,6 +16,7 @@ local TextureManager = require(ReplicatedStorage.Shared.VoxelWorld.Rendering.Tex
 local GameConfig = require(ReplicatedStorage.Configs.GameConfig)
 local ItemConfig = require(ReplicatedStorage.Configs.ItemConfig)
 local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
+local SoundManager = require(script.Parent.Parent.Managers.SoundManager)
 
 local player = Players.LocalPlayer
 local items = {}
@@ -1199,18 +1200,19 @@ end
 
 function DroppedItemController:OnItemPickedUp(data)
 	if not data then return end
-
-	-- Reuse pickup sound to prevent lag from creating new instances
-	if not pickupSound or not pickupSound.Parent then
-		pickupSound = Instance.new("Sound")
-		pickupSound.SoundId = "rbxasset://sounds/action_get_up.mp3"
-		pickupSound.Volume = 0.6
-		pickupSound.PlaybackSpeed = 1.2
-		-- Parent to SoundService instead of PlayerGui for better performance
-		pickupSound.Parent = game:GetService("SoundService")
+	if SoundManager and SoundManager.PlaySFX then
+		SoundManager:PlaySFX("inventoryPop")
+		return
 	end
 
-	-- Play the sound (will restart if already playing)
+	-- Fallback: reuse Roblox sound instance to prevent lag from creating new ones
+	if not pickupSound or not pickupSound.Parent then
+		pickupSound = Instance.new("Sound")
+		pickupSound.SoundId = "rbxassetid://116766040641694"
+		pickupSound.Volume = 0.65
+		pickupSound.PlaybackSpeed = 1
+		pickupSound.Parent = game:GetService("SoundService")
+	end
 	pickupSound:Play()
 end
 

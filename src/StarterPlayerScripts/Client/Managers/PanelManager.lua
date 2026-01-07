@@ -148,6 +148,8 @@ function PanelManager:RegisterPanel(panelId, config)
 		onShow = panelConfig.onShow, -- Optional callback when panel shows
 		onHide = panelConfig.onHide, -- Optional callback when panel hides
 		data = panelConfig.data or {}, -- Panel-specific data
+		headerless = panelConfig.headerless or false,
+		closable = panelConfig.closable,
 		allowMultiple = panelConfig.allowMultiple or false, -- Allow multiple instances
 		persistent = panelConfig.persistent or false -- Keep in memory when closed
 	}
@@ -312,9 +314,10 @@ function PanelManager:CreatePanelInstance(config, data)
 		title = config.title,
 		size = config.size,
 		icon = config.icon,
-		closable = true,
+		closable = config.closable ~= false,
 		backdropClose = typeConfig.closeOnBackdrop,
-		parent = playerGui
+		parent = playerGui,
+		headerless = config.headerless
 	})
 
 	if not panel then

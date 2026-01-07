@@ -8,8 +8,10 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CollectionService = game:GetService("CollectionService")
 
 local EventManager = require(ReplicatedStorage.Shared.EventManager)
+local Config = require(ReplicatedStorage.Shared.Config)
 
 local WorldOwnershipDisplay = {}
+local BOLD_FONT = Config.UI_SETTINGS.typography.fonts.bold
 
 local screenGui = nil
 local ownerLabel = nil
@@ -57,7 +59,7 @@ function WorldOwnershipDisplay:CreateUI()
 	ownerLabel.Text = "🏠 Owner: Loading..."
 	ownerLabel.TextColor3 = Color3.fromRGB(235, 235, 235)
 	ownerLabel.TextSize = 14
-	ownerLabel.Font = Enum.Font.Gotham
+	ownerLabel.Font = BOLD_FONT
 	ownerLabel.TextXAlignment = Enum.TextXAlignment.Left
 	ownerLabel.Parent = screenGui
 end

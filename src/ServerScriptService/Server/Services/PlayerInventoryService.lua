@@ -11,7 +11,7 @@ local BaseService = require(script.Parent.BaseService)
 local Logger = require(game.ReplicatedStorage.Shared.Logger)
 local ItemStack = require(ReplicatedStorage.Shared.VoxelWorld.Inventory.ItemStack)
 local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
-local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
+local GameConfig = require(ReplicatedStorage.Configs.GameConfig)
 local EventManager = require(ReplicatedStorage.Shared.EventManager)
 local InventoryValidator = require(ReplicatedStorage.Shared.VoxelWorld.Inventory.InventoryValidator)
 local Constants = require(ReplicatedStorage.Shared.VoxelWorld.Core.Constants)
@@ -53,6 +53,40 @@ function PlayerInventoryService:Start()
 	self._logger.Debug("PlayerInventoryService started")
 end
 
+local function _getStarterConfig()
+	local inventoryConfig = (GameConfig and GameConfig.Inventory) or {}
+	return inventoryConfig.StarterHotbar or {}, inventoryConfig.StarterInventory or {}
+end
+
+function PlayerInventoryService:_applyStarterLoadout(hotbar, inventory)
+	local starterHotbar, starterInventory = _getStarterConfig()
+
+	for _, entry in ipairs(starterHotbar) do
+		local slot = tonumber(entry.slot)
+		local itemId = tonumber(entry.itemId)
+		local count = tonumber(entry.count) or 1
+		if slot and itemId and slot >= 1 and slot <= #hotbar and itemId > 0 and count > 0 then
+			hotbar[slot] = ItemStack.new(itemId, count)
+		end
+	end
+
+	local invIndex = 1
+	for _, entry in ipairs(starterInventory) do
+		local itemId = tonumber(entry.itemId)
+		local count = tonumber(entry.count) or 1
+		if itemId and itemId > 0 and count > 0 then
+			while invIndex <= #inventory and inventory[invIndex]:GetItemId() ~= 0 and inventory[invIndex]:GetCount() ~= 0 do
+				invIndex += 1
+			end
+			if invIndex > #inventory then
+				break
+			end
+			inventory[invIndex] = ItemStack.new(itemId, count)
+			invIndex += 1
+		end
+	end
+end
+
 -- Add craft credit for a player and item (used for toCursor crafts)
 function PlayerInventoryService:AddCraftCredit(player: Player, itemId: number, amount: number)
 	if amount <= 0 then return end
@@ -84,41 +118,7 @@ function PlayerInventoryService:OnPlayerAdded(player: Player)
 		inventory[i] = ItemStack.new(0, 0)
 	end
 
-	-- Redo starter loadout: tools + spawn eggs for all mobs
-	local ReplicatedStorage = game:GetService("ReplicatedStorage")
-	local SpawnEggConfig = require(ReplicatedStorage.Configs.SpawnEggConfig)
-	local eggIds = SpawnEggConfig.GetAllEggItemIds()
-
-	-- Hotbar: diamond tools (first 4) + first few eggs
-	local function setHot(slot, id, count)
-		if slot >= 1 and slot <= 9 then
-			hotbar[slot] = ItemStack.new(id, count)
-		end
-	end
-	setHot(1, 1044, 1) -- Diamond Sword
-	setHot(2, 1004, 1) -- Diamond Pickaxe
-	setHot(3, 1014, 1) -- Diamond Axe
-	setHot(4, 1024, 1) -- Diamond Shovel
-	for i = 5, 9 do
-		local eggIndex = i - 4
-		local eggId = eggIds[eggIndex]
-		if eggId then
-			setHot(i, eggId, 64)
-		end
-	end
-
-	-- Inventory: remaining eggs
-	local invIndex = 1
-	local function pushInv(id, count)
-		if invIndex <= 27 then
-			inventory[invIndex] = ItemStack.new(id, count)
-			invIndex += 1
-		end
-	end
-	for idx = 6, #eggIds do
-		if invIndex > 27 then break end
-		pushInv(eggIds[idx], 64)
-	end
+	self:_applyStarterLoadout(hotbar, inventory)
 
 	self.inventories[player] = {
 		hotbar = hotbar,
@@ -271,8 +271,13 @@ function PlayerInventoryService:AddItemCount(player: Player, itemId: number, cou
 	local remaining = count
 	local addedTotal = 0
 
+	-- Check if this is a tool (but arrows are stackable exceptions)
+	local toolInfo = ToolConfig.IsTool(itemId) and ToolConfig.GetToolInfo(itemId)
+	local isArrow = toolInfo and toolInfo.toolType == "arrow"
+
 	-- Tools are non-stackable: place one per empty slot; never merge counts > 1
-	if ToolConfig.IsTool(itemId) then
+	-- Exception: Arrows are stackable ammo items
+	if ToolConfig.IsTool(itemId) and not isArrow then
 		for i, stack in ipairs(playerInv.hotbar) do
 			if remaining <= 0 then break end
 			if stack:IsEmpty() then

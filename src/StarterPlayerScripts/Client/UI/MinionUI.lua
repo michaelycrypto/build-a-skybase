@@ -15,11 +15,14 @@ local IconManager = require(script.Parent.Parent.Managers.IconManager)
 local ItemStack = require(ReplicatedStorage.Shared.VoxelWorld.Inventory.ItemStack)
 local BlockViewportCreator = require(ReplicatedStorage.Shared.VoxelWorld.Rendering.BlockViewportCreator)
 local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
+local ArmorConfig = require(ReplicatedStorage.Configs.ArmorConfig)
 local SpawnEggConfig = require(ReplicatedStorage.Configs.SpawnEggConfig)
+local Config = require(ReplicatedStorage.Shared.Config)
 local EventManager = require(ReplicatedStorage.Shared.EventManager)
 local SpawnEggIcon = require(script.Parent.SpawnEggIcon)
 
 local MinionUI = {}
+local BOLD_FONT = Config.UI_SETTINGS.typography.fonts.bold
 MinionUI.__index = MinionUI
 
 -- Configuration matching ChestUI/Inventory
@@ -42,6 +45,36 @@ local CONFIG = {
 	LOCKED_COLOR = Color3.fromRGB(30, 30, 30),
 }
 
+-- Helper function to get display name for any item type
+local function GetItemDisplayName(itemId)
+	if not itemId or itemId == 0 then
+		return nil
+	end
+
+	-- Check if it's a tool
+	if ToolConfig.IsTool(itemId) then
+		local toolInfo = ToolConfig.GetToolInfo(itemId)
+		return toolInfo and toolInfo.name or "Tool"
+	end
+
+	-- Check if it's armor
+	if ArmorConfig.IsArmor(itemId) then
+		local armorInfo = ArmorConfig.GetArmorInfo(itemId)
+		return armorInfo and armorInfo.name or "Armor"
+	end
+
+	-- Check if it's a spawn egg
+	if SpawnEggConfig.IsSpawnEgg(itemId) then
+		local eggInfo = SpawnEggConfig.GetEggInfo(itemId)
+		return eggInfo and eggInfo.name or "Spawn Egg"
+	end
+
+	-- Otherwise, it's a block - use BlockRegistry
+	local BlockRegistry = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockRegistry)
+	local blockDef = BlockRegistry.Blocks[itemId]
+	return blockDef and blockDef.name or "Item"
+end
+
 function MinionUI.new(inventoryManager, inventoryPanel, chestUI)
 	local self = setmetatable({}, MinionUI)
 
@@ -52,6 +85,7 @@ function MinionUI.new(inventoryManager, inventoryPanel, chestUI)
 	self.gui = nil
 	self.panel = nil
 	self.anchorPos = nil -- {x, y, z}
+	self.hoverItemLabel = nil  -- Label for displaying hovered item name
 
 	-- Minion state
 	self.level = 1
@@ -97,7 +131,7 @@ function MinionUI:CreateTooltip()
 	tooltipText.Size = UDim2.new(1, -8, 1, -8)
 	tooltipText.Position = UDim2.new(0, 4, 0, 4)
 	tooltipText.BackgroundTransparency = 1
-	tooltipText.Font = Enum.Font.Gotham
+	tooltipText.Font = BOLD_FONT
 	tooltipText.TextSize = 12
 	tooltipText.TextColor3 = Color3.fromRGB(255, 255, 255)
 	tooltipText.TextWrapped = true
@@ -126,6 +160,65 @@ function MinionUI:HideTooltip()
 	if self.tooltip then
 		self.tooltip.Visible = false
 	end
+end
+
+function MinionUI:CreateHoverItemLabel()
+	-- Create a label in the top left of the screen to display hovered item name
+	local label = Instance.new("TextLabel")
+	label.Name = "HoverItemLabel"
+	label.Size = UDim2.new(0, 400, 0, 40)
+	label.Position = UDim2.new(0, 20, 0, 20)
+	label.AnchorPoint = Vector2.new(0, 0)
+	label.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+	label.BackgroundTransparency = 0.3
+	label.BorderSizePixel = 0
+	label.Font = BOLD_FONT
+	label.TextSize = 24
+	label.TextColor3 = Color3.fromRGB(255, 255, 255)
+	label.TextStrokeTransparency = 0.5
+	label.Text = ""
+	label.TextXAlignment = Enum.TextXAlignment.Left
+	label.TextYAlignment = Enum.TextYAlignment.Center
+	label.Visible = false
+	label.ZIndex = 10
+	label.AutomaticSize = Enum.AutomaticSize.X
+	label.Parent = self.gui
+
+	-- Add padding for text
+	local padding = Instance.new("UIPadding")
+	padding.PaddingLeft = UDim.new(0, 12)
+	padding.PaddingRight = UDim.new(0, 12)
+	padding.Parent = label
+
+	-- Add rounded corners
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 6)
+	corner.Parent = label
+
+	-- Add subtle border
+	local border = Instance.new("UIStroke")
+	border.Color = Color3.fromRGB(60, 60, 60)
+	border.Thickness = 1
+	border.Parent = label
+
+	self.hoverItemLabel = label
+end
+
+function MinionUI:ShowHoverItemName(itemId)
+	if not self.hoverItemLabel then return end
+
+	local itemName = GetItemDisplayName(itemId)
+	if itemName then
+		self.hoverItemLabel.Text = itemName
+		self.hoverItemLabel.Visible = true
+	else
+		self.hoverItemLabel.Visible = false
+	end
+end
+
+function MinionUI:HideHoverItemName()
+	if not self.hoverItemLabel then return end
+	self.hoverItemLabel.Visible = false
 end
 
 function MinionUI:Initialize()
@@ -168,6 +261,11 @@ function MinionUI:Initialize()
 		uiScale:SetAttribute("base_resolution", Vector2.new(1920, 1080))
 		uiScale.Parent = self.gui
 		CollectionService:AddTag(uiScale, "scale_component")
+	end
+
+	-- Create hover item name label (top left of screen)
+	if not self.hoverItemLabel then
+		self:CreateHoverItemLabel()
 	end
 
 	-- Create panel/tooltip once
@@ -278,7 +376,7 @@ function MinionUI:CreatePanel()
 	self.titleLabel.Text = "<b><i>Cobblestone Minion I</i></b>"
 	self.titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	self.titleLabel.TextSize = 36
-	self.titleLabel.Font = Enum.Font.GothamBold
+	self.titleLabel.Font = BOLD_FONT
 	self.titleLabel.TextXAlignment = Enum.TextXAlignment.Left
 	self.titleLabel.LayoutOrder = 2
 	self.titleLabel.Parent = titleContainer
@@ -337,7 +435,7 @@ function MinionUI:CreatePanel()
 	self.levelLabel.Text = "Level: I"
 	self.levelLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	self.levelLabel.TextSize = 16
-	self.levelLabel.Font = Enum.Font.GothamBold
+	self.levelLabel.Font = BOLD_FONT
 	self.levelLabel.TextXAlignment = Enum.TextXAlignment.Left
 	self.levelLabel.Parent = infoFrame
 
@@ -349,7 +447,7 @@ function MinionUI:CreatePanel()
 	self.intervalLabel.Text = "Action: 15s"
 	self.intervalLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
 	self.intervalLabel.TextSize = 14
-	self.intervalLabel.Font = Enum.Font.Gotham
+	self.intervalLabel.Font = BOLD_FONT
 	self.intervalLabel.TextXAlignment = Enum.TextXAlignment.Right
 	self.intervalLabel.Parent = infoFrame
 
@@ -373,7 +471,7 @@ function MinionUI:CreatePanel()
 	self.upgradeBtn.Text = "Upgrade to II"
 	self.upgradeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 	self.upgradeBtn.TextSize = 14
-	self.upgradeBtn.Font = Enum.Font.GothamBold
+	self.upgradeBtn.Font = BOLD_FONT
 	self.upgradeBtn.AutoButtonColor = false
 	self.upgradeBtn.Parent = self.panel
 
@@ -409,7 +507,7 @@ function MinionUI:CreatePanel()
 	self.upgradeCostLabel.Text = "Cost: 32 Cobblestone"
 	self.upgradeCostLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
 	self.upgradeCostLabel.TextSize = 12
-	self.upgradeCostLabel.Font = Enum.Font.Gotham
+	self.upgradeCostLabel.Font = BOLD_FONT
 	self.upgradeCostLabel.TextXAlignment = Enum.TextXAlignment.Center
 	self.upgradeCostLabel.Parent = self.panel
 
@@ -423,7 +521,7 @@ function MinionUI:CreatePanel()
 	self.collectBtn.Text = "Collect All"
 	self.collectBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 	self.collectBtn.TextSize = 14
-	self.collectBtn.Font = Enum.Font.GothamBold
+	self.collectBtn.Font = BOLD_FONT
 	self.collectBtn.AutoButtonColor = false
 	self.collectBtn.Parent = self.panel
 
@@ -468,7 +566,7 @@ function MinionUI:CreatePanel()
 	self.pickupBtn.Text = "Pickup Minion"
 	self.pickupBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 	self.pickupBtn.TextSize = 14
-	self.pickupBtn.Font = Enum.Font.GothamBold
+	self.pickupBtn.Font = BOLD_FONT
 	self.pickupBtn.AutoButtonColor = false
 	self.pickupBtn.Parent = self.panel
 
@@ -535,7 +633,7 @@ function MinionUI:CreateSlotUI(index, yStart)
 	countLabel.Position = UDim2.new(1, -4, 1, -4)
 	countLabel.AnchorPoint = Vector2.new(1, 1)
 	countLabel.BackgroundTransparency = 1
-	countLabel.Font = Enum.Font.GothamBold
+		countLabel.Font = BOLD_FONT
 	countLabel.TextSize = 14
 	countLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	countLabel.TextStrokeTransparency = 0.3
@@ -588,6 +686,8 @@ function MinionUI:CreateSlotUI(index, yStart)
 			local stack = self.slots[index]
 			if stack and not stack:IsEmpty() then
 				self:ShowTooltip(index, stack:GetItemId(), stack:GetCount())
+				-- Show item name in top left
+				self:ShowHoverItemName(stack:GetItemId())
 			end
 		end
 	end)
@@ -598,6 +698,8 @@ function MinionUI:CreateSlotUI(index, yStart)
 			slot.BackgroundColor3 = CONFIG.SLOT_COLOR
 		end
 		self:HideTooltip()
+		-- Hide item name
+		self:HideHoverItemName()
 	end)
 
 	-- Click handlers (for future: quick-collect on click)
@@ -657,6 +759,34 @@ function MinionUI:UpdateSlotDisplay(index)
 				image.Image = info and info.image or ""
 				image.ScaleType = Enum.ScaleType.Fit
 				image.Parent = slotFrame.iconContainer
+			elseif ArmorConfig.IsArmor(itemId) then
+				local info = ArmorConfig.GetArmorInfo(itemId)
+				local image = Instance.new("ImageLabel")
+				image.Name = "ArmorImage"
+				image.Size = UDim2.new(1, -8, 1, -8)
+				image.Position = UDim2.new(0.5, 0, 0.5, 0)
+				image.AnchorPoint = Vector2.new(0.5, 0.5)
+				image.BackgroundTransparency = 1
+				image.Image = info and info.image or ""
+				image.ScaleType = Enum.ScaleType.Fit
+				-- Tint base image for leather armor
+				if info and info.imageOverlay then
+					image.ImageColor3 = ArmorConfig.GetTierColor(info.tier)
+				end
+				image.Parent = slotFrame.iconContainer
+				-- Add overlay for leather armor (untinted details)
+				if info and info.imageOverlay then
+					local overlay = Instance.new("ImageLabel")
+					overlay.Name = "ArmorOverlay"
+					overlay.Size = UDim2.new(1, -8, 1, -8)
+					overlay.Position = UDim2.new(0.5, 0, 0.5, 0)
+					overlay.AnchorPoint = Vector2.new(0.5, 0.5)
+					overlay.BackgroundTransparency = 1
+					overlay.Image = info.imageOverlay
+					overlay.ScaleType = Enum.ScaleType.Fit
+					overlay.ZIndex = 4
+					overlay.Parent = slotFrame.iconContainer
+				end
 			elseif SpawnEggConfig.IsSpawnEgg(itemId) then
 				local icon = SpawnEggIcon.Create(itemId, UDim2.new(1, -8, 1, -8))
 				icon.Position = UDim2.new(0.5, 0, 0.5, 0)
@@ -824,6 +954,9 @@ end
 
 function MinionUI:Close()
 	if not self.isOpen then return end
+
+	-- Hide hover item name when closing
+	self:HideHoverItemName()
 
 	-- Notify server to unsubscribe before clearing anchor
 	if self.anchorPos then

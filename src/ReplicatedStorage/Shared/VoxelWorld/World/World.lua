@@ -11,9 +11,9 @@ local ChunkPersistence = require(script.Parent.Parent.Storage.ChunkPersistence)
 local World = {}
 World.__index = World
 
-function World.new(seed: number)
+function World.new(seed: number, worldTypeId: string?)
     local self = setmetatable({
-        manager = WorldManager.new(seed),
+        manager = WorldManager.new(seed, worldTypeId),
         persistence = ChunkPersistence.new({
             maxSaveQueueSize = 64,
             savesPerTick = 3,

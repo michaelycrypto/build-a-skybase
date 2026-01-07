@@ -8,10 +8,14 @@ local PlayerBillboardManager = {}
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
 
 -- State
 local isInitialized = false
 local billboards = {} -- [player] = billboardGui
+local BOLD_FONT = Config.UI_SETTINGS.typography.fonts.bold
 local updateConnection = nil
 
 -- Configuration
@@ -75,7 +79,7 @@ local function createBillboard(player, centerPart)
 	nameLabel.Text = player.DisplayName
 	nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	nameLabel.TextScaled = true
-	nameLabel.Font = Enum.Font.GothamBold
+	nameLabel.Font = BOLD_FONT
 	nameLabel.TextXAlignment = Enum.TextXAlignment.Left
 	nameLabel.TextYAlignment = Enum.TextYAlignment.Center
 	nameLabel.TextWrapped = true

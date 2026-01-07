@@ -2646,7 +2646,9 @@ function MobEntityService:DamageMob(entityId, amount, player)
 	EventManager:FireEventToAll("MobDamaged", {
 		entityId = entityId,
 		health = mob.health,
-		maxHealth = mob.maxHealth
+		maxHealth = mob.maxHealth,
+		mobType = mob.mobType,
+		attackerUserId = player and player.UserId or nil
 	})
 
 	if mob.health <= 0 then
@@ -2660,6 +2662,7 @@ function MobEntityService:_handleMobDeath(ctx, mob, player)
 
 	EventManager:FireEventToAll("MobDied", {
 		entityId = mob.entityId,
+		mobType = mob.mobType,
 		position = vectorToArray(mob.position)
 	})
 

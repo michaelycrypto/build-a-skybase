@@ -15,9 +15,38 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ItemStack = require(ReplicatedStorage.Shared.VoxelWorld.Inventory.ItemStack)
 local EventManager = require(ReplicatedStorage.Shared.EventManager)
+local SoundManager = require(script.Parent.SoundManager)
 
 local ClientInventoryManager = {}
 ClientInventoryManager.__index = ClientInventoryManager
+
+local function getStackInfo(stack)
+	if stack and stack.GetItemId and not stack:IsEmpty() then
+		return stack:GetItemId(), stack:GetCount()
+	end
+	return 0, 0
+end
+
+local function didGainItems(oldStack, newStack)
+	local newItemId, newCount = getStackInfo(newStack)
+	if newItemId == 0 then
+		return false
+	end
+	local oldItemId, oldCount = getStackInfo(oldStack)
+	if oldItemId == 0 then
+		return true
+	end
+	if newItemId ~= oldItemId then
+		return true
+	end
+	return newCount > oldCount
+end
+
+local function playInventoryPop()
+	if SoundManager and SoundManager.PlaySFX then
+		SoundManager:PlaySFX("inventoryPop")
+	end
+end
 
 function ClientInventoryManager.new(hotbar)
 	local self = setmetatable({}, ClientInventoryManager)
@@ -63,11 +92,14 @@ function ClientInventoryManager:SetInventorySlot(index, stack)
 	if index < 1 or index > 27 then return end
 
     -- Normalize tools to be non-stackable and ensure correct max stack
+    -- Exception: Arrows are stackable ammo items
     local normalized = stack or ItemStack.new(0, 0)
     if normalized and not normalized:IsEmpty() then
         local itemId = normalized:GetItemId()
         local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
-        if ToolConfig.IsTool(itemId) then
+        local toolInfo = ToolConfig.IsTool(itemId) and ToolConfig.GetToolInfo(itemId)
+        local isArrow = toolInfo and toolInfo.toolType == "arrow"
+        if ToolConfig.IsTool(itemId) and not isArrow then
             normalized = ItemStack.new(itemId, math.min(normalized:GetCount(), 1), 1)
         end
     end
@@ -87,11 +119,14 @@ function ClientInventoryManager:SetHotbarSlot(index, stack)
 	if not self.hotbar then return end
 
     -- Normalize tools to be non-stackable and ensure correct max stack
+    -- Exception: Arrows are stackable ammo items
     local normalized = stack or ItemStack.new(0, 0)
     if normalized and not normalized:IsEmpty() then
         local itemId = normalized:GetItemId()
         local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
-        if ToolConfig.IsTool(itemId) then
+        local toolInfo = ToolConfig.IsTool(itemId) and ToolConfig.GetToolInfo(itemId)
+        local isArrow = toolInfo and toolInfo.toolType == "arrow"
+        if ToolConfig.IsTool(itemId) and not isArrow then
             normalized = ItemStack.new(itemId, math.min(normalized:GetCount(), 1), 1)
         end
     end
@@ -127,8 +162,11 @@ function ClientInventoryManager:SerializeInventory()
 	for i = 1, 27 do
         local stack = self.inventory[i]
         local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
+        -- Tools are non-stackable, except arrows which are stackable ammo
         if stack and not stack:IsEmpty() and ToolConfig.IsTool(stack:GetItemId()) then
-            if stack:GetCount() > 1 then
+            local toolInfo = ToolConfig.GetToolInfo(stack:GetItemId())
+            local isArrow = toolInfo and toolInfo.toolType == "arrow"
+            if not isArrow and stack:GetCount() > 1 then
                 stack:SetCount(1)
                 self.inventory[i] = stack
             end
@@ -145,8 +183,11 @@ function ClientInventoryManager:SerializeHotbar()
 	for i = 1, 9 do
 		local stack = self.hotbar:GetSlot(i)
         local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
+        -- Tools are non-stackable, except arrows which are stackable ammo
         if stack and not stack:IsEmpty() and ToolConfig.IsTool(stack:GetItemId()) then
-            if stack:GetCount() > 1 then
+            local toolInfo = ToolConfig.GetToolInfo(stack:GetItemId())
+            local isArrow = toolInfo and toolInfo.toolType == "arrow"
+            if not isArrow and stack:GetCount() > 1 then
                 stack:SetCount(1)
                 self.hotbar:SetSlot(i, stack)
             end
@@ -253,20 +294,37 @@ function ClientInventoryManager:RegisterServerEvents()
 
 	-- Single hotbar slot update from server (server won't echo our own changes)
 	self.connections[#self.connections + 1] = EventManager:RegisterEvent("HotbarSlotUpdate", function(data)
-		if data.slotIndex and data.stack and self.hotbar then
-			local stack = ItemStack.Deserialize(data.stack)
-			self.hotbar:SetSlot(data.slotIndex, stack)
-			self:NotifyHotbarChanged(data.slotIndex)
+		if not (data and data.slotIndex and data.stack and self.hotbar) then
+			return
+		end
+		local slotIndex = data.slotIndex
+		local oldStack = self.hotbar:GetSlot(slotIndex)
+		local stack = ItemStack.Deserialize(data.stack)
+		self.hotbar:SetSlot(slotIndex, stack)
+		self:NotifyHotbarChanged(slotIndex)
+
+		if didGainItems(oldStack, stack) then
+			playInventoryPop()
 		end
 	end)
 
 	-- Single inventory slot update from server (server won't echo our own changes)
 	self.connections[#self.connections + 1] = EventManager:RegisterEvent("InventorySlotUpdate", function(data)
-		if data.slotIndex and data.stack then
-			if data.slotIndex >= 1 and data.slotIndex <= 27 then
-				self.inventory[data.slotIndex] = ItemStack.Deserialize(data.stack)
-				self:NotifyInventoryChanged(data.slotIndex)
-			end
+		if not (data and data.slotIndex and data.stack) then
+			return
+		end
+		local slotIndex = data.slotIndex
+		if slotIndex < 1 or slotIndex > 27 then
+			return
+		end
+
+		local oldStack = self.inventory[slotIndex]
+		local newStack = ItemStack.Deserialize(data.stack)
+		self.inventory[slotIndex] = newStack
+		self:NotifyInventoryChanged(slotIndex)
+
+		if didGainItems(oldStack, newStack) then
+			playInventoryPop()
 		end
 	end)
 

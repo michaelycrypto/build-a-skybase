@@ -16,12 +16,14 @@ local GuiService = game:GetService("GuiService")
 local Workspace = game:GetService("Workspace")
 
 -- Configuration
-local MIN_SCALE = 0.85 -- Minimum scale (75%) to prevent UI from being too small on tiny screens
+local MIN_SCALE = 0.85 -- Minimum scale (85%) to prevent UI from being too small on tiny screens
 local MAX_SCALE = 1.5  -- Maximum scale (150%) to prevent UI from being too large on very small resolutions
 
 -- State
 local scale_component_to_base_resolution = {}
 local layout_component_to_rescaling_connection = {}
+local scale_listeners = {}
+local next_scale_listener_id = 0
 local camera = nil
 local actual_viewport_size = nil
 local has_initialized = false
@@ -40,8 +42,17 @@ local function rescale(scale_component, base_resolution)
 	local maxScale = math.max(scaleX, scaleY)
 	local rawScale = 1 / maxScale
 
+	-- Allow components to override clamp range
+	local minScaleAttr = scale_component:GetAttribute("min_scale")
+	local maxScaleAttr = scale_component:GetAttribute("max_scale")
+	local minScale = (typeof(minScaleAttr) == "number") and minScaleAttr or MIN_SCALE
+	local maxScale = (typeof(maxScaleAttr) == "number") and maxScaleAttr or MAX_SCALE
+	if minScale > maxScale then
+		minScale, maxScale = maxScale, minScale
+	end
+
 	-- Clamp scale to prevent UI from being too small or too large
-	local finalScale = math.clamp(rawScale, MIN_SCALE, MAX_SCALE)
+	local finalScale = math.clamp(rawScale, minScale, maxScale)
 
 	scale_component.Scale = finalScale
 
@@ -59,6 +70,17 @@ end
 --[[
 	Rescale all registered components
 ]]
+local function notify_scale_listeners()
+	for listener_id, listener in pairs(scale_listeners) do
+		if listener then
+			local ok, err = pcall(listener)
+			if not ok then
+				warn("UIScaler: Scale listener error:", err)
+			end
+		end
+	end
+end
+
 local function rescale_all()
 	local top_inset, bottom_inset = GuiService:GetGuiInset()
 	actual_viewport_size = camera.ViewportSize - top_inset - bottom_inset
@@ -71,6 +93,8 @@ local function rescale_all()
 
 	print(string.format("📐 UIScaler: Rescaled %d components for viewport %dx%d",
 		count, math.floor(actual_viewport_size.X), math.floor(actual_viewport_size.Y)))
+
+	notify_scale_listeners()
 end
 
 --[[
@@ -251,7 +275,35 @@ function UIScaler:Cleanup()
 	layout_component_to_rescaling_connection = {}
 	scale_component_to_base_resolution = {}
 	has_initialized = false
+	scale_listeners = {}
+	next_scale_listener_id = 0
 	print("UIScaler: Cleanup complete")
+end
+
+function UIScaler:RegisterScaleListener(callback)
+	if typeof(callback) ~= "function" then
+		warn("UIScaler:RegisterScaleListener requires a function callback")
+		return nil
+	end
+
+	next_scale_listener_id = next_scale_listener_id + 1
+	local listener_id = next_scale_listener_id
+	scale_listeners[listener_id] = callback
+
+	return function()
+		scale_listeners[listener_id] = nil
+	end
+end
+
+local function notify_scale_listeners()
+	for listener_id, listener in pairs(scale_listeners) do
+		if listener then
+			local ok, err = pcall(listener)
+			if not ok then
+				warn("UIScaler: Scale listener error:", err)
+			end
+		end
+	end
 end
 
 return UIScaler

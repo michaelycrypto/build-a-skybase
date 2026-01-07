@@ -23,22 +23,28 @@ local BlockViewportCreator = require(ReplicatedStorage.Shared.VoxelWorld.Renderi
 local ItemStack = require(ReplicatedStorage.Shared.VoxelWorld.Inventory.ItemStack)
 local EventManager = require(ReplicatedStorage.Shared.EventManager)
 local IconManager = require(script.Parent.Parent.Managers.IconManager)
+local Config = require(ReplicatedStorage.Shared.Config)
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
 local CraftingPanel = {}
+local BOLD_FONT = Config.UI_SETTINGS.typography.fonts.bold
 CraftingPanel.__index = CraftingPanel
 
--- UI Configuration (optimized for compact layout)
-local CRAFTING_CONFIG = {
-	PANEL_WIDTH = 230,  -- Ultra-compact width (detail overlays full panel)
+-- Import font utilities for consistent styling
+local FontBinder = require(ReplicatedStorage.Shared.UI.FontBinder)
+local CUSTOM_FONT_NAME = "Upheaval BRK"
+local LABEL_SIZE = 24  -- Matching inventory label size
+local MIN_TEXT_SIZE = 20  -- Matching inventory minimum text size
 
-	-- Grid Layout (optimized for 230px width)
-	GRID_CELL_SIZE = 42,  -- Slightly smaller for better fit
-	GRID_SPACING = 2,     -- Tighter spacing
-	GRID_COLUMNS = 5,     -- 5 columns: (42×5) + (2×4) + (6×2) = 210 + 8 + 12 = 230px
-	PADDING = 4,          -- Minimal padding for compact layout
+-- UI Configuration (matching inventory slot styling and content section)
+local CRAFTING_CONFIG = {
+	-- Grid Layout (matching inventory slots: 56px frame, 60px visual with 2px border)
+	GRID_CELL_SIZE = 56,  -- Frame size (visual is 60px with 2px border)
+	GRID_SPACING = 5,     -- Gap between slots (between borders, matching inventory)
+	GRID_COLUMNS = 5,     -- Fits content section: (60×5) + (5×4) = 320px + padding
+	PADDING = 12,         -- Matching content section padding
 
 	-- Icons
 	INGREDIENT_ICON_SIZE = 32,  -- Icons in detail page
@@ -52,13 +58,16 @@ local CRAFTING_CONFIG = {
 	HOVER_SCALE = 1.0,  -- No scaling
 	ANIMATION_SPEED = 0,  -- Instant transitions
 
-	-- Colors (match VoxelInventoryPanel)
-	BG_COLOR = Color3.fromRGB(35, 35, 35),
-	SLOT_BG_COLOR = Color3.fromRGB(45, 45, 45),
-	SLOT_HOVER_COLOR = Color3.fromRGB(55, 55, 55),
-	SLOT_DISABLED_COLOR = Color3.fromRGB(40, 40, 40),
+	-- Colors (matching inventory slot styling and content section)
+	BG_COLOR = Color3.fromRGB(58, 58, 58),  -- Matching content section
+	SLOT_BG_COLOR = Color3.fromRGB(31, 31, 31),  -- Matching inventory
+	SLOT_BG_TRANSPARENCY = 0.4,  -- 60% opacity (matching inventory)
+	SLOT_HOVER_COLOR = Color3.fromRGB(80, 80, 80),  -- Matching inventory hover
+	SLOT_DISABLED_COLOR = Color3.fromRGB(31, 31, 31),
+	SLOT_DISABLED_TRANSPARENCY = 0.7,  -- More transparent when disabled
 	SLOT_SELECTED_COLOR = Color3.fromRGB(65, 65, 65),  -- Mobile tap state
 	SLOT_CRAFTABLE_GLOW = Color3.fromRGB(80, 180, 80),
+	BORDER_COLOR = Color3.fromRGB(35, 35, 35),  -- Matching inventory border
 	TEXT_COLOR = Color3.fromRGB(255, 255, 255),
 	TEXT_DISABLED_COLOR = Color3.fromRGB(120, 120, 120),
 	TEXT_SUCCESS = Color3.fromRGB(100, 220, 100),
@@ -169,27 +178,27 @@ function CraftingPanel:CreatePanelUI()
 	container.BackgroundTransparency = 1
 	container.Parent = self.parentFrame
 
-	-- MINIMAL HEADER (ultra-compact)
-	local headerSection = Instance.new("Frame")
-	headerSection.Name = "HeaderSection"
-	headerSection.Size = UDim2.new(1, 0, 0, 32)  -- More compact header
-	headerSection.Position = UDim2.new(0, 0, 0, 0)
-	headerSection.BackgroundTransparency = 1  -- Minimal: no background
-	headerSection.BorderSizePixel = 0
-	headerSection.Parent = container
+	-- Section label (matching inventory label style)
+	local craftingLabel = Instance.new("TextLabel")
+	craftingLabel.Name = "CraftingLabel"
+	craftingLabel.Size = UDim2.new(1, 0, 0, 22)  -- Matching INVENTORY_CONFIG.LABEL_HEIGHT
+	craftingLabel.BackgroundTransparency = 1
+	craftingLabel.Font = Enum.Font.Code
+	craftingLabel.TextSize = LABEL_SIZE
+	craftingLabel.TextColor3 = Color3.fromRGB(140, 140, 140)  -- Matching inventory label color
+	craftingLabel.TextXAlignment = Enum.TextXAlignment.Left
+	craftingLabel.Text = "CRAFTING"
+	craftingLabel.Parent = container
 
-	local headerPadding = Instance.new("UIPadding")
-	headerPadding.PaddingLeft = UDim.new(0, 5)  -- Match grid padding
-	headerPadding.PaddingRight = UDim.new(0, 5)
-	headerPadding.PaddingTop = UDim.new(0, 2)
-	headerPadding.PaddingBottom = UDim.new(0, 2)
-	headerPadding.Parent = headerSection
+	FontBinder.apply(craftingLabel, CUSTOM_FONT_NAME)
 
-	-- Scrolling frame for recipes (below header, full width)
+	-- Scrolling frame for recipes (below label, full width)
 	local scrollFrame = Instance.new("ScrollingFrame")
 	scrollFrame.Name = "RecipeScroll"
-	scrollFrame.Size = UDim2.new(1, 0, 1, -2)  -- Full width, below 32px header
-	scrollFrame.Position = UDim2.new(0, 0, 0, 2)
+	local labelHeight = 22  -- INVENTORY_CONFIG.LABEL_HEIGHT
+	local labelSpacing = 8  -- INVENTORY_CONFIG.LABEL_SPACING
+	scrollFrame.Size = UDim2.new(1, 0, 1, -(labelHeight + labelSpacing))  -- Full width, below label
+	scrollFrame.Position = UDim2.new(0, 0, 0, labelHeight + labelSpacing)
 	scrollFrame.BackgroundTransparency = 1
 	scrollFrame.BorderSizePixel = 0
 	scrollFrame.ScrollBarThickness = 6
@@ -207,21 +216,21 @@ function CraftingPanel:CreatePanelUI()
 	recipeGrid.AutomaticSize = Enum.AutomaticSize.Y
 	recipeGrid.Parent = scrollFrame
 
-	-- Optimized Grid Layout (5×N grid)
+	-- Optimized Grid Layout (left-aligned, matching inventory)
 	local gridLayout = Instance.new("UIGridLayout")
 	gridLayout.Name = "GridLayout"
 	gridLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	gridLayout.CellSize = UDim2.new(0, CRAFTING_CONFIG.GRID_CELL_SIZE, 0, CRAFTING_CONFIG.GRID_CELL_SIZE)
 	gridLayout.CellPadding = UDim2.new(0, CRAFTING_CONFIG.GRID_SPACING, 0, CRAFTING_CONFIG.GRID_SPACING)
-	gridLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center  -- Center for balanced layout
+	gridLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left  -- Left-aligned like inventory
 	gridLayout.Parent = recipeGrid
 
-	-- Calculated padding for perfect 5-column fit
+	-- Padding (matching content section spacing)
 	local gridPadding = Instance.new("UIPadding")
-	gridPadding.PaddingTop = UDim.new(0, 2)  -- Minimal top padding
+	gridPadding.PaddingTop = UDim.new(0, 4)  -- Small top padding
 	gridPadding.PaddingBottom = UDim.new(0, 4)
-	gridPadding.PaddingLeft = UDim.new(0, 5)  -- Calculated: (230 - 220) / 2
-	gridPadding.PaddingRight = UDim.new(0, 5)
+	gridPadding.PaddingLeft = UDim.new(0, 0)  -- No left padding for left alignment
+	gridPadding.PaddingRight = UDim.new(0, 0)
 	gridPadding.Parent = recipeGrid
 
 	-- Store references
@@ -315,40 +324,50 @@ end
 function CraftingPanel:CreateRecipeGridItem(group, canCraft, maxCount, layoutOrder)
 	local output = group.output
 
-	-- Grid slot (like inventory slot)
+	-- Grid slot (matching inventory slot styling)
 	local slot = Instance.new("TextButton")
 	slot.Name = "Recipe_" .. output.itemId
-	slot.Size = UDim2.new(0, CRAFTING_CONFIG.GRID_CELL_SIZE, 0, CRAFTING_CONFIG.GRID_CELL_SIZE)
-	slot.BackgroundColor3 = canCraft and CRAFTING_CONFIG.SLOT_BG_COLOR or CRAFTING_CONFIG.SLOT_DISABLED_COLOR
+	slot.Size = UDim2.new(0, 56, 0, 56)  -- Frame size (visual is 60px with 2px border)
+	slot.BackgroundColor3 = CRAFTING_CONFIG.SLOT_BG_COLOR
+	slot.BackgroundTransparency = canCraft and CRAFTING_CONFIG.SLOT_BG_TRANSPARENCY or CRAFTING_CONFIG.SLOT_DISABLED_TRANSPARENCY
 	slot.BorderSizePixel = 0
 	slot.AutoButtonColor = false
 	slot.Text = ""
 	slot.LayoutOrder = layoutOrder
 
 	local slotCorner = Instance.new("UICorner")
-	slotCorner.CornerRadius = UDim.new(0, 8)
+	slotCorner.CornerRadius = UDim.new(0, 4)  -- Matching inventory corner radius (was 2, should be 4)
 	slotCorner.Parent = slot
 
-	-- Border with glow when craftable
+	-- Background image (matching inventory)
+	local bgImage = Instance.new("ImageLabel")
+	bgImage.Name = "BackgroundImage"
+	bgImage.Size = UDim2.new(1, 0, 1, 0)
+	bgImage.Position = UDim2.new(0, 0, 0, 0)
+	bgImage.BackgroundTransparency = 1
+	bgImage.Image = "rbxassetid://82824299358542"
+	bgImage.ImageTransparency = 0.6  -- Matching inventory
+	bgImage.ScaleType = Enum.ScaleType.Fit
+	bgImage.ZIndex = 1
+	bgImage.Parent = slot
+
+	-- Border (exactly matching inventory slots - no green border)
 	local slotBorder = Instance.new("UIStroke")
-	if canCraft then
-		slotBorder.Color = CRAFTING_CONFIG.SLOT_CRAFTABLE_GLOW
-		slotBorder.Thickness = 2
-		slotBorder.Transparency = 0.5
-	else
-		slotBorder.Color = Color3.fromRGB(50, 50, 50)
-		slotBorder.Thickness = 1
-		slotBorder.Transparency = 0.8
-	end
+	slotBorder.Name = "Border"
+	slotBorder.Color = CRAFTING_CONFIG.BORDER_COLOR  -- Standard border, same as inventory
+	slotBorder.Thickness = 2
+	slotBorder.Transparency = 0  -- Fully opaque, matching inventory
+	slotBorder.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	slotBorder.Parent = slot
 
-	-- Output icon container (fills most of the slot)
+	-- Output icon container (fills entire slot)
 	local iconContainer = Instance.new("Frame")
 	iconContainer.Name = "Icon"
-	iconContainer.Size = UDim2.new(1, -8, 1, -8)
-	iconContainer.Position = UDim2.new(0.5, 0, 0.5, 0)
-	iconContainer.AnchorPoint = Vector2.new(0.5, 0.5)
+	iconContainer.Size = UDim2.new(1, 0, 1, 0)
+	iconContainer.Position = UDim2.new(0, 0, 0, 0)
+	iconContainer.AnchorPoint = Vector2.new(0, 0)
 	iconContainer.BackgroundTransparency = 1
+	iconContainer.ZIndex = 3  -- Above background image
 	iconContainer.Parent = slot
 
 	-- Create 3D viewmodel
@@ -435,7 +454,7 @@ function CraftingPanel:CreateIngredientIcon(input, parent, xOffset, enabled)
 	countLabel.Size = UDim2.new(0, 40, 0, CRAFTING_CONFIG.ICON_SIZE)
 	countLabel.Position = UDim2.new(0, xOffset + CRAFTING_CONFIG.ICON_SIZE + 5, 0, 5)
 	countLabel.BackgroundTransparency = 1
-	countLabel.Font = Enum.Font.GothamBold
+	countLabel.Font = BOLD_FONT
 	countLabel.TextSize = 12
 	countLabel.TextColor3 = enabled and CRAFTING_CONFIG.TEXT_COLOR or CRAFTING_CONFIG.TEXT_DISABLED_COLOR
 	countLabel.Text = "×" .. input.count
@@ -461,17 +480,34 @@ end
 ]]
 function CraftingPanel:SetupGridItemInteractions(slot, group, canCraft)
 	local originalColor = slot.BackgroundColor3
+	local originalTransparency = slot.BackgroundTransparency
+	local hoverBorder = slot:FindFirstChild("HoverBorder")
 
-	-- Hover highlight (visual feedback only)
+	-- Create hover border if it doesn't exist (matching inventory)
+	if not hoverBorder then
+		hoverBorder = Instance.new("UIStroke")
+		hoverBorder.Name = "HoverBorder"
+		hoverBorder.Color = Color3.fromRGB(255, 255, 255)
+		hoverBorder.Thickness = 2
+		hoverBorder.Transparency = 1
+		hoverBorder.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		hoverBorder.ZIndex = 2
+		hoverBorder.Parent = slot
+	end
+
+	-- Hover highlight (exactly matching inventory - no active state)
 	slot.MouseEnter:Connect(function()
-		if self.activeTooltipCard ~= slot then
-			slot.BackgroundColor3 = CRAFTING_CONFIG.SLOT_HOVER_COLOR
+		slot.BackgroundColor3 = CRAFTING_CONFIG.SLOT_HOVER_COLOR
+		if hoverBorder then
+			hoverBorder.Transparency = 0.5
 		end
 	end)
 
 	slot.MouseLeave:Connect(function()
-		if self.activeTooltipCard ~= slot then
-			slot.BackgroundColor3 = originalColor
+		slot.BackgroundColor3 = originalColor
+		slot.BackgroundTransparency = originalTransparency
+		if hoverBorder then
+			hoverBorder.Transparency = 1
 		end
 	end)
 
@@ -480,16 +516,9 @@ function CraftingPanel:SetupGridItemInteractions(slot, group, canCraft)
 		if self.activeTooltipCard == slot then
 			-- Clicked same slot, close detail page
 			self:HideRecipeDetailPage()
-			slot.BackgroundColor3 = originalColor
 		else
 			-- Open detail page for this slot
-			-- Reset previous slot color if any
-			if self.activeTooltipCard then
-				self.activeTooltipCard.BackgroundColor3 = canCraft and CRAFTING_CONFIG.SLOT_BG_COLOR or CRAFTING_CONFIG.SLOT_DISABLED_COLOR
-			end
-
 			self:ShowRecipeDetailPage(slot, group, canCraft)
-			slot.BackgroundColor3 = CRAFTING_CONFIG.SLOT_SELECTED_COLOR
 		end
 	end)
 end
@@ -650,9 +679,14 @@ function CraftingPanel:HideRecipeDetailPage()
 	end
 
 	if self.activeTooltipCard then
-		-- Reset slot background
+		-- Reset slot to default state (matching inventory - no active state)
 		local canCraft = self.activeTooltipCard:GetAttribute("CanCraft")
-		self.activeTooltipCard.BackgroundColor3 = canCraft and CRAFTING_CONFIG.SLOT_BG_COLOR or CRAFTING_CONFIG.SLOT_DISABLED_COLOR
+		self.activeTooltipCard.BackgroundColor3 = CRAFTING_CONFIG.SLOT_BG_COLOR
+		self.activeTooltipCard.BackgroundTransparency = canCraft and CRAFTING_CONFIG.SLOT_BG_TRANSPARENCY or CRAFTING_CONFIG.SLOT_DISABLED_TRANSPARENCY
+		local hoverBorder = self.activeTooltipCard:FindFirstChild("HoverBorder")
+		if hoverBorder then
+			hoverBorder.Transparency = 1
+		end
 		self.activeTooltipCard = nil
 	end
 
@@ -942,6 +976,7 @@ function CraftingPanel:ShowItemRevealPopup(output, quantity)
 	stroke.Color = CRAFTING_CONFIG.SLOT_CRAFTABLE_GLOW
 	stroke.Thickness = 2
 	stroke.Transparency = 1
+	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	stroke.Parent = popup
 
 	-- Icon (larger for dramatic effect in popup)
@@ -976,7 +1011,7 @@ function CraftingPanel:ShowItemRevealPopup(output, quantity)
 	label.Size = UDim2.new(1, -16, 0, 20)
 	label.Position = UDim2.new(0, 8, 1, -24)
 	label.BackgroundTransparency = 1
-	label.Font = Enum.Font.GothamBold
+	label.Font = BOLD_FONT
 	label.TextSize = 14
 	label.TextColor3 = CRAFTING_CONFIG.TEXT_SUCCESS
 	label.Text = string.format("+ %d", quantity * (output.count or 1))
@@ -1054,6 +1089,8 @@ end
 function CraftingPanel:AddCraftableGlowPulse(card)
 	local stroke = card:FindFirstChildOfClass("UIStroke")
 	if not stroke then return end
+
+	stroke.ApplyStrokeMode = stroke.ApplyStrokeMode or Enum.ApplyStrokeMode.Border
 
 	-- Create breathing glow animation
 	local pulseIn = TweenService:Create(stroke, TweenInfo.new(1.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
@@ -1135,137 +1172,109 @@ function CraftingPanel:CreateRecipeDetailPage(group, canCraft)
 	detailPage.Name = "RecipeDetailPage"
 	detailPage.Size = UDim2.new(1, 0, 1, 0)  -- Full size overlay
 	detailPage.Position = UDim2.new(0, 0, 0, 0)
-	detailPage.BackgroundColor3 = Color3.fromRGB(35, 35, 35)  -- Match main panel color
+	detailPage.BackgroundColor3 = Color3.fromRGB(58, 58, 58)  -- Match content section color
 	detailPage.BorderSizePixel = 0
 	detailPage.ZIndex = 100  -- Above everything else in crafting panel
 	detailPage.Visible = false
 	detailPage.Parent = self.container
 
-	-- HEADER SECTION (contains back button, icon with badge, and item name)
+	-- HEADER SECTION (contains "CRAFTING" label and back button)
+	-- Header height matches back button (56px) for proper alignment
+	local headerHeight = 56  -- Matching inventory slot size
 	local headerSection = Instance.new("Frame")
 	headerSection.Name = "HeaderSection"
-	headerSection.Size = UDim2.new(1, 0, 0, 50)  -- Compact header
+	headerSection.Size = UDim2.new(1, 0, 0, headerHeight)
 	headerSection.Position = UDim2.new(0, 0, 0, 0)
-	headerSection.BackgroundTransparency = 1  -- Minimal: no background
+	headerSection.BackgroundTransparency = 1
 	headerSection.BorderSizePixel = 0
 	headerSection.ZIndex = 101
 	headerSection.Parent = detailPage
 
-	local headerPadding = Instance.new("UIPadding")
-	headerPadding.PaddingLeft = UDim.new(0, 6)  -- Minimal internal padding
-	headerPadding.PaddingRight = UDim.new(0, 6)
-	headerPadding.PaddingTop = UDim.new(0, 6)
-	headerPadding.PaddingBottom = UDim.new(0, 6)
-	headerPadding.Parent = headerSection
-
-	-- Back button (left side)
+	-- Back button (left side) - matching inventory slot styling
 	local backButton = Instance.new("TextButton")
 	backButton.Name = "BackButton"
-	backButton.Size = UDim2.new(0, 34, 0, 34)  -- Larger for easier clicking
-	backButton.Position = UDim2.new(0, 0, 0.5, 0)
+	backButton.Size = UDim2.new(0, 56, 0, 56)  -- Matching inventory slot size exactly
+	backButton.Position = UDim2.new(0, 0, 0.5, 0)  -- Vertically centered
 	backButton.AnchorPoint = Vector2.new(0, 0.5)
-	backButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+	backButton.BackgroundColor3 = CRAFTING_CONFIG.SLOT_BG_COLOR
+	backButton.BackgroundTransparency = CRAFTING_CONFIG.SLOT_BG_TRANSPARENCY
 	backButton.BorderSizePixel = 0
-	backButton.Font = Enum.Font.GothamBold
-	backButton.TextSize = 18
+	backButton.Font = BOLD_FONT
+	backButton.TextSize = MIN_TEXT_SIZE
 	backButton.TextColor3 = CRAFTING_CONFIG.TEXT_COLOR
 	backButton.Text = "←"
 	backButton.ZIndex = 102
 	backButton.Parent = headerSection
 
 	local backCorner = Instance.new("UICorner")
-	backCorner.CornerRadius = UDim.new(0, 8)
+	backCorner.CornerRadius = UDim.new(0, 4)  -- Matching inventory corner radius
 	backCorner.Parent = backButton
+
+	-- Background image matching inventory
+	local bgImage = Instance.new("ImageLabel")
+	bgImage.Name = "BackgroundImage"
+	bgImage.Size = UDim2.new(1, 0, 1, 0)
+	bgImage.Position = UDim2.new(0, 0, 0, 0)
+	bgImage.BackgroundTransparency = 1
+	bgImage.Image = "rbxassetid://82824299358542"
+	bgImage.ImageTransparency = 0.6
+	bgImage.ScaleType = Enum.ScaleType.Fit
+	bgImage.ZIndex = 1
+	bgImage.Parent = backButton
+
+	-- Border matching inventory
+	local backBorder = Instance.new("UIStroke")
+	backBorder.Color = CRAFTING_CONFIG.BORDER_COLOR
+	backBorder.Thickness = 2
+	backBorder.Transparency = 0
+	backBorder.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	backBorder.Parent = backButton
 
 	self:AddButtonPressAnimation(backButton)
 
 	backButton.MouseEnter:Connect(function()
-		backButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+		backButton.BackgroundColor3 = CRAFTING_CONFIG.SLOT_HOVER_COLOR
 	end)
 
 	backButton.MouseLeave:Connect(function()
-		backButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+		backButton.BackgroundColor3 = CRAFTING_CONFIG.SLOT_BG_COLOR
+		backButton.BackgroundTransparency = CRAFTING_CONFIG.SLOT_BG_TRANSPARENCY
 	end)
 
 	backButton.MouseButton1Click:Connect(function()
 		self:HideRecipeDetailPage()
 	end)
 
-	-- Item icon with badge (center-left)
-	local itemIconContainer = Instance.new("Frame")
-	itemIconContainer.Name = "ItemIconContainer"
-	itemIconContainer.Size = UDim2.new(0, 38, 0, 38)  -- Slightly smaller icon
-	itemIconContainer.Position = UDim2.new(0, 42, 0.5, 0)  -- Adjusted for larger back button
-	itemIconContainer.AnchorPoint = Vector2.new(0, 0.5)
-	itemIconContainer.BackgroundTransparency = 1
-	itemIconContainer.ZIndex = 102
-	itemIconContainer.Parent = headerSection
+	-- "CRAFTING" label (matching overview page style, aligned with back button)
+	local craftingLabel = Instance.new("TextLabel")
+	craftingLabel.Name = "CraftingLabel"
+	craftingLabel.Size = UDim2.new(1, -64, 0, LABEL_SIZE)  -- Full width minus back button + spacing
+	craftingLabel.Position = UDim2.new(0, 64, 0.5, 0)  -- After back button, vertically centered
+	craftingLabel.AnchorPoint = Vector2.new(0, 0.5)
+	craftingLabel.BackgroundTransparency = 1
+	craftingLabel.Font = Enum.Font.Code
+	craftingLabel.TextSize = LABEL_SIZE
+	craftingLabel.TextColor3 = Color3.fromRGB(140, 140, 140)  -- Matching inventory label color
+	craftingLabel.TextXAlignment = Enum.TextXAlignment.Left
+	craftingLabel.Text = "CRAFTING"
+	craftingLabel.ZIndex = 102
+	craftingLabel.Parent = headerSection
+	FontBinder.apply(craftingLabel, CUSTOM_FONT_NAME)
 
-	local itemIcon = Instance.new("Frame")
-	itemIcon.Name = "ItemIcon"
-	itemIcon.Size = UDim2.new(1, 0, 1, 0)
-	itemIcon.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-	itemIcon.BorderSizePixel = 0
-	itemIcon.ClipsDescendants = false
-	itemIcon.ZIndex = 103
-	itemIcon.Parent = itemIconContainer
+	local controlsHeight = 56  -- Larger controls
+	local statusHeight = LABEL_SIZE  -- Matching label height for consistency
+	local bottomPadding = 8  -- Top and bottom padding
+	local bottomLayoutSpacing = 8  -- Spacing between elements in layout
+	local bottomSectionHeight = bottomPadding + statusHeight + bottomLayoutSpacing + controlsHeight + bottomLayoutSpacing + controlsHeight + bottomPadding  -- All elements + padding + spacing
 
-	local iconCorner = Instance.new("UICorner")
-	iconCorner.CornerRadius = UDim.new(0, 8)
-	iconCorner.Parent = itemIcon
-
-	-- Create viewport
-	local viewport = BlockViewportCreator.CreateBlockViewport(itemIcon, output.itemId, UDim2.new(1, 0, 1, 0))
-	if viewport then
-		viewport.ZIndex = 104
-		for _, child in ipairs(viewport:GetDescendants()) do
-			if child:IsA("GuiObject") or child:IsA("ViewportFrame") then
-				child.ZIndex = 104
-			end
-		end
-	end
-
-	-- Output count badge (bottom-right of icon)
-	local countBadge = Instance.new("TextLabel")
-	countBadge.Name = "CountBadge"
-	countBadge.Size = UDim2.new(0, 24, 0, 16)  -- Slightly smaller
-	countBadge.Position = UDim2.new(1, -1, 1, -1)
-	countBadge.AnchorPoint = Vector2.new(1, 1)
-	countBadge.BackgroundColor3 = Color3.fromRGB(80, 180, 80)
-	countBadge.BorderSizePixel = 0
-	countBadge.Font = Enum.Font.GothamBold
-	countBadge.TextSize = 10  -- Slightly smaller
-	countBadge.TextColor3 = Color3.fromRGB(255, 255, 255)
-	countBadge.Text = "×" .. (output.count or 1)
-	countBadge.ZIndex = 105
-	countBadge.Parent = itemIconContainer
-
-	local badgeCorner = Instance.new("UICorner")
-	badgeCorner.CornerRadius = UDim.new(0, 4)
-	badgeCorner.Parent = countBadge
-
-	-- Item name (right of icon)
-	local itemName = Instance.new("TextLabel")
-	itemName.Name = "ItemName"
-	itemName.Size = UDim2.new(1, -88, 1, 0)  -- Adjusted for larger back button + icon spacing
-	itemName.Position = UDim2.new(0, 88, 0, 0)
-	itemName.BackgroundTransparency = 1
-	itemName.Font = Enum.Font.GothamBold
-	itemName.TextSize = 14  -- Slightly smaller text
-	itemName.TextColor3 = CRAFTING_CONFIG.TEXT_COLOR
-	itemName.Text = group.displayName
-	itemName.TextXAlignment = Enum.TextXAlignment.Left
-	itemName.TextYAlignment = Enum.TextYAlignment.Center
-	itemName.ZIndex = 102
-	itemName.Parent = headerSection
-
-	-- Scrolling frame for content (below header, full width)
+	-- Scrolling frame for content (below header, above bottom controls)
 	local scrollFrame = Instance.new("ScrollingFrame")
 	scrollFrame.Name = "ContentScroll"
-	scrollFrame.Size = UDim2.new(1, 0, 1, -50)  -- Full width, below 50px header
-	scrollFrame.Position = UDim2.new(0, 0, 0, 50)
+	scrollFrame.Size = UDim2.new(1, 0, 1, -(headerHeight + bottomSectionHeight))  -- Full width, between header and bottom
+	scrollFrame.Position = UDim2.new(0, 0, 0, headerHeight)
 	scrollFrame.BackgroundTransparency = 1
 	scrollFrame.BorderSizePixel = 0
+	scrollFrame.ClipsDescendants = true  -- Ensure content doesn't overflow into bottom section
 	scrollFrame.ScrollBarThickness = 6
 	scrollFrame.ScrollBarImageColor3 = Color3.fromRGB(80, 180, 80)
 	scrollFrame.ScrollBarImageTransparency = 0.4
@@ -1285,13 +1294,13 @@ function CraftingPanel:CreateRecipeDetailPage(group, canCraft)
 
 	local contentLayout = Instance.new("UIListLayout")
 	contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
-	contentLayout.Padding = UDim.new(0, 6)  -- Reduced spacing between sections
+	contentLayout.Padding = UDim.new(0, 8)  -- Consistent spacing between sections
 	contentLayout.Parent = content
 
 	local contentPadding = Instance.new("UIPadding")
-	contentPadding.PaddingTop = UDim.new(0, 4)  -- Minimal padding
-	contentPadding.PaddingBottom = UDim.new(0, 6)
-	contentPadding.PaddingLeft = UDim.new(0, 8)  -- Slightly more for readability
+	contentPadding.PaddingTop = UDim.new(0, 8)  -- Consistent padding
+	contentPadding.PaddingBottom = UDim.new(0, 8)
+	contentPadding.PaddingLeft = UDim.new(0, 8)
 	contentPadding.PaddingRight = UDim.new(0, 8)
 	contentPadding.Parent = content
 
@@ -1308,16 +1317,17 @@ function CraftingPanel:CreateRecipeDetailPage(group, canCraft)
 
 	local ingredientsLabel = Instance.new("TextLabel")
 	ingredientsLabel.Name = "IngredientsLabel"
-	ingredientsLabel.Size = UDim2.new(1, 0, 0, 12)  -- Compact label
+	ingredientsLabel.Size = UDim2.new(1, 0, 0, LABEL_SIZE)  -- Matching label height
 	ingredientsLabel.BackgroundTransparency = 1
-	ingredientsLabel.Font = Enum.Font.GothamBold
-	ingredientsLabel.TextSize = 9  -- Slightly smaller
-	ingredientsLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+	ingredientsLabel.Font = Enum.Font.Code
+	ingredientsLabel.TextSize = LABEL_SIZE  -- Matching label size
+	ingredientsLabel.TextColor3 = Color3.fromRGB(140, 140, 140)  -- Matching inventory label color
 	ingredientsLabel.Text = #availableRecipes > 1 and "RECIPE VARIANTS" or "REQUIRED MATERIALS"
 	ingredientsLabel.TextXAlignment = Enum.TextXAlignment.Left
 	ingredientsLabel.ZIndex = 103
 	ingredientsLabel.LayoutOrder = 2
 	ingredientsLabel.Parent = content
+	FontBinder.apply(ingredientsLabel, CUSTOM_FONT_NAME)
 
 	-- Track selected recipe (default to primary/best one among available)
 	local selectedRecipe = primaryRecipe
@@ -1343,7 +1353,7 @@ function CraftingPanel:CreateRecipeDetailPage(group, canCraft)
 	variantsLayout.FillDirection = Enum.FillDirection.Horizontal
 	variantsLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
 	variantsLayout.VerticalAlignment = Enum.VerticalAlignment.Top
-	variantsLayout.Padding = UDim.new(0, 6)  -- Tighter spacing between variants
+	variantsLayout.Padding = UDim.new(0, 8)  -- Consistent spacing between variants
 	variantsLayout.Parent = variantsContainer
 
 	-- Create clickable variant buttons (only for available variants)
@@ -1362,172 +1372,288 @@ function CraftingPanel:CreateRecipeDetailPage(group, canCraft)
 			selectedRecipe = recipe
 			selectedRecipeIndex = variantIndex
 
-			-- Update visual state of all buttons
+			-- Update visual state of all buttons (no green borders, standard inventory styling)
 			for i, btn in ipairs(variantButtons) do
 				local btnBorder = btn:FindFirstChild("BorderStroke")
-				local selBar = btn:FindFirstChild("SelectionBar")
 				if i == variantIndex then
-					-- Selected
-					btnBorder.Color = Color3.fromRGB(80, 180, 80)
+					-- Selected: thicker border
+					btnBorder.Color = CRAFTING_CONFIG.BORDER_COLOR
 					btnBorder.Thickness = 3
 					btnBorder.Transparency = 0
-					if selBar then selBar.Visible = true end
 				else
-					-- Not selected
-					btnBorder.Color = Color3.fromRGB(70, 70, 70)
-					btnBorder.Thickness = 1
-					btnBorder.Transparency = 0.6
-					if selBar then selBar.Visible = false end
+					-- Not selected: standard border
+					btnBorder.Color = CRAFTING_CONFIG.BORDER_COLOR
+					btnBorder.Thickness = 2
+					btnBorder.Transparency = 0
 				end
 			end
 		end)
 	end
 
-	-- Divider line above controls
-	local divider = Instance.new("Frame")
-	divider.Name = "Divider"
-	divider.Size = UDim2.new(1, 0, 0, 1)
-	divider.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-	divider.BackgroundTransparency = 0.5
-	divider.BorderSizePixel = 0
-	divider.ZIndex = 103
-	divider.LayoutOrder = 98  -- Right before controls
-	divider.Parent = content
+	-- Bottom section (stuck to bottom): input controls above, craft button below
+	local bottomSection = Instance.new("Frame")
+	bottomSection.Name = "BottomSection"
+	bottomSection.Size = UDim2.new(1, 0, 0, bottomSectionHeight)
+	bottomSection.Position = UDim2.new(0, 0, 1, 0)  -- Position at bottom (1, 0 means 100% from top, 0 offset)
+	bottomSection.AnchorPoint = Vector2.new(0, 1)  -- Anchor to bottom-left
+	bottomSection.BackgroundTransparency = 1
+	bottomSection.ZIndex = 200  -- High ZIndex to ensure it's above scrollFrame
+	bottomSection.Parent = detailPage
 
-	-- MINIMAL STATUS (below controls, compact single line)
+	local bottomPadding = Instance.new("UIPadding")
+	bottomPadding.PaddingLeft = UDim.new(0, 8)
+	bottomPadding.PaddingRight = UDim.new(0, 8)
+	bottomPadding.PaddingTop = UDim.new(0, 8)  -- Consistent padding
+	bottomPadding.PaddingBottom = UDim.new(0, 8)
+	bottomPadding.Parent = bottomSection
+
+	local bottomLayout = Instance.new("UIListLayout")
+	bottomLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	bottomLayout.Padding = UDim.new(0, 8)  -- Consistent spacing between elements
+	bottomLayout.FillDirection = Enum.FillDirection.Vertical
+	bottomLayout.Parent = bottomSection
+
+	-- STATUS (above input controls)
 	local statusBar = Instance.new("Frame")
 	statusBar.Name = "StatusBar"
-	statusBar.Size = UDim2.new(1, 0, 0, 12)  -- Even more compact
+	statusBar.Size = UDim2.new(1, 0, 0, statusHeight)
 	statusBar.BackgroundTransparency = 1
 	statusBar.BorderSizePixel = 0
-	statusBar.ZIndex = 103
-	statusBar.LayoutOrder = 101  -- Right after controls (LayoutOrder = 100)
-	statusBar.Parent = content
+	statusBar.ZIndex = 201  -- Above bottom section base
+	statusBar.LayoutOrder = 1
+	statusBar.Parent = bottomSection
 
-	local statusPadding = Instance.new("UIPadding")
-	statusPadding.PaddingTop = UDim.new(0, 1)  -- Minimal padding
-	statusPadding.PaddingBottom = UDim.new(0, 1)
-	statusPadding.Parent = statusBar
-
-	-- Single minimal status line (left-aligned)
+	-- Status label (left-aligned)
 	local statusLabel = Instance.new("TextLabel")
 	statusLabel.Name = "StatusLabel"
 	statusLabel.Size = UDim2.new(1, 0, 1, 0)
 	statusLabel.BackgroundTransparency = 1
-	statusLabel.Font = Enum.Font.Gotham
-	statusLabel.TextSize = 8  -- Even smaller for ultra-compact
+	statusLabel.Font = BOLD_FONT
+	statusLabel.TextSize = MIN_TEXT_SIZE
 	statusLabel.TextColor3 = (maxCraftable > 0) and Color3.fromRGB(150, 220, 150) or Color3.fromRGB(220, 150, 150)
 	statusLabel.TextXAlignment = Enum.TextXAlignment.Left
-	statusLabel.ZIndex = 104
+	statusLabel.ZIndex = 202
 	statusLabel.Parent = statusBar
 
-	-- COMPACT CONTROLS (tighter layout)
+	-- INPUT CONTROLS (above craft button) - spans full width
 	local controls = Instance.new("Frame")
 	controls.Name = "Controls"
-	controls.Size = UDim2.new(1, 0, 0, 28)  -- Reduced from 32 to 28
+	controls.Size = UDim2.new(1, 0, 0, controlsHeight)  -- Full width, larger controls
 	controls.BackgroundTransparency = 1
-	controls.ZIndex = 103
-	controls.LayoutOrder = 100
-	controls.Parent = content
+	controls.ZIndex = 201  -- Above bottom section base
+	controls.LayoutOrder = 2
+	controls.Parent = bottomSection
 
+	-- Input controls layout - left to right: -, amount, +, max
+	local controlsLayout = Instance.new("UIListLayout")
+	controlsLayout.FillDirection = Enum.FillDirection.Horizontal
+	controlsLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+	controlsLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+	controlsLayout.Padding = UDim.new(0, 8)  -- Consistent spacing between controls
+	controlsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	controlsLayout.Parent = controls
+
+	-- 1. Minus button (leftmost) - matching inventory slot styling
 	local minusBtn = Instance.new("TextButton")
 	minusBtn.Name = "Minus"
-	minusBtn.Size = UDim2.new(0, 28, 1, 0)
-	minusBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+	minusBtn.Size = UDim2.new(0, 56, 0, 56)  -- Matching inventory slot size
+	minusBtn.BackgroundColor3 = CRAFTING_CONFIG.SLOT_BG_COLOR
+	minusBtn.BackgroundTransparency = CRAFTING_CONFIG.SLOT_BG_TRANSPARENCY
 	minusBtn.BorderSizePixel = 0
-	minusBtn.Font = Enum.Font.GothamBold
-	minusBtn.TextSize = 14
+	minusBtn.Font = BOLD_FONT
+	minusBtn.TextSize = MIN_TEXT_SIZE
 	minusBtn.TextColor3 = CRAFTING_CONFIG.TEXT_COLOR
 	minusBtn.Text = "−"
 	minusBtn.AutoButtonColor = false
-	minusBtn.ZIndex = 104
+	minusBtn.ZIndex = 202
+	minusBtn.LayoutOrder = 1
 	minusBtn.Parent = controls
 
 	local minusCorner = Instance.new("UICorner")
-	minusCorner.CornerRadius = UDim.new(0, 4)
+	minusCorner.CornerRadius = UDim.new(0, 4)  -- Matching inventory corner radius
 	minusCorner.Parent = minusBtn
+
+	-- Background image matching inventory
+	local minusBgImage = Instance.new("ImageLabel")
+	minusBgImage.Name = "BackgroundImage"
+	minusBgImage.Size = UDim2.new(1, 0, 1, 0)
+	minusBgImage.Position = UDim2.new(0, 0, 0, 0)
+	minusBgImage.BackgroundTransparency = 1
+	minusBgImage.Image = "rbxassetid://82824299358542"
+	minusBgImage.ImageTransparency = 0.6
+	minusBgImage.ScaleType = Enum.ScaleType.Fit
+	minusBgImage.ZIndex = 1
+	minusBgImage.Parent = minusBtn
+
+	-- Border matching inventory
+	local minusBorder = Instance.new("UIStroke")
+	minusBorder.Color = CRAFTING_CONFIG.BORDER_COLOR
+	minusBorder.Thickness = 2
+	minusBorder.Transparency = 0
+	minusBorder.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	minusBorder.Parent = minusBtn
 
 	-- Add press animation
 	self:AddButtonPressAnimation(minusBtn)
 
+	-- 2. Amount textbox - matching inventory slot styling
 	local qtyBox = Instance.new("TextBox")
 	qtyBox.Name = "Quantity"
-	qtyBox.Size = UDim2.new(0, 54, 1, 0)
-	qtyBox.Position = UDim2.new(0, 32, 0, 0)
-	qtyBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+	qtyBox.Size = UDim2.new(0, 80, 0, 56)  -- Matching inventory slot height
+	qtyBox.BackgroundColor3 = CRAFTING_CONFIG.SLOT_BG_COLOR
+	qtyBox.BackgroundTransparency = CRAFTING_CONFIG.SLOT_BG_TRANSPARENCY
 	qtyBox.BorderSizePixel = 0
-	qtyBox.Font = Enum.Font.GothamBold
-	qtyBox.TextSize = 12
+	qtyBox.Font = BOLD_FONT
+	qtyBox.TextSize = MIN_TEXT_SIZE
 	qtyBox.TextColor3 = CRAFTING_CONFIG.TEXT_COLOR
 	qtyBox.Text = "1"
 	qtyBox.ClearTextOnFocus = false
 	qtyBox.TextXAlignment = Enum.TextXAlignment.Center
-	qtyBox.ZIndex = 104
+	qtyBox.ZIndex = 202
+	qtyBox.LayoutOrder = 2
 	qtyBox.Parent = controls
 
 	local qtyCorner = Instance.new("UICorner")
-	qtyCorner.CornerRadius = UDim.new(0, 4)
+	qtyCorner.CornerRadius = UDim.new(0, 4)  -- Matching inventory corner radius
 	qtyCorner.Parent = qtyBox
 
+	-- Background image matching inventory
+	local qtyBgImage = Instance.new("ImageLabel")
+	qtyBgImage.Name = "BackgroundImage"
+	qtyBgImage.Size = UDim2.new(1, 0, 1, 0)
+	qtyBgImage.Position = UDim2.new(0, 0, 0, 0)
+	qtyBgImage.BackgroundTransparency = 1
+	qtyBgImage.Image = "rbxassetid://82824299358542"
+	qtyBgImage.ImageTransparency = 0.6
+	qtyBgImage.ScaleType = Enum.ScaleType.Fit
+	qtyBgImage.ZIndex = 1
+	qtyBgImage.Parent = qtyBox
+
+	-- Border matching inventory
+	local qtyBorder = Instance.new("UIStroke")
+	qtyBorder.Color = CRAFTING_CONFIG.BORDER_COLOR
+	qtyBorder.Thickness = 2
+	qtyBorder.Transparency = 0
+	qtyBorder.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	qtyBorder.Parent = qtyBox
+
+	-- 3. Plus button - matching inventory slot styling
 	local plusBtn = Instance.new("TextButton")
 	plusBtn.Name = "Plus"
-	plusBtn.Size = UDim2.new(0, 28, 1, 0)
-	plusBtn.Position = UDim2.new(0, 88, 0, 0)
-	plusBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+	plusBtn.Size = UDim2.new(0, 56, 0, 56)  -- Matching inventory slot size
+	plusBtn.BackgroundColor3 = CRAFTING_CONFIG.SLOT_BG_COLOR
+	plusBtn.BackgroundTransparency = CRAFTING_CONFIG.SLOT_BG_TRANSPARENCY
 	plusBtn.BorderSizePixel = 0
-	plusBtn.Font = Enum.Font.GothamBold
-	plusBtn.TextSize = 14
+	plusBtn.Font = BOLD_FONT
+	plusBtn.TextSize = MIN_TEXT_SIZE
 	plusBtn.TextColor3 = CRAFTING_CONFIG.TEXT_COLOR
 	plusBtn.Text = "+"
 	plusBtn.AutoButtonColor = false
-	plusBtn.ZIndex = 104
+	plusBtn.ZIndex = 202
+	plusBtn.LayoutOrder = 3
 	plusBtn.Parent = controls
 
 	local plusCorner = Instance.new("UICorner")
-	plusCorner.CornerRadius = UDim.new(0, 4)
+	plusCorner.CornerRadius = UDim.new(0, 4)  -- Matching inventory corner radius
 	plusCorner.Parent = plusBtn
+
+	-- Background image matching inventory
+	local plusBgImage = Instance.new("ImageLabel")
+	plusBgImage.Name = "BackgroundImage"
+	plusBgImage.Size = UDim2.new(1, 0, 1, 0)
+	plusBgImage.Position = UDim2.new(0, 0, 0, 0)
+	plusBgImage.BackgroundTransparency = 1
+	plusBgImage.Image = "rbxassetid://82824299358542"
+	plusBgImage.ImageTransparency = 0.6
+	plusBgImage.ScaleType = Enum.ScaleType.Fit
+	plusBgImage.ZIndex = 1
+	plusBgImage.Parent = plusBtn
+
+	-- Border matching inventory
+	local plusBorder = Instance.new("UIStroke")
+	plusBorder.Color = CRAFTING_CONFIG.BORDER_COLOR
+	plusBorder.Thickness = 2
+	plusBorder.Transparency = 0
+	plusBorder.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	plusBorder.Parent = plusBtn
 
 	-- Add press animation
 	self:AddButtonPressAnimation(plusBtn)
 
+	-- 4. Max button (rightmost, takes remaining width) - matching inventory slot styling
+	-- Calculate remaining width: minus(56) + spacing(8) + amount(80) + spacing(8) + plus(56) + spacing(8) = 216px
 	local maxBtn = Instance.new("TextButton")
 	maxBtn.Name = "Max"
-	maxBtn.Size = UDim2.new(0, 44, 1, 0)
-	maxBtn.Position = UDim2.new(0, 120, 0, 0)
-	maxBtn.BackgroundColor3 = Color3.fromRGB(70, 140, 200)
+	maxBtn.Size = UDim2.new(1, -216, 0, 56)  -- Full width minus other buttons and spacing
+	maxBtn.BackgroundColor3 = CRAFTING_CONFIG.SLOT_BG_COLOR
+	maxBtn.BackgroundTransparency = CRAFTING_CONFIG.SLOT_BG_TRANSPARENCY
 	maxBtn.BorderSizePixel = 0
-	maxBtn.Font = Enum.Font.GothamBold
-	maxBtn.TextSize = 11
+	maxBtn.Font = BOLD_FONT
+	maxBtn.TextSize = MIN_TEXT_SIZE
 	maxBtn.TextColor3 = CRAFTING_CONFIG.TEXT_COLOR
 	maxBtn.Text = "Max"
 	maxBtn.AutoButtonColor = false
-	maxBtn.ZIndex = 104
+	maxBtn.ZIndex = 202
+	maxBtn.LayoutOrder = 4
 	maxBtn.Parent = controls
 
 	local maxCorner = Instance.new("UICorner")
-	maxCorner.CornerRadius = UDim.new(0, 4)
+	maxCorner.CornerRadius = UDim.new(0, 4)  -- Matching inventory corner radius
 	maxCorner.Parent = maxBtn
+
+	-- Background image matching inventory
+	local maxBgImage = Instance.new("ImageLabel")
+	maxBgImage.Name = "BackgroundImage"
+	maxBgImage.Size = UDim2.new(1, 0, 1, 0)
+	maxBgImage.Position = UDim2.new(0, 0, 0, 0)
+	maxBgImage.BackgroundTransparency = 1
+	maxBgImage.Image = "rbxassetid://82824299358542"
+	maxBgImage.ImageTransparency = 0.6
+	maxBgImage.ScaleType = Enum.ScaleType.Fit
+	maxBgImage.ZIndex = 1
+	maxBgImage.Parent = maxBtn
+
+	-- Border matching inventory
+	local maxBorder = Instance.new("UIStroke")
+	maxBorder.Color = CRAFTING_CONFIG.BORDER_COLOR
+	maxBorder.Thickness = 2
+	maxBorder.Transparency = 0
+	maxBorder.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	maxBorder.Parent = maxBtn
 
 	-- Add press animation
 	self:AddButtonPressAnimation(maxBtn)
 
+	-- Craft button (below input controls) - matching inventory slot styling
 	local craftBtn = Instance.new("TextButton")
 	craftBtn.Name = "Craft"
-	craftBtn.Size = UDim2.new(1, -168, 1, 0)
-	craftBtn.Position = UDim2.new(0, 168, 0, 0)
+	craftBtn.Size = UDim2.new(1, 0, 0, 56)  -- Full width, matching inventory slot height
 	craftBtn.BackgroundColor3 = CRAFTING_CONFIG.CRAFT_BTN_COLOR
+	craftBtn.BackgroundTransparency = 0
 	craftBtn.BorderSizePixel = 0
-	craftBtn.Font = Enum.Font.GothamBold
-	craftBtn.TextSize = 12
+	craftBtn.Font = BOLD_FONT  -- Matching other buttons
+	craftBtn.TextSize = MIN_TEXT_SIZE  -- Matching inventory minimum text size
 	craftBtn.TextColor3 = CRAFTING_CONFIG.TEXT_COLOR
 	craftBtn.Text = "Craft"
 	craftBtn.AutoButtonColor = false
-	craftBtn.ZIndex = 104
-	craftBtn.Parent = controls
+	craftBtn.ZIndex = 202
+	craftBtn.LayoutOrder = 3  -- Below input controls
+	craftBtn.Parent = bottomSection
 
 	local craftCorner = Instance.new("UICorner")
-	craftCorner.CornerRadius = UDim.new(0, 4)
+	craftCorner.CornerRadius = UDim.new(0, 4)  -- Matching inventory corner radius
 	craftCorner.Parent = craftBtn
+
+	-- Border matching inventory (no green border)
+	local craftBorder = Instance.new("UIStroke")
+	craftBorder.Color = CRAFTING_CONFIG.BORDER_COLOR
+	craftBorder.Thickness = 2
+	craftBorder.Transparency = 0
+	craftBorder.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	craftBorder.Parent = craftBtn
+
+	-- Don't use custom font for craft button (regular font)
+	-- FontBinder.apply(craftBtn, CUSTOM_FONT_NAME)
 
 	-- Add press animation
 	self:AddButtonPressAnimation(craftBtn)
@@ -1559,13 +1685,31 @@ function CraftingPanel:CreateRecipeDetailPage(group, canCraft)
 		craftBtn.BackgroundColor3 = (canAny and selectedQty > 0) and CRAFTING_CONFIG.CRAFT_BTN_COLOR or CRAFTING_CONFIG.CRAFT_BTN_DISABLED_COLOR
 
 		minusBtn.Active = selectedQty > 1
-		minusBtn.BackgroundColor3 = (selectedQty > 1) and Color3.fromRGB(60, 60, 60) or Color3.fromRGB(45, 45, 45)
+		if selectedQty > 1 then
+			minusBtn.BackgroundColor3 = CRAFTING_CONFIG.SLOT_BG_COLOR
+			minusBtn.BackgroundTransparency = CRAFTING_CONFIG.SLOT_BG_TRANSPARENCY
+		else
+			minusBtn.BackgroundColor3 = CRAFTING_CONFIG.SLOT_DISABLED_COLOR
+			minusBtn.BackgroundTransparency = CRAFTING_CONFIG.SLOT_DISABLED_TRANSPARENCY
+		end
 
 		plusBtn.Active = selectedQty < maxCraftable
-		plusBtn.BackgroundColor3 = (selectedQty < maxCraftable) and Color3.fromRGB(60, 60, 60) or Color3.fromRGB(45, 45, 45)
+		if selectedQty < maxCraftable then
+			plusBtn.BackgroundColor3 = CRAFTING_CONFIG.SLOT_BG_COLOR
+			plusBtn.BackgroundTransparency = CRAFTING_CONFIG.SLOT_BG_TRANSPARENCY
+		else
+			plusBtn.BackgroundColor3 = CRAFTING_CONFIG.SLOT_DISABLED_COLOR
+			plusBtn.BackgroundTransparency = CRAFTING_CONFIG.SLOT_DISABLED_TRANSPARENCY
+		end
 
 		maxBtn.Active = maxCraftable > 1 and selectedQty ~= maxCraftable
-		maxBtn.BackgroundColor3 = (maxCraftable > 1 and selectedQty ~= maxCraftable) and Color3.fromRGB(70, 140, 200) or Color3.fromRGB(50, 50, 50)
+		if maxCraftable > 1 and selectedQty ~= maxCraftable then
+			maxBtn.BackgroundColor3 = CRAFTING_CONFIG.SLOT_BG_COLOR
+			maxBtn.BackgroundTransparency = CRAFTING_CONFIG.SLOT_BG_TRANSPARENCY
+		else
+			maxBtn.BackgroundColor3 = CRAFTING_CONFIG.SLOT_DISABLED_COLOR
+			maxBtn.BackgroundTransparency = CRAFTING_CONFIG.SLOT_DISABLED_TRANSPARENCY
+		end
 
 		qtyBox.Text = tostring(selectedQty)
 
@@ -1590,31 +1734,37 @@ function CraftingPanel:CreateRecipeDetailPage(group, canCraft)
 	self._detailPageRefreshCallback = refreshUI
 	self.activeTooltipRecipe = selectedRecipe
 
-	-- Hover effects
+	-- Hover effects - matching inventory slot hover styling
 	minusBtn.MouseEnter:Connect(function()
 		if minusBtn.Active then
-			minusBtn.BackgroundColor3 = Color3.fromRGB(75, 75, 75)
+			minusBtn.BackgroundColor3 = CRAFTING_CONFIG.SLOT_HOVER_COLOR
 		end
 	end)
 	minusBtn.MouseLeave:Connect(function()
+		minusBtn.BackgroundColor3 = CRAFTING_CONFIG.SLOT_BG_COLOR
+		minusBtn.BackgroundTransparency = CRAFTING_CONFIG.SLOT_BG_TRANSPARENCY
 		refreshUI()
 	end)
 
 	plusBtn.MouseEnter:Connect(function()
 		if plusBtn.Active then
-			plusBtn.BackgroundColor3 = Color3.fromRGB(75, 75, 75)
+			plusBtn.BackgroundColor3 = CRAFTING_CONFIG.SLOT_HOVER_COLOR
 		end
 	end)
 	plusBtn.MouseLeave:Connect(function()
+		plusBtn.BackgroundColor3 = CRAFTING_CONFIG.SLOT_BG_COLOR
+		plusBtn.BackgroundTransparency = CRAFTING_CONFIG.SLOT_BG_TRANSPARENCY
 		refreshUI()
 	end)
 
 	maxBtn.MouseEnter:Connect(function()
 		if maxBtn.Active then
-			maxBtn.BackgroundColor3 = Color3.fromRGB(80, 150, 210)
+			maxBtn.BackgroundColor3 = CRAFTING_CONFIG.SLOT_HOVER_COLOR
 		end
 	end)
 	maxBtn.MouseLeave:Connect(function()
+		maxBtn.BackgroundColor3 = CRAFTING_CONFIG.SLOT_BG_COLOR
+		maxBtn.BackgroundTransparency = CRAFTING_CONFIG.SLOT_BG_TRANSPARENCY
 		refreshUI()
 	end)
 
@@ -1690,14 +1840,14 @@ end
 ]]
 
 function CraftingPanel:CreateVariantOption(recipe, canCraft, isSelected, variantIndex)
-	-- Calculate height based on number of ingredients (44px per ingredient + spacing)
+	-- Calculate height based on number of ingredients (56px per ingredient + spacing)
 	local ingredientCount = #recipe.inputs
-	local buttonHeight = (44 * ingredientCount) + (4 * (ingredientCount - 1)) + 8  -- 8px padding
+	local buttonHeight = (56 * ingredientCount) + (5 * (ingredientCount - 1)) + 16  -- 8px top + 8px bottom padding
 
-	-- Button sized to fit standard 44×44 inventory slots (ultra-compact)
+	-- Button sized to fit standard 56×56 inventory slots
 	local button = Instance.new("TextButton")
 	button.Name = "Variant_" .. variantIndex
-	button.Size = UDim2.new(0, 48, 0, buttonHeight)  -- Ultra-compact: 44px slots + 4px margin
+	button.Size = UDim2.new(0, 72, 0, buttonHeight)  -- 56px slots + 8px left + 8px right margin
 	button.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
 	button.BorderSizePixel = 0
 	button.AutoButtonColor = false
@@ -1705,43 +1855,29 @@ function CraftingPanel:CreateVariantOption(recipe, canCraft, isSelected, variant
 	button.ZIndex = 104
 
 	local btnCorner = Instance.new("UICorner")
-	btnCorner.CornerRadius = UDim.new(0, 6)
+	btnCorner.CornerRadius = UDim.new(0, 4)  -- Matching inventory corner radius
 	btnCorner.Parent = button
 
-	-- Border (different for selected/available/unavailable)
+	-- Border (no green border, standard inventory border)
 	local btnBorder = Instance.new("UIStroke")
 	btnBorder.Name = "BorderStroke"
 	if isSelected then
-		btnBorder.Color = Color3.fromRGB(80, 180, 80)
+		btnBorder.Color = CRAFTING_CONFIG.BORDER_COLOR
 		btnBorder.Thickness = 3
 		btnBorder.Transparency = 0
-	elseif canCraft then
-		btnBorder.Color = Color3.fromRGB(70, 70, 70)
-		btnBorder.Thickness = 1
-		btnBorder.Transparency = 0.6
 	else
-		btnBorder.Color = Color3.fromRGB(180, 60, 60)
-		btnBorder.Thickness = 1
-		btnBorder.Transparency = 0.7
+		btnBorder.Color = CRAFTING_CONFIG.BORDER_COLOR
+		btnBorder.Thickness = 2
+		btnBorder.Transparency = 0
 	end
+	btnBorder.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	btnBorder.Parent = button
 
-	-- Selection bar for extra clarity
-	local selectionBar = Instance.new("Frame")
-	selectionBar.Name = "SelectionBar"
-	selectionBar.Size = UDim2.new(1, 0, 0, 3)
-	selectionBar.Position = UDim2.new(0, 0, 0, 0)
-	selectionBar.BackgroundColor3 = Color3.fromRGB(80, 180, 80)
-	selectionBar.BorderSizePixel = 0
-	selectionBar.Visible = isSelected
-	selectionBar.ZIndex = 106
-	selectionBar.Parent = button
-
-	-- Container for ingredients (vertical stack, ultra-compact with no padding)
+	-- Container for ingredients (vertical stack)
 	local ingredientsContainer = Instance.new("Frame")
 	ingredientsContainer.Name = "Ingredients"
-	ingredientsContainer.Size = UDim2.new(1, 0, 1, -6)  -- No horizontal padding, minimal vertical padding
-	ingredientsContainer.Position = UDim2.new(0, 0, 0, 3)  -- Absolute positioning for consistent 3px top padding
+	ingredientsContainer.Size = UDim2.new(1, -16, 1, -16)  -- 8px padding on all sides
+	ingredientsContainer.Position = UDim2.new(0, 8, 0, 8)
 	ingredientsContainer.AnchorPoint = Vector2.new(0, 0)
 	ingredientsContainer.BackgroundTransparency = 1
 	ingredientsContainer.ZIndex = 105
@@ -1750,11 +1886,11 @@ function CraftingPanel:CreateVariantOption(recipe, canCraft, isSelected, variant
 	local ingredientsLayout = Instance.new("UIListLayout")
 	ingredientsLayout.FillDirection = Enum.FillDirection.Vertical
 	ingredientsLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-	ingredientsLayout.VerticalAlignment = Enum.VerticalAlignment.Center
-	ingredientsLayout.Padding = UDim.new(0, 4)
+	ingredientsLayout.VerticalAlignment = Enum.VerticalAlignment.Top
+	ingredientsLayout.Padding = UDim.new(0, 5)  -- Matching inventory slot spacing
 	ingredientsLayout.Parent = ingredientsContainer
 
-	-- Show each ingredient as full 44×44 inventory slot (only if available)
+	-- Show each ingredient as full 56×56 inventory slot (only if available)
 	for i, input in ipairs(recipe.inputs) do
 		-- Check if player has enough of this ingredient
 		local playerCount = self.inventoryManager:CountItem(input.itemId)
@@ -1762,59 +1898,73 @@ function CraftingPanel:CreateVariantOption(recipe, canCraft, isSelected, variant
 			continue -- Skip ingredients that aren't available
 		end
 
-		-- Slot container (44×44 standard size)
+		-- Slot container (56×56 matching inventory exactly)
 		local slotFrame = Instance.new("Frame")
 		slotFrame.Name = "Slot_" .. i
-		slotFrame.Size = UDim2.new(0, 44, 0, 44)
-		slotFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+		slotFrame.Size = UDim2.new(0, 56, 0, 56)  -- Matching inventory slot size exactly
+		slotFrame.BackgroundColor3 = CRAFTING_CONFIG.SLOT_BG_COLOR
+		slotFrame.BackgroundTransparency = CRAFTING_CONFIG.SLOT_BG_TRANSPARENCY
 		slotFrame.BorderSizePixel = 0
 		slotFrame.ClipsDescendants = false
 		slotFrame.ZIndex = 105
 		slotFrame.Parent = ingredientsContainer
 
 		local slotCorner = Instance.new("UICorner")
-		slotCorner.CornerRadius = UDim.new(0, 6)
+		slotCorner.CornerRadius = UDim.new(0, 4)  -- Matching inventory corner radius
 		slotCorner.Parent = slotFrame
 
+		-- Background image matching inventory
+		local bgImage = Instance.new("ImageLabel")
+		bgImage.Name = "BackgroundImage"
+		bgImage.Size = UDim2.new(1, 0, 1, 0)
+		bgImage.Position = UDim2.new(0, 0, 0, 0)
+		bgImage.BackgroundTransparency = 1
+		bgImage.Image = "rbxassetid://82824299358542"
+		bgImage.ImageTransparency = 0.6
+		bgImage.ScaleType = Enum.ScaleType.Fit
+		bgImage.ZIndex = 1
+		bgImage.Parent = slotFrame
+
+		-- Border matching inventory (no green border)
+		local slotBorder = Instance.new("UIStroke")
+		slotBorder.Color = CRAFTING_CONFIG.BORDER_COLOR
+		slotBorder.Thickness = 2
+		slotBorder.Transparency = 0
+		slotBorder.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		slotBorder.Parent = slotFrame
+
+		-- Icon container for viewport
+		local iconContainer = Instance.new("Frame")
+		iconContainer.Name = "IconContainer"
+		iconContainer.Size = UDim2.new(1, 0, 1, 0)
+		iconContainer.Position = UDim2.new(0, 0, 0, 0)
+		iconContainer.BackgroundTransparency = 1
+		iconContainer.ZIndex = 3  -- Above background image
+		iconContainer.Parent = slotFrame
+
 		-- Create full-size viewport
-		local createdVariant = BlockViewportCreator.CreateBlockViewport(
-			slotFrame,
+		BlockViewportCreator.CreateBlockViewport(
+			iconContainer,
 			input.itemId,
 			UDim2.new(1, 0, 1, 0)
 		)
-		-- Raise child viewport/image above slot background
-		if createdVariant then
-			if createdVariant:IsA("ViewportFrame") or createdVariant:IsA("ImageLabel") then
-				createdVariant.ZIndex = slotFrame.ZIndex + 1
-			else
-				local childVP = createdVariant:FindFirstChildWhichIsA("ViewportFrame") or createdVariant:FindFirstChildWhichIsA("ImageLabel")
-				if childVP then
-					childVP.ZIndex = slotFrame.ZIndex + 1
-				end
-			end
-		end
 
-		-- Count badge (bottom-right like inventory)
+		-- Count badge (bottom-right like inventory, matching inventory style)
 		if input.count > 1 then
 			local countBadge = Instance.new("TextLabel")
 			countBadge.Name = "CountBadge"
-			countBadge.Size = UDim2.new(0, 24, 0, 16)
-			countBadge.Position = UDim2.new(1, -2, 1, -2)
+			countBadge.Size = UDim2.new(0, 40, 0, 20)  -- Matching inventory count label size
+			countBadge.Position = UDim2.new(1, -4, 1, -4)
 			countBadge.AnchorPoint = Vector2.new(1, 1)
-			countBadge.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-			countBadge.BackgroundTransparency = 0.3
-			countBadge.BorderSizePixel = 0
-			countBadge.Font = Enum.Font.GothamBold
-			countBadge.TextSize = 11
-			countBadge.TextColor3 = canCraft and CRAFTING_CONFIG.TEXT_COLOR or Color3.fromRGB(180, 100, 100)
-			countBadge.TextStrokeTransparency = 0.5
-			countBadge.Text = "×" .. input.count
-			countBadge.ZIndex = 107
+			countBadge.BackgroundTransparency = 1
+			countBadge.Font = BOLD_FONT
+			countBadge.TextSize = MIN_TEXT_SIZE
+			countBadge.TextColor3 = Color3.fromRGB(255, 255, 255)
+			countBadge.TextStrokeTransparency = 0.3
+			countBadge.Text = tostring(input.count)
+			countBadge.TextXAlignment = Enum.TextXAlignment.Right
+			countBadge.ZIndex = 5  -- Above viewport
 			countBadge.Parent = slotFrame
-
-			local badgeCorner = Instance.new("UICorner")
-			badgeCorner.CornerRadius = UDim.new(0, 3)
-			badgeCorner.Parent = countBadge
 		end
 	end
 
@@ -1847,47 +1997,48 @@ function CraftingPanel:CreateIngredientRow(input, canCraft, layoutOrder)
 
 	local row = Instance.new("Frame")
 	row.Name = "Ingredient_" .. input.itemId
-	row.Size = UDim2.new(1, 0, 0, 38)  -- More compact
-	row.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-	row.BackgroundTransparency = 0
+	row.Size = UDim2.new(1, 0, 0, 56)  -- Matching inventory slot height
+	row.BackgroundColor3 = CRAFTING_CONFIG.SLOT_BG_COLOR
+	row.BackgroundTransparency = CRAFTING_CONFIG.SLOT_BG_TRANSPARENCY
 	row.BorderSizePixel = 0
 	row.ZIndex = 103
 	row.LayoutOrder = layoutOrder
 
 	local rowCorner = Instance.new("UICorner")
-	rowCorner.CornerRadius = UDim.new(0, 4)
+	rowCorner.CornerRadius = UDim.new(0, 4)  -- Matching inventory corner radius
 	rowCorner.Parent = row
 
-	-- Left border indicator for status
-	local statusBar = Instance.new("Frame")
-	statusBar.Name = "StatusBar"
-	statusBar.Size = UDim2.new(0, 3, 1, 0)
-	statusBar.Position = UDim2.new(0, 0, 0, 0)
-	statusBar.BackgroundColor3 = hasEnough and CRAFTING_CONFIG.SLOT_CRAFTABLE_GLOW or CRAFTING_CONFIG.TEXT_ERROR
-	statusBar.BorderSizePixel = 0
-	statusBar.ZIndex = 104
-	statusBar.Parent = row
+	-- Background image matching inventory
+	local bgImage = Instance.new("ImageLabel")
+	bgImage.Name = "BackgroundImage"
+	bgImage.Size = UDim2.new(1, 0, 1, 0)
+	bgImage.Position = UDim2.new(0, 0, 0, 0)
+	bgImage.BackgroundTransparency = 1
+	bgImage.Image = "rbxassetid://82824299358542"
+	bgImage.ImageTransparency = 0.6
+	bgImage.ScaleType = Enum.ScaleType.Fit
+	bgImage.ZIndex = 1
+	bgImage.Parent = row
 
-	local barCorner = Instance.new("UICorner")
-	barCorner.CornerRadius = UDim.new(0, 4)
-	barCorner.Parent = statusBar
+	-- Border matching inventory (no green border, always standard)
+	local rowBorder = Instance.new("UIStroke")
+	rowBorder.Name = "Border"
+	rowBorder.Color = CRAFTING_CONFIG.BORDER_COLOR
+	rowBorder.Thickness = 2
+	rowBorder.Transparency = 0
+	rowBorder.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	rowBorder.Parent = row
 
-	-- Icon (compact size)
+	-- Icon (matching inventory slot size)
 	local iconContainer = Instance.new("Frame")
 	iconContainer.Name = "Icon"
-	iconContainer.Size = UDim2.new(0, 38, 0, 38)  -- Compact
-	iconContainer.Position = UDim2.new(0, 6, 0.5, 0)
+	iconContainer.Size = UDim2.new(0, 56, 0, 56)  -- Matching inventory slot size
+	iconContainer.Position = UDim2.new(0, 0, 0.5, 0)
 	iconContainer.AnchorPoint = Vector2.new(0, 0.5)
-	iconContainer.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-	iconContainer.BackgroundTransparency = 0
-	iconContainer.BorderSizePixel = 0
+	iconContainer.BackgroundTransparency = 1
 	iconContainer.ClipsDescendants = false
-	iconContainer.ZIndex = 104
+	iconContainer.ZIndex = 3  -- Above background image
 	iconContainer.Parent = row
-
-	local iconCorner = Instance.new("UICorner")
-	iconCorner.CornerRadius = UDim.new(0, 5)
-	iconCorner.Parent = iconContainer
 
 	-- Create viewport and ensure proper ZIndex
 	local viewport = BlockViewportCreator.CreateBlockViewport(
@@ -1918,34 +2069,38 @@ function CraftingPanel:CreateIngredientRow(input, canCraft, layoutOrder)
 
 	local nameLabel = Instance.new("TextLabel")
 	nameLabel.Name = "ItemName"
-	-- Left padding (6) + icon (38) + gap (6) = 50
-	nameLabel.Size = UDim2.new(1, -120, 1, 0)  -- Reserve ~50 left + 60 for right count + margins
-	nameLabel.Position = UDim2.new(0, 50, 0, 0)
+	-- Icon (56) + gap (8) = 64
+	nameLabel.Size = UDim2.new(1, -140, 1, 0)  -- Reserve 64 left + 60 for right count + margins
+	nameLabel.Position = UDim2.new(0, 64, 0, 0)
 	nameLabel.BackgroundTransparency = 1
-	nameLabel.Font = Enum.Font.Gotham
-	nameLabel.TextSize = 10  -- Slightly smaller for compact layout
+	nameLabel.Font = Enum.Font.Code
+	nameLabel.TextSize = MIN_TEXT_SIZE  -- Matching inventory minimum text size
 	nameLabel.TextColor3 = CRAFTING_CONFIG.TEXT_COLOR
 	nameLabel.Text = itemName
 	nameLabel.TextXAlignment = Enum.TextXAlignment.Left
-	nameLabel.ZIndex = 104
+	nameLabel.TextYAlignment = Enum.TextYAlignment.Center
+	nameLabel.ZIndex = 5  -- Above viewport
 	nameLabel.Parent = row
+	-- Don't use custom font for item name
 
 	-- Count: available/required (show actual item counts, not stacks)
 	local availableCount = self.inventoryManager:CountItem(input.itemId)
 	local requiredCount = input.count
 	local countLabel = Instance.new("TextLabel")
 	countLabel.Name = "Count"
-	countLabel.Size = UDim2.new(0, 56, 1, 0)  -- Slightly narrower
-	countLabel.Position = UDim2.new(1, -6, 0, 0)
-	countLabel.AnchorPoint = Vector2.new(1, 0)
+	countLabel.Size = UDim2.new(0, 60, 1, 0)
+	countLabel.Position = UDim2.new(1, -8, 0.5, 0)
+	countLabel.AnchorPoint = Vector2.new(1, 0.5)
 	countLabel.BackgroundTransparency = 1
-	countLabel.Font = Enum.Font.GothamBold
-	countLabel.TextSize = 10  -- Slightly smaller
+	countLabel.Font = Enum.Font.Code
+	countLabel.TextSize = MIN_TEXT_SIZE  -- Matching inventory minimum text size
 	countLabel.TextColor3 = hasEnough and CRAFTING_CONFIG.TEXT_SUCCESS or CRAFTING_CONFIG.TEXT_ERROR
 	countLabel.Text = string.format("%d/%d", availableCount, requiredCount)
 	countLabel.TextXAlignment = Enum.TextXAlignment.Right
-	countLabel.ZIndex = 104
+	countLabel.TextYAlignment = Enum.TextYAlignment.Center
+	countLabel.ZIndex = 5  -- Above viewport
 	countLabel.Parent = row
+	FontBinder.apply(countLabel, CUSTOM_FONT_NAME)
 
 	return row
 end

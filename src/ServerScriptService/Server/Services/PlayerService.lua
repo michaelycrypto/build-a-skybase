@@ -119,6 +119,12 @@ function PlayerService:OnPlayerAdded(player)
 				totalPlayTime = 0
 			},
 			inventory = {},
+			equippedArmor = {
+				helmet = nil,
+				chestplate = nil,
+				leggings = nil,
+				boots = nil
+			},
 			dungeonData = {
 				mobSpawnerSlots = {}
 			},
@@ -146,6 +152,7 @@ function PlayerService:OnPlayerAdded(player)
 		manaCrystals = playerData.profile.manaCrystals or 0,
 		statistics = playerData.statistics,
 		inventory = playerData.inventory,
+		equippedArmor = playerData.equippedArmor or {helmet = nil, chestplate = nil, leggings = nil, boots = nil},
 		dungeonData = playerData.dungeonData,
 		dailyRewards = playerData.dailyRewards,
 		settings = playerData.settings,
@@ -173,6 +180,27 @@ function PlayerService:OnPlayerAdded(player)
 		self._logger.Error("❌ PlayerInventoryService NOT AVAILABLE! Cannot create inventory!")
 	end
 
+	-- Load equipped armor data
+	if self.Deps and self.Deps.ArmorEquipService then
+		self._logger.Debug("Initializing armor for", player.Name)
+		-- Initialize empty armor slots first
+		self.Deps.ArmorEquipService:OnPlayerAdded(player)
+
+		-- Load saved armor data if exists
+		if playerData.equippedArmor then
+			self._logger.Info("Loading saved armor data for", player.Name)
+			self.Deps.ArmorEquipService:LoadArmor(player, playerData.equippedArmor)
+		else
+			self._logger.Info("No saved armor found for", player.Name)
+			-- Sync empty state to client
+			task.defer(function()
+				self.Deps.ArmorEquipService:SyncArmorToClient(player)
+			end)
+		end
+	else
+		self._logger.Warn("ArmorEquipService not available, cannot load armor")
+	end
+
 	-- Wait a moment for everything to load, then notify other services
 	task.spawn(function()
 		task.wait(1)
@@ -190,8 +218,13 @@ end
 function PlayerService:OnPlayerRemoving(player)
 	self._logger.Info("Player leaving", {playerName = player.Name})
 
-	-- Save player data
+	-- Save player data (including armor)
 	self:SavePlayerData(player)
+
+	-- Clean up ArmorEquipService data
+	if self.Deps.ArmorEquipService then
+		self.Deps.ArmorEquipService:OnPlayerRemoving(player)
+	end
 
 	-- Save to DataStore
 	if self.Deps.PlayerDataStoreService then
@@ -367,6 +400,21 @@ function PlayerService:SavePlayerData(player)
 			local inventoryData = self.Deps.PlayerInventoryService:SerializeInventory(player)
 			if inventoryData then
 				self.Deps.PlayerDataStoreService:SaveInventoryData(player, inventoryData)
+			end
+		end
+
+		-- Sync armor data
+		if self.Deps.ArmorEquipService then
+			local armorData = self.Deps.ArmorEquipService:SerializeArmor(player)
+			if armorData then
+				self.Deps.PlayerDataStoreService:SaveArmorData(player, armorData)
+				self._logger.Debug("Saved armor data", {
+					playerName = player.Name,
+					helmet = armorData.helmet,
+					chestplate = armorData.chestplate,
+					leggings = armorData.leggings,
+					boots = armorData.boots
+				})
 			end
 		end
 

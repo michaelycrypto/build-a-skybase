@@ -1,40 +1,63 @@
 --[[
 	ToolConfig.lua
-	Basic Minecraft-style tool definitions without durability.
-	Provides helpers to map itemIds to BlockProperties tool type/tier.
+	Tool configuration - reads from ItemDefinitions.lua
+
+	This file provides the API that other systems use.
+	All tool data is defined in ItemDefinitions.lua
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ItemDefinitions = require(ReplicatedStorage.Configs.ItemDefinitions)
 local BlockProperties = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockProperties)
 
 local ToolConfig = {}
 
--- Reserve itemId range ≥ 1001 for tools to avoid block ID collision (0-29 used by blocks)
-ToolConfig.Items = {
-	-- Pickaxes
-	[1001] = {name = "Wood Pickaxe",     icon = "⛏️", image = "rbxassetid://121308304464747", toolType = BlockProperties.ToolType.PICKAXE, tier = BlockProperties.ToolTier.WOOD},
-	[1002] = {name = "Stone Pickaxe",    icon = "⛏️", image = "rbxassetid://109725505547962", toolType = BlockProperties.ToolType.PICKAXE, tier = BlockProperties.ToolTier.STONE},
-	[1003] = {name = "Iron Pickaxe",     icon = "⛏️", image = "rbxassetid://91977238449226", toolType = BlockProperties.ToolType.PICKAXE, tier = BlockProperties.ToolTier.IRON},
-	[1004] = {name = "Diamond Pickaxe",  icon = "⛏️", image = "rbxassetid://126350747925266", toolType = BlockProperties.ToolType.PICKAXE, tier = BlockProperties.ToolTier.DIAMOND},
-
-	-- Axes
-	[1011] = {name = "Wood Axe",         icon = "🪓", image = "rbxassetid://105650152333670", toolType = BlockProperties.ToolType.AXE, tier = BlockProperties.ToolTier.WOOD},
-	[1012] = {name = "Stone Axe",        icon = "🪓", image = "rbxassetid://82378756513596", toolType = BlockProperties.ToolType.AXE, tier = BlockProperties.ToolTier.STONE},
-	[1013] = {name = "Iron Axe",         icon = "🪓", image = "rbxassetid://100343121836924", toolType = BlockProperties.ToolType.AXE, tier = BlockProperties.ToolTier.IRON},
-	[1014] = {name = "Diamond Axe",      icon = "🪓", image = "rbxassetid://127284013511937", toolType = BlockProperties.ToolType.AXE, tier = BlockProperties.ToolTier.DIAMOND},
-
-	-- Shovels
-	[1021] = {name = "Wood Shovel",      icon = "🛠️", image = "rbxassetid://87371798799110", toolType = BlockProperties.ToolType.SHOVEL, tier = BlockProperties.ToolTier.WOOD},
-	[1022] = {name = "Stone Shovel",     icon = "🛠️", image = "rbxassetid://97804687989430", toolType = BlockProperties.ToolType.SHOVEL, tier = BlockProperties.ToolTier.STONE},
-	[1023] = {name = "Iron Shovel",      icon = "🛠️", image = "rbxassetid://98887488838388", toolType = BlockProperties.ToolType.SHOVEL, tier = BlockProperties.ToolTier.IRON},
-	[1024] = {name = "Diamond Shovel",   icon = "🛠️", image = "rbxassetid://82030710320351", toolType = BlockProperties.ToolType.SHOVEL, tier = BlockProperties.ToolTier.DIAMOND},
-
-	-- Swords
-	[1041] = {name = "Wood Sword",       icon = "🗡️", image = "rbxassetid://74762524011845", toolType = BlockProperties.ToolType.SWORD, tier = BlockProperties.ToolTier.WOOD},
-	[1042] = {name = "Stone Sword",      icon = "🗡️", image = "rbxassetid://80451498258502", toolType = BlockProperties.ToolType.SWORD, tier = BlockProperties.ToolTier.STONE},
-	[1043] = {name = "Iron Sword",       icon = "🗡️", image = "rbxassetid://80622149476148", toolType = BlockProperties.ToolType.SWORD, tier = BlockProperties.ToolTier.IRON},
-	[1044] = {name = "Diamond Sword",    icon = "🗡️", image = "rbxassetid://87802001016187", toolType = BlockProperties.ToolType.SWORD, tier = BlockProperties.ToolTier.DIAMOND},
+-- Tool type icons
+local TOOL_ICONS = {
+	pickaxe = "⛏️",
+	axe = "🪓",
+	shovel = "🛠️",
+	sword = "🗡️",
+	bow = "🏹",
+	arrow = "🏹",
 }
+
+-- Build Items table from ItemDefinitions
+ToolConfig.Items = {}
+
+for key, tool in pairs(ItemDefinitions.Tools) do
+	ToolConfig.Items[tool.id] = {
+		name = tool.name,
+		icon = TOOL_ICONS[tool.toolType] or "🔧",
+		image = tool.texture,
+		toolType = BlockProperties.ToolType[tool.toolType:upper()] or tool.toolType,
+		tier = tool.tier,
+	}
+end
+
+-- Tier colors from ItemDefinitions
+ToolConfig.TierColors = {}
+for tier, color in pairs(ItemDefinitions.TierColors) do
+	-- Map tier number to BlockProperties.ToolTier
+	local tierKey = ItemDefinitions.TierNames[tier]
+	if tierKey and BlockProperties.ToolTier[tierKey:upper()] then
+		ToolConfig.TierColors[BlockProperties.ToolTier[tierKey:upper()]] = color
+	end
+end
+
+-- Tier names
+ToolConfig.TierNames = {}
+for tier, name in pairs(ItemDefinitions.TierNames) do
+	local tierKey = name:upper()
+	if BlockProperties.ToolTier[tierKey] then
+		ToolConfig.TierNames[BlockProperties.ToolTier[tierKey]] = name
+	end
+end
+ToolConfig.TierNames[BlockProperties.ToolTier.NONE] = "None"
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- API FUNCTIONS
+-- ═══════════════════════════════════════════════════════════════════════════
 
 function ToolConfig.IsTool(itemId)
 	return ToolConfig.Items[itemId] ~= nil
@@ -44,7 +67,6 @@ function ToolConfig.GetToolInfo(itemId)
 	return ToolConfig.Items[itemId]
 end
 
--- Returns toolType (string) and toolTier (number) for BlockProperties
 function ToolConfig.GetBlockProps(itemId)
 	local def = ToolConfig.Items[itemId]
 	if not def then
@@ -53,6 +75,32 @@ function ToolConfig.GetBlockProps(itemId)
 	return def.toolType, def.tier
 end
 
+function ToolConfig.GetTierColor(tier)
+	return ToolConfig.TierColors[tier] or Color3.fromRGB(150, 150, 150)
+end
+
+function ToolConfig.GetTierName(tier)
+	return ToolConfig.TierNames[tier] or "Unknown"
+end
+
+function ToolConfig.GetToolsByType(toolType)
+	local tools = {}
+	for itemId, tool in pairs(ToolConfig.Items) do
+		if tool.toolType == toolType then
+			tools[itemId] = tool
+		end
+	end
+	return tools
+end
+
+function ToolConfig.GetToolsByTier(tier)
+	local tools = {}
+	for itemId, tool in pairs(ToolConfig.Items) do
+		if tool.tier == tier then
+			tools[itemId] = tool
+		end
+	end
+	return tools
+end
+
 return ToolConfig
-
-

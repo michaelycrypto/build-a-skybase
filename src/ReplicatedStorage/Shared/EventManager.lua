@@ -6,7 +6,21 @@
 --]]
 
 local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
 local Logger = require(game:GetService("ReplicatedStorage").Shared.Logger)
+
+local HIT_CONFIRM_SOUNDS = {"hitConfirm1", "hitConfirm2", "hitConfirm3"}
+
+local function playRandomHitSound(managers)
+	if not (managers and managers.SoundManager and managers.SoundManager.PlaySFX) then
+		return
+	end
+	if #HIT_CONFIRM_SOUNDS == 0 then
+		return
+	end
+	local index = math.random(1, #HIT_CONFIRM_SOUNDS)
+	managers.SoundManager:PlaySFX(HIT_CONFIRM_SOUNDS[index])
+end
 
 local EventManager = {}
 EventManager.__index = EventManager
@@ -61,6 +75,45 @@ function EventManager:CreateClientEventConfig(managers)
 						(errorData and errorData.message) or "Teleport failed.",
 						4
 					)
+				end
+			end
+		},
+
+		-- Combat feedback events
+			{
+				name = "PlayerDamaged",
+				handler = function(data)
+					local localPlayer = Players.LocalPlayer
+					if not (localPlayer and data and data.attackerUserId == localPlayer.UserId) then
+						return
+					end
+					playRandomHitSound(managers)
+				end
+			},
+			{
+				name = "MobDamaged",
+				handler = function(data)
+					if not data then return end
+					-- Play swing animation for the attacker (visible to all players)
+					if data.attackerUserId and managers.ToolAnimationController and managers.ToolAnimationController.PlaySwingForUserId then
+						managers.ToolAnimationController:PlaySwingForUserId(data.attackerUserId)
+					end
+					-- Play hit sound only for local player who attacked
+					local localPlayer = Players.LocalPlayer
+					if localPlayer and data.attackerUserId == localPlayer.UserId then
+						playRandomHitSound(managers)
+					end
+				end
+			},
+		{
+			name = "PlayerSwordSwing",
+			handler = function(data)
+				-- Play swing animation for remote players only (local player already plays via direct input)
+				local localPlayer = Players.LocalPlayer
+				if data and data.userId and localPlayer and data.userId ~= localPlayer.UserId then
+					if managers.ToolAnimationController and managers.ToolAnimationController.PlaySwingForUserId then
+						managers.ToolAnimationController:PlaySwingForUserId(data.userId)
+					end
 				end
 			end
 		},
@@ -272,9 +325,13 @@ function EventManager:CreateClientEventConfig(managers)
 		{
 			name = "PlayerPunched",
 			handler = function(data)
-				-- Trigger punch animation on client
-				if managers.ToolAnimationController and managers.ToolAnimationController.PlaySwing then
-					managers.ToolAnimationController:PlaySwing()
+				-- Trigger punch animation for remote players only (local player already plays via direct input)
+				local localPlayer = Players.LocalPlayer
+				local userId = data and data.userId
+				if userId and localPlayer and userId ~= localPlayer.UserId then
+					if managers.ToolAnimationController and managers.ToolAnimationController.PlaySwingForUserId then
+						managers.ToolAnimationController:PlaySwingForUserId(userId)
+					end
 				end
 			end
 		}
@@ -313,6 +370,8 @@ local EVENT_DEFINITIONS = {
 	CraftRecipeBatchResult = {"any"}, -- server->client: {recipeId:string, acceptedCount:number, toCursor:boolean, outputItemId:number, outputPerCraft:number}
     -- Spawner/mob/tooling events removed
     AttackMob = {"any"}, -- {entityId:string, damage:number}
+	-- Ranged combat
+	BowShoot = {"any"}, -- {origin:Vector3, direction:Vector3, charge:number, slotIndex:number?}
 
 	-- Server-to-client events (with parameters)
 	PlayerDataUpdated = {"any"}, -- playerData
@@ -332,7 +391,7 @@ local EVENT_DEFINITIONS = {
     MobSpawned = {"any"}, -- {entityId:string, mobType:string, ...}
     MobBatchUpdate = {"any"}, -- {mobs:table}
     MobDespawned = {"any"}, -- {entityId:string}
-    MobDamaged = {"any"}, -- {entityId:string, health:number}
+    MobDamaged = {"any"}, -- {entityId:string, health:number, maxHealth:number, attackerUserId:number?}
     MobDied = {"any"}, -- {entityId:string}
 	ShowEmote = {"any", "any"}, -- targetPlayer, emoteName
 	RemoveEmote = {"any"}, -- targetPlayer
@@ -545,13 +604,22 @@ function EventManager:CreateServerEventConfig(services)
 				end
 			end
 		},
+		{
+			name = "RequestTeleportToHub",
+			handler = function(player)
+				print("[EventManager] Server received RequestTeleportToHub from", player and player.Name)
+				if services.CrossPlaceTeleportService and services.CrossPlaceTeleportService.TeleportToHub then
+					services.CrossPlaceTeleportService:TeleportToHub(player)
+				end
+			end
+		},
 		-- World management (lobby)
 		{
 			name = "RequestWorldsList",
-			handler = function(player)
+			handler = function(player, data)
 				print("[EventManager] Server received RequestWorldsList from", player and player.Name)
 				if services.WorldsListService and services.WorldsListService.SendWorldsList then
-					services.WorldsListService:SendWorldsList(player)
+					services.WorldsListService:SendWorldsList(player, data)
 				end
 			end
 		},
@@ -584,6 +652,14 @@ function EventManager:CreateServerEventConfig(services)
 				-- Spawn the player at land spawn once ready
 				if services.SpawnService and services.SpawnService.OnClientReady then
 					services.SpawnService:OnClientReady(player)
+				end
+			end
+		},
+		{
+			name = "ClientLoadingComplete",
+			handler = function(player)
+				if services.VoxelWorldService and services.VoxelWorldService.OnClientLoadingComplete then
+					services.VoxelWorldService:OnClientLoadingComplete(player)
 				end
 			end
 		},
@@ -800,6 +876,14 @@ function EventManager:CreateServerEventConfig(services)
 			handler = function(player)
 				if services.VoxelWorldService and services.VoxelWorldService.OnUnequipTool then
 					services.VoxelWorldService:OnUnequipTool(player)
+				end
+			end
+		},
+		{
+			name = "RequestToolSync",
+			handler = function(player)
+				if services.VoxelWorldService and services.VoxelWorldService.OnRequestToolSync then
+					services.VoxelWorldService:OnRequestToolSync(player)
 				end
 			end
 		},
@@ -1054,6 +1138,14 @@ function EventManager:CreateServerEventConfig(services)
 			end
 		},
 		{
+			name = "BowShoot",
+			handler = function(player, data)
+				if services.BowService and services.BowService.OnBowShoot then
+					services.BowService:OnBowShoot(player, data)
+				end
+			end
+		},
+		{
 			name = "CraftRecipe",
 			handler = function(player, data)
 				if services.CraftingService and services.CraftingService.HandleCraftRequest then
@@ -1066,6 +1158,29 @@ function EventManager:CreateServerEventConfig(services)
 			handler = function(player, data)
 				if services.CraftingService and services.CraftingService.HandleCraftBatchRequest then
 					services.CraftingService:HandleCraftBatchRequest(player, data)
+				end
+			end
+		},
+		-- Armor equip events
+		{
+			name = "ArmorSlotClick",
+			handler = function(player, data)
+				if services.ArmorEquipService and services.ArmorEquipService.HandleArmorSlotClick then
+					services.ArmorEquipService:HandleArmorSlotClick(player, data)
+				end
+			end
+		},
+		{
+			name = "RequestArmorSync",
+			handler = function(player)
+				if services.ArmorEquipService then
+					if services.ArmorEquipService.SyncArmorToClient then
+						services.ArmorEquipService:SyncArmorToClient(player)
+					end
+					-- Also sync armor stats for StatusBarsHUD
+					if services.ArmorEquipService._syncArmorStats then
+						services.ArmorEquipService:_syncArmorStats(player)
+					end
 				end
 			end
 		},

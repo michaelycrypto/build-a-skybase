@@ -14,18 +14,21 @@ local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
 local GameState = require(script.Parent.Parent.Managers.GameState)
+local UIVisibilityManager = require(script.Parent.Parent.Managers.UIVisibilityManager)
 local IconManager = require(script.Parent.Parent.Managers.IconManager)
 local ItemStack = require(ReplicatedStorage.Shared.VoxelWorld.Inventory.ItemStack)
 local BlockViewportCreator = require(ReplicatedStorage.Shared.VoxelWorld.Rendering.BlockViewportCreator)
 local BlockRegistry = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockRegistry)
 local TextureManager = require(ReplicatedStorage.Shared.VoxelWorld.Rendering.TextureManager)
 local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
+local ArmorConfig = require(ReplicatedStorage.Configs.ArmorConfig)
 local SpawnEggConfig = require(ReplicatedStorage.Configs.SpawnEggConfig)
 local EventManager = require(ReplicatedStorage.Shared.EventManager)
 local GameConfig = require(ReplicatedStorage.Configs.GameConfig)
 local SpawnEggIcon = require(script.Parent.SpawnEggIcon)
 
 local ChestUI = {}
+local BOLD_FONT = GameConfig.UI_SETTINGS.typography.fonts.bold
 ChestUI.__index = ChestUI
 
 -- Configuration (matching VoxelInventoryPanel's compact design)
@@ -45,18 +48,47 @@ local CHEST_CONFIG = {
 	HOVER_COLOR = Color3.fromRGB(80, 80, 80),
 }
 
-function ChestUI.new(inventoryManager, inventoryPanel)
+-- Helper function to get display name for any item type
+local function GetItemDisplayName(itemId)
+	if not itemId or itemId == 0 then
+		return nil
+	end
+
+	-- Check if it's a tool
+	if ToolConfig.IsTool(itemId) then
+		local toolInfo = ToolConfig.GetToolInfo(itemId)
+		return toolInfo and toolInfo.name or "Tool"
+	end
+
+	-- Check if it's armor
+	if ArmorConfig.IsArmor(itemId) then
+		local armorInfo = ArmorConfig.GetArmorInfo(itemId)
+		return armorInfo and armorInfo.name or "Armor"
+	end
+
+	-- Check if it's a spawn egg
+	if SpawnEggConfig.IsSpawnEgg(itemId) then
+		local eggInfo = SpawnEggConfig.GetEggInfo(itemId)
+		return eggInfo and eggInfo.name or "Spawn Egg"
+	end
+
+	-- Otherwise, it's a block - use BlockRegistry
+	local blockDef = BlockRegistry.Blocks[itemId]
+	return blockDef and blockDef.name or "Item"
+end
+
+function ChestUI.new(inventoryManager)
 	local self = setmetatable({}, ChestUI)
 
 	-- Use centralized inventory manager
 	self.inventoryManager = inventoryManager
 	self.hotbar = inventoryManager.hotbar
-	self.inventoryPanel = inventoryPanel
 
 	self.isOpen = false
 	self.gui = nil
 	self.panel = nil
 	self.chestPosition = nil -- {x, y, z} of current chest
+	self.hoverItemLabel = nil  -- Label for displaying hovered item name
 
 	-- Chest slots (27 slots) - local to this UI
 	self.chestSlots = {}
@@ -108,6 +140,9 @@ function ChestUI:Initialize()
 	uiScale.Parent = self.gui
 	CollectionService:AddTag(uiScale, "scale_component")
 
+	-- Create hover item name label (top left of screen)
+	self:CreateHoverItemLabel()
+
 	-- Create panels
 	self:CreatePanel()
 	self:CreateCursorItem()
@@ -118,7 +153,74 @@ function ChestUI:Initialize()
 	-- Register network events
 	self:RegisterEvents()
 
+	-- Register with UIVisibilityManager
+	UIVisibilityManager:RegisterComponent("chestUI", self, {
+		showMethod = "Show",
+		hideMethod = "Hide",
+		isOpenMethod = "IsOpen",
+		priority = 150
+	})
+
 	return self
+end
+
+function ChestUI:CreateHoverItemLabel()
+	-- Create a label in the top left of the screen to display hovered item name
+	local label = Instance.new("TextLabel")
+	label.Name = "HoverItemLabel"
+	label.Size = UDim2.new(0, 400, 0, 40)
+	label.Position = UDim2.new(0, 20, 0, 20)
+	label.AnchorPoint = Vector2.new(0, 0)
+	label.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+	label.BackgroundTransparency = 0.3
+	label.BorderSizePixel = 0
+	label.Font = BOLD_FONT
+	label.TextSize = 24
+	label.TextColor3 = Color3.fromRGB(255, 255, 255)
+	label.TextStrokeTransparency = 0.5
+	label.Text = ""
+	label.TextXAlignment = Enum.TextXAlignment.Left
+	label.TextYAlignment = Enum.TextYAlignment.Center
+	label.Visible = false
+	label.ZIndex = 10
+	label.AutomaticSize = Enum.AutomaticSize.X
+	label.Parent = self.gui
+
+	-- Add padding for text
+	local padding = Instance.new("UIPadding")
+	padding.PaddingLeft = UDim.new(0, 12)
+	padding.PaddingRight = UDim.new(0, 12)
+	padding.Parent = label
+
+	-- Add rounded corners
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 6)
+	corner.Parent = label
+
+	-- Add subtle border
+	local border = Instance.new("UIStroke")
+	border.Color = Color3.fromRGB(60, 60, 60)
+	border.Thickness = 1
+	border.Parent = label
+
+	self.hoverItemLabel = label
+end
+
+function ChestUI:ShowHoverItemName(itemId)
+	if not self.hoverItemLabel then return end
+
+	local itemName = GetItemDisplayName(itemId)
+	if itemName then
+		self.hoverItemLabel.Text = itemName
+		self.hoverItemLabel.Visible = true
+	else
+		self.hoverItemLabel.Visible = false
+	end
+end
+
+function ChestUI:HideHoverItemName()
+	if not self.hoverItemLabel then return end
+	self.hoverItemLabel.Visible = false
 end
 
 function ChestUI:CreatePanel()
@@ -212,7 +314,7 @@ function ChestUI:CreatePanel()
 	title.Text = "<b><i>Chest</i></b>"
 	title.TextColor3 = Color3.fromRGB(255, 255, 255)
 	title.TextSize = 36
-	title.Font = Enum.Font.GothamBold -- Italic bold
+	title.Font = BOLD_FONT -- Italic bold
 	title.TextXAlignment = Enum.TextXAlignment.Left
 	title.LayoutOrder = 2
 	title.Parent = titleContainer
@@ -279,7 +381,7 @@ function ChestUI:CreatePanel()
 	chestLabel.Size = UDim2.new(1, -12, 0, 14)
 	chestLabel.Position = UDim2.new(0, CHEST_CONFIG.PADDING, 0, yOffset)
 	chestLabel.BackgroundTransparency = 1
-	chestLabel.Font = Enum.Font.GothamMedium
+	chestLabel.Font = Enum.Font.BuilderSansBold
 	chestLabel.TextSize = 11
 	chestLabel.TextColor3 = Color3.fromRGB(140, 140, 140)
 	chestLabel.Text = "CHEST"
@@ -307,7 +409,7 @@ function ChestUI:CreatePanel()
 	invLabel.Size = UDim2.new(1, -12, 0, 14)
 	invLabel.Position = UDim2.new(0, CHEST_CONFIG.PADDING, 0, yOffset)
 	invLabel.BackgroundTransparency = 1
-	invLabel.Font = Enum.Font.GothamMedium
+	invLabel.Font = Enum.Font.BuilderSansBold
 	invLabel.TextSize = 11
 	invLabel.TextColor3 = Color3.fromRGB(140, 140, 140)
 	invLabel.Text = "INVENTORY"
@@ -335,7 +437,7 @@ function ChestUI:CreatePanel()
 	hotbarLabel.Size = UDim2.new(1, -12, 0, 14)
 	hotbarLabel.Position = UDim2.new(0, CHEST_CONFIG.PADDING, 0, yOffset)
 	hotbarLabel.BackgroundTransparency = 1
-	hotbarLabel.Font = Enum.Font.GothamMedium
+	hotbarLabel.Font = Enum.Font.BuilderSansBold
 	hotbarLabel.TextSize = 11
 	hotbarLabel.TextColor3 = Color3.fromRGB(140, 140, 140)
 	hotbarLabel.Text = "HOTBAR"
@@ -388,7 +490,7 @@ function ChestUI:CreateChestSlot(index, x, y)
 	countLabel.Position = UDim2.new(1, -4, 1, -4)
 	countLabel.AnchorPoint = Vector2.new(1, 1)
 	countLabel.BackgroundTransparency = 1
-	countLabel.Font = Enum.Font.GothamBold
+	countLabel.Font = BOLD_FONT
 	countLabel.TextSize = 12
 	countLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	countLabel.TextStrokeTransparency = 0.3
@@ -408,11 +510,18 @@ function ChestUI:CreateChestSlot(index, x, y)
 	slot.MouseEnter:Connect(function()
 		hoverBorder.Transparency = 0.5
 		slot.BackgroundColor3 = CHEST_CONFIG.HOVER_COLOR
+		-- Show item name in top left
+		local stack = self.chestSlots[index]
+		if stack and not stack:IsEmpty() then
+			self:ShowHoverItemName(stack:GetItemId())
+		end
 	end)
 
 	slot.MouseLeave:Connect(function()
 		hoverBorder.Transparency = 1
 		slot.BackgroundColor3 = CHEST_CONFIG.SLOT_COLOR
+		-- Hide item name
+		self:HideHoverItemName()
 	end)
 
 	-- Click handlers
@@ -463,7 +572,7 @@ function ChestUI:CreateInventorySlot(index, x, y)
 	countLabel.Position = UDim2.new(1, -4, 1, -4)
 	countLabel.AnchorPoint = Vector2.new(1, 1)
 	countLabel.BackgroundTransparency = 1
-	countLabel.Font = Enum.Font.GothamBold
+	countLabel.Font = BOLD_FONT
 	countLabel.TextSize = 12
 	countLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	countLabel.TextStrokeTransparency = 0.3
@@ -483,11 +592,18 @@ function ChestUI:CreateInventorySlot(index, x, y)
 	slot.MouseEnter:Connect(function()
 		hoverBorder.Transparency = 0.5
 		slot.BackgroundColor3 = CHEST_CONFIG.HOVER_COLOR
+		-- Show item name in top left
+		local stack = self.inventoryManager:GetInventorySlot(index)
+		if stack and not stack:IsEmpty() then
+			self:ShowHoverItemName(stack:GetItemId())
+		end
 	end)
 
 	slot.MouseLeave:Connect(function()
 		hoverBorder.Transparency = 1
 		slot.BackgroundColor3 = CHEST_CONFIG.SLOT_COLOR
+		-- Hide item name
+		self:HideHoverItemName()
 	end)
 
 	-- Click handlers
@@ -547,7 +663,7 @@ function ChestUI:CreateHotbarSlot(index, x, y)
 	countLabel.Position = UDim2.new(1, -4, 1, -4)
 	countLabel.AnchorPoint = Vector2.new(1, 1)
 	countLabel.BackgroundTransparency = 1
-	countLabel.Font = Enum.Font.GothamBold
+	countLabel.Font = BOLD_FONT
 	countLabel.TextSize = 12
 	countLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	countLabel.TextStrokeTransparency = 0.3
@@ -562,7 +678,7 @@ function ChestUI:CreateHotbarSlot(index, x, y)
 	numberLabel.Size = UDim2.new(0, 20, 0, 20)
 	numberLabel.Position = UDim2.new(0, 4, 0, 4)
 	numberLabel.BackgroundTransparency = 1
-	numberLabel.Font = Enum.Font.GothamBold
+	numberLabel.Font = BOLD_FONT
 	numberLabel.TextSize = 12
 	numberLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	numberLabel.TextStrokeTransparency = 0.5
@@ -587,11 +703,20 @@ function ChestUI:CreateHotbarSlot(index, x, y)
 			hoverBorder.Transparency = 0.5
 		end
 		slot.BackgroundColor3 = CHEST_CONFIG.HOVER_COLOR
+		-- Show item name in top left
+		if self.hotbar then
+			local stack = self.hotbar.slots[index]
+			if stack and not stack:IsEmpty() then
+				self:ShowHoverItemName(stack:GetItemId())
+			end
+		end
 	end)
 
 	slot.MouseLeave:Connect(function()
 		hoverBorder.Transparency = 1
 		slot.BackgroundColor3 = CHEST_CONFIG.SLOT_COLOR
+		-- Hide item name
+		self:HideHoverItemName()
 	end)
 
 	-- Click handlers (hotbar slots interact with hotbar data through inventoryManager)
@@ -634,7 +759,7 @@ function ChestUI:CreateCursorItem()
 	countLabel.Position = UDim2.new(1, -4, 1, -4)
 	countLabel.AnchorPoint = Vector2.new(1, 1)
 	countLabel.BackgroundTransparency = 1
-	countLabel.Font = Enum.Font.GothamBold
+	countLabel.Font = BOLD_FONT
 	countLabel.TextSize = 12
 	countLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	countLabel.TextStrokeTransparency = 0.3
@@ -682,6 +807,39 @@ function ChestUI:UpdateChestSlotDisplay(index)
 					newImage.Image = info and info.image or ""
 					newImage.ScaleType = Enum.ScaleType.Fit
 					newImage.Parent = iconContainer
+				end
+			elseif ArmorConfig.IsArmor(itemId) then
+				local info = ArmorConfig.GetArmorInfo(itemId)
+				for _, child in ipairs(iconContainer:GetChildren()) do
+					if not child:IsA("UILayout") and not child:IsA("UIPadding") and not child:IsA("UICorner") then
+						child:Destroy()
+					end
+				end
+				local newImage = Instance.new("ImageLabel")
+				newImage.Name = "ArmorImage"
+				newImage.Size = UDim2.new(1, -6, 1, -6)
+				newImage.Position = UDim2.new(0.5, 0, 0.5, 0)
+				newImage.AnchorPoint = Vector2.new(0.5, 0.5)
+				newImage.BackgroundTransparency = 1
+				newImage.Image = info and info.image or ""
+				newImage.ScaleType = Enum.ScaleType.Fit
+				-- Tint base image for leather armor
+				if info and info.imageOverlay then
+					newImage.ImageColor3 = ArmorConfig.GetTierColor(info.tier)
+				end
+				newImage.Parent = iconContainer
+				-- Add overlay for leather armor (untinted details)
+				if info and info.imageOverlay then
+					local overlay = Instance.new("ImageLabel")
+					overlay.Name = "ArmorOverlay"
+					overlay.Size = UDim2.new(1, -6, 1, -6)
+					overlay.Position = UDim2.new(0.5, 0, 0.5, 0)
+					overlay.AnchorPoint = Vector2.new(0.5, 0.5)
+					overlay.BackgroundTransparency = 1
+					overlay.Image = info.imageOverlay
+					overlay.ScaleType = Enum.ScaleType.Fit
+					overlay.ZIndex = 4
+					overlay.Parent = iconContainer
 				end
 			elseif SpawnEggConfig.IsSpawnEgg(itemId) then
 				-- Render spawn eggs as 2D icons (same as inventory)
@@ -782,18 +940,41 @@ function ChestUI:UpdateInventorySlotDisplay(index)
 					newImage.ScaleType = Enum.ScaleType.Fit
 					newImage.Parent = iconContainer
 				end
-			elseif SpawnEggConfig.IsSpawnEgg(itemId) then
-				-- Render spawn eggs in hotbar inside chest UI as 2D icons
+			elseif ArmorConfig.IsArmor(itemId) then
+				local info = ArmorConfig.GetArmorInfo(itemId)
 				for _, child in ipairs(iconContainer:GetChildren()) do
 					if not child:IsA("UILayout") and not child:IsA("UIPadding") and not child:IsA("UICorner") then
 						child:Destroy()
 					end
 				end
-				local icon = SpawnEggIcon.Create(itemId, UDim2.new(1, -6, 1, -6))
-				icon.Position = UDim2.new(0.5, 0, 0.5, 0)
-				icon.AnchorPoint = Vector2.new(0.5, 0.5)
-				icon.Parent = iconContainer
+				local newImage = Instance.new("ImageLabel")
+				newImage.Name = "ArmorImage"
+				newImage.Size = UDim2.new(1, -6, 1, -6)
+				newImage.Position = UDim2.new(0.5, 0, 0.5, 0)
+				newImage.AnchorPoint = Vector2.new(0.5, 0.5)
+				newImage.BackgroundTransparency = 1
+				newImage.Image = info and info.image or ""
+				newImage.ScaleType = Enum.ScaleType.Fit
+				-- Tint base image for leather armor
+				if info and info.imageOverlay then
+					newImage.ImageColor3 = ArmorConfig.GetTierColor(info.tier)
+				end
+				newImage.Parent = iconContainer
+				-- Add overlay for leather armor (untinted details)
+				if info and info.imageOverlay then
+					local overlay = Instance.new("ImageLabel")
+					overlay.Name = "ArmorOverlay"
+					overlay.Size = UDim2.new(1, -6, 1, -6)
+					overlay.Position = UDim2.new(0.5, 0, 0.5, 0)
+					overlay.AnchorPoint = Vector2.new(0.5, 0.5)
+					overlay.BackgroundTransparency = 1
+					overlay.Image = info.imageOverlay
+					overlay.ScaleType = Enum.ScaleType.Fit
+					overlay.ZIndex = 4
+					overlay.Parent = iconContainer
+				end
 			elseif SpawnEggConfig.IsSpawnEgg(itemId) then
+				-- Render spawn eggs in hotbar inside chest UI as 2D icons
 				for _, child in ipairs(iconContainer:GetChildren()) do
 					if not child:IsA("UILayout") and not child:IsA("UIPadding") and not child:IsA("UICorner") then
 						child:Destroy()
@@ -892,6 +1073,34 @@ function ChestUI:UpdateHotbarSlotDisplay(index)
 				image.Image = info and info.image or ""
 				image.ScaleType = Enum.ScaleType.Fit
 				image.Parent = iconContainer
+			elseif ArmorConfig.IsArmor(itemId) then
+				local info = ArmorConfig.GetArmorInfo(itemId)
+				local image = Instance.new("ImageLabel")
+				image.Name = "ArmorImage"
+				image.Size = UDim2.new(1, -6, 1, -6)
+				image.Position = UDim2.new(0.5, 0, 0.5, 0)
+				image.AnchorPoint = Vector2.new(0.5, 0.5)
+				image.BackgroundTransparency = 1
+				image.Image = info and info.image or ""
+				image.ScaleType = Enum.ScaleType.Fit
+				-- Tint base image for leather armor
+				if info and info.imageOverlay then
+					image.ImageColor3 = ArmorConfig.GetTierColor(info.tier)
+				end
+				image.Parent = iconContainer
+				-- Add overlay for leather armor (untinted details)
+				if info and info.imageOverlay then
+					local overlay = Instance.new("ImageLabel")
+					overlay.Name = "ArmorOverlay"
+					overlay.Size = UDim2.new(1, -6, 1, -6)
+					overlay.Position = UDim2.new(0.5, 0, 0.5, 0)
+					overlay.AnchorPoint = Vector2.new(0.5, 0.5)
+					overlay.BackgroundTransparency = 1
+					overlay.Image = info.imageOverlay
+					overlay.ScaleType = Enum.ScaleType.Fit
+					overlay.ZIndex = 4
+					overlay.Parent = iconContainer
+				end
 			else
 				BlockViewportCreator.CreateBlockViewport(iconContainer, itemId, UDim2.new(1, 0, 1, 0))
 			end
@@ -1052,6 +1261,35 @@ function ChestUI:UpdateCursorDisplay()
 				image.ScaleType = Enum.ScaleType.Fit
 				image.ZIndex = 1001
 				image.Parent = iconContainer
+			elseif ArmorConfig.IsArmor(itemId) then
+				local info = ArmorConfig.GetArmorInfo(itemId)
+				local image = Instance.new("ImageLabel")
+				image.Name = "ArmorImage"
+				image.Size = UDim2.new(1, -6, 1, -6)
+				image.Position = UDim2.new(0.5, 0, 0.5, 0)
+				image.AnchorPoint = Vector2.new(0.5, 0.5)
+				image.BackgroundTransparency = 1
+				image.Image = info and info.image or ""
+				image.ScaleType = Enum.ScaleType.Fit
+				image.ZIndex = 1001
+				-- Tint base image for leather armor
+				if info and info.imageOverlay then
+					image.ImageColor3 = ArmorConfig.GetTierColor(info.tier)
+				end
+				image.Parent = iconContainer
+				-- Add overlay for leather armor (untinted details)
+				if info and info.imageOverlay then
+					local overlay = Instance.new("ImageLabel")
+					overlay.Name = "ArmorOverlay"
+					overlay.Size = UDim2.new(1, -6, 1, -6)
+					overlay.Position = UDim2.new(0.5, 0, 0.5, 0)
+					overlay.AnchorPoint = Vector2.new(0.5, 0.5)
+					overlay.BackgroundTransparency = 1
+					overlay.Image = info.imageOverlay
+					overlay.ScaleType = Enum.ScaleType.Fit
+					overlay.ZIndex = 1002
+					overlay.Parent = iconContainer
+				end
 			else
 				BlockViewportCreator.CreateBlockViewport(iconContainer, itemId, UDim2.new(1, 0, 1, 0))
 			end
@@ -1329,10 +1567,8 @@ function ChestUI:Open(chestPos, chestContents, playerInventory, hotbar)
 	self.isOpen = true
 	self.chestPosition = chestPos
 
-	-- Close inventory panel if open (mutual exclusion)
-	if self.inventoryPanel and self.inventoryPanel.isOpen then
-		self.inventoryPanel:Close()
-	end
+	-- Use UIVisibilityManager to coordinate all UI
+	UIVisibilityManager:SetMode("chest")
 
 	-- First, initialize all slots as empty
 	for i = 1, 27 do
@@ -1393,8 +1629,11 @@ function ChestUI:Open(chestPos, chestContents, playerInventory, hotbar)
 	end)
 end
 
-function ChestUI:Close()
+function ChestUI:Close(nextMode)
 	if not self.isOpen then return end
+
+	-- Hide hover item name when closing
+	self:HideHoverItemName()
 
 	self.isOpen = false
 
@@ -1447,6 +1686,12 @@ function ChestUI:Close()
 	-- Hide UI
 	self.gui.Enabled = false
 	GameState:Set("voxelWorld.inventoryOpen", false)
+
+	-- Restore target UI mode (defaults to gameplay)
+	local targetMode = nextMode or "gameplay"
+	if targetMode then
+		UIVisibilityManager:SetMode(targetMode)
+	end
 
 	-- Note: CameraController now manages mouse lock dynamically based on camera mode
 	-- (first person = locked, third person = free)
@@ -1660,6 +1905,23 @@ function ChestUI:Cleanup()
 		self.gui:Destroy()
 		self.gui = nil
 	end
+end
+
+-- Show method (called by UIVisibilityManager)
+function ChestUI:Show()
+	if not self.gui then return end
+	self.gui.Enabled = true
+end
+
+-- Hide method (called by UIVisibilityManager)
+function ChestUI:Hide()
+	if not self.gui then return end
+	self.gui.Enabled = false
+end
+
+-- IsOpen method (called by UIVisibilityManager)
+function ChestUI:IsOpen()
+	return self.isOpen
 end
 
 return ChestUI

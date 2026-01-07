@@ -76,10 +76,15 @@ function WorldOwnershipService:ClaimOwnership(player: Player)
 
 	self._ownerId = player.UserId
 	self._ownerName = player.Name
+	-- Set default worldId to slot 1 if not already set (for fallback cases)
+	if not self._worldId then
+		self._worldId = tostring(player.UserId) .. ":1"
+	end
 
 	self._logger.Info("🏠 Server ownership claimed", {
 		owner = player.Name,
-		userId = player.UserId
+		userId = player.UserId,
+		worldId = self._worldId
 	})
 
 	-- Load world data for this owner
@@ -106,6 +111,13 @@ function WorldOwnershipService:GetOwnerName()
 end
 
 --[[
+	Get the current worldId
+--]]
+function WorldOwnershipService:GetWorldId()
+	return self._worldId
+end
+
+--[[
 	Set owner by UserId (used when owner is defined by teleport data)
 	@param ownerUserId: number - The owner's UserId
 	@param ownerName: string? - The owner's display name (optional)
@@ -118,7 +130,60 @@ function WorldOwnershipService:SetOwnerById(ownerUserId: number, ownerName: stri
 	end
 
 	self._ownerId = ownerUserId
-	self._worldId = worldId or (tostring(ownerUserId) .. ":1") -- Default to slot 1
+
+	-- Validate and set worldId - ensure it's in format "userId:slot"
+	if worldId and type(worldId) == "string" and #worldId > 0 then
+		-- Check if worldId has the correct format (userId:slot)
+		local hasColon = string.find(worldId, ":")
+		if hasColon then
+			-- Verify worldId format matches ownerUserId (e.g., "12345:2")
+			local extractedUserId = tonumber(string.match(worldId, "^(%d+):"))
+			-- Ensure both are numbers for comparison
+			local ownerUserIdNum = tonumber(ownerUserId) or ownerUserId
+			if extractedUserId and extractedUserId == ownerUserIdNum then
+				self._worldId = worldId
+				self._logger.Info("✅ WorldId validated and set", {
+					worldId = worldId,
+					ownerUserId = ownerUserId,
+					extractedUserId = extractedUserId
+				})
+			else
+				-- WorldId format doesn't match owner, but still use it if it has correct format
+				-- This allows for edge cases where ownerUserId might be different
+				-- (e.g., admin accessing someone else's world)
+				if extractedUserId then
+					self._worldId = worldId
+					self._logger.Warn("⚠️ WorldId userId doesn't match ownerUserId, but using worldId anyway", {
+						worldId = worldId,
+						ownerUserId = ownerUserId,
+						extractedUserId = extractedUserId
+					})
+				else
+					-- Invalid format, default to slot 1
+					self._logger.Warn("⚠️ WorldId has invalid format - defaulting to slot 1", {
+						worldId = worldId,
+						ownerUserId = ownerUserId
+					})
+					self._worldId = tostring(ownerUserId) .. ":1"
+				end
+			end
+		else
+			-- WorldId doesn't have colon format, default to slot 1
+			self._logger.Warn("⚠️ WorldId missing colon format - defaulting to slot 1", {
+				worldId = worldId,
+				ownerUserId = ownerUserId
+			})
+			self._worldId = tostring(ownerUserId) .. ":1"
+		end
+	else
+		-- No worldId provided, default to slot 1
+		self._logger.Warn("⚠️ No worldId provided - defaulting to slot 1", {
+			worldId = worldId,
+			worldIdType = type(worldId),
+			ownerUserId = ownerUserId
+		})
+		self._worldId = tostring(ownerUserId) .. ":1"
+	end
 
 	-- Try to resolve name if not provided
 	if ownerName and #ownerName > 0 then
@@ -230,24 +295,39 @@ function WorldOwnershipService:SaveWorldData(worldData)
 		return false
 	end
 
+	-- Ensure worldId matches the current _worldId (in case it changed)
+	self._worldData.worldId = self._worldId
+	self._worldData.ownerId = self._ownerId
+	self._worldData.ownerName = self._ownerName
+
 	-- Update last saved timestamp
 	self._worldData.lastSaved = os.time()
 
+	local key = "World_" .. self._worldId
+	self._logger.Info("💾 Saving world data", {
+		worldId = self._worldId,
+		datastoreKey = key,
+		owner = self._ownerName,
+		lastSaved = self._worldData.lastSaved,
+		chunkCount = (self._worldData.chunks and #self._worldData.chunks) or 0
+	})
+
 	local success, err = pcall(function()
-		local key = "World_" .. self._worldId
 		self._worldDataStore:SetAsync(key, self._worldData)
 	end)
 
 	if success then
-		self._logger.Info("💾 Saved world data", {
+		self._logger.Info("✅ Saved world data successfully", {
 			worldId = self._worldId,
+			datastoreKey = key,
 			owner = self._ownerName,
 			chunkCount = (self._worldData.chunks and #self._worldData.chunks) or 0
 		})
 		return true
 	else
-		self._logger.Error("Failed to save world data", {
+		self._logger.Error("❌ Failed to save world data", {
 			worldId = self._worldId,
+			datastoreKey = key,
 			owner = self._ownerName,
 			error = tostring(err)
 		})

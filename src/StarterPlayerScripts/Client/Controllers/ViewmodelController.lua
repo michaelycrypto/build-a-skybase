@@ -17,6 +17,7 @@ local TextureApplicator = require(ReplicatedStorage.Shared.VoxelWorld.Rendering.
 local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
 local TextureManager = require(ReplicatedStorage.Shared.VoxelWorld.Rendering.TextureManager)
 local BlockProperties = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockProperties)
+local GameConfig = require(ReplicatedStorage.Configs.GameConfig)
 
 local player = Players.LocalPlayer
 
@@ -34,12 +35,30 @@ local camChangedConns = {}
 local inputConns = {}
 local respawnConn
 
--- Animation state
+-- Bow viewmodel state (multiple meshes for stage toggling)
+local bowViewmodelParts = {} -- {idle, [0], [1], [2]}
+local currentBowVMStage = nil
+local isBowViewmodelActive = false
+
+-- Animation state (from GameConfig for universal tuning)
 local timeAcc = 0
 local swingTimer = 0
-local SWING_DURATION = 0.22
+local SWING_DURATION = GameConfig.Combat.SWING_COOLDOWN
+local isSwingHeld = false -- Track if mouse is held for continuous swinging
+
+local function destroyBowViewmodelParts()
+	for key, part in pairs(bowViewmodelParts) do
+		if part and part.Parent then
+			part:Destroy()
+		end
+	end
+	bowViewmodelParts = {}
+	currentBowVMStage = nil
+	isBowViewmodelActive = false
+end
 
 local function destroyCurrent()
+	destroyBowViewmodelParts()
 	if currentInstance then
 		currentInstance:Destroy()
 		currentInstance = nil
@@ -202,6 +221,8 @@ local TOOL_ASSET_NAME_BY_TYPE = {
 	[BlockProperties.ToolType.AXE] = "Axe",
 	[BlockProperties.ToolType.SHOVEL] = "Shovel",
 	[BlockProperties.ToolType.PICKAXE] = "Pickaxe",
+	[BlockProperties.ToolType.BOW] = "Bow",
+	[BlockProperties.ToolType.ARROW] = "Arrow",
 }
 
 local TOOL_PX_BY_TYPE = {
@@ -209,6 +230,8 @@ local TOOL_PX_BY_TYPE = {
 	[BlockProperties.ToolType.AXE] = {x = 12, y = 14},
 	[BlockProperties.ToolType.SHOVEL] = {x = 12, y = 12},
 	[BlockProperties.ToolType.PICKAXE] = {x = 13, y = 13},
+	[BlockProperties.ToolType.BOW] = {x = 14, y = 14},
+	[BlockProperties.ToolType.ARROW] = {x = 14, y = 13},
 }
 
 local function scaleMeshToPixels(part, pxX, pxY)
@@ -234,12 +257,10 @@ local function findToolsContainer()
 	local direct = assets:FindFirstChild("Tools")
 	if direct then return direct end
 	-- Heuristic: find a folder/model that contains tool names
-	local expected = {
-		[TOOL_ASSET_NAME_BY_TYPE[BlockProperties.ToolType.SWORD]] = true,
-		[TOOL_ASSET_NAME_BY_TYPE[BlockProperties.ToolType.AXE]] = true,
-		[TOOL_ASSET_NAME_BY_TYPE[BlockProperties.ToolType.SHOVEL]] = true,
-		[TOOL_ASSET_NAME_BY_TYPE[BlockProperties.ToolType.PICKAXE]] = true,
-	}
+	local expected = {}
+	for _, name in pairs(TOOL_ASSET_NAME_BY_TYPE) do
+		expected[name] = true
+	end
 	for _, child in ipairs(assets:GetChildren()) do
 		if child:IsA("Folder") or child:IsA("Model") then
 			for name, _ in pairs(expected) do
@@ -260,8 +281,114 @@ local function findMeshPartFromTemplate(template: Instance)
 	return template:FindFirstChildWhichIsA("MeshPart", true)
 end
 
+local function createBowViewmodelMesh(assetName, itemId)
+	local toolsFolder = findToolsContainer()
+	if not toolsFolder then return nil end
+	local template = toolsFolder:FindFirstChild(assetName)
+	if not template then return nil end
+
+	local mesh = findMeshPartFromTemplate(template)
+	if not mesh then return nil end
+
+	local p = mesh:Clone()
+	p.Name = "BowVM_" .. assetName
+	p.Anchored = true
+	p.CanCollide = false
+	p.Massless = true
+	p.CastShadow = false
+	p.Transparency = 1 -- Start hidden
+
+	-- Apply texture
+	local hasExistingTexture = false
+	pcall(function()
+		local currentTex = p.TextureID
+		hasExistingTexture = (currentTex ~= nil and tostring(currentTex) ~= "")
+	end)
+	if not hasExistingTexture then
+		local info = ToolConfig.GetToolInfo(itemId)
+		local texId = info and info.image
+		if texId and p:IsA("MeshPart") then
+			pcall(function()
+				p.TextureID = texId
+			end)
+		end
+	end
+
+	-- Scale
+	local px = TOOL_PX_BY_TYPE[BlockProperties.ToolType.BOW]
+	if px then
+		scaleMeshToPixels(p, px.x, px.y)
+	end
+
+	return p
+end
+
+local function createAllBowViewmodelParts(itemId)
+	destroyBowViewmodelParts()
+
+	local cam = workspace.CurrentCamera
+	if not cam then return end
+
+	-- Create all 4 bow states
+	bowViewmodelParts.idle = createBowViewmodelMesh("Bow", itemId)
+	bowViewmodelParts[0] = createBowViewmodelMesh("Bow_pulling_0", itemId)
+	bowViewmodelParts[1] = createBowViewmodelMesh("Bow_pulling_1", itemId)
+	bowViewmodelParts[2] = createBowViewmodelMesh("Bow_pulling_2", itemId)
+
+	-- Parent all to camera
+	for key, part in pairs(bowViewmodelParts) do
+		if part then
+			part.Parent = cam
+		end
+	end
+
+	-- Show idle by default
+	if bowViewmodelParts.idle then
+		bowViewmodelParts.idle.Transparency = 0
+		currentInstance = bowViewmodelParts.idle
+	end
+	currentBowVMStage = "idle"
+	isBowViewmodelActive = true
+end
+
+local function updateBowViewmodelStage()
+	if not isBowViewmodelActive then return end
+
+	local stage = GameState:Get("voxelWorld.bowPullStage")
+	local targetKey = stage
+	if stage == nil then
+		targetKey = "idle"
+	end
+
+	-- Skip if already showing this stage
+	if currentBowVMStage == targetKey then return end
+
+	-- Hide all
+	for key, part in pairs(bowViewmodelParts) do
+		if part and part.Parent then
+			part.Transparency = 1
+		end
+	end
+
+	-- Show target
+	local targetPart = bowViewmodelParts[targetKey] or bowViewmodelParts.idle
+	if targetPart and targetPart.Parent then
+		targetPart.Transparency = 0
+		currentInstance = targetPart
+	end
+
+	currentBowVMStage = targetKey
+end
+
 local function buildToolMesh(itemId)
 	local toolType = select(1, ToolConfig.GetBlockProps(itemId))
+
+	-- For bows, use the multi-mesh system instead
+	if toolType == BlockProperties.ToolType.BOW then
+		createAllBowViewmodelParts(itemId)
+		return bowViewmodelParts.idle -- Return idle as the "current" instance
+	end
+
 	local assetName = toolType and TOOL_ASSET_NAME_BY_TYPE[toolType]
 	if not assetName then return nil end
 
@@ -347,6 +474,16 @@ local function buildFlatBlockItem(itemId)
     return p
 end
 
+local function isBowEquipped()
+	local holding = GameState:Get("voxelWorld.isHoldingTool") == true
+	local itemId = GameState:Get("voxelWorld.selectedToolItemId")
+	if not holding or not itemId or not ToolConfig.IsTool(itemId) then
+		return false
+	end
+	local toolType = select(1, ToolConfig.GetBlockProps(itemId))
+	return toolType == BlockProperties.ToolType.BOW
+end
+
 local function getArmColor()
     local char = player.Character
     if char then
@@ -377,10 +514,30 @@ local function rebuild()
 		return
 	end
 
+	-- Check if this is a bow tool
+	local toolType = nil
+	if holdingTool and currentItemId then
+		toolType = select(1, ToolConfig.GetBlockProps(currentItemId))
+	end
+	local isBow = toolType == BlockProperties.ToolType.BOW
+
+	-- For bows, buildToolMesh creates multiple meshes, so we need to destroy first
+	-- For non-bows, we create the new instance first then destroy
     local newInst
 	if holdingTool then
-		-- Tools: always prefer 3D MeshPart; no SurfaceGui fallback
-		newInst = buildToolMesh(currentItemId)
+		if isBow then
+			-- Bow: destroy everything first, then create all bow meshes
+			destroyCurrent()
+			newInst = buildToolMesh(currentItemId)
+			-- newInst is already parented by createAllBowViewmodelParts
+			if newInst then
+				currentInstance = newInst
+			end
+			return
+		else
+			-- Non-bow tool
+			newInst = buildToolMesh(currentItemId)
+		end
     elseif holdingItem then
         if isFlatItem then
             newInst = buildFlatBlockItem(currentItemId)
@@ -418,28 +575,55 @@ local function onStateChanged()
         nextIsFlat = def and (def.crossShape or def.craftingMaterial) and true or false
     end
 
-    local changed = (fp ~= isFirstPerson) or (isTool ~= holdingTool) or (isItem ~= holdingItem) or (nextItemId ~= currentItemId) or (nextIsFlat ~= isFlatItem)
+	-- Check if only the bow stage changed (not a full state change)
+	local bowStageChanged = GameState:Get("voxelWorld.bowPullStage") ~= GameState:Get("voxelWorld._vm_lastBowStage")
+	local structuralChanged = (fp ~= isFirstPerson)
+		or (isTool ~= holdingTool)
+		or (isItem ~= holdingItem)
+		or (nextItemId ~= currentItemId)
+		or (nextIsFlat ~= isFlatItem)
+
 	isFirstPerson = fp
 	holdingTool = isTool
 	holdingItem = isItem
 	currentItemId = nextItemId
     isFlatItem = nextIsFlat
+	GameState:Set("voxelWorld._vm_lastBowStage", GameState:Get("voxelWorld.bowPullStage"), true)
 
-	if changed then
+	if structuralChanged then
+		-- Full rebuild needed
 		rebuild()
+	elseif bowStageChanged and isBowViewmodelActive then
+		-- Just update bow mesh visibility (no rebuild)
+		updateBowViewmodelStage()
 	end
 end
 
 local function pulseSwing()
+	-- Block if swing is already in progress - must complete before next one
+	if swingTimer > 0 then return false end
 	swingTimer = SWING_DURATION
+	return true
 end
 
 local function connectInputs()
 	clearConns(inputConns)
+
+	-- Track mouse down for continuous swinging
 	inputConns[#inputConns+1] = UserInputService.InputBegan:Connect(function(input, gp)
 		if gp then return end
-		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.MouseButton2 then
-			pulseSwing()
+		-- Skip swing pulse for bow (charging handled elsewhere)
+		if isBowEquipped() then return end
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			isSwingHeld = true
+			pulseSwing() -- Initial swing
+		end
+	end)
+
+	-- Track mouse up to stop continuous swinging
+	inputConns[#inputConns+1] = UserInputService.InputEnded:Connect(function(input, gp)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			isSwingHeld = false
 		end
 	end)
 end
@@ -449,6 +633,11 @@ local function update(dt)
 	timeAcc += dt
 	if swingTimer > 0 then
 		swingTimer = math.max(0, swingTimer - dt)
+	end
+
+	-- Continuous swinging while mouse is held (and not bow)
+	if isSwingHeld and swingTimer <= 0 and not isBowEquipped() then
+		pulseSwing()
 	end
 
 	local cam = workspace.CurrentCamera
@@ -513,7 +702,14 @@ local function update(dt)
         cf = cam.CFrame * pre * CFrame.new(pos) * rot
     end
 
-	if currentInstance:IsA("Model") then
+	-- For bow viewmodel, move all mesh parts (so switching is instant)
+	if isBowViewmodelActive then
+		for key, part in pairs(bowViewmodelParts) do
+			if part and part.Parent then
+				part.CFrame = cf
+			end
+		end
+	elseif currentInstance:IsA("Model") then
 		currentInstance:PivotTo(cf)
 	else
 		currentInstance.CFrame = cf
@@ -530,6 +726,7 @@ function Controller:Initialize()
 	camChangedConns[#camChangedConns+1] = GameState:OnPropertyChanged("voxelWorld.isHoldingItem", onStateChanged)
 	camChangedConns[#camChangedConns+1] = GameState:OnPropertyChanged("voxelWorld.selectedToolItemId", onStateChanged)
 	camChangedConns[#camChangedConns+1] = GameState:OnPropertyChanged("voxelWorld.selectedBlock", onStateChanged)
+	camChangedConns[#camChangedConns+1] = GameState:OnPropertyChanged("voxelWorld.bowPullStage", onStateChanged)
 
 	-- Character respawn cleanup
 	respawnConn = player.CharacterAdded:Connect(function()

@@ -13,24 +13,48 @@
 
 local DataStoreService = game:GetService("DataStoreService")
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
 
 local BaseService = require(script.Parent.BaseService)
 local Logger = require(game.ReplicatedStorage.Shared.Logger)
+local Config = require(game.ReplicatedStorage.Shared.Config)
 
 local PlayerDataStoreService = setmetatable({}, BaseService)
 PlayerDataStoreService.__index = PlayerDataStoreService
 
 -- DataStore configuration
-local DATA_STORE_NAME = "PlayerData_v29"  -- Changed to v5 to reset all data
-local DATA_VERSION = 5
+local DATA_STORE_CONFIG = Config.DataStore or error("GameConfig.DataStore table is missing")
+local PLAYER_DATA_CONFIG = DATA_STORE_CONFIG.PlayerData or error("GameConfig.DataStore.PlayerData is missing")
+
+local function requireConfigValue(sourceTable, key: string, tableName: string)
+	local value = sourceTable[key]
+	if value == nil then
+		error(string.format("%s.%s is missing", tableName, key))
+	end
+	return value
+end
+
+local DATA_STORE_NAME = requireConfigValue(PLAYER_DATA_CONFIG, "DataStoreVersion", "GameConfig.DataStore.PlayerData")
+local DATA_VERSION = requireConfigValue(PLAYER_DATA_CONFIG, "SchemaVersion", "GameConfig.DataStore.PlayerData")
 
 -- Retry configuration for DataStore operations
 local MAX_RETRIES = 3
 local RETRY_DELAY = 1
 
 -- Auto-save configuration
-local AUTO_SAVE_INTERVAL = 300 -- 5 minutes
+local AUTO_SAVE_INTERVAL = requireConfigValue(PLAYER_DATA_CONFIG, "AutoSaveInterval", "GameConfig.DataStore.PlayerData")
+
+local function deepCopy(value)
+	if type(value) ~= "table" then
+		return value
+	end
+
+	local clone = {}
+	for key, child in pairs(value) do
+		clone[key] = deepCopy(child)
+	end
+
+	return clone
+end
 
 -- Default player data structure
 local DEFAULT_PLAYER_DATA = {
@@ -60,6 +84,14 @@ local DEFAULT_PLAYER_DATA = {
 	inventory = {
 		hotbar = {},
 		inventory = {}
+	},
+
+	-- Equipped armor (helmet, chestplate, leggings, boots) - synced with ArmorEquipService
+	equippedArmor = {
+		helmet = nil,
+		chestplate = nil,
+		leggings = nil,
+		boots = nil
 	},
 
 	-- Daily rewards
@@ -93,7 +125,6 @@ function PlayerDataStoreService.new()
 	self._logger = Logger:CreateContext("PlayerDataStoreService")
 	self._dataStore = nil
 	self._playerSessions = {} -- Track active player sessions
-	self._saveQueue = {} -- Queue for pending saves
 	self._autoSaveConnection = nil
 
 	return self
@@ -353,6 +384,35 @@ function PlayerDataStoreService:GetInventoryData(player: Player)
 end
 
 --[[
+	Save equipped armor data for a player
+	Called by PlayerService when saving player data
+]]
+function PlayerDataStoreService:SaveArmorData(player: Player, armorData: {helmet: number?, chestplate: number?, leggings: number?, boots: number?})
+	local session = self._playerSessions[player.UserId]
+	if not session then
+		return false
+	end
+
+	session.data.equippedArmor = armorData
+	session.dirty = true
+
+	return true
+end
+
+--[[
+	Get equipped armor data for a player
+	Called by PlayerService when loading player data
+]]
+function PlayerDataStoreService:GetArmorData(player: Player)
+	local session = self._playerSessions[player.UserId]
+	if not session then
+		return nil
+	end
+
+	return session.data.equippedArmor
+end
+
+--[[
 	Remove player session on disconnect
 	@param player: Player instance
 ]]
@@ -396,26 +456,7 @@ function PlayerDataStoreService:_getPlayerKey(player: Player)
 end
 
 function PlayerDataStoreService:_createDefaultData(player: Player)
-	local data = {}
-
-	-- Deep copy default data
-	for key, value in pairs(DEFAULT_PLAYER_DATA) do
-		if type(value) == "table" then
-			data[key] = {}
-			for k, v in pairs(value) do
-				if type(v) == "table" then
-					data[key][k] = {}
-					for k2, v2 in pairs(v) do
-						data[key][k][k2] = v2
-					end
-				else
-					data[key][k] = v
-				end
-			end
-		else
-			data[key] = value
-		end
-	end
+	local data = deepCopy(DEFAULT_PLAYER_DATA)
 
 	-- Set timestamps
 	local now = os.time()

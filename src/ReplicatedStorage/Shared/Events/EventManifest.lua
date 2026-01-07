@@ -10,12 +10,14 @@ local Manifest = {
 		RequestJoinWorld = {"any"},   -- {worldId?, ownerUserId?}
 		RequestCreateWorld = {"any"}, -- {slot?}
 		ReturnToLobby = {},           -- no args
+		RequestTeleportToHub = {},    -- Return to hub world from any place
 		-- World management (lobby)
 		RequestWorldsList = {},       -- Request list of player's worlds and friends' worlds
 		DeleteWorld = {"any"},        -- {worldId}
 		UpdateWorldMetadata = {"any"}, -- {worldId, metadata}
 
 		ClientReady = {},
+		ClientLoadingComplete = {},
 		RequestDataRefresh = {},
 		RequestDailyRewardData = {},
 		ClaimDailyReward = {},
@@ -42,6 +44,7 @@ local Manifest = {
 		-- Voxel tool equip (Minecraft-style)
 		EquipTool = {"any"}, -- {slotIndex}
 		UnequipTool = {},
+		RequestToolSync = {}, -- Request all players' equipped tools (for late joiners)
 		-- Hotbar selection (for blocks held in hand)
 		SelectHotbarSlot = {"any"}, -- {slotIndex}
 
@@ -80,7 +83,16 @@ local Manifest = {
 		RequestDropItem = {"any"}, -- {itemId, count, slotIndex} - Request to drop item
 
 		-- Player movement replication (custom entity)
-		PlayerInputSnapshot = {"any"}
+		PlayerInputSnapshot = {"any"},
+
+		-- Ranged combat
+		BowShoot = {"any"}, -- {origin:Vector3, direction:Vector3, charge:number, slotIndex:number?}
+
+		-- Armor equip system
+		EquipArmor = {"any"}, -- {slot: string, itemId: number} - Equip armor to slot
+		UnequipArmor = {"any"}, -- {slot: string} - Unequip armor from slot
+		ArmorSlotClick = {"any"}, -- {slot: string, cursorItemId: number?} - Click on armor slot with optional cursor item
+		RequestArmorSync = {}, -- Request server to resend current armor state
 	},
 
 	-- Server -> Client events and their parameter type signatures
@@ -88,6 +100,7 @@ local Manifest = {
 		-- Cross-place/lobby-world navigation
 		WorldListUpdated = {"any"}, -- optional UI support: {worlds=[{worldId, name, online, playerCount}]}
 		WorldJoinError = {"any"},   -- {message}
+		HubTeleportError = {"any"}, -- {message}
 		-- Return flow can reuse ShowNotification/ShowError; explicit here for clarity
 		ReturnToLobbyAcknowledged = {"any"},
 		-- World management responses
@@ -153,13 +166,31 @@ local Manifest = {
 		PlayerCorrection = {"any"},
 		-- Broadcast when a player punches so others can play punch anim
 		PlayerPunched = {"any"},
+		-- Tool equip broadcast (for multiplayer tool visibility)
+		PlayerToolEquipped = {"any"}, -- {userId, itemId} - Player equipped a tool
+		PlayerToolUnequipped = {"any"}, -- {userId} - Player unequipped tool
+		ToolSync = {"any"}, -- {[userId]: itemId, ...} - All players' equipped tools (for late joiners)
+		-- Unified held item broadcast (tools AND blocks for 3rd person / multiplayer)
+		PlayerHeldItemChanged = {"any"}, -- {userId, itemId} - Player's held item changed (tool or block or nil)
 		-- PvP feedback
 		PlayerDamaged = {"any"}, -- {attackerUserId, victimUserId, amount}
 		PlayerSwordSwing = {"any"}, -- {userId}
+		-- Health/Armor system (Minecraft-style)
+		PlayerHealthChanged = {"any"}, -- {health, maxHealth}
+		PlayerArmorChanged = {"any"}, -- {defense, toughness}
+		PlayerDamageTaken = {"any"}, -- {rawDamage, finalDamage, reduced, damageType, attackerId?}
+		PlayerDealtDamage = {"any"}, -- {victimId, damage, damageType}
+		PlayerDied = {"any"}, -- {playerId}
+		PlayerHungerChanged = {"any"}, -- {hunger, saturation}
 		-- Broadcast when a player toggles sneak
 		PlayerSneak = {"any"},
 		-- World ownership info
-		WorldOwnershipInfo = {"any"}
+		WorldOwnershipInfo = {"any"},
+		-- Armor equip events
+		ArmorEquipped = {"any"}, -- {slot: string, itemId: number} - Armor was equipped
+		ArmorUnequipped = {"any"}, -- {slot: string} - Armor was unequipped
+		ArmorSync = {"any"}, -- {equippedArmor: {helmet?, chestplate?, leggings?, boots?}} - Full armor state sync
+		ArmorSlotResult = {"any"} -- {equippedArmor, inventory, cursorItem} - Result of armor slot interaction
 	}
 }
 

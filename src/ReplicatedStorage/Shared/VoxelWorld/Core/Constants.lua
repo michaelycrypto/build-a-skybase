@@ -154,7 +154,30 @@ local Constants = {
 		COMPOST = 96,
 
 		-- Utility: visual minion block (spawns a mini zombie)
-		COBBLESTONE_MINION = 97
+		COBBLESTONE_MINION = 97,
+
+		-- Ores (6-tier progression: Copper → Iron → Steel → Bluesteel → Tungsten → Titanium)
+		COPPER_ORE = 98,
+		BLUESTEEL_ORE = 101,   -- Tier 4 ore (drops Bluesteel Dust)
+		TUNGSTEN_ORE = 102,    -- Tier 5 ore
+		TITANIUM_ORE = 103,    -- Tier 6 ore
+
+		-- Ingots/materials
+		COPPER_INGOT = 105,
+		STEEL_INGOT = 108,     -- Alloy: Iron + 2 Coal
+		BLUESTEEL_INGOT = 109, -- Tier 4 ingot (Iron + 3 Coal + Bluesteel Dust)
+		TUNGSTEN_INGOT = 110,  -- Tier 5 ingot
+		TITANIUM_INGOT = 111,  -- Tier 6 ingot
+		BLUESTEEL_DUST = 115,  -- Drops from Bluesteel Ore
+
+		-- Full Blocks (9x ingots/items)
+		COPPER_BLOCK = 116,
+		COAL_BLOCK = 117,
+		IRON_BLOCK = 118,
+		STEEL_BLOCK = 119,
+		BLUESTEEL_BLOCK = 120,
+		TUNGSTEN_BLOCK = 121,
+		TITANIUM_BLOCK = 122
 	},
 
 	-- Mapping: Slab block ID → Full block ID (when two slabs combine)
@@ -187,9 +210,17 @@ local Constants = {
 
 	-- Mapping: Ore block ID → Material item ID (what to drop when mined)
 	OreToMaterial = {
-		[29] = 32,  -- COAL_ORE → COAL
-		[30] = 30,  -- IRON_ORE → IRON_ORE (needs smelting, drops ore block)
-		[31] = 34,  -- DIAMOND_ORE → DIAMOND
+		[29] = 32,   -- COAL_ORE → COAL (drops coal item)
+		[30] = 30,   -- IRON_ORE → IRON_ORE (needs smelting)
+		[98] = 98,   -- COPPER_ORE → COPPER_ORE (needs smelting)
+		[101] = 115, -- BLUESTEEL_ORE → BLUESTEEL_DUST (drops dust item)
+		[102] = 102, -- TUNGSTEN_ORE → TUNGSTEN_ORE (needs smelting)
+		[103] = 103, -- TITANIUM_ORE → TITANIUM_ORE (needs smelting)
+	},
+
+	-- Mapping: Block ID → Drop item ID (blocks that transform when broken)
+	BlockToDrop = {
+		[3] = 14,   -- STONE → COBBLESTONE
 	},
 
 	-- Block metadata format (single byte: 0-255)
@@ -215,7 +246,8 @@ local Constants = {
 		STAIR_SHAPE_INNER_LEFT = 3,
 		STAIR_SHAPE_INNER_RIGHT = 4,
 
-		-- Bit 7 reserved for future use
+		-- Bit 7: merged slab flag (set when two slabs combine into a full block)
+		DOUBLE_SLAB_MASK = 128
 	},
 
 	-- Network events
@@ -273,6 +305,19 @@ function Constants.SetStairShape(metadata, shape)
     )
 end
 
+function Constants.HasDoubleSlabFlag(metadata)
+	metadata = metadata or 0
+	return bit32.band(metadata, Constants.BlockMetadata.DOUBLE_SLAB_MASK) ~= 0
+end
+
+function Constants.SetDoubleSlabFlag(metadata, enabled)
+	metadata = metadata or 0
+	if enabled then
+		return bit32.bor(metadata, Constants.BlockMetadata.DOUBLE_SLAB_MASK)
+	end
+	return bit32.band(metadata, bit32.bnot(Constants.BlockMetadata.DOUBLE_SLAB_MASK))
+end
+
 -- Check if a block ID is a slab
 function Constants.IsSlab(blockId)
 	return Constants.SlabToFullBlock[blockId] ~= nil
@@ -289,7 +334,13 @@ function Constants.GetSlabFromFullBlock(fullBlockId)
 end
 
 -- Check if a full block should drop as slabs when broken
-function Constants.ShouldDropAsSlabs(blockId)
+function Constants.ShouldDropAsSlabs(blockId, metadata)
+	if not blockId then
+		return false
+	end
+	if not Constants.HasDoubleSlabFlag(metadata) then
+		return false
+	end
 	return Constants.FullBlockToSlab[blockId] ~= nil
 end
 
@@ -327,6 +378,16 @@ end
 -- Get the material item that an ore block should drop
 function Constants.GetOreMaterialDrop(oreBlockId)
 	return Constants.OreToMaterial[oreBlockId]
+end
+
+-- Check if a block should drop a different item when broken
+function Constants.ShouldTransformBlockDrop(blockId)
+	return Constants.BlockToDrop[blockId] ~= nil
+end
+
+-- Get the drop item ID for a block that transforms when broken
+function Constants.GetBlockDrop(blockId)
+	return Constants.BlockToDrop[blockId]
 end
 
 return Constants

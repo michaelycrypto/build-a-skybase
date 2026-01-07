@@ -8,6 +8,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Constants = require(ReplicatedStorage.Shared.VoxelWorld.Core.Constants)
 local BlockRegistry = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockRegistry)
 local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
+local ArmorConfig = require(ReplicatedStorage.Configs.ArmorConfig)
 local SpawnEggConfig = require(ReplicatedStorage.Configs.SpawnEggConfig)
 
 local InventoryValidator = {}
@@ -49,12 +50,11 @@ local VALID_ITEM_IDS = {
 	[Constants.BlockType.STICK] = true,
 	[Constants.BlockType.COAL_ORE] = true,
 	[Constants.BlockType.IRON_ORE] = true,
-	[Constants.BlockType.DIAMOND_ORE] = true,
 	[Constants.BlockType.COAL] = true,
 	[Constants.BlockType.IRON_INGOT] = true,
-	[Constants.BlockType.DIAMOND] = true,
 	[Constants.BlockType.FURNACE] = true,
 	[Constants.BlockType.GLASS] = true,
+	[Constants.BlockType.APPLE] = true,
 	-- New wood families
 	[Constants.BlockType.SPRUCE_LOG] = true,
 	[Constants.BlockType.SPRUCE_PLANKS] = true,
@@ -81,7 +81,13 @@ local VALID_ITEM_IDS = {
 	[Constants.BlockType.ACACIA_SAPLING] = true,
 	[Constants.BlockType.ACACIA_STAIRS] = true,
 	[Constants.BlockType.ACACIA_SLAB] = true,
-
+	-- Leaf variants
+	[Constants.BlockType.OAK_LEAVES] = true,
+	[Constants.BlockType.SPRUCE_LEAVES] = true,
+	[Constants.BlockType.JUNGLE_LEAVES] = true,
+	[Constants.BlockType.DARK_OAK_LEAVES] = true,
+	[Constants.BlockType.BIRCH_LEAVES] = true,
+	[Constants.BlockType.ACACIA_LEAVES] = true,
 		-- Farming items
 		[Constants.BlockType.FARMLAND] = true,
 		[Constants.BlockType.WHEAT_SEEDS] = true,
@@ -90,8 +96,50 @@ local VALID_ITEM_IDS = {
 		[Constants.BlockType.CARROT] = true,
 		[Constants.BlockType.BEETROOT_SEEDS] = true,
 		[Constants.BlockType.BEETROOT] = true,
-		-- Utility/minion
+	-- Crop stages (non-obtainable but need validation for world state)
+	[Constants.BlockType.WHEAT_CROP_0] = true,
+	[Constants.BlockType.WHEAT_CROP_1] = true,
+	[Constants.BlockType.WHEAT_CROP_2] = true,
+	[Constants.BlockType.WHEAT_CROP_3] = true,
+	[Constants.BlockType.WHEAT_CROP_4] = true,
+	[Constants.BlockType.WHEAT_CROP_5] = true,
+	[Constants.BlockType.WHEAT_CROP_6] = true,
+	[Constants.BlockType.WHEAT_CROP_7] = true,
+	[Constants.BlockType.POTATO_CROP_0] = true,
+	[Constants.BlockType.POTATO_CROP_1] = true,
+	[Constants.BlockType.POTATO_CROP_2] = true,
+	[Constants.BlockType.POTATO_CROP_3] = true,
+	[Constants.BlockType.CARROT_CROP_0] = true,
+	[Constants.BlockType.CARROT_CROP_1] = true,
+	[Constants.BlockType.CARROT_CROP_2] = true,
+	[Constants.BlockType.CARROT_CROP_3] = true,
+	[Constants.BlockType.BEETROOT_CROP_0] = true,
+	[Constants.BlockType.BEETROOT_CROP_1] = true,
+	[Constants.BlockType.BEETROOT_CROP_2] = true,
+	[Constants.BlockType.BEETROOT_CROP_3] = true,
+	-- Utility items
+	[Constants.BlockType.COMPOST] = true,
 		[Constants.BlockType.COBBLESTONE_MINION] = true,
+	-- Ores (6-tier progression: Copper → Iron → Steel → Bluesteel → Tungsten → Titanium)
+	[Constants.BlockType.COPPER_ORE] = true,
+	[Constants.BlockType.BLUESTEEL_ORE] = true,
+	[Constants.BlockType.TUNGSTEN_ORE] = true,
+	[Constants.BlockType.TITANIUM_ORE] = true,
+	-- Ingots/materials
+	[Constants.BlockType.COPPER_INGOT] = true,
+	[Constants.BlockType.STEEL_INGOT] = true,
+	[Constants.BlockType.BLUESTEEL_INGOT] = true,
+	[Constants.BlockType.TUNGSTEN_INGOT] = true,
+	[Constants.BlockType.TITANIUM_INGOT] = true,
+	[Constants.BlockType.BLUESTEEL_DUST] = true,
+	-- Full blocks (9x ingots)
+	[Constants.BlockType.COPPER_BLOCK] = true,
+	[Constants.BlockType.COAL_BLOCK] = true,
+	[Constants.BlockType.IRON_BLOCK] = true,
+	[Constants.BlockType.STEEL_BLOCK] = true,
+	[Constants.BlockType.BLUESTEEL_BLOCK] = true,
+	[Constants.BlockType.TUNGSTEN_BLOCK] = true,
+	[Constants.BlockType.TITANIUM_BLOCK] = true,
 }
 
 --[[
@@ -103,10 +151,11 @@ function InventoryValidator:ValidateItemStack(stackData)
 		return false, "Stack data is nil"
 	end
 
-	-- Check if itemId is a valid item (block or tool)
+	-- Check if itemId is a valid item (block, tool, armor, or spawn egg)
     local itemId = tonumber(stackData.itemId or stackData.id) or 0
 	local isTool = ToolConfig.IsTool(itemId)
-	if not VALID_ITEM_IDS[itemId] and not isTool and not SpawnEggConfig.IsSpawnEgg(itemId) then
+	local isArmor = ArmorConfig.IsArmor(itemId)
+	if not VALID_ITEM_IDS[itemId] and not isTool and not isArmor and not SpawnEggConfig.IsSpawnEgg(itemId) then
 		return false, string.format("Invalid item ID: %d", itemId)
 	end
 
@@ -121,9 +170,15 @@ function InventoryValidator:ValidateItemStack(stackData)
 		return false, string.format("Invalid count: %d (must be 0-64)", count)
 	end
 
-	-- Tools are non-stackable (Minecraft parity)
-	if isTool and count > 1 then
+	-- Tools and armor are non-stackable (Minecraft parity)
+	-- Exception: Arrows are stackable ammo items (defined as tools for equip purposes)
+	local toolInfo = isTool and ToolConfig.GetToolInfo(itemId)
+	local isArrow = toolInfo and toolInfo.toolType == "arrow"
+	if isTool and not isArrow and count > 1 then
 		return false, string.format("Invalid count for tool %d: %d (tools do not stack)", itemId, count)
+	end
+	if isArmor and count > 1 then
+		return false, string.format("Invalid count for armor %d: %d (armor does not stack)", itemId, count)
 	end
 
 	-- Non-air items must have count > 0
@@ -366,10 +421,11 @@ function InventoryValidator:SanitizeInventoryData(slots, expectedSize)
 			if count < 0 then count = 0; wasModified = true end
 			if count > MAX_STACK_SIZE then count = MAX_STACK_SIZE; wasModified = true end
 
-			-- Validate item ID exists (allow tools and spawn eggs)
+			-- Validate item ID exists (allow tools, armor, and spawn eggs)
             local isTool = ToolConfig.IsTool(itemId)
+			local isArmor = ArmorConfig.IsArmor(itemId)
 			local isEgg = SpawnEggConfig.IsSpawnEgg(itemId)
-			if not VALID_ITEM_IDS[itemId] and not isTool and not isEgg then
+			if not VALID_ITEM_IDS[itemId] and not isTool and not isArmor and not isEgg then
 				itemId = 0
 				count = 0
 				wasModified = true
@@ -380,16 +436,27 @@ function InventoryValidator:SanitizeInventoryData(slots, expectedSize)
 				count = 0
 			end
 
-			-- Tools are non-stackable: clamp to 1 if >1 (keep 0 if empty)
-			if isTool and count > 1 then
+			-- Tools and armor are non-stackable: clamp to 1 if >1 (keep 0 if empty)
+			-- Exception: Arrows are stackable ammo items
+			local toolInfo = isTool and ToolConfig.GetToolInfo(itemId)
+			local isArrow = toolInfo and toolInfo.toolType == "arrow"
+			if (isTool and not isArrow) or isArmor then
+				if count > 1 then
 				count = 1
 				wasModified = true
+				end
+			end
+
+			-- Determine max stack size (tools/armor = 1, arrows = 64, blocks = 64)
+			local maxStack = MAX_STACK_SIZE
+			if (isTool and not isArrow) or isArmor then
+				maxStack = 1
 			end
 
 				sanitized[i] = {
 					itemId = itemId,
 					count = count,
-					maxStack = (isTool and 1) or (stackData.maxStack or MAX_STACK_SIZE),
+					maxStack = stackData.maxStack or maxStack,
 					metadata = stackData.metadata or {}
 				}
 		else

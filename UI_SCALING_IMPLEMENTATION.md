@@ -178,6 +178,18 @@ For ScrollingFrames with UIListLayout/UIGridLayout:
 
 This solves the known Roblox issue where AutomaticCanvasSize doesn't work correctly with UIScale.
 
+### Per-Component Scale Limits
+- Set optional attributes on any `UIScale` to override the global clamp:
+  - `min_scale` — smallest allowed scale (default `0.85`)
+  - `max_scale` — largest allowed scale (default `1.5`)
+- Example: shrink an inventory panel further on phones
+
+```lua
+uiScale:SetAttribute("base_resolution", Vector2.new(1920, 1080))
+uiScale:SetAttribute("min_scale", 0.6)
+CollectionService:AddTag(uiScale, "scale_component")
+```
+
 ### Dynamic Registration
 - Components can be added at runtime
 - CollectionService automatically detects them

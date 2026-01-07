@@ -47,12 +47,29 @@ function LobbyWorldTeleportService:Start()
 end
 
 -- Resolve worldId from payload; default to ownerUserId string
-local function resolveWorldId(player, payload)
-	if payload and type(payload.worldId) == "string" and #payload.worldId > 0 then
-		return payload.worldId
+local function resolveWorldContext(player, payload)
+	payload = payload or {}
+
+	local ownerUserId = payload.ownerUserId or player.UserId
+	local slotId = payload.slotId
+	local worldId = payload.worldId
+
+	if worldId and type(worldId) == "string" then
+		-- Accept either ":" or "_" separator
+		if not slotId then
+			slotId = tonumber(string.match(worldId, "[:_](%d+)$"))
+		end
+		local extractedOwner = tonumber(string.match(worldId, "^(%d+)"))
+		if extractedOwner then
+			ownerUserId = extractedOwner
+		end
 	end
-	local ownerUserId = (payload and payload.ownerUserId) or player.UserId
-	return tostring(ownerUserId)
+
+	if not worldId and ownerUserId and slotId then
+		worldId = string.format("%d:%d", ownerUserId, slotId)
+	end
+
+	return worldId, ownerUserId, slotId
 end
 
 function LobbyWorldTeleportService:_getActiveEntry(worldId)
@@ -74,27 +91,44 @@ end
 -- Create or join world instance for player
 function LobbyWorldTeleportService:RequestJoinWorld(player: Player, payload)
 	self._logger.Info("RequestJoinWorld received", { player = player and player.Name, payload = payload })
-	local worldId = resolveWorldId(player, payload)
+	local worldId, ownerUserId, slotId = resolveWorldContext(player, payload)
 
-	-- Extract ownerUserId from worldId (format: "userId:slot")
-	local ownerUserId = tonumber(string.match(worldId, "^(%d+):")) or player.UserId
+	if not worldId or not ownerUserId or not slotId then
+		self._logger.Warn("Invalid RequestJoinWorld payload", {
+			player = player and player.Name,
+			worldId = worldId,
+			ownerUserId = ownerUserId,
+			slotId = slotId
+		})
+		local EventManager = require(game.ReplicatedStorage.Shared.EventManager)
+		EventManager:FireEvent("WorldJoinError", player, { message = "Invalid world selection. Please reopen the Worlds menu." })
+		return
+	end
+
 	local ownerName = player.Name  -- Will be updated from registry if available
+	local visitingAsOwner = payload and payload.visitingAsOwner == true
+	local isOwner = player.UserId == ownerUserId
+	visitingAsOwner = visitingAsOwner and isOwner
 
 	-- First try to re-use active instance
 	local entry = self:_getActiveEntry(worldId)
 	if entry and entry.accessCode then
+		local entrySlotId = entry.slotId or slotId or tonumber(string.match(worldId, "[:_](%d+)$"))
 		local options = Instance.new("TeleportOptions")
 		options:SetTeleportData({
 			worldId = worldId,
 			ownerUserId = ownerUserId,
 			ownerName = entry.ownerName or ownerName,
 			accessCode = entry.accessCode,
+			slotId = entrySlotId,
+			visitingAsOwner = visitingAsOwner,
 			returnPlaceId = LOBBY_PLACE_ID,
 			intent = "joinWorld"
 		})
+		options.ReservedServerAccessCode = entry.accessCode
 		self._logger.Info("Reusing active world instance", { worldId = worldId })
 		local ok, err = pcall(function()
-			TeleportService:TeleportToPrivateServer(WORLDS_PLACE_ID, entry.accessCode, { player }, options)
+			TeleportService:TeleportAsync(WORLDS_PLACE_ID, { player }, options)
 		end)
 		if not ok then
 			self._logger.Warn("Teleport failed, will reserve new server", { error = tostring(err) })
@@ -103,6 +137,13 @@ function LobbyWorldTeleportService:RequestJoinWorld(player: Player, payload)
 		else
 			return
 		end
+	end
+
+	-- Only owners can reserve new instances
+	if not isOwner then
+		local EventManager = require(game.ReplicatedStorage.Shared.EventManager)
+		EventManager:FireEvent("WorldJoinError", player, { message = "This world is offline. Ask the owner to start it first." })
+		return
 	end
 
 	-- Reserve new private server
@@ -131,6 +172,8 @@ function LobbyWorldTeleportService:RequestJoinWorld(player: Player, payload)
 		ownerUserId = ownerUserId,
 		ownerName = ownerName,
 		accessCode = accessCode,
+		worldId = worldId,
+		slotId = slotId,
 		updatedAt = os.time(),
 		playerCount = 0,
 		version = 1
@@ -144,13 +187,16 @@ function LobbyWorldTeleportService:RequestJoinWorld(player: Player, payload)
 		ownerUserId = ownerUserId,
 		ownerName = ownerName,
 		accessCode = accessCode,
+		slotId = slotId,
+		visitingAsOwner = true,
 		returnPlaceId = LOBBY_PLACE_ID,
 		intent = "joinWorld"
 	})
+	options.ReservedServerAccessCode = accessCode
 
 	self._logger.Info("Teleporting to reserved world instance", { worldId = worldId })
 	local ok2, err2 = pcall(function()
-		TeleportService:TeleportToPrivateServer(WORLDS_PLACE_ID, accessCode, { player }, options)
+		TeleportService:TeleportAsync(WORLDS_PLACE_ID, { player }, options)
 	end)
 	if not ok2 then
 		self._logger.Error("TeleportToPrivateServer failed", { error = tostring(err2) })

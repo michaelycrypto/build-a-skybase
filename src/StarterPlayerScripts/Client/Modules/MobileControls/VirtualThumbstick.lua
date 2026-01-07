@@ -12,8 +12,12 @@
 
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
 
 local VirtualThumbstick = {}
+local BOLD_FONT = Config.UI_SETTINGS.typography.fonts.bold
 VirtualThumbstick.__index = VirtualThumbstick
 
 function VirtualThumbstick.new()
@@ -151,7 +155,7 @@ function VirtualThumbstick:CreateDirectionalIndicators(parent)
 		arrow.TextColor3 = Color3.fromRGB(255, 255, 255)
 		arrow.TextTransparency = 0.7
 		arrow.TextSize = 12
-		arrow.Font = Enum.Font.GothamBold
+		arrow.Font = BOLD_FONT
 		arrow.Rotation = dir.rotation
 		arrow.Parent = parent
 
