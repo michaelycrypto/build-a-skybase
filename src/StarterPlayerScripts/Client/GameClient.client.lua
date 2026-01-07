@@ -351,8 +351,118 @@ local Initializer = require(ReplicatedStorage.Shared.Initializer)
 -- Global client state
 local Client = {
 	isInitialized = false,
-	managers = {}
+	managers = {},
+	worldReady = false
 }
+
+local WORLD_READY_EVENT = "WorldStateChanged"
+local WORLD_READY_TIMEOUT = 20
+local WORLD_READY_RETRY_INTERVAL = 5
+local WORLD_READY_MAX_RETRIES = 3
+
+local bootstrapComplete = false
+local worldReadyWatchdogToken = 0
+
+local function showWorldStatus(title, subtitle)
+	GameState:Set("ui.isLoading", true)
+
+	if LoadingScreen and LoadingScreen.IsActive and LoadingScreen:IsActive() and LoadingScreen.HoldForWorldStatus then
+		LoadingScreen:HoldForWorldStatus(title, subtitle)
+		return
+	end
+
+	if Client.managers.UIManager and Client.managers.UIManager.ShowWorldStatus then
+		Client.managers.UIManager:ShowWorldStatus(title, subtitle)
+	end
+end
+
+local function hideWorldStatus()
+	local handled = false
+	if LoadingScreen and LoadingScreen.IsActive and LoadingScreen:IsActive() and LoadingScreen.ReleaseWorldHold then
+		LoadingScreen:ReleaseWorldHold()
+		handled = true
+	end
+
+	if not handled and Client.managers.UIManager and Client.managers.UIManager.HideWorldStatus then
+		Client.managers.UIManager:HideWorldStatus()
+	end
+	GameState:Set("ui.isLoading", false)
+end
+
+local function tryFinalizeInitialization(reason)
+	if Client.isInitialized then
+		return
+	end
+
+	if not bootstrapComplete or not Client.worldReady then
+		return
+	end
+
+	hideWorldStatus()
+
+	Client.isInitialized = true
+	print(("✅ Client initialization complete (%s)"):format(reason or "world_ready"))
+	EventManager:SendToServer("RequestDataRefresh")
+end
+
+local function scheduleWorldReadyRetry(token, attempt)
+	if Client.worldReady or worldReadyWatchdogToken ~= token then
+		return
+	end
+
+	if attempt > WORLD_READY_MAX_RETRIES then
+		print("❌ World ready handshake timed out.")
+		showWorldStatus("Unable to load world", "Please return to the hub and try again.")
+		if Client.managers.ToastManager then
+			Client.managers.ToastManager:Error("World failed to load. Please rejoin from the hub.", 6)
+		end
+		return
+	end
+
+	print(string.format("⏳ Waiting for world ready event (retry %d/%d)...", attempt, WORLD_READY_MAX_RETRIES))
+
+	EventManager:SendToServer("RequestDataRefresh")
+	if Client.managers.ToastManager then
+		Client.managers.ToastManager:Warning("Waiting for world owner...", 4)
+	end
+
+	task.delay(WORLD_READY_RETRY_INTERVAL, function()
+		scheduleWorldReadyRetry(token, attempt + 1)
+	end)
+end
+
+local function startWorldReadyWatchdog()
+	worldReadyWatchdogToken += 1
+	local token = worldReadyWatchdogToken
+
+	task.delay(WORLD_READY_TIMEOUT, function()
+		if Client.worldReady or worldReadyWatchdogToken ~= token then
+			return
+		end
+		scheduleWorldReadyRetry(token, 1)
+	end)
+end
+
+local function handleWorldStateChanged(worldState)
+	worldState = worldState or {}
+	GameState:ApplyWorldState(worldState)
+
+	local status = worldState.status or (worldState.isReady and "ready" or "loading")
+	print(string.format("🌍 WorldStateChanged received (%s, ready=%s)", status, tostring(worldState.isReady)))
+
+	if worldState.isReady then
+		Client.worldReady = true
+		worldReadyWatchdogToken += 1
+		tryFinalizeInitialization("world_ready_event")
+	else
+		Client.worldReady = false
+		if status == "shutting_down" then
+			showWorldStatus("World shutting down", worldState.message or "Saving progress...")
+		else
+			showWorldStatus("Waiting for world owner", worldState.message or "Syncing island data...")
+		end
+	end
+end
 
 --[[
 	Complete initialization after loading screen
@@ -720,8 +830,14 @@ local function completeInitialization(EmoteManager)
 
     -- World grid auto-send removed
 
-		Client.isInitialized = true
-	print("✅ Client initialization complete!")
+	bootstrapComplete = true
+	if Client.worldReady then
+		tryFinalizeInitialization("bootstrap_complete")
+	else
+		print("⌛ Awaiting world ready handshake before enabling gameplay...")
+		showWorldStatus("Waiting for world owner", "Syncing island data...")
+		startWorldReadyWatchdog()
+	end
 
 end
 
@@ -808,6 +924,8 @@ local function initialize()
 
         -- Do not trigger neighbor remesh here; neighbor faces are culled by occlusion policy
 	end)
+
+	EventManager:RegisterEvent(WORLD_READY_EVENT, handleWorldStateChanged)
 
 -- Debounce timers for chunk remeshing (avoid flash during rapid edits)
 local pendingRemeshTimers = {}

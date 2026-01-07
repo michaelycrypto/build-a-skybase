@@ -15,10 +15,85 @@ local GameState = require(script.Parent.GameState)
 
 -- Services
 local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
 
 -- State
 local currentDeviceType = "Desktop"
 local currentViewport = {size = Vector2.new(1920, 1080), aspectRatio = 1.777}
+local worldStatusGui = nil
+local worldStatusTitle = nil
+local worldStatusSubtitle = nil
+
+local STATUS_COPY = {
+	loading = {
+		title = "Syncing island...",
+		body = "Preparing your world data."
+	},
+	waiting_for_owner = {
+		title = "Waiting for world owner",
+		body = "Hang tight while the world boots up."
+	},
+	shutting_down = {
+		title = "World paused",
+		body = "Server is shutting down safely."
+	},
+	timeout = {
+		title = "Unable to load world",
+		body = "Please return to the hub and try again."
+	}
+}
+
+local function ensureWorldStatusGui()
+	if worldStatusGui then
+		return
+	end
+
+	worldStatusGui = Instance.new("ScreenGui")
+	worldStatusGui.Name = "WorldStatusOverlay"
+	worldStatusGui.IgnoreGuiInset = true
+	worldStatusGui.DisplayOrder = 9999
+	worldStatusGui.ResetOnSpawn = false
+	worldStatusGui.Enabled = false
+	worldStatusGui.Parent = playerGui
+
+	local backdrop = Instance.new("Frame")
+	backdrop.BackgroundColor3 = Color3.fromRGB(6, 8, 12)
+	backdrop.BackgroundTransparency = 0.35
+	backdrop.Size = UDim2.new(1, 0, 1, 0)
+	backdrop.Parent = worldStatusGui
+
+	local container = Instance.new("Frame")
+	container.AnchorPoint = Vector2.new(0.5, 0.5)
+	container.Position = UDim2.new(0.5, 0, 0.5, 0)
+	container.Size = UDim2.new(0, 380, 0, 160)
+	container.BackgroundTransparency = 1
+	container.Parent = backdrop
+
+	local list = Instance.new("UIListLayout")
+	list.FillDirection = Enum.FillDirection.Vertical
+	list.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	list.VerticalAlignment = Enum.VerticalAlignment.Center
+	list.Padding = UDim.new(0, 10)
+	list.Parent = container
+
+	worldStatusTitle = Instance.new("TextLabel")
+	worldStatusTitle.Size = UDim2.new(1, -20, 0, 40)
+	worldStatusTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+	worldStatusTitle.BackgroundTransparency = 1
+	worldStatusTitle.Font = Enum.Font.GothamBold
+	worldStatusTitle.TextScaled = true
+	worldStatusTitle.TextWrapped = true
+	worldStatusTitle.Parent = container
+
+	worldStatusSubtitle = Instance.new("TextLabel")
+	worldStatusSubtitle.Size = UDim2.new(1, -40, 0, 60)
+	worldStatusSubtitle.TextColor3 = Color3.fromRGB(220, 230, 255)
+	worldStatusSubtitle.BackgroundTransparency = 1
+	worldStatusSubtitle.Font = Enum.Font.Gotham
+	worldStatusSubtitle.TextScaled = true
+	worldStatusSubtitle.TextWrapped = true
+	worldStatusSubtitle.Parent = container
+end
 
 --[[
 	Initialize the UI Manager for responsive design
@@ -38,6 +113,25 @@ function UIManager:Initialize()
 
 	-- Initialize responsive settings
 	self:HandleViewportChange()
+
+	GameState:OnPropertyChanged("game.isPlaying", function(isPlaying)
+		if isPlaying then
+			self:HideWorldStatus()
+		else
+			self:_applyWorldStatus(GameState:GetWorldStatus())
+		end
+	end)
+
+	GameState:OnPropertyChanged("game.status", function(newStatus)
+		if GameState:IsPlaying() then
+			return
+		end
+		self:_applyWorldStatus(newStatus)
+	end)
+
+	if not GameState:IsPlaying() then
+		self:_applyWorldStatus(GameState:GetWorldStatus())
+	end
 
 	print("UIManager: Responsive system ready")
 end
@@ -156,6 +250,34 @@ function UIManager:GetSafeAreaInsets()
 		left = 0,
 		right = 0
 	}
+end
+
+function UIManager:ShowWorldStatus(title, subtitle)
+	ensureWorldStatusGui()
+
+	worldStatusGui.Enabled = true
+	worldStatusTitle.Text = title or STATUS_COPY.loading.title
+	worldStatusSubtitle.Text = subtitle or STATUS_COPY.loading.body
+
+	GameState:Set("ui.isLoading", true)
+
+	UserInputService.MouseIconEnabled = true
+	UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+end
+
+function UIManager:HideWorldStatus()
+	if worldStatusGui then
+		worldStatusGui.Enabled = false
+		worldStatusTitle.Text = ""
+		worldStatusSubtitle.Text = ""
+	end
+	GameState:Set("ui.isLoading", false)
+end
+
+function UIManager:_applyWorldStatus(statusKey, overrideMessage)
+	statusKey = statusKey or "loading"
+	local copy = STATUS_COPY[statusKey] or STATUS_COPY.loading
+	self:ShowWorldStatus(copy.title, overrideMessage or copy.body)
 end
 
 --[[

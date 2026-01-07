@@ -39,6 +39,7 @@ local masterVolume = 1
 local musicVolume = 0.5
 local sfxVolume = 0.7
 local soundEnabled = true
+local sessionSilenced = false
 
 --[[
 	Initialize the sound manager
@@ -142,6 +143,14 @@ function SoundManager:Initialize()
 			if newValue and oldValue and newValue > oldValue then
 				-- Experience was gained, play notification sound
 				self:PlaySFX("notification")
+			end
+		end)
+
+		GameState:OnPropertyChanged("game.isPaused", function(isPaused)
+			if isPaused then
+				self:_applySessionPause()
+			else
+				self:_applySessionResume()
 			end
 		end)
 	end)
@@ -485,6 +494,44 @@ function SoundManager:StopMusic(fadeOut)
 
 	currentMusic = nil
 	safeLog("Info", "Music stopped", {})
+end
+
+function SoundManager:_applySessionPause()
+	if sessionSilenced then
+		return
+	end
+	sessionSilenced = true
+
+	if currentMusic and currentMusic.sound.IsPlaying then
+		local success, err = pcall(function()
+			currentMusic.sound:Pause()
+		end)
+		if not success then
+			safeLog("Warn", "Failed to pause music", {error = err})
+		end
+	end
+end
+
+function SoundManager:_applySessionResume()
+	if not sessionSilenced then
+		return
+	end
+	sessionSilenced = false
+
+	if not soundEnabled then
+		return
+	end
+
+	if currentMusic then
+		local success, err = pcall(function()
+			currentMusic.sound:Resume()
+		end)
+		if not success then
+			safeLog("Warn", "Failed to resume music", {error = err})
+		end
+	elseif self:HasMusicTracks() then
+		self:PlayMusic(1, false)
+	end
 end
 
 --[[

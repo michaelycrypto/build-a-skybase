@@ -61,9 +61,12 @@ local function initialize()
 		},
 		game = {
 			isPlaying = false,
-			isPaused = false,
+			isPaused = true,
 			startTime = 0,
-			sessionTime = 0
+			sessionTime = 0,
+			status = "loading",
+			lastStateChange = 0,
+			worldState = {}
 		},
 		network = {
 			isConnected = false,
@@ -195,6 +198,52 @@ end
 function GameState:FlushUpdates()
 	if #updateQueue > 0 then
 		processUpdateQueue()
+	end
+end
+
+--[[
+	=== WORLD SESSION HELPERS ===
+--]]
+
+function GameState:GetWorldState()
+	return self:Get("game.worldState") or {}
+end
+
+function GameState:GetWorldStatus()
+	return self:Get("game.status") or "loading"
+end
+
+function GameState:IsPlaying()
+	return self:Get("game.isPlaying") == true
+end
+
+function GameState:IsPaused()
+	return self:Get("game.isPaused") == true
+end
+
+function GameState:ApplyWorldState(worldState)
+	worldState = worldState or {}
+
+	local now = tick()
+	local status = worldState.status or (worldState.isReady and "ready" or "loading")
+	local isReady = worldState.isReady == true or status == "ready"
+	local isPaused = worldState.isPaused == true or status ~= "ready"
+
+	self:Set("game.worldState", worldState)
+	self:Set("game.status", status)
+	self:Set("game.isPlaying", isReady)
+	self:Set("game.isPaused", isPaused)
+	self:Set("game.lastStateChange", now)
+
+	if isReady then
+		local startTime = self:Get("game.startTime") or 0
+		if startTime == 0 then
+			self:Set("game.startTime", now)
+			startTime = now
+		end
+		self:Set("game.sessionTime", math.max(0, now - startTime))
+	else
+		self:Set("game.lastPauseTime", now)
 	end
 end
 

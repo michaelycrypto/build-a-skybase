@@ -377,6 +377,7 @@ local EVENT_DEFINITIONS = {
 	PlayerDataUpdated = {"any"}, -- playerData
 	CurrencyUpdated = {"any"}, -- currencies
 	InventoryUpdated = {"any"}, -- inventory
+	WorldStateChanged = {"any"}, -- world/session readiness payload
 	CraftRecipeBatchResult = {"any"}, -- {recipeId:string, acceptedCount:number, toCursor:boolean, outputItemId:number, outputPerCraft:number}
 	ShowNotification = {"any"}, -- notificationData
 	ShowError = {"any"}, -- errorData

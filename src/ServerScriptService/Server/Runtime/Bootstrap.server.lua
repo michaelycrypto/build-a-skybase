@@ -342,13 +342,72 @@ end
 
 Players.PlayerAdded:Connect(setupPlayerCharacterScaling)
 
--- ═══════════════════════════════════════════════════════════════════════════
+-- Shared world-readiness helpers (hub + player worlds)
+local firstPlayerHasJoined = false
+local worldReady = false
+local configuredFromTeleport = false
+local configuredWorldId = nil
+local WORLD_READY_TIMEOUT = 30 -- seconds
 
+local function buildWorldStatePayload(status, message)
+	local isReady = voxelWorldService and voxelWorldService:IsWorldReady() or false
+	local resolvedStatus = status or (isReady and "ready" or "loading")
+
+	local payload = {
+		status = resolvedStatus,
+		isReady = isReady,
+		isPaused = resolvedStatus ~= "ready",
+		jobId = tostring(game.JobId or ""),
+		timestamp = os.time(),
+		message = message
+	}
+
+	if IS_LOBBY then
+		payload.worldType = "hub_world"
+		payload.worldId = "hub_world"
+		payload.ownerUserId = nil
+		payload.ownerName = "HubServer"
+	else
+		payload.worldType = "player_world"
+		if worldOwnershipService then
+			payload.ownerUserId = worldOwnershipService:GetOwnerId()
+			payload.ownerName = worldOwnershipService:GetOwnerName()
+			payload.worldId = worldOwnershipService:GetWorldId()
+			payload.configuredWorldId = configuredWorldId
+		end
+	end
+
+	return payload
+end
+
+local function dispatchWorldState(status, message, targetPlayer)
+	local payload = buildWorldStatePayload(status, message)
+	if not payload then
+		return
+	end
+
+	if targetPlayer then
+		EventManager:FireEvent("WorldStateChanged", targetPlayer, payload)
+	else
+		EventManager:FireEventToAll("WorldStateChanged", payload)
+	end
+
+	logger.Info("World state dispatched", {
+		status = payload.status,
+		target = targetPlayer and targetPlayer.Name or "all",
+		placeType = IS_LOBBY and "Hub" or "PlayerWorld"
+	})
+end
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Hub world bootstrap (always-on shared place). Emit WorldStateChanged so the
+-- client-side readiness gate behaves the same as player-owned worlds.
 if IS_LOBBY then
 	local HUB_WORLD_SEED = 3984757983459578
 	local HUB_RENDER_DISTANCE = 2
 	voxelWorldService:InitializeWorld(HUB_WORLD_SEED, HUB_RENDER_DISTANCE, "hub_world")
 	logger.Info("✅ Hub voxel world initialized (5x5 chunks)")
+	dispatchWorldState("ready", "hub_initialized")
 
 	local function addHubPlayer(player)
 		voxelWorldService:OnPlayerAdded(player)
@@ -356,6 +415,7 @@ if IS_LOBBY then
 		if armorEquipService and armorEquipService.OnPlayerAdded then
 			armorEquipService:OnPlayerAdded(player)
 		end
+		dispatchWorldState("ready", nil, player)
 	end
 
 	for _, plr in ipairs(Players:GetPlayers()) do
@@ -387,6 +447,11 @@ if IS_LOBBY then
 	end)
 
 	logger.Info("✅ Lobby hub streaming loop ready")
+
+	game:BindToClose(function()
+		dispatchWorldState("shutting_down", "hub_shutdown")
+	end)
+
 	return
 end
 
@@ -468,13 +533,6 @@ end)
 
 -- Set up player join/leave handling
 local Players = game:GetService("Players")
-
--- Track first player flag and world ready state
-local firstPlayerHasJoined = false
-local worldReady = false
-local configuredFromTeleport = false
-local configuredWorldId = nil
-local WORLD_READY_TIMEOUT = 30 -- seconds
 
 local STUDIO_PLACEHOLDER_JOB_ID = "00000000-0000-0000-0000-000000000000"
 local STUDIO_DEFAULT_SLOT = 1
@@ -681,6 +739,7 @@ local function initializeVoxelWorld()
 	end
 	worldReady = true
 	logger.Info("✅ World is ready for players!")
+	dispatchWorldState("ready", "world_initialized")
 end
 
 local function handlePlayerJoin(player, isExisting)
@@ -757,6 +816,8 @@ local function handlePlayerJoin(player, isExisting)
 		player:Kick("World failed to initialize. Please try again.")
 		return
 	end
+
+	dispatchWorldState("ready", nil, player)
 
 	voxelWorldService:OnPlayerAdded(player)
 
@@ -859,6 +920,8 @@ logger.Info("✅ Server ready")
 -- Cleanup on shutdown
 game:BindToClose(function()
 	logger.Info("Server shutting down, notifying players...")
+
+	dispatchWorldState("shutting_down", "server_shutdown")
 
 	-- Notify all players of shutdown
 	local Players = game:GetService("Players")

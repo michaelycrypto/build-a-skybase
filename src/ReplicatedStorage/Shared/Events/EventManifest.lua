@@ -103,6 +103,7 @@ local Manifest = {
 		HubTeleportError = {"any"}, -- {message}
 		-- Return flow can reuse ShowNotification/ShowError; explicit here for clarity
 		ReturnToLobbyAcknowledged = {"any"},
+		WorldStateChanged = {"any"},
 		-- World management responses
 		WorldsListUpdated = {"any"}, -- {myWorlds = [...], friendsWorlds = [...]}
 		WorldDeleted = {"any"},      -- {worldId, success}

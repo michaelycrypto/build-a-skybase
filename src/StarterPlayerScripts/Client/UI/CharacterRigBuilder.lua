@@ -22,6 +22,30 @@ local IDLE_ANIMATION_IDS = {
 }
 
 local cachedStarterTemplate = nil
+local idleTrackConnections = setmetatable({}, {__mode = "k"})
+
+local ATTACHMENT_SEARCH_ORDER = {
+	"Head",
+	"UpperTorso",
+	"LowerTorso",
+	"Torso",
+	"LeftUpperArm",
+	"RightUpperArm",
+	"LeftArm",
+	"RightArm",
+	"LeftLowerArm",
+	"RightLowerArm",
+	"LeftHand",
+	"RightHand",
+	"LeftUpperLeg",
+	"RightUpperLeg",
+	"LeftLeg",
+	"RightLeg",
+	"LeftLowerLeg",
+	"RightLowerLeg",
+	"LeftFoot",
+	"RightFoot"
+}
 
 local function setModelPhysicsState(model, anchored)
 	if not model then
@@ -41,6 +65,97 @@ local function setModelPhysicsState(model, anchored)
 			end
 		end
 	end
+end
+
+local function stripScriptsFromModel(model)
+	for _, descendant in ipairs(model:GetDescendants()) do
+		if descendant:IsA("Script") or descendant:IsA("LocalScript") then
+			descendant:Destroy()
+		end
+	end
+
+	local animate = model:FindFirstChild("Animate")
+	if animate then
+		animate:Destroy()
+	end
+end
+
+local function findAttachmentOnRig(rig, attachmentName)
+	if not rig or not attachmentName then
+		return nil, nil
+	end
+
+	for _, partName in ipairs(ATTACHMENT_SEARCH_ORDER) do
+		local part = rig:FindFirstChild(partName)
+		if part then
+			local attachment = part:FindFirstChild(attachmentName)
+			if attachment then
+				return part, attachment
+			end
+		end
+	end
+
+	return nil, nil
+end
+
+local function alignAccessoryToRig(accessory, rig)
+	local handle = accessory and accessory:FindFirstChild("Handle")
+	if not handle then
+		return
+	end
+
+	-- Collect direct attachment children on the handle (ignore wrap/layer attachments deeper in the hierarchy)
+	local handleAttachments = {}
+	for _, child in ipairs(handle:GetChildren()) do
+		if child:IsA("Attachment") then
+			table.insert(handleAttachments, child)
+		end
+	end
+	if #handleAttachments == 0 then
+		local fallbackAttachment = handle:FindFirstChildOfClass("Attachment")
+		if fallbackAttachment then
+			table.insert(handleAttachments, fallbackAttachment)
+		end
+	end
+
+	if #handleAttachments == 0 then
+		return
+	end
+
+	-- Remove existing welds so the viewport weld fully controls the handle
+	for _, child in ipairs(handle:GetChildren()) do
+		if child:IsA("WeldConstraint") or child:IsA("Weld") or (child:IsA("Motor6D") and child.Name == "AccessoryWeld") then
+			child:Destroy()
+		end
+	end
+
+	local selectedPart = nil
+	local selectedRigAttachment = nil
+	local selectedHandleAttachment = nil
+
+	for _, handleAttachment in ipairs(handleAttachments) do
+		local targetPart, targetAttachment = findAttachmentOnRig(rig, handleAttachment.Name)
+		if targetPart and targetAttachment then
+			selectedPart = targetPart
+			selectedRigAttachment = targetAttachment
+			selectedHandleAttachment = handleAttachment
+			break
+		end
+	end
+
+	if not selectedPart or not selectedRigAttachment or not selectedHandleAttachment then
+		return
+	end
+
+	local targetWorldCFrame = selectedPart.CFrame * selectedRigAttachment.CFrame
+	local handleWorldCFrame = targetWorldCFrame * selectedHandleAttachment.CFrame:Inverse()
+	handle.CFrame = handleWorldCFrame
+
+	local weld = Instance.new("WeldConstraint")
+	weld.Name = "ViewportAccessoryWeld"
+	weld.Part0 = selectedPart
+	weld.Part1 = handle
+	weld.Parent = handle
 end
 
 local DEFAULT_RIG_POSES = {
@@ -128,6 +243,18 @@ local function resetRigPose(model)
 
 	for _, partName in ipairs({"RightUpperArm", "LeftUpperArm", "RightLowerArm", "LeftLowerArm", "RightHand", "LeftHand",
 		"RightUpperLeg", "LeftUpperLeg", "RightLowerLeg", "LeftLowerLeg", "RightFoot", "LeftFoot"}) do
+		local part = model:FindFirstChild(partName)
+		if part then
+			for _, child in ipairs(part:GetChildren()) do
+				if child:IsA("Motor6D") then
+					child.Transform = CFrame.new()
+				end
+			end
+		end
+	end
+
+	-- Ensure R6 limb transforms are also reset
+	for _, partName in ipairs({"RightArm", "LeftArm", "RightLeg", "LeftLeg"}) do
 		local part = model:FindFirstChild(partName)
 		if part then
 			for _, child in ipairs(part:GetChildren()) do
@@ -431,63 +558,7 @@ function CharacterRigBuilder.BuildCharacterRig(player)
 			local handle = accessory:FindFirstChild("Handle")
 			if handle then
 				handle.CanCollide = false
-
-				-- Find attachment on handle
-				local handleAttachment = handle:FindFirstChildOfClass("Attachment")
-				if handleAttachment then
-					local attachmentName = handleAttachment.Name
-
-					-- Try to find corresponding AccessoryAttachment on body parts
-					local targetPart = nil
-					local targetAttachment = nil
-
-					-- Check Head first (most common)
-					local head = rig:FindFirstChild("Head")
-					if head then
-						targetAttachment = head:FindFirstChild(attachmentName)
-						if targetAttachment then
-							targetPart = head
-						end
-					end
-
-					-- If not found, try other body parts
-					if not targetPart then
-						for _, partName in ipairs({"Torso", "UpperTorso", "LowerTorso", "LeftArm", "RightArm", "LeftLeg", "RightLeg"}) do
-							local bodyPart = rig:FindFirstChild(partName)
-							if bodyPart then
-								targetAttachment = bodyPart:FindFirstChild(attachmentName)
-								if targetAttachment then
-									targetPart = bodyPart
-									break
-								end
-							end
-						end
-					end
-
-					-- If we found matching attachments, ensure weld exists and position correctly
-					if targetPart and targetAttachment then
-						-- Remove any existing welds
-						for _, weld in ipairs(handle:GetChildren()) do
-							if weld:IsA("WeldConstraint") or weld:IsA("Weld") then
-								weld:Destroy()
-							end
-						end
-
-						-- Calculate correct position using attachment CFrames
-						-- targetAttachment.CFrame is relative to targetPart
-						-- handleAttachment.CFrame is relative to handle
-						-- We want: handle.CFrame such that handleAttachment aligns with targetAttachment
-						local targetWorldCFrame = targetPart.CFrame * targetAttachment.CFrame
-						local handleWorldCFrame = targetWorldCFrame * handleAttachment.CFrame:Inverse()
-						handle.CFrame = handleWorldCFrame
-
-						-- Create WeldConstraint to keep it in place
-						local weld = Instance.new("WeldConstraint")
-						weld.Part0 = targetPart
-						weld.Part1 = handle
-						weld.Parent = handle
-					end
-				end
+				alignAccessoryToRig(accessory, rig)
 			end
 		end
 	end
@@ -499,6 +570,7 @@ ensureNeckAlignment(rig)
 	-- The caller (e.g., armor UI viewmodel) will attach the appropriate item via HeldItemRenderer
 	HeldItemRenderer.ClearItem(rig)
 
+stripScriptsFromModel(rig)
 	setModelPhysicsState(rig, true)
 
 	return rig
@@ -516,6 +588,23 @@ function CharacterRigBuilder.ApplyIdlePose(model)
 	if not model then return end
 	local humanoid = model:FindFirstChildOfClass("Humanoid")
 	if not humanoid then return end
+
+	local existingTrackValue = humanoid:FindFirstChild("ViewportIdleTrack")
+	if existingTrackValue and existingTrackValue.Value then
+		local existingTrack = existingTrackValue.Value
+		pcall(function()
+			existingTrack:Stop()
+			existingTrack:Destroy()
+		end)
+		local existingConn = idleTrackConnections[existingTrack]
+		if existingConn then
+			existingConn:Disconnect()
+			idleTrackConnections[existingTrack] = nil
+		end
+	end
+	if existingTrackValue then
+		existingTrackValue:Destroy()
+	end
 
 	setModelPhysicsState(model, false)
 
@@ -544,6 +633,7 @@ function CharacterRigBuilder.ApplyIdlePose(model)
 	animation.Parent = model
 
 	local track = animator:LoadAnimation(animation)
+	animation:Destroy()
 	if not track then
 		setModelPhysicsState(model, true)
 		return
@@ -554,6 +644,42 @@ function CharacterRigBuilder.ApplyIdlePose(model)
 	track:Play(0.05)
 	track.TimePosition = math.min(track.Length, 0.2)
 	track:AdjustSpeed(0)
+
+	local trackValue = Instance.new("ObjectValue")
+	trackValue.Name = "ViewportIdleTrack"
+	trackValue.Value = track
+	trackValue.Parent = humanoid
+
+	track.Stopped:Connect(function()
+		local conn = idleTrackConnections[track]
+		if conn then
+			conn:Disconnect()
+			idleTrackConnections[track] = nil
+		end
+		if trackValue.Parent then
+			trackValue:Destroy()
+		end
+		if track then
+			track:Destroy()
+		end
+	end)
+
+	idleTrackConnections[track] = model.AncestryChanged:Connect(function(_, parent)
+		if parent == nil then
+			local conn = idleTrackConnections[track]
+			if conn then
+				conn:Disconnect()
+				idleTrackConnections[track] = nil
+			end
+			pcall(function()
+				track:Stop()
+				track:Destroy()
+			end)
+			if trackValue.Parent then
+				trackValue:Destroy()
+			end
+		end
+	end)
 
 	setModelPhysicsState(model, true)
 end

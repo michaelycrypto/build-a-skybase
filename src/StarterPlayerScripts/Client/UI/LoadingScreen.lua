@@ -30,6 +30,8 @@ local titleLabel
 -- State
 local isLoading = false
 local loadingComplete = false
+local worldHoldActive = false
+local pendingFadeHandler = nil
 
 local CUSTOM_FONT_NAME = "Upheaval BRK"
 
@@ -82,8 +84,11 @@ local function setTextContent(target, text)
 	end)
 end
 
-local function setStatusText()
-	-- Intentionally blank: new UI does not surface status copy
+local function setStatusText(text)
+	if not titleLabel then
+		return
+	end
+	setTextContent(titleLabel, text or "loading")
 end
 
 -- Animation constants
@@ -232,7 +237,10 @@ function LoadingScreen:Create()
 	layout.Parent = centerContainer
 
 	local heroFontName = CUSTOM_FONT_THEME.logo
-	local titleFontPx = Config.UI_SETTINGS.typography.sizes.body.base
+	math.randomseed(tick() % 1 * 1e6)
+	local uiTypography = Config.UI_SETTINGS and Config.UI_SETTINGS.typography
+	local sizes = uiTypography and uiTypography.sizes
+	local titleFontPx = (sizes and sizes.body and sizes.body.base) or 24
 
 	titleLabel = Instance.new("TextLabel")
 	titleLabel.Name = "TitleLabel"
@@ -251,7 +259,7 @@ function LoadingScreen:Create()
 	titleLabel.Parent = centerContainer
 
 	FontBinder.apply(titleLabel, heroFontName)
-	setTextContent(titleLabel, "loading")
+	setTextContent(titleLabel, "Preparing assets...")
 	applyFontMetadata(titleLabel, heroFontName, titleFontPx)
 
 	local progressContainer = Instance.new("Frame")
@@ -277,6 +285,8 @@ function LoadingScreen:Create()
 	local fillCorner = Instance.new("UICorner")
 	fillCorner.CornerRadius = UDim.new(0, 2)
 	fillCorner.Parent = progressFill
+
+	setStatusText("Preparing assets...")
 end
 
 --[[
@@ -359,7 +369,7 @@ function LoadingScreen:LoadBlockTextures(onProgress, onComplete)
 
 		-- Update status for current batch
 		if assetsToLoad[startIndex] then
-			setStatusText("Loading " .. assetsToLoad[startIndex].name:gsub("_", " "))
+			setStatusText("Loading textures...")
 		end
 
 		-- Load current batch with timeout protection
@@ -414,7 +424,7 @@ function LoadingScreen:LoadAllAssets(onProgress, onComplete, onBeforeFadeOut)
 		return
 	end
 
-	setStatusText("Loading fonts...")
+	setStatusText("Warming up fonts...")
 	FontBinder.preload(CUSTOM_FONT_THEME)
 	isLoading = true
 
@@ -461,7 +471,7 @@ function LoadingScreen:LoadAllAssets(onProgress, onComplete, onBeforeFadeOut)
 			self:LoadBlockTextures(
 				function(loaded, total, progress)
 					-- Update status and overall progress
-					setStatusText("Loading textures (" .. loaded .. "/" .. essentialTextureCount .. ")")
+					setStatusText("Bringing in textures...")
 					local overallProgress = math.clamp(loaded / totalAssets, 0, 1)
 
 					-- Update progress bar
@@ -517,12 +527,12 @@ function LoadingScreen:LoadIconsAfterTextures(totalIcons, texturesLoaded, textur
 	soundAssetIds = soundAssetIds or {}
 
 	if totalIcons > 0 then
-		setStatusText("Loading icons...")
+		setStatusText("Polishing icons...")
 
 		IconManager:PreloadRegisteredIcons(
 			function(loaded, total, progress)
 				local totalLoaded = texturesLoaded + loaded
-				setStatusText("Loading icons (" .. loaded .. "/" .. total .. ")")
+				setStatusText("Painting icons...")
 
 				-- Update overall progress
 				local overallProgress = math.clamp(totalLoaded / totalAssets, 0, 1)
@@ -575,7 +585,7 @@ function LoadingScreen:LoadMeshesAfterIcons(meshAssets, assetsLoadedSoFar, asset
 		return
 	end
 
-	setStatusText("Loading tool meshes...")
+	setStatusText("Forging tools...")
 
 	local batchSize = 4
 	local loaded = 0
@@ -617,7 +627,7 @@ function LoadingScreen:LoadMeshesAfterIcons(meshAssets, assetsLoadedSoFar, asset
 
 		local totalLoaded = assetsLoadedSoFar + loaded
 		local overallProgress = math.clamp(totalLoaded / totalAssets, 0, 1)
-		setStatusText("Loading meshes (" .. loaded .. "/" .. totalMeshes .. ")")
+		setStatusText("Assembling meshes...")
 		updateProgressBar(overallProgress)
 		if onProgress then
 			pcall(onProgress, totalLoaded, totalAssets, overallProgress)
@@ -640,7 +650,7 @@ function LoadingScreen:LoadSoundsAfterIcons(soundAssetIds, assetsLoadedSoFar, as
 		return
 	end
 
-	setStatusText("Loading sounds...")
+	setStatusText("Tuning sounds...")
 
 	local batchSize = 8
 	local loaded = 0
@@ -744,9 +754,9 @@ function LoadingScreen:CompleteAllAssetLoading(totalLoaded, totalFailed, onCompl
 
 	-- Update final status
 	if totalFailed > 0 then
-		setStatusText("Loaded " .. totalLoaded .. " assets (" .. totalFailed .. " failed)")
+		setStatusText("Assets loaded!")
 	else
-		setStatusText("All assets loaded successfully!")
+		setStatusText("Ready to roll!")
 	end
 
 	-- Brief pause to show completion
@@ -760,12 +770,22 @@ function LoadingScreen:CompleteAllAssetLoading(totalLoaded, totalFailed, onCompl
 	-- Prime worlds data while the loading screen is still covering the UI.
 	self:PrimeWorldsData()
 
-	-- Fade out and call completion callback
-	self:FadeOut(function()
-		if onComplete then
-			onComplete(totalLoaded, totalFailed)
+	local function finalizeFade()
+		self:FadeOut(function()
+			if onComplete then
+				onComplete(totalLoaded, totalFailed)
+			end
+		end)
+	end
+
+	if worldHoldActive then
+		pendingFadeHandler = function()
+			pendingFadeHandler = nil
+			finalizeFade()
 		end
-	end)
+	else
+		finalizeFade()
+	end
 end
 
 --[[
@@ -783,6 +803,11 @@ function LoadingScreen:FadeOut(onComplete)
 			loadingGui:Destroy()
 			loadingGui = nil
 		end
+		progressFill = nil
+		titleLabel = nil
+
+		worldHoldActive = false
+		pendingFadeHandler = nil
 
 		if onComplete then
 			onComplete()
@@ -806,6 +831,40 @@ function LoadingScreen:IsLoading()
 	return isLoading
 end
 
+function LoadingScreen:IsActive()
+	return loadingGui ~= nil
+end
+
+function LoadingScreen:HoldForWorldStatus(title, subtitle)
+	if not loadingGui then
+		return false
+	end
+
+	worldHoldActive = true
+
+	if title and titleLabel then
+		setTextContent(titleLabel, title)
+	end
+
+	setStatusText(subtitle or "Preparing your world data...")
+
+	return true
+end
+
+function LoadingScreen:ReleaseWorldHold()
+	if not worldHoldActive then
+		return
+	end
+
+	worldHoldActive = false
+
+	if loadingComplete and pendingFadeHandler then
+		local handler = pendingFadeHandler
+		pendingFadeHandler = nil
+		handler()
+	end
+end
+
 --[[
 	Cleanup function
 --]]
@@ -818,14 +877,18 @@ function LoadingScreen:Cleanup()
 	cleanupWorldsPrimeConnection()
 	worldsPrimeStarted = false
 	worldsPrimeComplete = false
+	worldHoldActive = false
+	pendingFadeHandler = nil
+	isLoading = false
+	loadingComplete = false
 
 	if loadingGui then
 		loadingGui:Destroy()
 		loadingGui = nil
 	end
 
-	isLoading = false
-	loadingComplete = false
+	progressFill = nil
+	titleLabel = nil
 end
 
 return LoadingScreen
