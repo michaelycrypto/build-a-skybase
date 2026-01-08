@@ -9,7 +9,6 @@
 	- Input priority system
 ]]
 
-local UserInputService = game:GetService("UserInputService")
 local GuiService = game:GetService("GuiService")
 
 local InputDetector = {}
@@ -39,7 +38,7 @@ local LONG_PRESS_DURATION = 0.5 -- Time to trigger long press
 local SWIPE_MIN_VELOCITY = 500 -- Minimum velocity for swipe (pixels/sec)
 local SWIPE_MIN_DISTANCE = 50 -- Minimum distance for swipe
 
-function InputDetector.new()
+function InputDetector.new(inputProvider)
 	local self = setmetatable({}, InputDetector)
 
 	-- Active touches: [inputObject] = touchData
@@ -65,6 +64,7 @@ function InputDetector.new()
 
 	-- Connections
 	self.connections = {}
+	self.inputProvider = inputProvider
 
 	return self
 end
@@ -80,20 +80,25 @@ function InputDetector:Initialize()
 
 	self.enabled = true
 
-	-- Connect to UserInputService events
-	self.connections.inputBegan = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if not self.inputProvider then
+		warn("InputDetector: No input provider available")
+		return
+	end
+
+	-- Connect to shared input provider events
+	self.connections.inputBegan = self.inputProvider.InputBegan:Connect(function(input, gameProcessed)
 		if input.UserInputType == Enum.UserInputType.Touch then
 			self:DetectTouchBegin(input, gameProcessed)
 		end
 	end)
 
-	self.connections.inputChanged = UserInputService.InputChanged:Connect(function(input, gameProcessed)
+	self.connections.inputChanged = self.inputProvider.InputChanged:Connect(function(input, gameProcessed)
 		if input.UserInputType == Enum.UserInputType.Touch then
 			self:DetectTouchMove(input, gameProcessed)
 		end
 	end)
 
-	self.connections.inputEnded = UserInputService.InputEnded:Connect(function(input, gameProcessed)
+	self.connections.inputEnded = self.inputProvider.InputEnded:Connect(function(input, gameProcessed)
 		if input.UserInputType == Enum.UserInputType.Touch then
 			self:DetectTouchEnd(input, gameProcessed)
 		end

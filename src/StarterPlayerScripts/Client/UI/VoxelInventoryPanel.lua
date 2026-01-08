@@ -11,7 +11,7 @@
 ]]
 
 local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
+local InputService = require(script.Parent.Parent.Input.InputService)
 local GuiService = game:GetService("GuiService")
 local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -318,12 +318,38 @@ function VoxelInventoryPanel.new(inventoryManager)
 	self.connections = {}
 	self.renderConnection = nil
 	self.pendingCloseMode = "gameplay"
+	self.overlayRelease = nil
 
 	-- Animation state tracking
 	self.isAnimating = false
 	self.currentTween = nil
 
 	return self
+end
+
+-- Keep cursor unlocked while the inventory overlay is visible.
+function VoxelInventoryPanel:_acquireOverlay()
+	if self.overlayRelease then
+		return
+	end
+
+	local release = InputService:BeginOverlay("VoxelInventoryPanel", {
+		showIcon = true,
+	})
+
+	if release then
+		self.overlayRelease = release
+	end
+end
+
+function VoxelInventoryPanel:_releaseOverlay()
+	if not self.overlayRelease then
+		return
+	end
+
+	local release = self.overlayRelease
+	self.overlayRelease = nil
+	release()
 end
 
 function VoxelInventoryPanel:Initialize()
@@ -2429,7 +2455,7 @@ end
 function VoxelInventoryPanel:UpdateCursorPosition()
 	if not self.cursorFrame.Visible then return end
 
-	local mousePos = UserInputService:GetMouseLocation()
+	local mousePos = InputService:GetMouseLocation()
 
 	-- Cursor ScreenGui has IgnoreGuiInset=true, so use raw mouse position
 	-- AnchorPoint of 0.5,0.5 centers the cursor frame on this position
@@ -2438,7 +2464,7 @@ end
 
 function VoxelInventoryPanel:BindInput()
 	-- Only handle Escape here; E is handled centrally in GameClient to avoid conflicts
-	self.connections[#self.connections + 1] = UserInputService.InputBegan:Connect(function(input, gpe)
+	self.connections[#self.connections + 1] = InputService.InputBegan:Connect(function(input, gpe)
 		if gpe then return end
 		if input.KeyCode == Enum.KeyCode.Escape and self.isOpen then
 			self:Close()
@@ -2446,7 +2472,7 @@ function VoxelInventoryPanel:BindInput()
 	end)
 
 	-- Drop item when clicking outside inventory
-	self.connections[#self.connections + 1] = UserInputService.InputBegan:Connect(function(input, gpe)
+	self.connections[#self.connections + 1] = InputService.InputBegan:Connect(function(input, gpe)
 		if not self.isOpen then return end
 		if input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
 
@@ -2487,7 +2513,10 @@ function VoxelInventoryPanel:Open()
 		self.currentTween = nil
 	end
 
-	-- Use UIVisibilityManager to coordinate all UI
+	-- NOTE: Do NOT call _acquireOverlay() here - UIVisibilityManager handles cursor unlock
+	-- Having both creates a double-push that causes toggle flip bugs
+
+	-- Use UIVisibilityManager to coordinate all UI (this handles cursor unlock)
 	UIVisibilityManager:SetMode("inventory")
 
 	self.isOpen = true
@@ -2514,27 +2543,11 @@ function VoxelInventoryPanel:Open()
 		self.armorViewmodel:SetMouseTracking(true)
 	end
 
-	-- Signal to character controller to stop locking mouse
-	GameState:Set("voxelWorld.inventoryOpen", true)
-
-	-- Unlock mouse - force it!
-	UserInputService.MouseBehavior = Enum.MouseBehavior.Default
-	UserInputService.MouseIconEnabled = true
-
-	-- Force mouse visible again on next frame (in case something overrides it)
-	task.defer(function()
-		UserInputService.MouseBehavior = Enum.MouseBehavior.Default
-		UserInputService.MouseIconEnabled = true
-	end)
-
-	-- Start updating cursor position and keep mouse unlocked
+	-- Start updating cursor position
 	self.renderConnection = RunService.RenderStepped:Connect(function()
-		-- Keep forcing mouse to be visible and unlocked while inventory is open
 		if self.isOpen then
-			UserInputService.MouseBehavior = Enum.MouseBehavior.Default
-			UserInputService.MouseIconEnabled = true
+			self:UpdateCursorPosition()
 		end
-		self:UpdateCursorPosition()
 	end)
 
 	-- Animate in: Grow from top with smooth bounce effect
@@ -2586,7 +2599,7 @@ function VoxelInventoryPanel:Close(nextMode)
 	if self:IsClosing() then
 		return
 	end
-	if not self.isOpen or self.isAnimating then return end
+	if not self.isOpen then return end
 
 	-- Hide hover item name when closing
 	self:HideHoverItemName()
@@ -2648,9 +2661,6 @@ function VoxelInventoryPanel:Close(nextMode)
 		self.renderConnection = nil
 	end
 
-	-- Signal to character controller to resume mouse locking
-	GameState:Set("voxelWorld.inventoryOpen", false)
-
 	-- Note: CameraController now manages mouse lock dynamically based on camera mode
 	-- (first person = locked, third person = free)
 
@@ -2677,15 +2687,13 @@ function VoxelInventoryPanel:Close(nextMode)
 		self.currentTween = nil
 		self.gui.Enabled = false
 
-		if not switchImmediately then
-			UIVisibilityManager:SetMode(targetMode)
-		end
-
 		-- Reset workbench mode after UI is hidden to avoid visible title flicker
 		if self.isWorkbenchMode then
 			self:SetWorkbenchMode(false)
 		end
 
+		-- NOTE: Do NOT call _releaseOverlay() here - UIVisibilityManager handles cursor lock
+		-- Having both creates a double-pop that causes toggle flip bugs
 		UIVisibilityManager:SetMode(self.pendingCloseMode or "gameplay")
 	end)
 end
@@ -2750,6 +2758,8 @@ function VoxelInventoryPanel:Cleanup()
 	if self.renderConnection then
 		self.renderConnection:Disconnect()
 	end
+
+	self:_releaseOverlay()
 
 	if self.armorViewmodel then
 		self.armorViewmodel:Destroy()

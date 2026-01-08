@@ -3,7 +3,7 @@
 	Module for block placement and breaking using R15 character and mouse input
 ]]
 
-local UserInputService = game:GetService("UserInputService")
+local InputService = require(script.Parent.Parent.Input.InputService)
 local ContextActionService = game:GetService("ContextActionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -22,7 +22,6 @@ local BlockRegistry = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockReg
 local BlockProperties = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockProperties)
 local ToolAnimationController = require(script.Parent.ToolAnimationController)
 local BlockBreakProgress = require(script.Parent.Parent.UI.BlockBreakProgress)
-local UIVisibilityManager = require(script.Parent.Parent.Managers.UIVisibilityManager)
 
 local BlockInteraction = {}
 BlockInteraction.isReady = false
@@ -171,7 +170,7 @@ local function _computeAimRay()
 
     local origin
     local direction
-    local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+    local isMobile = InputService.TouchEnabled and not InputService.KeyboardEnabled
     local isFirstPerson = GameState:Get("camera.isFirstPerson")
 
     if isMobile then
@@ -183,7 +182,7 @@ local function _computeAimRay()
         origin = camera.CFrame.Position
         direction = camera.CFrame.LookVector
     else
-        local mousePos = UserInputService:GetMouseLocation()
+        local mousePos = InputService:GetMouseLocation()
         local ray = camera:ViewportPointToRay(mousePos.X, mousePos.Y)
         origin = ray.Origin
         direction = ray.Direction
@@ -319,7 +318,7 @@ getTargetedBlock = function()
 	-- Compute picking ray based on platform and camera mode
 	local origin
 	local direction
-	local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+	local isMobile = InputService.TouchEnabled and not InputService.KeyboardEnabled
 	local isFirstPerson = GameState:Get("camera.isFirstPerson")
 
 	if isMobile then
@@ -335,7 +334,7 @@ getTargetedBlock = function()
 		direction = camera.CFrame.LookVector
 	else
 		-- PC Third person: Ray through mouse cursor position
-		local mousePos = UserInputService:GetMouseLocation()
+		local mousePos = InputService:GetMouseLocation()
 		local ray = camera:ViewportPointToRay(mousePos.X, mousePos.Y)
 		origin = ray.Origin
 		direction = ray.Direction
@@ -476,9 +475,8 @@ local function startBreaking()
 	if isBreaking then return end
 	if isBowEquipped() then return end
 
-	-- Block interactions when UI is open (inventory, chest, worlds, minion)
-	if UIVisibilityManager:GetMode() ~= "gameplay" then return end
-	if GameState:Get("voxelWorld.inventoryOpen") then return end
+	-- Block interactions when UI is open (inventory, chest, worlds, minion, etc.)
+	if InputService:IsGameplayBlocked() then return end
 
 	-- Prevent breaking when a sword is equipped (PvP mode)
 	local GameState = require(script.Parent.Parent.Managers.GameState)
@@ -583,7 +581,14 @@ end
 
 -- Interact with block or place block (right click)
 local function interactOrPlace()
-	-- First: try interacting with a minion mob model under mouse
+	-- Guard: Don't allow actions until system is ready
+	if not BlockInteraction.isReady or not blockAPI then return end
+	if isBowEquipped() then return end
+
+	-- Block interactions when UI is open (inventory, chest, worlds, minion, etc.)
+	if InputService:IsGameplayBlocked() then return end
+
+	-- Try interacting with a minion mob model under mouse
 	do
 		local target = mouse and mouse.Target
 		if target then
@@ -604,13 +609,6 @@ local function interactOrPlace()
 			end
 		end
 	end
-	-- Guard: Don't allow actions until system is ready
-	if not BlockInteraction.isReady or not blockAPI then return end
-	if isBowEquipped() then return end
-
-	-- Block interactions when UI is open (inventory, chest, worlds, minion)
-	if UIVisibilityManager:GetMode() ~= "gameplay" then return end
-	if GameState:Get("voxelWorld.inventoryOpen") then return end
 
 	-- Verify character still exists
 	local character = player.Character
@@ -846,7 +844,7 @@ task.spawn(function()
 		-- Reduced from 0.05 to 0.1 for 50% less CPU usage (10Hz instead of 20Hz)
 		task.wait(0.1)
 
-		local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+	local isMobile = InputService.TouchEnabled and not InputService.KeyboardEnabled
 		local isFirstPerson = GameState:Get("camera.isFirstPerson")
 
 		-- Check if camera moved/rotated significantly (dirty checking)
@@ -859,7 +857,7 @@ task.spawn(function()
 		-- In third person on desktop, also check mouse movement (cursor can move independently)
 		local mouseMoved = false
 		if not isMobile and not isFirstPerson then
-			local currentMousePos = UserInputService:GetMouseLocation()
+			local currentMousePos = InputService:GetMouseLocation()
 			mouseMoved = (currentMousePos - lastMousePos).Magnitude > MOUSE_MOVE_THRESHOLD
 			if mouseMoved then
 				lastMousePos = currentMousePos
@@ -927,7 +925,7 @@ function BlockInteraction:Initialize(voxelWorldHandle)
 	end)
 
 	-- Setup input handlers
-	UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	InputService.InputBegan:Connect(function(input, gameProcessed)
 		-- CRITICAL: Check gameProcessed FIRST for all inputs
 		-- This ensures we don't interfere with Roblox's native camera controls or UI
 		if gameProcessed then return end
@@ -968,7 +966,7 @@ function BlockInteraction:Initialize(voxelWorldHandle)
 				-- Track right-click for third person smart detection
 				isRightClickHeld = true
 				rightClickStartTime = tick()
-				rightClickStartPos = UserInputService:GetMouseLocation()
+				rightClickStartPos = InputService:GetMouseLocation()
 			end
 		end
 
@@ -981,7 +979,7 @@ function BlockInteraction:Initialize(voxelWorldHandle)
 	end)
 
 	-- Track touch movement to detect drag vs tap/hold
-	UserInputService.InputChanged:Connect(function(input, gameProcessed)
+	InputService.InputChanged:Connect(function(input, gameProcessed)
 		if input.UserInputType == Enum.UserInputType.Touch then
 			local touchData = activeTouches[input]
 			if touchData then
@@ -1003,7 +1001,7 @@ function BlockInteraction:Initialize(voxelWorldHandle)
 		end
 	end)
 
-	UserInputService.InputEnded:Connect(function(input, gameProcessed)
+	InputService.InputEnded:Connect(function(input, gameProcessed)
 		-- CRITICAL: Check gameProcessed FIRST to avoid interfering with Roblox camera/UI
 		if gameProcessed then return end
 
@@ -1045,7 +1043,7 @@ function BlockInteraction:Initialize(voxelWorldHandle)
 				isRightClickHeld = false
 
 				local holdDuration = tick() - rightClickStartTime
-				local currentMousePos = UserInputService:GetMouseLocation()
+				local currentMousePos = InputService:GetMouseLocation()
 				local mouseMovement = (currentMousePos - rightClickStartPos).Magnitude
 
 				if holdDuration < CLICK_TIME_THRESHOLD and mouseMovement < CLICK_MOVEMENT_THRESHOLD then
@@ -1061,9 +1059,14 @@ function BlockInteraction:Initialize(voxelWorldHandle)
 	-- Setup right-click for placing/interacting using ContextActionService
 	-- Dynamically bind/unbind based on camera mode
 	local function handleRightClick(actionName, inputState, inputObject)
+		-- Block interactions when UI is open (inventory, chest, worlds, minion, etc.)
+		if InputService:IsGameplayBlocked() then
+			return Enum.ContextActionResult.Pass
+		end
+
 		-- First person: Handle block placement and interaction (Minecraft-style)
 		if inputState == Enum.UserInputState.Begin then
-			-- First, try minion mob model interaction in first-person
+			-- Try minion mob model interaction in first-person
 			do
 				local target = mouse and mouse.Target
 				if target then

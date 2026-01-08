@@ -10,7 +10,6 @@
 ]]
 
 local TweenService = game:GetService("TweenService")
-local UserInputService = game:GetService("UserInputService")
 
 local FeedbackSystem = {}
 FeedbackSystem.__index = FeedbackSystem
@@ -87,7 +86,7 @@ function FeedbackSystem:PlayHaptic(feedbackType, customIntensity)
 
 	-- Note: Roblox doesn't have native haptic feedback API yet
 	-- This is prepared for when the feature becomes available
-	-- UserInputService:SetHapticMotor(Enum.HapticMotor.Touch, finalIntensity)
+	-- Placeholder for future haptic motor hook (requires engine support)
 
 	-- For now, we can use a placeholder or wait for Roblox to add the API
 	-- Placeholder: print haptic feedback

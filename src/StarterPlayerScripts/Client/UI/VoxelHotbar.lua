@@ -6,7 +6,7 @@
 ]]
 
 local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
+local InputService = require(script.Parent.Parent.Input.InputService)
 local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
@@ -853,7 +853,7 @@ end
 
 function VoxelHotbar:BindInput()
 	-- Number keys 1-9
-	self.connections[#self.connections + 1] = UserInputService.InputBegan:Connect(function(input, gpe)
+	self.connections[#self.connections + 1] = InputService.InputBegan:Connect(function(input, gpe)
 		if gpe then return end
 
 		-- Check for number keys
@@ -886,7 +886,7 @@ function VoxelHotbar:BindInput()
 	end)
 
 	-- Mouse wheel scrolling
-	self.connections[#self.connections + 1] = UserInputService.InputChanged:Connect(function(input, gpe)
+	self.connections[#self.connections + 1] = InputService.InputChanged:Connect(function(input, gpe)
 		if gpe then return end
 
 		if input.UserInputType == Enum.UserInputType.MouseWheel then

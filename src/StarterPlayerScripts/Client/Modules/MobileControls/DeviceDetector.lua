@@ -10,7 +10,6 @@
 	- Recommended settings based on device
 ]]
 
-local UserInputService = game:GetService("UserInputService")
 local GuiService = game:GetService("GuiService")
 
 local DeviceDetector = {}
@@ -24,8 +23,9 @@ local DeviceType = {
 	Unknown = "Unknown",
 }
 
-function DeviceDetector.new()
+function DeviceDetector.new(inputProvider)
 	local self = setmetatable({}, DeviceDetector)
+	self.inputProvider = inputProvider
 
 	-- Device info
 	self.deviceType = DeviceType.Unknown
@@ -49,6 +49,8 @@ end
 	Detect device type and capabilities
 ]]
 function DeviceDetector:Detect()
+	local userInput = self.inputProvider
+
 	-- Get screen size
 	local camera = workspace.CurrentCamera
 	if camera then
@@ -57,13 +59,13 @@ function DeviceDetector:Detect()
 	end
 
 	-- Detect touch capability
-	self.hasTouchscreen = UserInputService.TouchEnabled
+	self.hasTouchscreen = userInput and userInput.TouchEnabled or false
 
 	-- Detect gyroscope
-	self.hasGyroscope = UserInputService.GyroscopeEnabled
+	self.hasGyroscope = userInput and userInput.GyroscopeEnabled or false
 
 	-- Detect accelerometer
-	self.hasAccelerometer = UserInputService.AccelerometerEnabled
+	self.hasAccelerometer = userInput and userInput.AccelerometerEnabled or false
 
 	-- Haptics are not directly detectable in Roblox, assume available if touch is present
 	self.hasHaptics = self.hasTouchscreen

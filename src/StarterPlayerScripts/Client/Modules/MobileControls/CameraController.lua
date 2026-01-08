@@ -11,13 +11,12 @@
 	- Gyroscope support (optional)
 ]]
 
-local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 
 local MobileCameraController = {}
 MobileCameraController.__index = MobileCameraController
 
-function MobileCameraController.new()
+function MobileCameraController.new(inputProvider)
 	local self = setmetatable({}, MobileCameraController)
 
 	-- Configuration
@@ -28,6 +27,7 @@ function MobileCameraController.new()
 	self.gyroscopeEnabled = false
 	self.gyroscopeSensitivity = 1.0
 	self.maxVerticalAngle = 80 -- Degrees
+	self.inputProvider = inputProvider
 
 	-- State
 	self.enabled = false
@@ -83,7 +83,7 @@ function MobileCameraController:Initialize()
 	self:SetupCameraLoop()
 
 	-- Enable gyroscope if available
-	if UserInputService.GyroscopeEnabled then
+	if self.inputProvider and self.inputProvider.GyroscopeEnabled then
 		self.gyroscopeAvailable = true
 	end
 
@@ -94,14 +94,19 @@ end
 	Setup input handling
 ]]
 function MobileCameraController:SetupInputHandling()
+	if not self.inputProvider then
+		warn("MobileCameraController: No input provider available")
+		return
+	end
+
 	-- Touch input for camera rotation
-	self.connections.inputBegan = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	self.connections.inputBegan = self.inputProvider.InputBegan:Connect(function(input, gameProcessed)
 		if input.UserInputType == Enum.UserInputType.Touch and not gameProcessed then
 			self:OnTouchBegin(input)
 		end
 	end)
 
-	self.connections.inputChanged = UserInputService.InputChanged:Connect(function(input, gameProcessed)
+	self.connections.inputChanged = self.inputProvider.InputChanged:Connect(function(input, gameProcessed)
 		if input.UserInputType == Enum.UserInputType.Touch and self.active and input == self.touchInput then
 			self:OnTouchMove(input)
 		end
@@ -112,7 +117,7 @@ function MobileCameraController:SetupInputHandling()
 		end
 	end)
 
-	self.connections.inputEnded = UserInputService.InputEnded:Connect(function(input, gameProcessed)
+	self.connections.inputEnded = self.inputProvider.InputEnded:Connect(function(input, gameProcessed)
 		if input.UserInputType == Enum.UserInputType.Touch and input == self.touchInput then
 			self:OnTouchEnd(input)
 		end

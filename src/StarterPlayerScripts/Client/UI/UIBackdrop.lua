@@ -2,6 +2,10 @@
 	UIBackdrop.lua - Reusable Backdrop System
 	Provides blur effect + dark overlay for any UI component
 	Singleton pattern - only one backdrop active at a time
+
+	Mouse Lock Fix:
+	- Uses TextButton.Modal = true to tell Roblox to release mouse lock
+	- Continuously enforces MouseBehavior.Default while visible (fights PlayerModule)
 ]]
 
 local UIBackdrop = {}
@@ -9,6 +13,8 @@ local UIBackdrop = {}
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local Lighting = game:GetService("Lighting")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -21,6 +27,7 @@ local isVisible = false
 local currentConfig = nil
 local overlayTween = nil
 local blurTween = nil
+local mouseEnforceConnection = nil
 
 local function stopTween(tween)
 	if tween then
@@ -68,14 +75,19 @@ local function initialize()
 	backdropGui.Enabled = false
 	backdropGui.Parent = playerGui
 
-	-- Create overlay frame
-	overlayFrame = Instance.new("Frame")
+	-- Create overlay as TextButton (not Frame) because Modal property only exists on interactive elements
+	-- TextButton with empty text acts like a Frame but supports Modal
+	overlayFrame = Instance.new("TextButton")
 	overlayFrame.Name = "Overlay"
 	overlayFrame.Size = UDim2.new(1, 0, 1, 0)
 	overlayFrame.Position = UDim2.new(0, 0, 0, 0)
 	overlayFrame.BackgroundColor3 = DEFAULT_CONFIG.overlayColor
 	overlayFrame.BackgroundTransparency = 1  -- Start hidden
 	overlayFrame.BorderSizePixel = 0
+	overlayFrame.Text = ""
+	overlayFrame.AutoButtonColor = false
+	overlayFrame.Active = true  -- Required for Modal to work
+	overlayFrame.Modal = true   -- KEY: Tells Roblox to release mouse lock when mouse is over this element
 	overlayFrame.Parent = backdropGui
 
 	-- Create blur effect in Lighting
@@ -114,7 +126,9 @@ function UIBackdrop:Show(config)
 		backdropGui.DisplayOrder = config.displayOrder
 	end
 
+	-- Re-enable Modal (disabled in Hide() to allow cursor lock restoration) and set color
 	if overlayFrame then
+		overlayFrame.Modal = true
 		overlayFrame.BackgroundColor3 = currentConfig.overlayColor
 	end
 
@@ -152,22 +166,32 @@ function UIBackdrop:Show(config)
 	end
 
 	-- Setup tap callback if provided
+	-- The overlay is now a TextButton, so we connect directly to it
 	if currentConfig.onTap then
 		if not hasTapDetector() then
-			local tapDetector = Instance.new("TextButton")
-			tapDetector.Name = "TapDetector"
-			tapDetector.Size = UDim2.new(1, 0, 1, 0)
-			tapDetector.BackgroundTransparency = 1
-			tapDetector.Text = ""
-			tapDetector.Parent = overlayFrame
+			-- Create a marker to track that we've connected
+			local marker = Instance.new("BoolValue")
+			marker.Name = "TapDetector"
+			marker.Parent = overlayFrame
 
-			tapDetector.MouseButton1Click:Connect(function()
-				if currentConfig.onTap then
+			overlayFrame.MouseButton1Click:Connect(function()
+				if currentConfig and currentConfig.onTap then
 					currentConfig.onTap()
 				end
 			end)
 		end
 	end
+
+	-- Continuously enforce mouse unlock while UI is visible
+	-- This fights Roblox's PlayerModule which tries to lock the mouse every frame
+	if mouseEnforceConnection then
+		mouseEnforceConnection:Disconnect()
+	end
+
+	mouseEnforceConnection = RunService.RenderStepped:Connect(function()
+		UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+		UserInputService.MouseIconEnabled = true
+	end)
 
 	print("UIBackdrop: Shown with blur=" .. tostring(currentConfig.blur) .. " overlay=" .. tostring(currentConfig.overlay))
 end
@@ -185,6 +209,19 @@ function UIBackdrop:Hide(callback)
 	end
 
 	isVisible = false
+
+	-- Disable Modal immediately to stop fighting cursor lock restoration
+	-- Modal=true tells Roblox to release mouse lock, which interferes with
+	-- CameraController's attempt to re-lock the cursor during close animation
+	if overlayFrame then
+		overlayFrame.Modal = false
+	end
+
+	-- Stop enforcing mouse unlock
+	if mouseEnforceConnection then
+		mouseEnforceConnection:Disconnect()
+		mouseEnforceConnection = nil
+	end
 
 	stopTween(overlayTween)
 	stopTween(blurTween)
@@ -327,6 +364,12 @@ end
 ]]
 function UIBackdrop:Cleanup()
 	isVisible = false
+
+	-- Stop enforcing mouse unlock
+	if mouseEnforceConnection then
+		mouseEnforceConnection:Disconnect()
+		mouseEnforceConnection = nil
+	end
 
 	if backdropGui then
 		backdropGui:Destroy()

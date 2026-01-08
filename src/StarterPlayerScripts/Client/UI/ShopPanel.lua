@@ -10,7 +10,7 @@ local ShopPanel = {}
 -- Services
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
-local UserInputService = game:GetService("UserInputService")
+local InputService = require(script.Parent.Parent.Input.InputService)
 
 -- Dependencies
 local GameConfig = require(game:GetService("ReplicatedStorage").Configs.GameConfig)

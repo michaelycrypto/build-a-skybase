@@ -11,7 +11,7 @@
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local UserInputService = game:GetService("UserInputService")
+local InputService = require(script.Parent.Parent.Input.InputService)
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
@@ -469,7 +469,7 @@ end
 	@return: boolean - True if mobile
 ]]
 function CraftingPanel:IsMobile()
-	return UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+	return InputService.TouchEnabled and not InputService.KeyboardEnabled
 end
 
 --[[
@@ -610,8 +610,8 @@ function CraftingPanel:SetupCardInteractions(card, craftBtn, recipe, canCraft, b
 			-- Shift+click for instant craft
 			card.InputBegan:Connect(function(input)
 				if input.UserInputType == Enum.UserInputType.MouseButton1 then
-					if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) or
-					   UserInputService:IsKeyDown(Enum.KeyCode.RightShift) then
+					if InputService:IsKeyDown(Enum.KeyCode.LeftShift) or
+					   InputService:IsKeyDown(Enum.KeyCode.RightShift) then
 						self:CraftToInventory(recipe, canCraft)
 						self:HideRecipeDetailPage()
 					end

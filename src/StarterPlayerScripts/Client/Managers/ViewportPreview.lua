@@ -12,7 +12,7 @@ local ViewportPreview = {}
 ViewportPreview.__index = ViewportPreview
 
 local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
+local InputService = require(script.Parent.Parent.Input.InputService)
 local GuiService = game:GetService("GuiService")
 local Workspace = game:GetService("Workspace")
 
@@ -292,7 +292,7 @@ function ViewportPreview:SetMouseTracking(enabled)
 			if not self._model or not self._model.PrimaryPart or not self._viewport or not self._basePivot then return end
 
 			-- Get mouse position and screen width
-			local mousePos = UserInputService:GetMouseLocation()
+			local mousePos = InputService:GetMouseLocation()
 			local camera = Workspace.CurrentCamera
 			if not camera then return end
 

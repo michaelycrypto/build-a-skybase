@@ -14,6 +14,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.Shared.Config)
 local UIComponents = require(script.Parent.UIComponents)
 local SoundManager = require(script.Parent.SoundManager)
+local InputService = require(script.Parent.Parent.Input.InputService)
 
 -- Services and instances
 local player = Players.LocalPlayer
@@ -424,6 +425,13 @@ function PanelManager:ShowPanel(panelInstance)
 	local typeConfig = panelInstance.typeConfig
 	local animationType = ANIMATION_SETTINGS.easing[typeConfig.animation] or ANIMATION_SETTINGS.easing.smooth
 
+	-- Push cursor mode to unlock mouse while panel is open
+	if not panelInstance._overlayRelease then
+		panelInstance._overlayRelease = InputService:BeginOverlay("PanelManager_" .. panelInstance.config.id, {
+			showIcon = true,
+		})
+	end
+
 	-- Call onShow callback
 	if panelInstance.config.onShow then
 		panelInstance.config.onShow(panelInstance.data)
@@ -439,6 +447,14 @@ end
 function PanelManager:HidePanel(panelInstance, callback)
 	local typeConfig = panelInstance.typeConfig
 	local animationType = ANIMATION_SETTINGS.easing[typeConfig.animation] or ANIMATION_SETTINGS.easing.smooth
+
+	-- Update panel open state BEFORE popping cursor mode
+	-- This ensures CameraController updates the gameplay cursor mode first
+	-- Now pop cursor mode - _applyCursorState will use the updated gameplay cursor mode
+	if panelInstance._overlayRelease then
+		panelInstance._overlayRelease()
+		panelInstance._overlayRelease = nil
+	end
 
 	-- Call onHide callback
 	if panelInstance.config.onHide then

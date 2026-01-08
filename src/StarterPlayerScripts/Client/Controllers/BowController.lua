@@ -4,7 +4,6 @@
 ]]
 
 local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
 local SoundService = game:GetService("SoundService")
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -13,7 +12,7 @@ local GameState = require(script.Parent.Parent.Managers.GameState)
 local EventManager = require(ReplicatedStorage.Shared.EventManager)
 local BowConfig = require(ReplicatedStorage.Configs.BowConfig)
 local ToolVisualController = require(script.Parent.ToolVisualController)
-local UIVisibilityManager = require(script.Parent.Parent.Managers.UIVisibilityManager)
+local InputService = require(script.Parent.Parent.Input.InputService)
 
 local controller = {}
 local player = Players.LocalPlayer
@@ -155,9 +154,8 @@ local function startDraw()
     if isDrawing then return end
     if not isEquipped then return end
 
-    -- Block shooting when UI is open (inventory, chest, worlds, minion)
-    if UIVisibilityManager:GetMode() ~= "gameplay" then return end
-    if GameState:Get("voxelWorld.inventoryOpen") then return end
+    -- Block shooting when UI is open (inventory, chest, worlds, minion, etc.)
+    if InputService:IsGameplayBlocked() then return end
 
     -- Don't allow drawing if player has no arrows
     if not hasArrows() then return end
@@ -229,8 +227,8 @@ function controller:Initialize(invManager)
     -- Store reference to inventory manager for arrow checking
     inventoryManager = invManager
 
-    UserInputService.InputBegan:Connect(onInputBegan)
-    UserInputService.InputEnded:Connect(onInputEnded)
+    InputService.InputBegan:Connect(onInputBegan)
+    InputService.InputEnded:Connect(onInputEnded)
 
     GameState:OnPropertyChanged("voxelWorld.isHoldingTool", refreshEquipState)
     GameState:OnPropertyChanged("voxelWorld.selectedToolItemId", refreshEquipState)

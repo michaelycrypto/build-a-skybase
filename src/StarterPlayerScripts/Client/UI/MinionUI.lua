@@ -5,13 +5,13 @@
 ]]
 
 local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
+local InputService = require(script.Parent.Parent.Input.InputService)
 local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
-local GameState = require(script.Parent.Parent.Managers.GameState)
 local IconManager = require(script.Parent.Parent.Managers.IconManager)
+local UIVisibilityManager = require(script.Parent.Parent.Managers.UIVisibilityManager)
 local ItemStack = require(ReplicatedStorage.Shared.VoxelWorld.Inventory.ItemStack)
 local BlockViewportCreator = require(ReplicatedStorage.Shared.VoxelWorld.Rendering.BlockViewportCreator)
 local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
@@ -151,7 +151,7 @@ function MinionUI:ShowTooltip(slot, itemId, count)
 	self.tooltip:FindFirstChild("Text").Text = text
 
 	-- Position near mouse
-	local mousePos = UserInputService:GetMouseLocation()
+	local mousePos = InputService:GetMouseLocation()
 	self.tooltip.Position = UDim2.new(0, mousePos.X + 15, 0, mousePos.Y + 15)
 	self.tooltip.Visible = true
 end
@@ -282,9 +282,29 @@ function MinionUI:Initialize()
 		self._eventsRegistered = true
 	end
 
+	-- Register with UIVisibilityManager
+	UIVisibilityManager:RegisterComponent("minionUI", self, {
+		showMethod = "Show",
+		hideMethod = "Hide",
+		isOpenMethod = "IsOpen",
+		priority = 150
+	})
+
 	self._initialized = true
 
 	return self
+end
+
+function MinionUI:Show()
+	-- UIVisibilityManager callback - does nothing since Open handles visibility
+end
+
+function MinionUI:Hide()
+	-- UIVisibilityManager callback - does nothing since Close handles visibility
+end
+
+function MinionUI:IsOpen()
+	return self.isOpen
 end
 
 function MinionUI:CreatePanel()
@@ -928,28 +948,11 @@ function MinionUI:Open(anchorPos, state)
 
 	self:UpdateAllDisplays()
 
+	-- Use UIVisibilityManager to coordinate all UI
+	UIVisibilityManager:SetMode("minion")
+
 	-- Show UI
 	self.gui.Enabled = true
-	GameState:Set("voxelWorld.minionUIOpen", true)
-	GameState:Set("voxelWorld.inventoryOpen", true) -- Signal to CameraController to unlock mouse
-
-	-- Unlock mouse
-	UserInputService.MouseBehavior = Enum.MouseBehavior.Default
-	UserInputService.MouseIconEnabled = true
-
-	task.defer(function()
-		UserInputService.MouseBehavior = Enum.MouseBehavior.Default
-		UserInputService.MouseIconEnabled = true
-	end)
-
-	-- Start render connection to keep mouse unlocked (like ChestUI)
-	local RunService = game:GetService("RunService")
-	self.renderConnection = RunService.RenderStepped:Connect(function()
-		if self.isOpen then
-			UserInputService.MouseBehavior = Enum.MouseBehavior.Default
-			UserInputService.MouseIconEnabled = true
-		end
-	end)
 end
 
 function MinionUI:Close()
@@ -971,18 +974,12 @@ function MinionUI:Close()
 	self.isOpen = false
 	self.anchorPos = nil
 
-	-- Stop render connection
-	if self.renderConnection then
-		self.renderConnection:Disconnect()
-		self.renderConnection = nil
-	end
-
 	if self.gui then
 		self.gui.Enabled = false
 	end
 
-	GameState:Set("voxelWorld.minionUIOpen", false)
-	GameState:Set("voxelWorld.inventoryOpen", false) -- Signal to CameraController to re-lock mouse
+	-- Restore gameplay mode
+	UIVisibilityManager:SetMode("gameplay")
 end
 
 function MinionUI:OnUpgradeClicked()
@@ -1054,3 +1051,4 @@ function MinionUI:RegisterEvents()
 end
 
 return MinionUI
+

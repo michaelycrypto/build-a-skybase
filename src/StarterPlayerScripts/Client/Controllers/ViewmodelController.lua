@@ -8,7 +8,7 @@
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
+local InputService = require(script.Parent.Parent.Input.InputService)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local GameState = require(script.Parent.Parent.Managers.GameState)
@@ -610,7 +610,7 @@ local function connectInputs()
 	clearConns(inputConns)
 
 	-- Track mouse down for continuous swinging
-	inputConns[#inputConns+1] = UserInputService.InputBegan:Connect(function(input, gp)
+	inputConns[#inputConns+1] = InputService.InputBegan:Connect(function(input, gp)
 		if gp then return end
 		-- Skip swing pulse for bow (charging handled elsewhere)
 		if isBowEquipped() then return end
@@ -621,7 +621,7 @@ local function connectInputs()
 	end)
 
 	-- Track mouse up to stop continuous swinging
-	inputConns[#inputConns+1] = UserInputService.InputEnded:Connect(function(input, gp)
+	inputConns[#inputConns+1] = InputService.InputEnded:Connect(function(input, gp)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 then
 			isSwingHeld = false
 		end

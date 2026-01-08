@@ -9,10 +9,10 @@
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local GameState = require(script.Parent.Parent.Managers.GameState)
+local InputService = require(script.Parent.Parent.Input.InputService)
+local CameraController = require(script.Parent.Parent.Controllers.CameraController)
 
 local Crosshair = {}
 
@@ -73,31 +73,28 @@ function Crosshair:Create(parentHudGui)
 	createBar(crosshairContainer, true)
 	createBar(crosshairContainer, false)
 
-	-- Camera mode constants (must match CameraController)
-	local CAMERA_MODE_FIRST_PERSON = 1
-	local CAMERA_MODE_THIRD_PERSON_FREE = 2
-	local CAMERA_MODE_THIRD_PERSON_LOCK = 3
-
 	-- Update visibility based on camera mode
-	task.spawn(function()
-		while true do
-			task.wait(0.1)
+	local function updateVisibility()
+		if not crosshairContainer then return end
 
-			if crosshairContainer then
-				local cameraMode = GameState:Get("camera.mode") or CAMERA_MODE_FIRST_PERSON
-				local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+		local isMobile = InputService.TouchEnabled and not InputService.KeyboardEnabled
+		local currentState = CameraController:GetCurrentState()
 
-				-- Show crosshair:
-				-- - In first person mode
-				-- - In third person lock mode (mouse locked, aiming with camera)
-				-- - On mobile devices (for tap targeting)
-				local shouldShow = (cameraMode == CAMERA_MODE_FIRST_PERSON)
-					or (cameraMode == CAMERA_MODE_THIRD_PERSON_LOCK)
-					or isMobile
-				crosshairContainer.Visible = shouldShow
-			end
-		end
-	end)
+		-- Show crosshair:
+		-- - In first person mode
+		-- - In third person lock mode (mouse locked, aiming with camera)
+		-- - On mobile devices (for tap targeting)
+		local shouldShow = (currentState == "FIRST_PERSON")
+			or (currentState == "THIRD_PERSON_LOCK")
+			or isMobile
+		crosshairContainer.Visible = shouldShow
+	end
+
+	-- Update on camera state change
+	CameraController.StateChanged:Connect(updateVisibility)
+
+	-- Initial update
+	updateVisibility()
 end
 
 function Crosshair:SetVisible(isVisible)

@@ -6,7 +6,7 @@
 ]]
 
 local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
+local InputService = require(script.Parent.Parent.Input.InputService)
 
 local SprintController = {}
 
@@ -61,7 +61,7 @@ function SprintController:Initialize()
 	end)
 
 	-- Handle sprint input (Left Shift)
-	UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	InputService.InputBegan:Connect(function(input, gameProcessed)
 		if gameProcessed then return end
 
 		if input.KeyCode == Enum.KeyCode.LeftShift then
@@ -69,7 +69,7 @@ function SprintController:Initialize()
 		end
 	end)
 
-	UserInputService.InputEnded:Connect(function(input, gameProcessed)
+	InputService.InputEnded:Connect(function(input, gameProcessed)
 		if input.KeyCode == Enum.KeyCode.LeftShift then
 			stopSprint()
 		end

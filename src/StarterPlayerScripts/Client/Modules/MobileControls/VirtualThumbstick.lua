@@ -11,7 +11,6 @@
 ]]
 
 local TweenService = game:GetService("TweenService")
-local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
@@ -30,6 +29,7 @@ function VirtualThumbstick.new()
 	self.dynamicPosition = false
 	self.snapToDirections = false
 	self.enabled = false
+	self.inputProvider = nil
 
 	-- State
 	self.active = false
@@ -166,11 +166,12 @@ end
 --[[
 	Initialize thumbstick
 ]]
-function VirtualThumbstick:Initialize(parent, position)
+function VirtualThumbstick:Initialize(parent, position, inputProvider)
 	if not parent then
 		parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
 	end
 
+	self.inputProvider = inputProvider
 	self:Create(parent, position)
 	self:SetupInputHandling()
 	self.enabled = true
@@ -183,7 +184,12 @@ end
 ]]
 function VirtualThumbstick:SetupInputHandling()
 	-- Touch input handling
-	self.inputConnection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if not self.inputProvider then
+		warn("VirtualThumbstick: No input provider available")
+		return
+	end
+
+	self.inputConnection = self.inputProvider.InputBegan:Connect(function(input, gameProcessed)
 		if input.UserInputType == Enum.UserInputType.Touch and not self.active then
 			-- Check if touch is in the thumbstick zone (left side of screen)
 			local screenSize = workspace.CurrentCamera.ViewportSize
@@ -196,13 +202,13 @@ function VirtualThumbstick:SetupInputHandling()
 		end
 	end)
 
-	self.inputChangedConnection = UserInputService.InputChanged:Connect(function(input, gameProcessed)
+	self.inputChangedConnection = self.inputProvider.InputChanged:Connect(function(input, gameProcessed)
 		if input.UserInputType == Enum.UserInputType.Touch and self.active and input == self.touchInput then
 			self:OnTouchMove(input)
 		end
 	end)
 
-	self.inputEndedConnection = UserInputService.InputEnded:Connect(function(input, gameProcessed)
+	self.inputEndedConnection = self.inputProvider.InputEnded:Connect(function(input, gameProcessed)
 		if input.UserInputType == Enum.UserInputType.Touch and input == self.touchInput then
 			self:OnTouchEnd(input)
 		end
@@ -285,7 +291,7 @@ function VirtualThumbstick:OnTouchMove(input)
 	-- Haptic feedback on direction change (if enabled)
 	if self.hapticFeedback and self.magnitude > 0.5 then
 		-- Simple vibration (Roblox doesn't have native haptics, but we can prepare for it)
-		-- UserInputService:SetHapticMotor(Enum.HapticMotor.Touch, 0.1)
+		-- self.inputProvider:SetHapticMotor(Enum.HapticMotor.Touch, 0.1)
 	end
 end
 

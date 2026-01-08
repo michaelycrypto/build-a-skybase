@@ -17,7 +17,7 @@ local ViewportPreview = require(script.Parent.ViewportPreview)
 
 -- Services
 local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
+local InputService = require(script.Parent.Parent.Input.InputService)
 local GuiService = game:GetService("GuiService")
 
 -- Services and instances
@@ -1499,7 +1499,7 @@ function UIComponents:CreateSlider(config)
 	handle.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 then
 			dragging = true
-			connection = game:GetService("UserInputService").InputChanged:Connect(function(input)
+			connection = InputService.InputChanged:Connect(function(input)
 				if input.UserInputType == Enum.UserInputType.MouseMovement and dragging then
 					local relativeX = (input.Position.X - track.AbsolutePosition.X) / track.AbsoluteSize.X
 					updateSlider(relativeX)
@@ -1508,7 +1508,7 @@ function UIComponents:CreateSlider(config)
 		end
 	end)
 
-	game:GetService("UserInputService").InputEnded:Connect(function(input)
+	InputService.InputEnded:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 and dragging then
 			dragging = false
 			if connection then
@@ -2558,7 +2558,7 @@ function UIComponents:AddTooltip(element, content)
 
 	-- Detect device type for interaction handling
 	local function isMobile()
-		return UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+		return InputService.TouchEnabled and not InputService.KeyboardEnabled
 	end
 
 	if isMobile() then

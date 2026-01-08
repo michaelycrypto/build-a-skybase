@@ -11,7 +11,6 @@
 	- Multiple control schemes
 ]]
 
-local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -32,17 +31,19 @@ local MobileControlConfig = require(ReplicatedStorage.Shared.MobileControls.Mobi
 local MobileControlController = {}
 MobileControlController.__index = MobileControlController
 
-function MobileControlController.new()
+function MobileControlController.new(inputProvider)
 	local self = setmetatable({}, MobileControlController)
 
 	-- Core modules
-	self.inputDetector = InputDetector.new()
+	self.inputProvider = inputProvider
+	self.inputDetector = InputDetector.new(inputProvider)
 	self.thumbstick = VirtualThumbstick.new()
-	self.cameraController = MobileCameraController.new()
+	self.cameraController = MobileCameraController.new(inputProvider)
 	self.actionButtons = ActionButtons.new()
-	self.deviceDetector = DeviceDetector.new()
+	self.deviceDetector = DeviceDetector.new(inputProvider)
 	self.feedbackSystem = FeedbackSystem.new()
 	self.controlSchemes = ControlSchemes.new()
+	self.inputCallbacks = nil
 
 	-- State
 	self.enabled = false
@@ -66,11 +67,13 @@ end
 --[[
 	Initialize mobile controls
 ]]
-function MobileControlController:Initialize()
+function MobileControlController:Initialize(inputCallbacks)
 	if self.initialized then
 		warn("MobileControlController already initialized")
 		return
 	end
+
+	self.inputCallbacks = inputCallbacks or {}
 
 	-- Detect device
 	self.deviceDetector:Detect()
@@ -95,7 +98,7 @@ function MobileControlController:Initialize()
 
 	-- Initialize modules
 	self.inputDetector:Initialize()
-	self.thumbstick:Initialize()
+	self.thumbstick:Initialize(nil, nil, self.inputProvider)
 	self.cameraController:Initialize()
 	self.actionButtons:Initialize()
 	self.feedbackSystem:Initialize(soundManager)
@@ -146,6 +149,9 @@ function MobileControlController:SetupInputHandling()
 			-- Apply movement
 			self:ApplyMovement(direction, self.thumbstick:GetMagnitude())
 		end
+		if self.inputCallbacks.onMovement then
+			self.inputCallbacks.onMovement(direction, self.thumbstick:GetMagnitude())
+		end
 	end
 
 	-- Connect action buttons
@@ -168,6 +174,9 @@ function MobileControlController:SetupUpdateLoop()
 
 		-- Update movement based on thumbstick
 		local moveVector = self.thumbstick:GetMovementVector()
+		if self.inputCallbacks.onMovement then
+			self.inputCallbacks.onMovement(moveVector, moveVector.Magnitude)
+		end
 		if moveVector.Magnitude > 0 then
 			self:ApplyMovement(moveVector, moveVector.Magnitude)
 		end
@@ -212,6 +221,10 @@ end
 	Handle button press
 ]]
 function MobileControlController:HandleButtonPress(buttonType, pressed)
+	if self.inputCallbacks.onButton then
+		self.inputCallbacks.onButton(buttonType, pressed)
+	end
+
 	if not self.humanoid then return end
 
 	-- Map button types to actions
@@ -235,6 +248,16 @@ function MobileControlController:HandleButtonPress(buttonType, pressed)
 			local sprintPressed = self.actionButtons:IsButtonPressed("Sprint")
 			self.humanoid.WalkSpeed = sprintPressed and 20 or 14
 		end
+	end
+end
+
+function MobileControlController:SetHighContrast(enabled)
+	if self.thumbstick and self.thumbstick.SetHighContrast then
+		self.thumbstick:SetHighContrast(enabled)
+	end
+
+	if self.actionButtons and self.actionButtons.SetHighContrast then
+		self.actionButtons:SetHighContrast(enabled)
 	end
 end
 
@@ -290,11 +313,6 @@ end
 --[[
 	Set high contrast mode
 ]]
-function MobileControlController:SetHighContrast(enabled)
-	self.thumbstick:SetHighContrast(enabled)
-	self.actionButtons:SetHighContrast(enabled)
-end
-
 --[[
 	Set sensitivity
 ]]

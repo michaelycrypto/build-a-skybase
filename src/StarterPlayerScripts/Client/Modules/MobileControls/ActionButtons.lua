@@ -11,7 +11,6 @@
 ]]
 
 local TweenService = game:GetService("TweenService")
-local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
@@ -201,7 +200,7 @@ function ActionButtons:OnButtonPressed(buttonData, input)
 	-- Haptic feedback
 	if self.hapticFeedback then
 		-- Roblox doesn't have native haptics yet, but prepare for it
-		-- UserInputService:SetHapticMotor(Enum.HapticMotor.Touch, 0.3)
+		-- Haptic motor placeholder for future mobile rumble integration
 	end
 
 	-- Fire callback

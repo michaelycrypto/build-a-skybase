@@ -22,7 +22,8 @@ local UI_MODES = {
 	gameplay = {
 		visibleComponents = {"mainHUD", "voxelHotbar", "statusBarsHUD", "crosshair"},
 		hiddenComponents = {"worldsPanel"},
-		backdrop = false
+		backdrop = false,
+		cursorMode = "gameplay"
 	},
 	inventory = {
 		visibleComponents = {"voxelInventory"},
@@ -36,7 +37,8 @@ local UI_MODES = {
 			overlayTransparency = 0.35,
 			displayOrder = 99,
 			persist = true
-		}
+		},
+		cursorMode = "ui"
 	},
 	chest = {
 		visibleComponents = {"chestUI"},
@@ -50,7 +52,8 @@ local UI_MODES = {
 			overlayTransparency = 0.35,
 			displayOrder = 99,
 			persist = true
-		}
+		},
+		cursorMode = "ui"
 	},
 	menu = {
 		visibleComponents = {"settingsPanel"},
@@ -64,7 +67,8 @@ local UI_MODES = {
 			overlayTransparency = 0.4,
 			displayOrder = 149,
 			persist = true
-		}
+		},
+		cursorMode = "ui"
 	},
 	worlds = {
 		visibleComponents = {"worldsPanel"},
@@ -78,9 +82,36 @@ local UI_MODES = {
 			overlayTransparency = 0.35,
 			displayOrder = 149,
 			persist = true
-		}
+		},
+		cursorMode = "ui"
+	},
+	minion = {
+		visibleComponents = {"minionUI"},
+		hiddenComponents = {"mainHUD", "voxelHotbar", "statusBarsHUD", "crosshair", "voxelInventory", "worldsPanel"},
+		backdrop = true,
+		backdropConfig = {
+			blur = true,
+			blurSize = 24,
+			overlay = true,
+			overlayColor = Color3.fromRGB(35, 35, 35),
+			overlayTransparency = 0.35,
+			displayOrder = 99,
+			persist = true
+		},
+		cursorMode = "ui"
 	}
 }
+
+--[[
+	Cursor Control Architecture (Streamlined):
+
+	UIBackdrop is the SINGLE source of truth for mouse state when UI is open:
+	- UIBackdrop.Modal = true releases Roblox's mouse lock
+	- UIBackdrop RenderStepped continuously enforces MouseBehavior.Default
+	- GameState "ui.backdropActive" signals CameraController to freeze/unfreeze
+
+	This eliminates toggle-flip bugs from multiple systems fighting over cursor state.
+]]
 
 --[[
 	Initialize the UI Visibility Manager
@@ -163,6 +194,8 @@ function UIVisibilityManager:SetMode(mode)
 	print(string.format("UIVisibilityManager: Transitioning from '%s' to '%s'", oldMode, mode))
 
 	local modeConfig = UI_MODES[mode]
+
+	-- NOTE: Cursor control removed - UIBackdrop handles it via RenderStepped enforcement
 
 	-- Handle backdrop
 	if modeConfig.backdrop then

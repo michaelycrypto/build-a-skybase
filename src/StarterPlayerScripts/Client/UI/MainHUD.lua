@@ -10,7 +10,7 @@ local TweenService = game:GetService("TweenService")
 local GuiService = game:GetService("GuiService")
 local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local UserInputService = game:GetService("UserInputService")
+local InputService = require(script.Parent.Parent.Input.InputService)
 
 -- Import dependencies
 local EventManager = require(ReplicatedStorage.Shared.EventManager)
@@ -566,7 +566,7 @@ end
 --]]
 function MainHUD:CreateRightQuickActions()
 	-- Mobile only (touch devices without keyboard)
-	local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+	local isMobile = InputService.TouchEnabled and not InputService.KeyboardEnabled
 	if not isMobile then return end
 
 	local rightBar = Instance.new("Frame")

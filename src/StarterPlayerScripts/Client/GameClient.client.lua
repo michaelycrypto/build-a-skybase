@@ -11,7 +11,6 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local StarterGui = game:GetService("StarterGui")
 local Lighting = game:GetService("Lighting")
-local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
 local player = Players.LocalPlayer
@@ -337,6 +336,7 @@ local Initializer = require(ReplicatedStorage.Shared.Initializer)
 	local ToastManager = require(script.Parent.Managers.ToastManager)
 	local EmoteManager = require(script.Parent.Managers.EmoteManager)
 	local PanelManager = require(script.Parent.Managers.PanelManager)
+	local InputService = require(script.Parent.Input.InputService)
     -- Removed grid/tool managers
 
 	-- Import proximity grid system
@@ -364,8 +364,6 @@ local bootstrapComplete = false
 local worldReadyWatchdogToken = 0
 
 local function showWorldStatus(title, subtitle)
-	GameState:Set("ui.isLoading", true)
-
 	if LoadingScreen and LoadingScreen.IsActive and LoadingScreen:IsActive() and LoadingScreen.HoldForWorldStatus then
 		LoadingScreen:HoldForWorldStatus(title, subtitle)
 		return
@@ -386,7 +384,6 @@ local function hideWorldStatus()
 	if not handled and Client.managers.UIManager and Client.managers.UIManager.HideWorldStatus then
 		Client.managers.UIManager:HideWorldStatus()
 	end
-	GameState:Set("ui.isLoading", false)
 end
 
 local function tryFinalizeInitialization(reason)
@@ -686,7 +683,7 @@ local function completeInitialization(EmoteManager)
 	print("🧱 Minion UI initialized")
 
 	-- Centralize inventory/chest key handling to avoid duplicate listeners
-	UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	InputService.InputBegan:Connect(function(input, gameProcessed)
 		if gameProcessed then return end
 		if input.KeyCode == Enum.KeyCode.E then
 			if not canProcessUiToggle() then
@@ -858,6 +855,9 @@ local function initialize()
 
 	-- Register all events first (defines RemoteEvents with proper parameter signatures)
 	EventManager:RegisterAllEvents()
+
+	-- Initialize unified input orchestration before gameplay controllers bind
+	InputService:Initialize()
 
 	-- Initialize voxel world in SERVER-AUTHORITATIVE mode
 	print("🌍 Initializing voxel world (server-authoritative mode)...")

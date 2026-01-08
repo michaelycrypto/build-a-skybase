@@ -4,7 +4,6 @@
 	Uses Animator:LoadAnimation for R15 compatibility.
 ]]
 
-local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -12,6 +11,7 @@ local GameState = require(script.Parent.Parent.Managers.GameState)
 local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
 local BlockProperties = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockProperties)
 local GameConfig = require(ReplicatedStorage.Configs.GameConfig)
+local InputService = require(script.Parent.Parent.Input.InputService)
 
 local controller = {}
 
@@ -127,7 +127,7 @@ function controller:Initialize()
 	local RunService = game:GetService("RunService")
 
 	-- Input hook for local player - track hold state
-	UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	InputService.InputBegan:Connect(function(input, gameProcessed)
 		if gameProcessed then return end
 		if input.UserInputType == Enum.UserInputType.MouseButton1 then
 			isSwingHeld = true
@@ -135,7 +135,7 @@ function controller:Initialize()
 		end
 	end)
 
-	UserInputService.InputEnded:Connect(function(input, gameProcessed)
+	InputService.InputEnded:Connect(function(input, gameProcessed)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 then
 			isSwingHeld = false
 		end

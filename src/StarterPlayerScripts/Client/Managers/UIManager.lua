@@ -7,11 +7,11 @@
 local UIManager = {}
 
 local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
 local GuiService = game:GetService("GuiService")
 
 -- Import dependencies
 local GameState = require(script.Parent.GameState)
+local InputService = require(script.Parent.Parent.Input.InputService)
 
 -- Services
 local player = Players.LocalPlayer
@@ -23,6 +23,7 @@ local currentViewport = {size = Vector2.new(1920, 1080), aspectRatio = 1.777}
 local worldStatusGui = nil
 local worldStatusTitle = nil
 local worldStatusSubtitle = nil
+local worldStatusOverlayRelease = nil
 
 local STATUS_COPY = {
 	loading = {
@@ -102,7 +103,7 @@ function UIManager:Initialize()
 	print("UIManager: Initializing responsive UI system")
 
 	-- Connect to mobile/console input changes
-	UserInputService.LastInputTypeChanged:Connect(function(lastInputType)
+	InputService.LastInputTypeChanged:Connect(function(lastInputType)
 		self:HandleInputTypeChange(lastInputType)
 	end)
 
@@ -168,9 +169,9 @@ function UIManager:HandleViewportChange()
 
 	-- Determine device type based on screen size and input capabilities
 	local deviceType = "Desktop"
-	if UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled then
+	if InputService.TouchEnabled and not InputService.KeyboardEnabled then
 		deviceType = "Mobile"
-	elseif UserInputService.GamepadEnabled then
+	elseif InputService.GamepadEnabled then
 		deviceType = "Console"
 	end
 
@@ -259,10 +260,11 @@ function UIManager:ShowWorldStatus(title, subtitle)
 	worldStatusTitle.Text = title or STATUS_COPY.loading.title
 	worldStatusSubtitle.Text = subtitle or STATUS_COPY.loading.body
 
-	GameState:Set("ui.isLoading", true)
-
-	UserInputService.MouseIconEnabled = true
-	UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+	if not worldStatusOverlayRelease then
+		worldStatusOverlayRelease = InputService:BeginOverlay("WorldStatus", {
+			showIcon = true,
+		})
+	end
 end
 
 function UIManager:HideWorldStatus()
@@ -271,7 +273,10 @@ function UIManager:HideWorldStatus()
 		worldStatusTitle.Text = ""
 		worldStatusSubtitle.Text = ""
 	end
-	GameState:Set("ui.isLoading", false)
+	if worldStatusOverlayRelease then
+		worldStatusOverlayRelease()
+		worldStatusOverlayRelease = nil
+	end
 end
 
 function UIManager:_applyWorldStatus(statusKey, overrideMessage)

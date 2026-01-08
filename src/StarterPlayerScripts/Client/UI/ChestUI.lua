@@ -6,14 +6,13 @@
 ]]
 
 local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
+local InputService = require(script.Parent.Parent.Input.InputService)
 local GuiService = game:GetService("GuiService")
 local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
-local GameState = require(script.Parent.Parent.Managers.GameState)
 local UIVisibilityManager = require(script.Parent.Parent.Managers.UIVisibilityManager)
 local IconManager = require(script.Parent.Parent.Managers.IconManager)
 local ItemStack = require(ReplicatedStorage.Shared.VoxelWorld.Inventory.ItemStack)
@@ -1606,26 +1605,12 @@ function ChestUI:Open(chestPos, chestContents, playerInventory, hotbar)
 
 	-- Show UI
 	self.gui.Enabled = true
-	GameState:Set("voxelWorld.inventoryOpen", true)
 
-	-- Unlock mouse - force it!
-	UserInputService.MouseBehavior = Enum.MouseBehavior.Default
-	UserInputService.MouseIconEnabled = true
-
-	-- Force mouse visible again on next frame (in case something overrides it)
-	task.defer(function()
-		UserInputService.MouseBehavior = Enum.MouseBehavior.Default
-		UserInputService.MouseIconEnabled = true
-	end)
-
-	-- Start render connection for cursor tracking and keep mouse unlocked
+	-- Start render connection for cursor tracking
 	self.renderConnection = RunService.RenderStepped:Connect(function()
-		-- Keep forcing mouse to be visible and unlocked while chest is open
 		if self.isOpen then
-			UserInputService.MouseBehavior = Enum.MouseBehavior.Default
-			UserInputService.MouseIconEnabled = true
+			self:UpdateCursorPosition()
 		end
-		self:UpdateCursorPosition()
 	end)
 end
 
@@ -1685,7 +1670,6 @@ function ChestUI:Close(nextMode)
 
 	-- Hide UI
 	self.gui.Enabled = false
-	GameState:Set("voxelWorld.inventoryOpen", false)
 
 	-- Restore target UI mode (defaults to gameplay)
 	local targetMode = nextMode or "gameplay"
@@ -1700,7 +1684,7 @@ end
 function ChestUI:UpdateCursorPosition()
 	if not self.cursorFrame or not self.cursorFrame.Visible then return end
 
-	local mousePos = UserInputService:GetMouseLocation()
+	local mousePos = InputService:GetMouseLocation()
 
 	-- Cursor ScreenGui has IgnoreGuiInset=true, so use raw mouse position
 	-- AnchorPoint of 0.5,0.5 centers the cursor frame on this position
@@ -1708,7 +1692,7 @@ function ChestUI:UpdateCursorPosition()
 end
 
 function ChestUI:BindInput()
-	table.insert(self.connections, UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	table.insert(self.connections, InputService.InputBegan:Connect(function(input, gameProcessed)
 		if gameProcessed then return end
 
 		if input.KeyCode == Enum.KeyCode.Escape then

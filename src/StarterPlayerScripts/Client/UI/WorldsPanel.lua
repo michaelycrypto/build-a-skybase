@@ -10,7 +10,7 @@ local WorldsPanel = {}
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local UserInputService = game:GetService("UserInputService")
+local InputService = require(script.Parent.Parent.Input.InputService)
 local CollectionService = game:GetService("CollectionService")
 local RunService = game:GetService("RunService")
 
@@ -18,7 +18,6 @@ local EventManager = require(ReplicatedStorage.Shared.EventManager)
 local IconManager = require(script.Parent.Parent.Managers.IconManager)
 local FontBinder = require(ReplicatedStorage.Shared.UI.FontBinder)
 local UIVisibilityManager = require(script.Parent.Parent.Managers.UIVisibilityManager)
-local GameState = require(script.Parent.Parent.Managers.GameState)
 local GameConfig = require(ReplicatedStorage.Configs.GameConfig)
 local UpheavalFont = require(ReplicatedStorage.Fonts["Upheaval BRK"])
 local _ = UpheavalFont -- Ensure font module loads
@@ -426,18 +425,6 @@ function WorldsPanel:RegisterScrollingLayout(layout)
 end
 
 function WorldsPanel:EnableMouseControl()
-	UserInputService.MouseBehavior = Enum.MouseBehavior.Default
-	UserInputService.MouseIconEnabled = true
-	GameState:Set("voxelWorld.inventoryOpen", true)
-
-	if not self.renderConnection then
-		self.renderConnection = RunService.RenderStepped:Connect(function()
-			if self.isOpen then
-				UserInputService.MouseBehavior = Enum.MouseBehavior.Default
-				UserInputService.MouseIconEnabled = true
-			end
-		end)
-	end
 end
 
 function WorldsPanel:StopMouseTracking()
@@ -449,8 +436,7 @@ end
 
 function WorldsPanel:DisableMouseControl()
 	self:StopMouseTracking()
-	-- Don't force hide mouse - let CameraController handle it based on camera mode
-	-- In 3rd person, mouse should stay visible; in 1st person, CameraController hides it
+	-- Mouse visibility is handled by InputService + CameraController stack
 end
 
 function WorldsPanel:ShouldKeepMouseUnlocked(mode)
@@ -526,7 +512,7 @@ function WorldsPanel:CreateGui()
 end
 
 function WorldsPanel:BindInput()
-	local connection = UserInputService.InputBegan:Connect(function(input, gpe)
+	local connection = InputService.InputBegan:Connect(function(input, gpe)
 		if gpe then return end
 		if input.KeyCode == Enum.KeyCode.Escape and self:IsOpen() then
 			self:Close()
@@ -552,8 +538,6 @@ function WorldsPanel:Hide()
 		self.currentTween = nil
 	end
 	self:DisableMouseControl()
-	GameState:Set("ui.worldsOpen", false)
-	GameState:Set("voxelWorld.inventoryOpen", false)
 	self:ResetDeleteButton()
 end
 
@@ -566,6 +550,9 @@ function WorldsPanel:Open()
 		return
 	end
 
+	-- FIRST: Enable mouse control to unlock mouse BEFORE showing UI
+	self:EnableMouseControl()
+
 	self.isOpen = true
 	self.isAnimating = true
 
@@ -577,8 +564,6 @@ function WorldsPanel:Open()
 	self:RefreshAll()
 	self:ShowOverview()
 	self:Show()
-	self:EnableMouseControl()
-	GameState:Set("ui.worldsOpen", true)
 	UIVisibilityManager:SetMode("worlds")
 	self:UpdateFriendsAutoRefreshState()
 
@@ -627,20 +612,14 @@ function WorldsPanel:Close(nextMode)
 	self:UpdateHubTeleportButtonState()
 
 	local keepMouse = self:ShouldKeepMouseUnlocked(targetMode)
-	GameState:Set("ui.worldsOpen", false)
 	if keepMouse then
 		self:StopMouseTracking()
 	else
 		self:DisableMouseControl()
-		GameState:Set("voxelWorld.inventoryOpen", false)
 	end
 
 	self:AnimateClose(function()
 		UIVisibilityManager:SetMode(self.pendingCloseMode)
-		if not self:ShouldKeepMouseUnlocked(self.pendingCloseMode) then
-			GameState:Set("voxelWorld.inventoryOpen", false)
-			GameState:Set("ui.worldsOpen", false)
-		end
 	end)
 end
 

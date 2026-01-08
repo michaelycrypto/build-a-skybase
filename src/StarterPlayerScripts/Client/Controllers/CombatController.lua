@@ -6,7 +6,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
+local InputService = require(script.Parent.Parent.Input.InputService)
 
 local EventManager = require(ReplicatedStorage.Shared.EventManager)
 local CombatConfig = require(ReplicatedStorage.Configs.CombatConfig)
@@ -15,7 +15,6 @@ local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
 local ToolAnimationController = require(script.Parent.ToolAnimationController)
 local BowConfig = require(ReplicatedStorage.Configs.BowConfig)
 local GameState = require(script.Parent.Parent.Managers.GameState)
-local UIVisibilityManager = require(script.Parent.Parent.Managers.UIVisibilityManager)
 
 local player = Players.LocalPlayer
 local CombatController = {}
@@ -45,7 +44,7 @@ local function computeAimRay()
         dir = camera.CFrame.LookVector
     else
         -- Third person: raycast through mouse position
-        local mousePos = UserInputService:GetMouseLocation()
+        local mousePos = InputService:GetMouseLocation()
         local ray = camera:ViewportPointToRay(mousePos.X, mousePos.Y)
         origin = ray.Origin
         dir = ray.Direction
@@ -107,13 +106,13 @@ end
 
 function CombatController:Initialize()
     -- Input: track LMB hold state for repeated swings
-    UserInputService.InputBegan:Connect(function(input, gpe)
+    InputService.InputBegan:Connect(function(input, gpe)
         if gpe then return end
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             isHolding = true
         end
     end)
-    UserInputService.InputEnded:Connect(function(input, gpe)
+    InputService.InputEnded:Connect(function(input, gpe)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             isHolding = false
         end
@@ -124,9 +123,8 @@ function CombatController:Initialize()
         if not isHolding then return end
         -- Bow only shoots arrows, no melee (Minecraft-style)
         if isBowEquipped() then return end
-        -- Block combat when UI is open (inventory, chest, worlds, minion)
-        if UIVisibilityManager:GetMode() ~= "gameplay" then return end
-        if GameState:Get("voxelWorld.inventoryOpen") then return end
+        -- Block combat when UI is open (inventory, chest, worlds, minion, etc.)
+        if InputService:IsGameplayBlocked() then return end
 
         local now = os.clock()
         if (now - lastSwing) >= (CombatConfig.SWING_COOLDOWN or 0.35) then
