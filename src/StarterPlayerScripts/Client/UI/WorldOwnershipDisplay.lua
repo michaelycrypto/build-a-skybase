@@ -68,7 +68,7 @@ function WorldOwnershipDisplay:UpdateDisplay(data)
 	if not ownerLabel then return end
 
 	local ownerName = data.ownerName or "Unknown"
-	local worldName = data.worldName or "World"
+	local worldName = data.worldName or "Realm"
 
 	-- Update label with format: World Name [World Owner]
 	local displayText = worldName .. " [" .. ownerName .. "]"

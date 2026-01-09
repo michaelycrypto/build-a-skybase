@@ -387,7 +387,7 @@ function MainHUD:CreateTopCenterTeleport()
 	teleportBtn.Position = UDim2.new(0, 0, 0, 0)
 	teleportBtn.BackgroundColor3 = Config.UI_SETTINGS.colors.semantic.button.success
 	teleportBtn.AutoButtonColor = true
-	teleportBtn.Text = "<b><i>Teleport to World</i></b>"
+	teleportBtn.Text = "<b><i>Enter Your Realm</i></b>"
 	teleportBtn.RichText = true
 	teleportBtn.TextSize = 24
 	teleportBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -407,7 +407,7 @@ function MainHUD:CreateTopCenterTeleport()
 	local function restore()
 		teleportBtn.Active = true
 		teleportBtn.AutoButtonColor = true
-		teleportBtn.Text = "<b><i>Teleport to World</i></b>"
+		teleportBtn.Text = "<b><i>Enter Your Realm</i></b>"
 	end
 	local okConn = pcall(function()
 		return EventManager:ConnectToServer("WorldJoinError", function()
@@ -428,7 +428,7 @@ function MainHUD:CreateTopCenterTeleport()
 			warn("Failed to send RequestCreateWorld:", err)
 			teleportBtn.Active = true
 			teleportBtn.AutoButtonColor = true
-			teleportBtn.Text = "<b><i>Teleport to World</i></b>"
+			teleportBtn.Text = "<b><i>Enter Your Realm</i></b>"
 		end
 	end)
 

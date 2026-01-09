@@ -266,3 +266,4 @@ Client.myController = MyController
 2. Register with `UIVisibilityManager` if needed
 3. Initialize in `GameClient.client.lua`
 
+

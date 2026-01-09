@@ -718,7 +718,7 @@ function WorldsPanel:CreateHeader(parent)
 	title.Name = "Title"
 	title.Size = UDim2.new(1, -50, 1, 0)
 	title.BackgroundTransparency = 1
-	title.Text = "WORLDS"
+	title.Text = "REALMS"
 	title.TextColor3 = COLOR.text
 	title.Font = Enum.Font.Code
 	title.TextSize = 54
@@ -954,7 +954,7 @@ function WorldsPanel:BuildOverviewContent(container)
 	label.Name = "WorldListLabel"
 	label.Size = UDim2.new(1, -70, 1, 0)
 	label.BackgroundTransparency = 1
-	label.Text = "MY WORLDS"
+	label.Text = "MY REALMS"
 	label.TextColor3 = COLOR.textMuted
 	label.Font = Enum.Font.Code
 	label.TextSize = 24
@@ -1117,7 +1117,7 @@ function WorldsPanel:BuildOverviewContent(container)
 	createLabel.Size = UDim2.new(1, -48, 1, 0)
 	createLabel.Position = UDim2.new(0, 48, 0, 0)
 	createLabel.BackgroundTransparency = 1
-	createLabel.Text = "Create New World"
+	createLabel.Text = "Create New Realm"
 	createLabel.TextColor3 = COLOR.text
 	createLabel.Font = BOLD_FONT
 	createLabel.TextSize = 20
@@ -1263,7 +1263,7 @@ function WorldsPanel:BuildDetailContent(container)
 	emptyLabel.Name = "DetailPlaceholder"
 	emptyLabel.Size = UDim2.new(1, 0, 0, 120)
 	emptyLabel.BackgroundTransparency = 1
-	emptyLabel.Text = "Select a world to see details"
+	emptyLabel.Text = "Select a realm to view details"
 	emptyLabel.TextColor3 = COLOR.textMuted
 	emptyLabel.TextWrapped = true
 	emptyLabel.Font = REGULAR_FONT
@@ -1313,7 +1313,7 @@ function WorldsPanel:BuildDetailContent(container)
 	nameLabel.Name = "Name"
 	nameLabel.Size = UDim2.new(1, -90, 1, 0)
 	nameLabel.BackgroundTransparency = 1
-	nameLabel.Text = "Unnamed World"
+	nameLabel.Text = "Unnamed Realm"
 	nameLabel.TextColor3 = COLOR.text
 	nameLabel.Font = Enum.Font.Code
 	nameLabel.TextSize = 32
@@ -1408,7 +1408,7 @@ function WorldsPanel:BuildDetailContent(container)
 	playButton.BackgroundTransparency = 0  -- Fully opaque for colored buttons
 	playButton.BorderSizePixel = 0
 	playButton.TextColor3 = COLOR.text
-	playButton.Text = "Join World"
+	playButton.Text = "Enter Realm"
 	playButton.Font = BOLD_FONT
 	playButton.TextSize = 20
 	playButton.AutoButtonColor = false
@@ -1493,7 +1493,7 @@ function WorldsPanel:BuildDetailContent(container)
 	manageHint.Name = "ManageHint"
 	manageHint.Size = UDim2.new(1, 0, 0, 36)
 	manageHint.BackgroundTransparency = 1
-	manageHint.Text = "Only the owner can rename or delete this world."
+	manageHint.Text = "Only the owner can rename or delete this realm."
 	manageHint.TextWrapped = true
 	manageHint.TextColor3 = COLOR.textMuted
 	manageHint.Font = REGULAR_FONT
@@ -1531,7 +1531,7 @@ function WorldsPanel:BuildDetailContent(container)
 	renameInput.Font = REGULAR_FONT
 	renameInput.TextSize = 20  -- MIN_TEXT_SIZE equivalent
 	renameInput.TextXAlignment = Enum.TextXAlignment.Left
-	renameInput.PlaceholderText = "Rename world"
+	renameInput.PlaceholderText = "Rename realm"
 	renameInput.Parent = renameSection
 	local renameInputCorner = Instance.new("UICorner")
 	renameInputCorner.CornerRadius = UDim.new(0, WORLDS_LAYOUT.SLOT_CORNER_RADIUS)  -- Matching inventory
@@ -1617,7 +1617,7 @@ function WorldsPanel:BuildDetailContent(container)
 	deleteButton.BackgroundColor3 = WORLDS_LAYOUT.BTN_RED  -- Red for danger action
 	deleteButton.BackgroundTransparency = 0  -- Fully opaque for colored buttons
 	deleteButton.BorderSizePixel = 0
-	deleteButton.Text = "Delete World"
+	deleteButton.Text = "Delete Realm"
 	deleteButton.TextColor3 = COLOR.text
 	deleteButton.Font = BOLD_FONT
 	deleteButton.TextSize = 20  -- MIN_TEXT_SIZE equivalent
@@ -1787,7 +1787,7 @@ function WorldsPanel:BuildHubContent(container)
 	descriptionLabel.Name = "HubDescription"
 	descriptionLabel.Size = UDim2.new(1, 0, 0, 38)
 	descriptionLabel.BackgroundTransparency = 1
-	descriptionLabel.Text = "Link up with friends, grab hub-only rewards, or jump into your own world without respawning elsewhere."
+	descriptionLabel.Text = "The crossroads of all realms. Meet friends, claim rewards, or step through a portal to your realm."
 	descriptionLabel.TextColor3 = COLOR.textMuted
 	descriptionLabel.Font = REGULAR_FONT
 	descriptionLabel.TextSize = MIN_TEXT_SIZE
@@ -1812,7 +1812,7 @@ function WorldsPanel:BuildHubContent(container)
 	teleportButton.BackgroundColor3 = WORLDS_LAYOUT.BTN_BLUE
 	teleportButton.BackgroundTransparency = 0
 	teleportButton.BorderSizePixel = 0
-	teleportButton.Text = "Return to Hub"
+	teleportButton.Text = "Return to Nexus"
 	teleportButton.TextColor3 = COLOR.text
 	teleportButton.Font = BOLD_FONT
 	teleportButton.TextSize = MIN_TEXT_SIZE
@@ -2264,7 +2264,7 @@ function WorldsPanel:ApplyWorldCardData(card, worldData)
 
 	local nameLabel = card:FindFirstChild("Name")
 	if nameLabel then
-		nameLabel.Text = worldData.name or "Unnamed World"
+		nameLabel.Text = worldData.name or "Unnamed Realm"
 	end
 
 	local statusLabel = card:FindFirstChild("Status")
@@ -2534,7 +2534,7 @@ function WorldsPanel:RefreshWorldsList()
 		emptyLabel.Name = "EmptyState"
 		emptyLabel.Size = UDim2.new(1, 0, 0, 120)
 		emptyLabel.BackgroundTransparency = 1
-		emptyLabel.Text = self.currentTab == "myWorlds" and "No worlds yet. Create one!" or "No friends' worlds available."
+		emptyLabel.Text = self.currentTab == "myWorlds" and "No realms yet. Create one!" or "No friends' realms available."
 		emptyLabel.TextColor3 = COLOR.textMuted
 		emptyLabel.Font = REGULAR_FONT
 		emptyLabel.TextSize = 20
@@ -2587,11 +2587,11 @@ function WorldsPanel:UpdateListHeader()
 		return
 	end
 	if self.currentTab == "myWorlds" then
-		self.listLabel.Text = "MY WORLDS"
+		self.listLabel.Text = "MY REALMS"
 	elseif self.currentTab == "hubWorld" then
-		self.listLabel.Text = "HUB WORLD"
+		self.listLabel.Text = "THE NEXUS"
 	else
-		self.listLabel.Text = "FRIENDS' WORLDS"
+		self.listLabel.Text = "FRIENDS' REALMS"
 	end
 end
 
@@ -2678,7 +2678,7 @@ function WorldsPanel:UpdateDetailPanel()
 	end
 
 	if self.detailNameLabel then
-		self.detailNameLabel.Text = selected.name or "Unnamed World"
+		self.detailNameLabel.Text = selected.name or "Unnamed Realm"
 	end
 	if self.detailSlotBadge then
 		self.detailSlotBadge.Text = "Slot " .. tostring(selected.slot or 1)
@@ -2797,7 +2797,7 @@ function WorldsPanel:ResetDeleteButton()
 		return
 	end
 	self.deleteConfirmWorldId = nil
-	self.deleteButton.Text = "Delete World"
+	self.deleteButton.Text = "Delete Realm"
 	self.deleteButton.BackgroundColor3 = WORLDS_LAYOUT.BTN_RED  -- Red for danger action
 	self.deleteButton.BackgroundTransparency = 0
 end
@@ -2961,15 +2961,15 @@ function WorldsPanel:UpdateCreateWorldButtonState()
 
 	if myWorldsLoading then
 		disableButton = true
-		reasonText = "Loading your worlds..."
+		reasonText = "Loading your realms..."
 	else
 		local slotsLeft = math.max(self.maxWorlds - #self.myWorlds, 0)
 		if slotsLeft <= 0 then
 			disableButton = true
-			reasonText = "World limit reached."
+			reasonText = "Realm limit reached."
 		else
 			disableButton = false
-			self.createWorldLabel.Text = string.format("Create New World (%d slot%s left)", slotsLeft, slotsLeft == 1 and "" or "s")
+			self.createWorldLabel.Text = string.format("Create New Realm (%d slot%s left)", slotsLeft, slotsLeft == 1 and "" or "s")
 		end
 	end
 
@@ -2978,7 +2978,7 @@ function WorldsPanel:UpdateCreateWorldButtonState()
 		self.createWorldButton.AutoButtonColor = false
 		self.createWorldButton.BackgroundColor3 = WORLDS_LAYOUT.BTN_GREEN
 		self.createWorldButton.BackgroundTransparency = 0.5
-		self.createWorldLabel.Text = "Create New World"
+		self.createWorldLabel.Text = "Create New Realm"
 		self.createWorldLabel.TextColor3 = COLOR.textMuted
 		if self.createWorldPlusLabel then
 			self.createWorldPlusLabel.TextColor3 = COLOR.textMuted
@@ -3021,7 +3021,7 @@ function WorldsPanel:UpdateHubTeleportButtonState()
 	else
 		self.teleportToHubButton.BackgroundColor3 = WORLDS_LAYOUT.BTN_BLUE
 		self.teleportToHubButton.BackgroundTransparency = 0
-		self.teleportToHubButton.Text = "Teleport to Hub"
+		self.teleportToHubButton.Text = "Return to Nexus"
 	end
 end
 

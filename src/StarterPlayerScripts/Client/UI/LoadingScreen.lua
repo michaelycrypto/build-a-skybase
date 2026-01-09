@@ -343,7 +343,7 @@ function LoadingScreen:LoadBlockTextures(onProgress, onComplete)
 	-- Starting to load block texture assets
 
 	-- Load assets in batches for better performance
-	local batchSize = 5
+	local batchSize = 10
 	local loadedCount = 0
 	local failedCount = 0
 
@@ -405,7 +405,7 @@ function LoadingScreen:LoadBlockTextures(onProgress, onComplete)
 		end
 
 		-- Load next batch after a brief pause
-		task.wait(0.1)
+		task.wait(0.05)
 		loadBatch(endIndex + 1)
 	end
 
@@ -428,11 +428,35 @@ function LoadingScreen:LoadAllAssets(onProgress, onComplete, onBeforeFadeOut)
 	FontBinder.preload(CUSTOM_FONT_THEME)
 	isLoading = true
 
-	-- Count total assets
+	-- Count total assets (matching LoadBlockTextures collection logic)
 	local totalTextures = 0
+	local seenTextures = {}
+
+	-- 1) From TextureManager registry (named textures)
 	local textureNames = TextureManager:GetAllTextureNames()
 	for _, textureName in ipairs(textureNames) do
 		if TextureManager:IsTextureConfigured(textureName) then
+			local assetUrl = TextureManager:GetTextureId(textureName)
+			if assetUrl and not seenTextures[assetUrl] then
+				seenTextures[assetUrl] = true
+				totalTextures = totalTextures + 1
+			end
+		end
+	end
+
+	-- 2) From BlockRegistry (raw IDs and names on each block's textures)
+	local registryAssets = TextureManager:GetAllBlockTextureAssetIds()
+	for _, assetUrl in ipairs(registryAssets) do
+		if assetUrl and not seenTextures[assetUrl] then
+			seenTextures[assetUrl] = true
+			totalTextures = totalTextures + 1
+		end
+	end
+
+	-- 3) Block break destroy stage overlays
+	for _, assetUrl in ipairs(BlockBreakFeedbackConfig.DestroyStages or {}) do
+		if assetUrl and not seenTextures[assetUrl] then
+			seenTextures[assetUrl] = true
 			totalTextures = totalTextures + 1
 		end
 	end
@@ -461,17 +485,14 @@ function LoadingScreen:LoadAllAssets(onProgress, onComplete, onBeforeFadeOut)
 
 	-- Sequential loading for better reliability
 	task.spawn(function()
-		-- Load essential textures only (reduced set for faster startup)
+		-- Load all block textures for smooth gameplay
 		if totalTextures > 0 then
-			setStatusText("Loading essential textures...")
-
-			-- Load only first 5 textures to avoid long delays
-			local essentialTextureCount = math.min(totalTextures, 5)
+			setStatusText("Loading block textures...")
 
 			self:LoadBlockTextures(
 				function(loaded, total, progress)
 					-- Update status and overall progress
-					setStatusText("Bringing in textures...")
+					setStatusText(string.format("Loading textures (%d/%d)...", loaded, total))
 					local overallProgress = math.clamp(loaded / totalAssets, 0, 1)
 
 					-- Update progress bar
@@ -482,13 +503,11 @@ function LoadingScreen:LoadAllAssets(onProgress, onComplete, onBeforeFadeOut)
 						pcall(onProgress, loaded, totalAssets, overallProgress)
 					end
 
-					-- Stop after loading essential textures
-					if loaded >= essentialTextureCount then
-						return true -- Signal to stop loading more
-					end
+					-- Load all textures (no early stop)
+					return false
 				end,
 				function(loaded, failed)
-					-- Essential textures loaded, continue to icons
+					-- All textures loaded, continue to icons
 					self:LoadIconsAfterTextures(
 						totalIcons,
 						loaded,

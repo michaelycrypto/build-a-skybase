@@ -79,13 +79,38 @@ function ActiveWorldRegistryService:Configure(worldId: string, ownerUserId: numb
 	local claimToken = self._instanceId
 	local claimed = false
 	local now = os.time()
+	-- Allow reclaim if existing entry is stale (no heartbeat for 2x heartbeat interval)
+	local STALE_THRESHOLD = HEARTBEAT_INTERVAL * 2
 
 	local ok, err = pcall(function()
 		self._map:UpdateAsync(worldId, function(prev)
 			prev = prev or {}
 
+			-- Check if existing entry is from a different server
 			if prev.claimToken and prev.claimToken ~= claimToken then
-				return prev
+				-- Allow reclaim if the existing entry is stale (old server is likely dead)
+				local lastUpdate = prev.updatedAt or 0
+				local isStale = (now - lastUpdate) > STALE_THRESHOLD
+
+				-- Also allow reclaim if same owner is joining (they're taking over their own world)
+				local isSameOwner = prev.ownerUserId == ownerUserId
+
+				if not isStale and not isSameOwner then
+					self._logger.Warn("Registry entry claimed by another active server", {
+						worldId = worldId,
+						existingToken = prev.claimToken,
+						newToken = claimToken,
+						lastUpdate = lastUpdate,
+						ageSeconds = now - lastUpdate
+					})
+					return prev
+				end
+
+				self._logger.Info("Reclaiming registry entry", {
+					worldId = worldId,
+					reason = isStale and "stale_entry" or "owner_reclaim",
+					ageSeconds = now - lastUpdate
+				})
 			end
 
 			claimed = true

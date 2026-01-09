@@ -91,7 +91,7 @@ local BLOCK_INFO = {
 	[34] = {name = "Diamond", icon = "💠", category = "Materials"},
 	[35] = {name = "Furnace", icon = "🔥", category = "Utility"},
 	[36] = {name = "Glass", icon = "🪟", category = "Building"},
-	[97] = {name = "Cobblestone Minion", icon = "🧟‍♂️", category = "Utility"}
+	[97] = {name = "Stone Golem", icon = "🗿", category = "Utility"}
 }
 
 function VoxelHotbar.new()

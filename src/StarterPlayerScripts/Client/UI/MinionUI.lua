@@ -393,7 +393,7 @@ function MinionUI:CreatePanel()
 	self.titleLabel.Size = UDim2.new(0, 300, 1, 0)
 	self.titleLabel.BackgroundTransparency = 1
 	self.titleLabel.RichText = true
-	self.titleLabel.Text = "<b><i>Cobblestone Minion I</i></b>"
+	self.titleLabel.Text = "<b><i>Stone Golem I</i></b>"
 	self.titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	self.titleLabel.TextSize = 36
 	self.titleLabel.Font = BOLD_FONT
@@ -583,7 +583,7 @@ function MinionUI:CreatePanel()
 	self.pickupBtn.Position = UDim2.new(0, rightPanelX, 0, buttonsYStart + (CONFIG.BUTTON_HEIGHT + 24 + CONFIG.BUTTON_SPACING) + CONFIG.BUTTON_HEIGHT + CONFIG.BUTTON_SPACING)
 	self.pickupBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
 	self.pickupBtn.BorderSizePixel = 0
-	self.pickupBtn.Text = "Pickup Minion"
+	self.pickupBtn.Text = "Pickup Golem"
 	self.pickupBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 	self.pickupBtn.TextSize = 14
 	self.pickupBtn.Font = BOLD_FONT
@@ -844,7 +844,7 @@ function MinionUI:UpdateAllDisplays()
 	-- Update title
 	local romanNumerals = {"I", "II", "III", "IV"}
 	local roman = romanNumerals[self.level] or "IV"
-	self.titleLabel.Text = string.format("<b><i>Cobblestone Minion %s</i></b>", roman)
+	self.titleLabel.Text = string.format("<b><i>Stone Golem %s</i></b>", roman)
 
 	-- Update info
 	self.levelLabel.Text = string.format("Level: %s", roman)

@@ -175,31 +175,34 @@ function CraftingService:HandleCraftBatchRequest(player, data)
 			count = acceptedCount,
 			toCursor = toCursor
 		})
-		-- Inform client of accepted count for cursor placement
+
+		local output = recipe.outputs and recipe.outputs[1]
+
+		-- Grant craft credits for toCursor crafts (acceptedCount × per-craft output)
 		if toCursor then
-			-- Grant craft credits for toCursor crafts (acceptedCount × per-craft output)
-			for _, output in ipairs(recipe.outputs or {}) do
-				local amount = (output.count or 0) * acceptedCount
+			for _, out in ipairs(recipe.outputs or {}) do
+				local amount = (out.count or 0) * acceptedCount
 				if amount > 0 then
-					invService:AddCraftCredit(player, output.itemId, amount)
+					invService:AddCraftCredit(player, out.itemId, amount)
 				end
 			end
-			local output = recipe.outputs and recipe.outputs[1]
-			if output then
-				EventManager:FireEvent("CraftRecipeBatchResult", player, {
-					recipeId = recipeId,
-					acceptedCount = acceptedCount,
-					toCursor = true,
-					outputItemId = output.itemId,
-					outputPerCraft = output.count
-				})
-			else
-				EventManager:FireEvent("CraftRecipeBatchResult", player, {
-					recipeId = recipeId,
-					acceptedCount = acceptedCount,
-					toCursor = true
-				})
-			end
+		end
+
+		-- Always fire CraftRecipeBatchResult so tutorial system can track crafts
+		if output then
+			EventManager:FireEvent("CraftRecipeBatchResult", player, {
+				recipeId = recipeId,
+				acceptedCount = acceptedCount,
+				toCursor = toCursor,
+				outputItemId = output.itemId,
+				outputPerCraft = output.count
+			})
+		else
+			EventManager:FireEvent("CraftRecipeBatchResult", player, {
+				recipeId = recipeId,
+				acceptedCount = acceptedCount,
+				toCursor = toCursor
+			})
 		end
 	else
 		self._logger.Warn("Batch craft failed", {
@@ -345,14 +348,27 @@ function CraftingService:HandleCraftRequest(player, data)
 			recipe = recipe.name
 		})
 
+		local output = recipe.outputs and recipe.outputs[1]
+
 		-- Grant craft credits for toCursor crafts so client placement is validated
 		if toCursor then
-			for _, output in ipairs(recipe.outputs or {}) do
-				local amount = output.count or 0
+			for _, out in ipairs(recipe.outputs or {}) do
+				local amount = out.count or 0
 				if amount > 0 then
-					invService:AddCraftCredit(player, output.itemId, amount)
+					invService:AddCraftCredit(player, out.itemId, amount)
 				end
 			end
+		end
+
+		-- Fire result event so tutorial system can track crafts
+		if output then
+			EventManager:FireEvent("CraftRecipeBatchResult", player, {
+				recipeId = recipeId,
+				acceptedCount = 1,
+				toCursor = toCursor,
+				outputItemId = output.itemId,
+				outputPerCraft = output.count
+			})
 		end
 	else
 		self._logger.Warn("Craft execution failed", {

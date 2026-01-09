@@ -358,6 +358,13 @@ local EVENT_DEFINITIONS = {
 	RequestQuestData = {},
 	ClaimQuestReward = {"any"}, -- {mobType:string, milestone:number}
 
+	-- Tutorial (client to server)
+	RequestTutorialData = {},
+	CompleteTutorialStep = {"any"}, -- {stepId:string}
+	SkipTutorialStep = {},
+	SkipTutorial = {},
+	TutorialProgress = {"any"}, -- {stepId:string, progressType:string, progressData:table}
+
     -- Client-to-server events (with parameters)
 	PurchaseItem = {"any", "any"}, -- itemId, quantity
 	RequestBonusCoins = {"any", "any"}, -- source, amount
@@ -405,6 +412,15 @@ local EVENT_DEFINITIONS = {
     QuestProgressUpdated = {"any"},
     QuestRewardClaimed = {"any"},
     QuestError = {"any"},
+
+	-- Tutorial events (server to client)
+	TutorialDataUpdated = {"any"}, -- {tutorial:table, config:table}
+	TutorialStepCompleted = {"any"}, -- {completedStep:string, nextStep:table, reward:table, tutorialComplete:boolean}
+	TutorialStepSkipped = {"any"}, -- {skippedStep:string, nextStep:table, tutorialComplete:boolean}
+	TutorialSkipped = {"any"}, -- {tutorial:table}
+	TutorialProgressUpdated = {"any"}, -- {stepId:string, progressType:string, progressData:table}
+	TutorialError = {"any"}, -- {message:string}
+
 	ServerShutdown = {"any"} -- shutdownData
 }
 
@@ -691,6 +707,56 @@ function EventManager:CreateServerEventConfig(services)
 			handler = function(player, claimData)
 				if services.QuestService and services.QuestService.OnClaimQuestReward then
 					services.QuestService:OnClaimQuestReward(player, claimData)
+				end
+			end
+		},
+
+		-- Tutorial data request
+		{
+			name = "RequestTutorialData",
+			handler = function(player)
+				if services.TutorialService and services.TutorialService.OnRequestTutorialData then
+					services.TutorialService:OnRequestTutorialData(player)
+				end
+			end
+		},
+
+		-- Tutorial step complete
+		{
+			name = "CompleteTutorialStep",
+			handler = function(player, data)
+				if services.TutorialService and services.TutorialService.OnCompleteStep then
+					services.TutorialService:OnCompleteStep(player, data)
+				end
+			end
+		},
+
+		-- Tutorial step skip
+		{
+			name = "SkipTutorialStep",
+			handler = function(player)
+				if services.TutorialService and services.TutorialService.OnSkipStep then
+					services.TutorialService:OnSkipStep(player)
+				end
+			end
+		},
+
+		-- Tutorial skip all
+		{
+			name = "SkipTutorial",
+			handler = function(player)
+				if services.TutorialService and services.TutorialService.OnSkipTutorial then
+					services.TutorialService:OnSkipTutorial(player)
+				end
+			end
+		},
+
+		-- Tutorial progress report
+		{
+			name = "TutorialProgress",
+			handler = function(player, data)
+				if services.TutorialService and services.TutorialService.TrackProgress then
+					services.TutorialService:TrackProgress(player, data.progressType, data.progressData)
 				end
 			end
 		},

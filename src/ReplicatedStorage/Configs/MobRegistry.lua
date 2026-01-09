@@ -120,7 +120,7 @@ MobRegistry.Definitions = {
 	},
 	COBBLE_MINION = {
 		id = "COBBLE_MINION",
-		displayName = "Cobblestone Minion",
+		displayName = "Stone Golem",
 		category = MobRegistry.Categories.PASSIVE,
 		maxHealth = 9999,
 		baseDamage = 0,

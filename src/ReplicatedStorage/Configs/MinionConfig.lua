@@ -10,7 +10,7 @@ local MinionConfig = {}
 MinionConfig.Types = {
 	COBBLESTONE = {
 		id = "COBBLESTONE",
-		displayName = "Cobblestone Minion",
+		displayName = "Stone Golem",
 		placeBlockId = Constants.BlockType.COBBLESTONE,
 		mineBlockId = Constants.BlockType.COBBLESTONE,
 		-- Per-cell action cooldowns to prevent immediate re-selection
@@ -33,7 +33,7 @@ MinionConfig.Types = {
 	},
 	DIRT = {
 		id = "DIRT",
-		displayName = "Dirt Minion",
+		displayName = "Earth Golem",
 		placeBlockId = Constants.BlockType.DIRT,
 		mineBlockId = Constants.BlockType.DIRT,
 		cellCooldownMinSec = 1.1,

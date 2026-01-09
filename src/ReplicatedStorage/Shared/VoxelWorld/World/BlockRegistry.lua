@@ -449,9 +449,9 @@ BlockRegistry.Blocks = {
 	}
 ,
 
-	-- Utility: Cobblestone Minion block (visual mob, block itself is invisible)
+	-- Utility: Stone Golem block (visual mob, block itself is invisible)
 	[Constants.BlockType.COBBLESTONE_MINION] = {
-		name = "Cobblestone Minion",
+		name = "Stone Golem",
 		solid = false,
 		transparent = true,
 		color = Color3.fromRGB(255, 255, 255),

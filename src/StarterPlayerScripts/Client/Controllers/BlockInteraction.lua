@@ -1146,5 +1146,15 @@ function BlockInteraction:Initialize(voxelWorldHandle)
 	return true
 end
 
+--[[
+	Force update the block targeting selection box
+	Useful when blocks are placed/broken and camera hasn't moved
+]]
+function BlockInteraction:UpdateTargeting()
+	-- Clear last targeted block to force a fresh update
+	lastTargetedBlock = nil
+	updateSelectionBox()
+end
+
 return BlockInteraction
 

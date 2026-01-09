@@ -113,6 +113,16 @@ local DEFAULT_PLAYER_DATA = {
 		enableNotifications = true
 	},
 
+	-- Tutorial/onboarding progress
+	tutorial = {
+		completed = false,           -- True when all steps done
+		skipped = false,             -- True if player skipped
+		currentStep = "welcome",     -- Current active step ID
+		completedSteps = {},         -- {[stepId] = timestamp}
+		startedAt = 0,               -- When tutorial started
+		completedAt = 0,             -- When tutorial finished
+	},
+
 	-- Timestamps
 	createdAt = 0,
 	lastSave = 0,

@@ -61,6 +61,7 @@ Injector:Bind("QuestService", script.Parent.Parent.Services.QuestService, {
 	dependencies = {"PlayerService"},
 	mixins = {"RateLimited", "Cooldownable"}
 })
+-- TutorialService is bound in the worlds place only (not in lobby)
 Injector:Bind("ArmorEquipService", script.Parent.Parent.Services.ArmorEquipService, {
 	dependencies = {"PlayerInventoryService"},
 	mixins = {}
@@ -109,6 +110,11 @@ else
 		dependencies = {},
 		mixins = {}
 	})
+	-- TutorialService: Only in worlds place (needs WorldOwnershipService to check realm ownership)
+	Injector:Bind("TutorialService", script.Parent.Parent.Services.TutorialService, {
+		dependencies = {"PlayerService", "WorldOwnershipService"},
+		mixins = {}
+	})
 	Injector:Bind("VoxelWorldService", script.Parent.Parent.Services.VoxelWorldService, {
 		dependencies = {"PlayerInventoryService", "WorldOwnershipService", "DamageService"},
 		mixins = {}
@@ -149,6 +155,7 @@ local playerDataStoreService = Injector:Resolve("PlayerDataStoreService")
 local playerService = Injector:Resolve("PlayerService")
 local shopService = Injector:Resolve("ShopService")
 local questService = Injector:Resolve("QuestService")
+local tutorialService = not IS_LOBBY and Injector:Resolve("TutorialService") or nil
 local playerInventoryService = Injector:Resolve("PlayerInventoryService")
 local craftingService = Injector:Resolve("CraftingService")
 local bowService = Injector:Resolve("BowService")
@@ -192,6 +199,7 @@ local servicesTable = {
 	PlayerService = playerService,
 	ShopService = shopService,
     QuestService = questService,
+	TutorialService = tutorialService,
 	PlayerInventoryService = playerInventoryService,
 	CraftingService = craftingService,
 	BowService = bowService,
@@ -865,6 +873,10 @@ Players.PlayerRemoving:Connect(function(player)
 	-- Note: Armor cleanup is handled by PlayerService:OnPlayerRemoving (which saves first)
 	-- Clean up crafting service
 	craftingService:OnPlayerRemoving(player)
+	-- Clean up tutorial cache
+	if tutorialService and tutorialService.ClearPlayerCache then
+		tutorialService:ClearPlayerCache(player)
+	end
 end)
 
 -- Initialize existing players (important for Studio testing when server reloads)

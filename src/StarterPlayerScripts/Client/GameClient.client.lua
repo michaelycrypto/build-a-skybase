@@ -31,9 +31,7 @@ print("[VoxelTextures] Texture system loaded. Enabled:", TextureManager:IsEnable
 local voxelWorldHandle = nil
 local boxMesher = BoxMesher.new()
 local voxelWorldContainer = nil
-local voxelCollidersContainer = nil
 local chunkFolders = {}
-local colliderFolders = {}
 local frustum = CameraFrustum.new()
 local _lastFogEnd
 local isHubWorld = Workspace:GetAttribute("IsHubWorld") == true
@@ -63,8 +61,6 @@ local function updateVoxelWorld()
 	-- Convert studs to voxel block coordinates for chunk manager
     local bx = pos.X / Constants.BLOCK_SIZE
     local bz = pos.Z / Constants.BLOCK_SIZE
-
-	-- Removed legacy chunkReceiver/chunkCache path
 
 	-- Process any pending mesh updates from streamed chunks
 	local cm = voxelWorldHandle and voxelWorldHandle.chunkManager
@@ -118,52 +114,26 @@ local function updateVoxelWorld()
 			Lighting.FogEnd = fogEnd
 			_lastFogEnd = fogEnd
 		end
-		-- Player chunk for culling gate (computed once)
-		local pcxGate = math.floor(bx / Constants.CHUNK_SIZE_X)
-		local pczGate = math.floor(bz / Constants.CHUNK_SIZE_Z)
-		-- Do not locally destroy models based on radius; rely on server ChunkUnload
-
-		-- Ensure near-player chunks are remeshed with colliders when entering radius
-		local cam = workspace.CurrentCamera
-		if wm and cam then
-			local ppos = cam.CFrame.Position
-			local pbx = ppos.X / Constants.BLOCK_SIZE
-			local pbz = ppos.Z / Constants.BLOCK_SIZE
-			local pcx2 = math.floor(pbx / Constants.CHUNK_SIZE_X)
-			local pcz2 = math.floor(pbz / Constants.CHUNK_SIZE_Z)
-			for key, model in pairs(chunkFolders) do
-				local cx, cz = wm:GetChunkCoords(key)
-				local dx = math.abs(cx - pcx2)
-				local dz = math.abs(cz - pcz2)
-				local shouldHave = (dx <= 3 and dz <= 3)
-				local has = (model:GetAttribute("HasColliders") == true)
-				if shouldHave and not has then
-					local chunk = wm.chunks and wm.chunks[key]
-					if chunk then
-						cm.meshUpdateQueue[key] = chunk
-					end
-				end
-			end
-		end
-
         -- Build prioritized candidate list (frustum culled, but always include 7x7 around player)
 		local candidates = {}
         -- Compute player chunk once for must-include set
         local pcx = math.floor(bx / Constants.CHUNK_SIZE_X)
         local pcz = math.floor(bz / Constants.CHUNK_SIZE_Z)
+		local vwDebug = vwConfig.DEBUG
+		local bs = Constants.BLOCK_SIZE
+		local sizeX = Constants.CHUNK_SIZE_X * bs
+		local sizeZ = Constants.CHUNK_SIZE_Z * bs
+		local pad = bs * 0.25
+		local maxParts = (vwDebug and vwDebug.MAX_PARTS_PER_CHUNK) or 600
+
 		for key, chunk in pairs(cm.meshUpdateQueue) do
-			local bs = Constants.BLOCK_SIZE
 			local chunkWorldX = (chunk.x * Constants.CHUNK_SIZE_X) * bs
 			local chunkWorldZ = (chunk.z * Constants.CHUNK_SIZE_Z) * bs
-			local sizeX = Constants.CHUNK_SIZE_X * bs
-			local sizeZ = Constants.CHUNK_SIZE_Z * bs
             local min = Vector3.new(chunkWorldX, 0, chunkWorldZ)
             local max = Vector3.new(chunkWorldX + sizeX, Constants.WORLD_HEIGHT * bs, chunkWorldZ + sizeZ)
             -- Conservative expansion to avoid precision pop-in at edges
-            local pad = bs * 0.25
             local minExp = min - Vector3.new(pad, pad * 2, pad)
             local maxExp = max + Vector3.new(pad, pad * 2, pad)
-			local vwDebug = require(ReplicatedStorage.Shared.VoxelWorld.Core.Config).DEBUG
 			local mustInclude = (math.abs(chunk.x - pcx) <= 3 and math.abs(chunk.z - pcz) <= 3)
 			local dxChunks = chunk.x - pcx
 			local dzChunks = chunk.z - pcz
@@ -181,66 +151,44 @@ local function updateVoxelWorld()
 			return a.dist < b.dist
 		end)
 
-        -- Background meshing budget (limit concurrent builds per frame)
-        local concurrent = 0
-        local maxConcurrent = math.max(1, math.floor(budget))
+        -- For small queues (block edits), process all chunks together to avoid border flicker
+        -- For large queues (world loading), respect the budget
+        local queueSize = #candidates
+        local effectiveBudget = budget
+        if queueSize <= 5 then
+            -- Small batch (likely from a single block change) - process all together
+            effectiveBudget = math.max(budget, queueSize)
+        end
 
-        for _, item in ipairs(candidates) do
-			if updates >= budget then break end
-			if (os.clock() - frameStart) >= timeBudgetSec then break end
+		-- Neighbor sampler function for cross-chunk block lookups (shared across all chunks this frame)
+		local function neighborSampler(worldManagerRef, baseChunk, lx, ly, lz)
+			-- Fast path: block is within the base chunk
+			if lx >= 0 and lx < Constants.CHUNK_SIZE_X and lz >= 0 and lz < Constants.CHUNK_SIZE_Z then
+				return baseChunk:GetBlock(lx, ly, lz)
+			end
+			-- Need to look up neighbor chunk
+			if not worldManagerRef then return Constants.BlockType.AIR end
+			local cx, cz = baseChunk.x, baseChunk.z
+			local nx, nz = lx, lz
+			if nx < 0 then cx -= 1; nx += Constants.CHUNK_SIZE_X
+			elseif nx >= Constants.CHUNK_SIZE_X then cx += 1; nx -= Constants.CHUNK_SIZE_X end
+			if nz < 0 then cz -= 1; nz += Constants.CHUNK_SIZE_Z
+			elseif nz >= Constants.CHUNK_SIZE_Z then cz += 1; nz -= Constants.CHUNK_SIZE_Z end
+			local neighborKey = tostring(cx) .. "," .. tostring(cz)
+			local neighbor = worldManagerRef.chunks and worldManagerRef.chunks[neighborKey]
+			if not neighbor then return Constants.BlockType.AIR end
+			return neighbor:GetBlock(nx, ly, nz)
+		end
+
+		-- Phase 1: Build all meshes (without parenting yet)
+		local builtMeshes = {}
+        for i, item in ipairs(candidates) do
+			if updates >= effectiveBudget then break end
+			-- Only check time budget for large queues
+			if queueSize > 5 and (os.clock() - frameStart) >= timeBudgetSec then break end
+
             local key = item.key
             local chunk = item.chunk
-            local bs = Constants.BLOCK_SIZE
-            -- Build new mesh parts via greedy meshing with world-aware culling and colliders
-
-			-- Determine if this chunk is the one the player is currently inside (only)
-			local drawBorders = false
-			if wm then
-				local camera = workspace.CurrentCamera
-				if camera then
-					local pos = camera.CFrame.Position
-					local bx = pos.X / Constants.BLOCK_SIZE
-					local bz = pos.Z / Constants.BLOCK_SIZE
-					local pcx = math.floor(bx / Constants.CHUNK_SIZE_X)
-					local pcz = math.floor(bz / Constants.CHUNK_SIZE_Z)
-					drawBorders = (chunk.x == pcx and chunk.z == pcz)
-				end
-			end
-            local vwDebug2 = require(ReplicatedStorage.Shared.VoxelWorld.Core.Config).DEBUG
-			local maxParts = (vwDebug2 and vwDebug2.MAX_PARTS_PER_CHUNK) or 600
-            -- Ensure colliders are generated for chunks around the camera/player position
-            local needColliders = false
-            do
-                local camera = workspace.CurrentCamera
-                if camera then
-                    local pos = camera.CFrame.Position
-                    local bx = pos.X / Constants.BLOCK_SIZE
-                    local bz = pos.Z / Constants.BLOCK_SIZE
-                    local pcx = math.floor(bx / Constants.CHUNK_SIZE_X)
-                    local pcz = math.floor(bz / Constants.CHUNK_SIZE_Z)
-                    local dx = math.abs(chunk.x - pcx)
-                    local dz = math.abs(chunk.z - pcz)
-                    -- 7x7 area centered around camera chunk gets colliders
-                    needColliders = (dx <= 3 and dz <= 3)
-                end
-            end
-            -- Build a voxel.js-like sampler: given (x,y,z) in local or neighbor space, fetch neighbor ids without creating chunks
-			local neighborSampler = function(worldManagerRef, baseChunk, lx, ly, lz)
-                -- Inline neighbor sampling based on local offsets relative to base chunk
-                if lx >= 0 and lx < Constants.CHUNK_SIZE_X and lz >= 0 and lz < Constants.CHUNK_SIZE_Z then
-                    return baseChunk:GetBlock(lx, ly, lz)
-                end
-				if not worldManagerRef then return Constants.BlockType.AIR end -- Treat unknown neighbor as air so edge faces render until neighbor loads
-                local cx, cz = baseChunk.x, baseChunk.z
-                local nx, nz = lx, lz
-                if nx < 0 then cx -= 1 nx += Constants.CHUNK_SIZE_X elseif nx >= Constants.CHUNK_SIZE_X then cx += 1 nx -= Constants.CHUNK_SIZE_X end
-                if nz < 0 then cz -= 1 nz += Constants.CHUNK_SIZE_Z elseif nz >= Constants.CHUNK_SIZE_Z then cz += 1 nz -= Constants.CHUNK_SIZE_Z end
-                local key
-                key = tostring(cx)..","..tostring(cz)
-                local neighbor = (worldManagerRef and worldManagerRef.chunks) and worldManagerRef.chunks[key]
-				if not neighbor then return Constants.BlockType.AIR end -- Render border faces when neighbor chunk is absent
-                return neighbor:GetBlock(nx, ly, nz)
-            end
 
             -- Generate merged box mesh with textures
 			local parts = boxMesher:GenerateMesh(chunk, wm, {
@@ -248,63 +196,49 @@ local function updateVoxelWorld()
                 sampleBlock = neighborSampler,
             })
 
-            -- Count textures applied (for verification)
-            local textureCount = 0
+            -- Assemble new model (not parented yet)
+            local nextModel = Instance.new("Model")
+            nextModel.Name = "Chunk_" .. tostring(key)
             for _, part in ipairs(parts) do
-                if part:IsA("BasePart") then
-                    for _, child in ipairs(part:GetChildren()) do
-                        if child:IsA("Texture") then
-                            textureCount = textureCount + 1
-        end
+                part.Parent = nextModel
+            end
 
+            -- Set a fixed pivot at chunk origin
+            local origin = Vector3.new((chunk.x * Constants.CHUNK_SIZE_X) * bs, 0, (chunk.z * Constants.CHUNK_SIZE_Z) * bs)
+            pcall(function()
+                nextModel.WorldPivot = CFrame.new(origin)
+            end)
+
+            table.insert(builtMeshes, {key = key, model = nextModel})
+			updates += 1
+		end
+
+		-- Phase 2: Swap all built meshes atomically (minimizes visual gaps)
+		for _, built in ipairs(builtMeshes) do
+			local key = built.key
+			local nextModel = built.model
+
+            -- Parent new model
+            nextModel.Parent = voxelWorldContainer
+
+            -- Remove old model
+            local prev = chunkFolders[key]
+            if prev then
+                PartPool.ReleaseAllFromModel(prev)
+                prev:Destroy()
+            end
+
+            chunkFolders[key] = nextModel
+			cm.meshUpdateQueue[key] = nil
+		end
+
+		-- Check if hub initial mesh build is complete
 		if hubFastMesh then
 			if not next(cm.meshUpdateQueue) then
 				hubInitialMeshPending = false
 				print("[VoxelWorld] Hub voxel mesh build complete")
 			end
 		end
-                    end
-                end
-            end
-
-            -- Log texture application (first few chunks only to avoid spam)
-            if textureCount > 0 and updates < 3 then
-                print(string.format("[VoxelTextures] Chunk %s: %d parts, %d textures applied",
-                    key, #parts, textureCount))
-            end
-
-            -- Assemble new model offscreen, then swap to avoid flicker
-            local nextModel = Instance.new("Model")
-            nextModel.Name = "Chunk_" .. tostring(key)
-            for _, part in ipairs(parts) do
-                part.Parent = nextModel
-            end
-            -- Set a fixed pivot at chunk origin for clarity and fast transforms
-            local origin = Vector3.new((chunk.x * Constants.CHUNK_SIZE_X) * bs, 0, (chunk.z * Constants.CHUNK_SIZE_Z) * bs)
-            pcall(function()
-                nextModel.WorldPivot = CFrame.new(origin)
-            end)
-            -- Track collider presence for future proximity remeshing
-            pcall(function()
-                nextModel:SetAttribute("HasColliders", needColliders and true or false)
-            end)
-            -- Swap models atomically: parent new, then remove old
-            nextModel.Parent = voxelWorldContainer
-            local prev = chunkFolders[key]
-            if prev then
-                PartPool.ReleaseAllFromModel(prev)
-                prev:Destroy()
-            end
-            chunkFolders[key] = nextModel
-
-			-- Mark processed
-			cm.meshUpdateQueue[key] = nil
-			updates += 1
-            concurrent += 1
-            if concurrent >= maxConcurrent then break end
-		end
-
-		-- Simplified: remove physics-only collider sweep. Colliders are generated with the visual mesh when needed.
 	end
 end
 
@@ -337,10 +271,6 @@ local Initializer = require(ReplicatedStorage.Shared.Initializer)
 	local EmoteManager = require(script.Parent.Managers.EmoteManager)
 	local PanelManager = require(script.Parent.Managers.PanelManager)
 	local InputService = require(script.Parent.Input.InputService)
-    -- Removed grid/tool managers
-
-	-- Import proximity grid system
-    -- Removed proximity grid bootstrap
 
 	-- Import UI components
 	local LoadingScreen = require(script.Parent.UI.LoadingScreen)
@@ -507,12 +437,6 @@ local function completeInitialization(EmoteManager)
 	end
 	Client.managers.PanelManager = PanelManager
 
-    -- Removed PlayerBase/PlayerBillboard/Toolbar/ProximityGrid initialization
-
-    -- Removed GridIntegrationManager and GridBoundsManager
-
-	-- ClientInventoryManager removed - inventory data now handled directly by InventoryPanel
-
 	-- Initialize EmoteManager with preloaded assets (if available)
 	if EmoteManager and EmoteManager.Initialize then
 		local initSuccess = EmoteManager:Initialize({
@@ -548,6 +472,62 @@ local function completeInitialization(EmoteManager)
 	hotbar:SetInventoryReference(inventory)
 
 	print("🎮 Voxel Hotbar, Inventory Manager, and Inventory Panel initialized")
+
+	-- Initialize TutorialManager (after InventoryManager so we can count items)
+	local TutorialManager = require(script.Parent.Managers.TutorialManager)
+	local tutorialSuccess, tutorialError = pcall(function()
+		TutorialManager:Initialize({
+			EventManager = EventManager,
+			GameState = GameState,
+			ToastManager = Client.managers.ToastManager,
+			SoundManager = Client.managers.SoundManager,
+			InventoryManager = inventoryManager,  -- Now available!
+		})
+	end)
+	if tutorialSuccess then
+		Client.managers.TutorialManager = TutorialManager
+		print("📚 TutorialManager: Initialized for onboarding")
+	else
+		warn("TutorialManager initialization failed:", tutorialError)
+	end
+
+	-- Register inventory change callbacks for UI updates and tutorial tracking
+	inventoryManager:OnInventoryChanged(function(slotIndex)
+		if Client.voxelInventory and Client.voxelInventory.isOpen then
+			Client.voxelInventory:UpdateInventorySlotDisplay(slotIndex)
+		end
+		if Client.chestUI and Client.chestUI.isOpen then
+			Client.chestUI:UpdateInventorySlotDisplay(slotIndex)
+		end
+		-- Tutorial: track item collection
+		if Client.managers.TutorialManager then
+			local stack = inventoryManager:GetInventorySlot(slotIndex)
+			if stack and not stack:IsEmpty() then
+				Client.managers.TutorialManager:OnItemCollected(stack:GetItemId(), stack:GetCount())
+			end
+		end
+	end)
+
+	inventoryManager:OnHotbarChanged(function(slotIndex)
+		if Client.voxelInventory and Client.voxelInventory.isOpen then
+			-- Update the specific hotbar slot display
+			local slotFrame = Client.voxelInventory.hotbarSlotFrames[slotIndex]
+			if slotFrame and slotFrame.frame then
+				Client.voxelInventory:UpdateHotbarSlotDisplay(slotIndex, slotFrame.frame, slotFrame.iconContainer, slotFrame.countLabel, slotFrame.selectionBorder)
+			end
+		end
+		-- Tutorial: track item collection from hotbar
+		if Client.managers.TutorialManager then
+			local stack = inventoryManager:GetHotbarSlot(slotIndex)
+			if stack and not stack:IsEmpty() then
+				Client.managers.TutorialManager:OnItemCollected(stack:GetItemId(), stack:GetCount())
+				if Client.voxelHotbar and Client.voxelHotbar.selectedSlot == slotIndex then
+					Client.managers.TutorialManager:OnItemEquipped(stack:GetItemId())
+				end
+			end
+		end
+	end)
+	print("📦 Inventory change listeners registered")
 
 	-- Initialize World Ownership Display
 	local WorldOwnershipDisplay = require(script.Parent.UI.WorldOwnershipDisplay)
@@ -706,6 +686,10 @@ local function completeInitialization(EmoteManager)
 			else
 				if inventory then
 					inventory:Toggle()
+					-- Tutorial tracking: notify of inventory panel opened
+					if inventory.isOpen and Client.managers.TutorialManager then
+						Client.managers.TutorialManager:OnPanelOpened("inventory")
+					end
 				end
 			end
 		elseif input.KeyCode == Enum.KeyCode.B then
@@ -758,6 +742,23 @@ local function completeInitialization(EmoteManager)
 			-- Enable workbench filter and open
 			inventory:SetWorkbenchMode(true)
 			inventory:Open()
+
+			-- Tutorial tracking: notify of workbench interaction
+			if Client.managers.TutorialManager then
+				Client.managers.TutorialManager:OnBlockInteracted("crafting_table")
+			end
+		end
+	end)
+
+	-- Handle crafting result for tutorial tracking
+	EventManager:RegisterEvent("CraftRecipeBatchResult", function(data)
+		-- data = {recipeId:string, acceptedCount:number, outputItemId:number, outputPerCraft:number}
+		if data and data.outputItemId and data.acceptedCount and data.acceptedCount > 0 then
+			-- Tutorial tracking: notify of successful craft with total items crafted
+			if Client.managers.TutorialManager then
+				local totalCrafted = data.acceptedCount * (data.outputPerCraft or 1)
+				Client.managers.TutorialManager:OnItemCrafted(data.outputItemId, totalCrafted)
+			end
 		end
 	end)
 
@@ -824,8 +825,6 @@ local function completeInitialization(EmoteManager)
 	EventManager:SendToServer("ClientReady")
 	print("🔄 Sending RequestDataRefresh event to server...")
 	EventManager:SendToServer("RequestDataRefresh")
-
-    -- World grid auto-send removed
 
 	bootstrapComplete = true
 	if Client.worldReady then
@@ -902,41 +901,108 @@ local function initialize()
         end
         local key = data.key or (tostring(data.chunk.x) .. "," .. tostring(data.chunk.z))
         voxelWorldHandle.chunkManager.meshUpdateQueue = voxelWorldHandle.chunkManager.meshUpdateQueue or {}
-        -- Only queue if we don't already have a mesh
-        if not chunkFolders[key] then
+
+        local isNewChunk = not chunkFolders[key]
+
+        -- Queue this chunk for meshing
+        if isNewChunk then
             voxelWorldHandle.chunkManager.meshUpdateQueue[key] = chunk
+        end
+
+        -- When a new chunk loads, remesh adjacent neighbors that may have rendered
+        -- border faces assuming this chunk was empty (AIR). Now that we have real
+        -- block data, neighbors need to update their border faces.
+        if isNewChunk then
+            local cx, cz = data.chunk.x, data.chunk.z
+            local neighborOffsets = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}}
+            for _, offset in ipairs(neighborOffsets) do
+                local nx, nz = cx + offset[1], cz + offset[2]
+                local neighborKey = tostring(nx) .. "," .. tostring(nz)
+                -- Only remesh if neighbor already has a rendered mesh
+                if chunkFolders[neighborKey] then
+                    local neighborChunk = wm and wm.chunks and wm.chunks[neighborKey]
+                    if neighborChunk then
+                        voxelWorldHandle.chunkManager.meshUpdateQueue[neighborKey] = neighborChunk
+                    end
+                end
+            end
         end
     end)
 
 	EventManager:RegisterEvent("ChunkUnload", function(data)
-		-- Remove rendered mesh for this chunk if present
-		local folder = chunkFolders[data.key]
-		if folder then
-			folder:Destroy()
-			chunkFolders[data.key] = nil
-		end
-		voxelWorldHandle.chunkManager:UnloadChunk(data.key)
-
-		-- Drop any pending mesh updates for this chunk
+		-- Drop any pending mesh updates for this chunk first
 		if voxelWorldHandle and voxelWorldHandle.chunkManager and voxelWorldHandle.chunkManager.meshUpdateQueue then
 			voxelWorldHandle.chunkManager.meshUpdateQueue[data.key] = nil
 		end
 
-        -- Do not trigger neighbor remesh here; neighbor faces are culled by occlusion policy
+		-- Remove rendered mesh for this chunk if present
+		local folder = chunkFolders[data.key]
+		if folder then
+			PartPool.ReleaseAllFromModel(folder)
+			folder:Destroy()
+			chunkFolders[data.key] = nil
+		end
+
+		-- Unload chunk data from world manager
+		if voxelWorldHandle and voxelWorldHandle.chunkManager then
+			voxelWorldHandle.chunkManager:UnloadChunk(data.key)
+		end
 	end)
 
 	EventManager:RegisterEvent(WORLD_READY_EVENT, handleWorldStateChanged)
 
--- Debounce timers for chunk remeshing (avoid flash during rapid edits)
-local pendingRemeshTimers = {}
-local REMESH_DEBOUNCE_TIME = 0.15 -- Wait 150ms after last edit before remeshing
+	-- Batched chunk remeshing system
+	-- Collects all affected chunks and processes them together to avoid border flicker
+	local pendingRemeshChunks = {} -- Set of "cx,cz" keys
+	local remeshBatchTimer = nil
+	local REMESH_BATCH_DELAY = 0.05 -- 50ms - short delay to batch rapid edits
+
+	-- Queue a chunk for batched remesh
+	local function queueChunkRemesh(cx, cz)
+		local k = tostring(cx) .. "," .. tostring(cz)
+		pendingRemeshChunks[k] = {cx = cx, cz = cz}
+	end
+
+	-- Flush all pending chunk remeshes at once
+	local function flushPendingRemeshes()
+		remeshBatchTimer = nil
+		if not voxelWorldHandle then return end
+		local wm = voxelWorldHandle:GetWorldManager()
+		if not wm then return end
+		local cm = voxelWorldHandle.chunkManager
+		if not cm then return end
+
+		-- Queue all pending chunks for mesh update
+		for k, coords in pairs(pendingRemeshChunks) do
+			local ch = wm:GetChunk(coords.cx, coords.cz)
+			if ch then
+				cm.meshUpdateQueue[k] = ch
+			end
+		end
+
+		-- Clear the pending set
+		pendingRemeshChunks = {}
+	end
+
+	-- Schedule a batched remesh (resets timer on each call to batch rapid edits)
+	local function scheduleBatchedRemesh()
+		if remeshBatchTimer then
+			task.cancel(remeshBatchTimer)
+		end
+		remeshBatchTimer = task.delay(REMESH_BATCH_DELAY, flushPendingRemeshes)
+	end
 
 	EventManager:RegisterEvent("BlockChanged", function(data)
-		voxelWorldHandle:GetWorldManager():SetBlock(data.x, data.y, data.z, data.blockId)
+		if not voxelWorldHandle then return end
+		local wm = voxelWorldHandle:GetWorldManager()
+		if not wm then return end
+
+		-- Update block data immediately
+		wm:SetBlock(data.x, data.y, data.z, data.blockId)
 
 		-- Set metadata if provided
 		if data.metadata and data.metadata ~= 0 then
-			voxelWorldHandle:GetWorldManager():SetBlockMetadata(data.x, data.y, data.z, data.metadata)
+			wm:SetBlockMetadata(data.x, data.y, data.z, data.metadata)
 		end
 
 		-- Play block placement sound (only if placing a block, not breaking)
@@ -945,41 +1011,41 @@ local REMESH_DEBOUNCE_TIME = 0.15 -- Wait 150ms after last edit before remeshing
 			if SoundManager and SoundManager.PlaySFXSafely then
 				SoundManager:PlaySFXSafely("blockPlace")
 			end
-		end
 
-
-		-- Helper to schedule a remesh for a specific chunk key with debounce
-		local function scheduleRemesh(cx, cz)
-			local k = tostring(cx) .. "," .. tostring(cz)
-			if pendingRemeshTimers[k] then
-				task.cancel(pendingRemeshTimers[k])
+			-- Tutorial tracking: notify of block placed
+			if Client.managers.TutorialManager then
+				Client.managers.TutorialManager:OnBlockPlaced(data.blockId)
 			end
-			pendingRemeshTimers[k] = task.delay(REMESH_DEBOUNCE_TIME, function()
-				local ch = voxelWorldHandle:GetWorldManager():GetChunk(cx, cz)
-				if ch then
-					voxelWorldHandle.chunkManager.meshUpdateQueue[k] = ch
-				end
-				pendingRemeshTimers[k] = nil
-			end)
 		end
 
-		-- Update mesh for affected chunk
+		-- Collect affected chunks (block's chunk + edge neighbors)
 		local chunkX = math.floor(data.x / Constants.CHUNK_SIZE_X)
 		local chunkZ = math.floor(data.z / Constants.CHUNK_SIZE_Z)
-		scheduleRemesh(chunkX, chunkZ)
 
-		-- If the changed block is on a chunk edge, also schedule neighbor chunk remesh
+		-- Always queue the block's own chunk
+		queueChunkRemesh(chunkX, chunkZ)
+
+		-- Check if block is on a chunk edge and queue neighbor chunks
 		local localX = data.x - chunkX * Constants.CHUNK_SIZE_X
 		local localZ = data.z - chunkZ * Constants.CHUNK_SIZE_Z
+
 		if localX == 0 then
-			scheduleRemesh(chunkX - 1, chunkZ)
+			queueChunkRemesh(chunkX - 1, chunkZ)
 		elseif localX == (Constants.CHUNK_SIZE_X - 1) then
-			scheduleRemesh(chunkX + 1, chunkZ)
+			queueChunkRemesh(chunkX + 1, chunkZ)
 		end
 		if localZ == 0 then
-			scheduleRemesh(chunkX, chunkZ - 1)
+			queueChunkRemesh(chunkX, chunkZ - 1)
 		elseif localZ == (Constants.CHUNK_SIZE_Z - 1) then
-			scheduleRemesh(chunkX, chunkZ + 1)
+			queueChunkRemesh(chunkX, chunkZ + 1)
+		end
+
+		-- Schedule batched flush (all chunks will be queued together)
+		scheduleBatchedRemesh()
+
+		-- Update block targeting after block change
+		if Client.blockInteraction and Client.blockInteraction.UpdateTargeting then
+			Client.blockInteraction:UpdateTargeting()
 		end
 	end)
 
@@ -1013,6 +1079,11 @@ local REMESH_DEBOUNCE_TIME = 0.15 -- Wait 150ms after last edit before remeshing
 			Client.blockBreakProgress:Reset()
 		end
 
+		-- Tutorial tracking: notify of block broken
+		if data.playerUserId == player.UserId and Client.managers.TutorialManager then
+			Client.managers.TutorialManager:OnBlockBroken(data.blockId)
+		end
+
 		-- Stop client breaking loop immediately if the broken block matches current
 		local BI = Client.blockInteraction
 		if BI and BI._getBreakingBlock and type(BI._getBreakingBlock) == "function" then
@@ -1021,31 +1092,12 @@ local REMESH_DEBOUNCE_TIME = 0.15 -- Wait 150ms after last edit before remeshing
 				BI:_forceStopBreaking()
 			end
 		end
+
+		-- Update block targeting after block broken (even if camera hasn't moved)
+		if Client.blockInteraction and Client.blockInteraction.UpdateTargeting then
+			Client.blockInteraction:UpdateTargeting()
+		end
 	end)
-
-	-- Handle inventory synchronization from server
-	-- NOTE: InventorySync and HotbarSlotUpdate are now handled by ClientInventoryManager
-	-- We only need to refresh UI displays when inventory changes
-	if Client.inventoryManager then
-		Client.inventoryManager:OnInventoryChanged(function(slotIndex)
-			if Client.voxelInventory and Client.voxelInventory.isOpen then
-				-- Granular update: only update the specific inventory slot that changed
-				Client.voxelInventory:UpdateInventorySlotDisplay(slotIndex)
-			end
-			if Client.chestUI and Client.chestUI.isOpen then
-				Client.chestUI:UpdateInventorySlotDisplay(slotIndex)
-			end
-		end)
-
-		Client.inventoryManager:OnHotbarChanged(function(slotIndex)
-			if Client.voxelInventory and Client.voxelInventory.isOpen then
-				-- Granular update: only update the specific hotbar slot that changed
-				Client.voxelInventory:UpdateSpecificSlots(nil, {slotIndex})
-			end
-		end)
-
-		print("📦 Inventory change listeners registered")
-	end
 
     -- Request initial chunks after our custom entity spawns
     local initializedFromEntity = false

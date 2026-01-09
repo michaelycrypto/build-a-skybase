@@ -22,3 +22,4 @@ Concise, accurate documentation for the voxel survival game.
 - **Camera controls**: See [CAMERA_INPUT_SYSTEM.md#camera-modes](CAMERA_INPUT_SYSTEM.md#camera-modes)
 - **Inventory API**: See [SYSTEMS.md#inventory-system](SYSTEMS.md#inventory-system)
 
+
