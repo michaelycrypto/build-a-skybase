@@ -63,6 +63,13 @@ function FeedbackSystem:Initialize(soundManager)
 end
 
 --[[
+	Set SoundManager (for deferred initialization to avoid circular dependencies)
+]]
+function FeedbackSystem:SetSoundManager(soundManager)
+	self.soundManager = soundManager
+end
+
+--[[
 	Play haptic feedback
 ]]
 function FeedbackSystem:PlayHaptic(feedbackType, customIntensity)

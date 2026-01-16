@@ -15,8 +15,12 @@
 local Constants = require(script.Parent.Parent.Core.Constants)
 local TextureManager = require(script.Parent.TextureManager)
 local BlockRegistry = require(script.Parent.Parent.World.BlockRegistry)
+local PartPool = require(script.Parent.PartPool)
 
 local TextureApplicator = {}
+
+-- Cache for block texture lookups (blockId -> {faceName -> textureId})
+local textureCache = {}
 
 --[[
 	Apply textures to all 6 faces of a merged box Part
@@ -128,72 +132,45 @@ function TextureApplicator:ApplyBoxTextures(
 		rotation = Constants.GetRotation(metadata)
 	end
 
-	-- Apply texture to each face
-	local texturesApplied = 0
-	for _, faceInfo in ipairs(faces) do
-		-- Respect optional visibility mask; default to visible unless explicitly false
+	-- Cache block definition lookup (used for greyscale texture check)
+	local def = BlockRegistry:GetBlock(blockId)
+	local needsColorTint = def and def.greyscaleTexture
+	local tintColor = needsColorTint and (def.color or part.Color) or nil
+
+	-- Apply texture to each face using pooled textures
+	for i = 1, 6 do
+		local faceInfo = faces[i]
+		
+		-- Fast visibility check - only check NormalId key (most common case)
 		local isVisible = true
 		if visibleFaces then
-			local mask = visibleFaces
-			local v = mask[faceInfo.normalId]
-			if v == nil then v = mask[faceInfo.normalId and faceInfo.normalId.Name or nil] end
-			if v == nil then v = mask[faceInfo.faceName] end
-			if v == nil and type(faceInfo.faceName) == "string" then v = mask[string.lower(faceInfo.faceName)] end
+			local v = visibleFaces[faceInfo.normalId]
 			if v == false then
 				isVisible = false
 			end
 		end
 
 		if isVisible then
-		-- Apply rotation to get the correct texture for this face
-		local rotatedFaceName = getRotatedFaceName(faceInfo.faceName, rotation)
-		local textureId = TextureManager:GetTextureForBlockFace(blockId, rotatedFaceName)
+			-- Apply rotation to get the correct texture for this face
+			local rotatedFaceName = getRotatedFaceName(faceInfo.faceName, rotation)
+			local textureId = TextureManager:GetTextureForBlockFace(blockId, rotatedFaceName)
 
 			if textureId then
-			local texture = Instance.new("Texture")
-			texture.Name = "BlockTexture_" .. faceInfo.faceName
-			texture.Face = faceInfo.normalId
-			texture.Texture = textureId
-
-			--[[
-				UV TILING: 4 studs per texture tile (one texture per cell)
-
-				BLOCK_SIZE = 4 studs per cell
-				StudsPerTileU/V = 4 means texture repeats every 4 studs
-
-				Examples:
-				- 1 block (4 studs): texture shows 1 time
-				- 3 blocks (12 studs): texture repeats 3 times
-				- 5 blocks (20 studs): texture repeats 5 times
-
-				This ensures sharp, non-stretched textures on merged boxes.
-				DO NOT multiply by tilingU/V - that would stretch the texture!
-			--]]
-			texture.StudsPerTileU = bs  -- 4 studs = 1 texture tile
-			texture.StudsPerTileV = bs  -- 4 studs = 1 texture tile
-
-			-- Texture is opaque (Part.Transparency controls overall visibility)
-			texture.Transparency = 0
-
-			-- Optional tint: only for blocks flagged with greyscale textures (e.g., leaves variants)
-			local def = BlockRegistry:GetBlock(blockId)
-			if def and def.greyscaleTexture then
-				texture.Color3 = def.color or part.Color
-			end
+				-- Use pooled texture (much faster than Instance.new)
+				local texture = PartPool.AcquireTexture()
+				texture.Face = faceInfo.normalId
+				texture.Texture = textureId
+				texture.StudsPerTileU = bs
+				texture.StudsPerTileV = bs
+				
+				-- Apply tint if needed
+				if tintColor then
+					texture.Color3 = tintColor
+				end
 
 				texture.Parent = part
-				texturesApplied = texturesApplied + 1
+			end
 		end
-		end
-	end
-
-	-- Debug output (can be removed in production)
-	if texturesApplied == 0 then
-		-- No textures applied - this is normal if textures aren't configured yet
-		-- or if the block type doesn't have texture definitions
-	elseif not visibleFaces and texturesApplied < 6 then
-		-- Some textures missing - might indicate incomplete texture configuration
-		warn(string.format("[TextureApplicator] Only %d/6 textures applied to block %d", texturesApplied, blockId))
 	end
 end
 

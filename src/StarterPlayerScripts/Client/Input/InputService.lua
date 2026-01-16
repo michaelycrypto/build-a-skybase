@@ -60,6 +60,8 @@ local MOBILE_BUTTON_ACTIONS = {
 	UseItem = "secondary",
 	PlaceBlock = "secondary",
 	Interact = "interact",
+	Sprint = "sprint",
+	Camera = "camera",
 }
 
 -- State

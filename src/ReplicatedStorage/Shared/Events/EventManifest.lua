@@ -78,6 +78,12 @@ local Manifest = {
 		RequestMinionPickup = {"any"}, -- {x, y, z}
 		RequestCloseMinion = {"any"}, -- {x, y, z} optional; server unsubscribes regardless
 
+		-- Furnace interaction (smelting mini-game)
+		RequestOpenFurnace = {"any"}, -- {x, y, z} - Request to open furnace at position
+		RequestStartSmelt = {"any"}, -- {recipeId, furnacePos} - Start smelting a recipe
+		RequestCompleteSmelt = {"any"}, -- {furnacePos, efficiencyPercent} - Complete smelt with efficiency
+		RequestCancelSmelt = {"any"}, -- {furnacePos} - Cancel current smelt
+
 		-- Dropped item interactions
 		RequestItemPickup = {"any"}, -- {id} - Request to pick up item by ID
 		RequestDropItem = {"any"}, -- {itemId, count, slotIndex} - Request to drop item
@@ -191,7 +197,13 @@ local Manifest = {
 		ArmorEquipped = {"any"}, -- {slot: string, itemId: number} - Armor was equipped
 		ArmorUnequipped = {"any"}, -- {slot: string} - Armor was unequipped
 		ArmorSync = {"any"}, -- {equippedArmor: {helmet?, chestplate?, leggings?, boots?}} - Full armor state sync
-		ArmorSlotResult = {"any"} -- {equippedArmor, inventory, cursorItem} - Result of armor slot interaction
+		ArmorSlotResult = {"any"}, -- {equippedArmor, inventory, cursorItem} - Result of armor slot interaction
+
+		-- Furnace events (smelting mini-game)
+		FurnaceOpened = {"any"}, -- {x, y, z, recipes} - Furnace opened with available smelting recipes
+		SmeltStarted = {"any"}, -- {smeltConfig} or {error} - Smelting started with config
+		SmeltCompleted = {"any"}, -- {success, output, coalUsed, stats} - Smelting completed
+		SmeltCancelled = {"any"} -- {refunded} - Smelting cancelled, materials refunded
 	}
 }
 

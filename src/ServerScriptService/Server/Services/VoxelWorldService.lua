@@ -49,6 +49,18 @@ local warn = function(...)
     _logger.Warn(_concatArgs(...))
 end
 
+local function _isMinionBlock(blockId)
+	return blockId == Constants.BlockType.COBBLESTONE_MINION
+		or blockId == Constants.BlockType.COAL_MINION
+end
+
+local function _defaultMinionTypeForBlock(blockId)
+	if blockId == Constants.BlockType.COAL_MINION then
+		return "COAL"
+	end
+	return "COBBLESTONE"
+end
+
 -- Internal: combat tagging helpers
 function VoxelWorldService:_refreshCombatTagForCharacter(character, now)
     if not character then return end
@@ -293,6 +305,7 @@ function VoxelWorldService:HandleOpenMinion(player, data)
 		local EventManager = require(game.ReplicatedStorage.Shared.EventManager)
 		EventManager:FireEvent("MinionUpdated", player, {
 			state = {
+				type = state.type,
 				level = state.level,
 				slotsUnlocked = state.slotsUnlocked,
 				waitSeconds = waitSec,
@@ -307,6 +320,7 @@ function VoxelWorldService:HandleOpenMinion(player, data)
 	EventManager:FireEvent("MinionOpened", player, {
 		anchorPos = { x = data.x, y = data.y, z = data.z },
 		state = {
+			type = state.type,
 			level = state.level,
 			slotsUnlocked = state.slotsUnlocked,
 			waitSeconds = waitSec,
@@ -540,7 +554,7 @@ function VoxelWorldService:HandleMinionPickup(player, data)
 		local wm = self.worldManager
 		if wm then
 			local Constants = require(game.ReplicatedStorage.Shared.VoxelWorld.Core.Constants)
-			if wm:GetBlock(data.x, data.y, data.z) == Constants.BlockType.COBBLESTONE_MINION then
+			if _isMinionBlock(wm:GetBlock(data.x, data.y, data.z)) then
 				wm:SetBlock(data.x, data.y, data.z, Constants.BlockType.AIR)
 			end
 		end
@@ -614,6 +628,11 @@ function VoxelWorldService:AddItemToMinion(anchorKey, itemId, count)
 		return false
 	end
 
+	local mapped = Constants.OreToMaterial[itemId]
+	if mapped then
+		itemId = mapped
+	end
+
 	local state = self.minionStateByBlockKey[anchorKey]
 	if not state then
 		return false
@@ -682,6 +701,7 @@ function VoxelWorldService:_buildMinionStatePayload(state)
 		end
 	end
 	return {
+		type = t,
 		level = state.level or 1,
 		slotsUnlocked = state.slotsUnlocked or 1,
 		waitSeconds = waitSec,
@@ -1142,10 +1162,9 @@ function VoxelWorldService:SetBlock(x, y, z, blockId, player, metadata)
 		cropService:OnBlockChanged(x, y, z, blockId, metaNow, prevBlockId)
 	end
 
-	-- Cobblestone Minion: if removed/replaced, despawn linked minion
+	-- Minion block: if removed/replaced, despawn linked minion
 	do
-		local BLOCK = Constants.BlockType
-		if prevBlockId == BLOCK.COBBLESTONE_MINION and blockId ~= BLOCK.COBBLESTONE_MINION then
+		if _isMinionBlock(prevBlockId) and not _isMinionBlock(blockId) then
 			local key = string.format("%d,%d,%d", x, y, z)
 			local entityId = self.minionByBlockKey and self.minionByBlockKey[key]
 			if entityId and self.Deps and self.Deps.MobEntityService and self.Deps.MobEntityService.DespawnMob then
@@ -1623,7 +1642,7 @@ function VoxelWorldService:RequestBlockPlace(player, placeData)
 		do
 			local BLOCK = Constants.BlockType
 			local fn = placeData.faceNormal
-			if placeData.blockId == BLOCK.COBBLESTONE_MINION then
+			if _isMinionBlock(placeData.blockId) then
 				if not (fn and fn.Y and fn.Y == 1) then
 					self:RejectBlockChange(player, {x = x, y = y, z = z}, "minion_top_face_only")
 					return
@@ -2052,7 +2071,7 @@ function VoxelWorldService:RequestBlockPlace(player, placeData)
 	end
 
 	-- Special-case: Minion placement behaves like a spawn (no block created)
-	if blockId == Constants.BlockType.COBBLESTONE_MINION then
+	if _isMinionBlock(blockId) then
 		-- Only allow placing into air with solid support below (top surface)
 		local atId = self.worldManager:GetBlock(x, y, z)
 		local belowId = self.worldManager:GetBlock(x, y - 1, z)
@@ -2100,7 +2119,7 @@ function VoxelWorldService:RequestBlockPlace(player, placeData)
 				local state = self.minionStateByBlockKey[key]
 				if not state then
 					local initLevel = tonumber(itemMeta.level) or 1
-					local initType = tostring(itemMeta.minionType or itemMeta.type or "COBBLESTONE")
+					local initType = tostring(itemMeta.minionType or itemMeta.type or _defaultMinionTypeForBlock(blockId))
 					local MinionConfig = require(game.ReplicatedStorage.Configs.MinionConfig)
 					local initSlots = tonumber(itemMeta.slotsUnlocked)
 					if not initSlots or initSlots < 1 then
@@ -2112,7 +2131,7 @@ function VoxelWorldService:RequestBlockPlace(player, placeData)
 					end
 					self.minionStateByBlockKey[key] = state
 				else
-					state.type = state.type or "COBBLESTONE"
+					state.type = state.type or _defaultMinionTypeForBlock(blockId)
 				end
 				local mob = mobService:SpawnMob("COBBLE_MINION", worldPos, {
 					metadata = {
@@ -2176,9 +2195,20 @@ function VoxelWorldService:RequestBlockPlace(player, placeData)
 				player.Name, actualBlockId, actualX, actualY, actualZ, actualMetadata))
 		end
 
-		-- Special behavior: Cobblestone Minion
-		if actualBlockId == Constants.BlockType.COBBLESTONE_MINION then
-			-- Fill 5x5 layer beneath with cobblestone where air
+		-- Special behavior: Minion (legacy block placement path)
+		if _isMinionBlock(actualBlockId) then
+			local MinionConfig = require(game.ReplicatedStorage.Configs.MinionConfig)
+			local minionType = _defaultMinionTypeForBlock(actualBlockId)
+			local key = string.format("%d,%d,%d", actualX, actualY, actualZ)
+			local state = self.minionStateByBlockKey[key]
+			if state and state.type then
+				minionType = state.type
+			end
+			local typeDef = MinionConfig.GetTypeDef(minionType)
+			local placeBlockId = typeDef.placeBlockId
+			local bonusPlaceId = typeDef.bonusPlaceBlockId
+			local bonusPlaceChance = typeDef.bonusPlaceChance or 0
+			-- Fill 5x5 layer beneath with resource blocks where air
 			local BLOCK = Constants.BlockType
 			for dx = -2, 2 do
 				for dz = -2, 2 do
@@ -2187,7 +2217,13 @@ function VoxelWorldService:RequestBlockPlace(player, placeData)
 					local ty = actualY - 1
 					local existing = self.worldManager:GetBlock(tx, ty, tz)
 					if existing == BLOCK.AIR then
-						self.worldManager:SetBlock(tx, ty, tz, BLOCK.COBBLESTONE)
+						local finalPlaceId = placeBlockId
+						if bonusPlaceId and bonusPlaceChance > 0 then
+							if math.random() <= bonusPlaceChance then
+								finalPlaceId = bonusPlaceId
+							end
+						end
+						self.worldManager:SetBlock(tx, ty, tz, finalPlaceId)
 						-- mark modified for save/stream
 						local chunkX = math.floor(tx / Constants.CHUNK_SIZE_X)
 						local chunkZ = math.floor(tz / Constants.CHUNK_SIZE_Z)
@@ -2198,7 +2234,7 @@ function VoxelWorldService:RequestBlockPlace(player, placeData)
 							pcall(function()
 								EventManager:FireEvent("BlockChanged", otherPlayer, {
 									x = tx, y = ty, z = tz,
-									blockId = BLOCK.COBBLESTONE,
+									blockId = finalPlaceId,
 									metadata = 0
 								})
 							end)
@@ -2216,17 +2252,16 @@ function VoxelWorldService:RequestBlockPlace(player, placeData)
 					(actualY + 1) * BLOCK_SIZE, -- block top (feet on surface)
 					actualZ * BLOCK_SIZE + BLOCK_SIZE * 0.5
 				)
-				local key = string.format("%d,%d,%d", actualX, actualY, actualZ)
 				-- Ensure minion state exists and has a type
 				local state = self.minionStateByBlockKey[key]
 				if not state then
-					state = { level = 1, slotsUnlocked = 1, type = "COBBLESTONE", slots = {} }
+					state = { level = 1, slotsUnlocked = 1, type = minionType, slots = {} }
 					for i = 1, 12 do
 						state.slots[i] = { itemId = 0, count = 0 }
 					end
 					self.minionStateByBlockKey[key] = state
 				else
-					state.type = state.type or "COBBLESTONE"
+					state.type = state.type or minionType
 				end
 				local mob = mobService:SpawnMob("COBBLE_MINION", pos, {
 					metadata = {

@@ -6,6 +6,7 @@
 local Constants = require(script.Parent.Constants)
 local SkyblockGenerator = require(script.Parent.Parent.Generation.SkyblockGenerator)
 local HubWorldGenerator = require(script.Parent.Parent.Generation.HubWorldGenerator)
+local SchematicWorldGenerator = require(script.Parent.Parent.Generation.SchematicWorldGenerator)
 
 local WorldTypes = {}
 
@@ -23,9 +24,43 @@ WorldTypes.registry = {
 		},
 	},
 
+	-- Hub world using imported Minecraft schematic (Winchester Skyblock)
 	hub_world = {
 		id = "hub_world",
 		name = "Lobby Hub",
+		generatorModule = SchematicWorldGenerator,
+		generatorOptions = {
+			-- Path to schematic in ServerStorage
+			schematicPath = "Schematics.Winchester_Skyblock",
+			
+			-- Offset to position schematic in world
+			-- Schematic is 135x183x133, centering around origin
+			offsetX = -67,
+			offsetY = 0,
+			offsetZ = -66,
+			
+			-- Chunk bounds for streaming optimization
+			-- Calculated from schematic size: 135/16 ≈ 9 chunks, 133/16 ≈ 9 chunks
+			-- With offset, chunks span roughly -5 to 4 on each axis
+			chunkBounds = {
+				minChunkX = -6,
+				maxChunkX = 5,
+				minChunkZ = -6,
+				maxChunkZ = 5,
+			},
+		},
+		renderDistance = 6, -- Larger render distance for hub schematic
+		isHub = true,
+		workspaceAttributes = {
+			IsHubWorld = true,
+			HubRenderDistance = 6,
+		},
+	},
+
+	-- Legacy procedural hub (kept for reference/fallback)
+	hub_world_procedural = {
+		id = "hub_world_procedural",
+		name = "Procedural Hub (Legacy)",
 		generatorModule = HubWorldGenerator,
 		generatorOptions = {
 			chunkBounds = {
@@ -129,7 +164,7 @@ WorldTypes.registry = {
 			disablePaths = true,
 			disableNpcPads = true,
 		},
-		renderDistance = 2, -- 5x5 chunks
+		renderDistance = 2,
 		isHub = true,
 		workspaceAttributes = {
 			IsHubWorld = true,

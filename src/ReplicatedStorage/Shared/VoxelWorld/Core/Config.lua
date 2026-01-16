@@ -41,11 +41,11 @@ local Config = {
 		DEFAULT_RENDER_DISTANCE = 3, -- Chunks radius to render by default
 		MAX_RENDER_DISTANCE = 8, -- Tighter cap for lower per-frame work
 		MAX_WORLD_CHUNKS = 256, -- Hard cap on total loaded chunks on server
-		MAX_CHUNKS_PER_PLAYER = 18, -- Per-player cap on visible chunks
+		MAX_CHUNKS_PER_PLAYER = 100, -- Per-player cap on visible chunks (9x9+ area)
 		LOD_DISTANCE = 128, -- Studs distance for LOD change threshold
 		MAX_CHUNKS_PER_FRAME = 2, -- Lower per-frame generation load
-		MAX_MESH_UPDATES_PER_FRAME = 2, -- Fewer client mesh updates per frame
-		MESH_UPDATE_BUDGET_MS = 4, -- Smaller time budget per frame
+		MAX_MESH_UPDATES_PER_FRAME = 3, -- Optimized: can handle more chunks per frame
+		MESH_UPDATE_BUDGET_MS = 6, -- Increased budget after optimizations
 		GENERATION_BUDGET_MS = 3 -- Smaller generation time budget
 	},
 
@@ -54,14 +54,14 @@ local Config = {
 
 	-- Network settings
 	NETWORK = {
-		CHUNK_STREAM_RATE = 24, -- Faster server streaming cadence
+		CHUNK_STREAM_RATE = 30, -- Faster server streaming cadence
 		POSITION_UPDATE_RATE = 10, -- Position updates per second
 		MAX_BLOCK_UPDATES_PER_PACKET = 100, -- Maximum block updates per network packet
-		MAX_CHUNK_REQUESTS_PER_FRAME = 3, -- Client requests per frame
+		MAX_CHUNK_REQUESTS_PER_FRAME = 6, -- Client requests per frame
 		BLOCK_UPDATE_DISTANCE = 64, -- Studs radius to broadcast block changes
 		MIN_VIEW_DISTANCE = 10,
 		MAX_VIEW_DISTANCE = 12,
-		MAX_CHUNKS_PER_UPDATE = 2, -- Server stream budget per player tick
+		MAX_CHUNKS_PER_UPDATE = 6, -- Server stream budget per player tick (increased for faster initial load)
 		UNLOAD_EXTRA_RADIUS = 1, -- Keep chunks for +N rings beyond renderDistance before unloading
 		ENTITY_TRACKING_RADIUS = 256 -- Studs radius for player entity replication (independent of chunk rendering)
 	},

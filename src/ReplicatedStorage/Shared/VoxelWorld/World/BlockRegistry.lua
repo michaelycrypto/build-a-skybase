@@ -459,6 +459,16 @@ BlockRegistry.Blocks = {
 		crossShape = false,
 		interactable = true
 	},
+	-- Utility: Coal Golem block (visual mob, block itself is invisible)
+	[Constants.BlockType.COAL_MINION] = {
+		name = "Coal Golem",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(255, 255, 255),
+		textures = nil, -- invisible like AIR
+		crossShape = false,
+		interactable = true
+	},
 
 	[Constants.BlockType.APPLE] = {
 		name = "Apple",

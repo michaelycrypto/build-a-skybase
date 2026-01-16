@@ -63,7 +63,9 @@ RecipeConfig.Recipes = {
 	},
 
 	-- ═══════════════════════════════════════════════════════════════════════════
-	-- SMELTING RECIPES (Furnace: Ore + Coal → Ingot)
+	-- SMELTING RECIPES (Furnace: Ore → Ingot, Coal is fuel not ingredient)
+	-- Note: Coal cost is determined by SmeltingConfig based on ore tier
+	--       Skilled play reduces coal consumption (up to 30% savings!)
 	-- ═══════════════════════════════════════════════════════════════════════════
 
 	smelt_copper = {
@@ -72,8 +74,7 @@ RecipeConfig.Recipes = {
 		category = RecipeConfig.Categories.SMELTING,
 		requiresFurnace = true,
 		inputs = {
-			{itemId = 98, count = 1},  -- 1x Copper Ore
-			{itemId = 32, count = 1}   -- 1x Coal
+			{itemId = 98, count = 1}   -- 1x Copper Ore
 		},
 		outputs = { {itemId = 105, count = 1} }  -- 1x Copper Ingot
 	},
@@ -84,8 +85,7 @@ RecipeConfig.Recipes = {
 		category = RecipeConfig.Categories.SMELTING,
 		requiresFurnace = true,
 		inputs = {
-			{itemId = 30, count = 1},  -- 1x Iron Ore
-			{itemId = 32, count = 1}   -- 1x Coal
+			{itemId = 30, count = 1}   -- 1x Iron Ore
 		},
 		outputs = { {itemId = 33, count = 1} }  -- 1x Iron Ingot
 	},
@@ -96,8 +96,7 @@ RecipeConfig.Recipes = {
 		category = RecipeConfig.Categories.SMELTING,
 		requiresFurnace = true,
 		inputs = {
-			{itemId = 30, count = 1},  -- 1x Iron Ore
-			{itemId = 32, count = 2}   -- 2x Coal
+			{itemId = 30, count = 1}   -- 1x Iron Ore (more coal = higher temp steel)
 		},
 		outputs = { {itemId = 108, count = 1} }  -- 1x Steel Ingot
 	},
@@ -109,8 +108,7 @@ RecipeConfig.Recipes = {
 		requiresFurnace = true,
 		inputs = {
 			{itemId = 30, count = 1},   -- 1x Iron Ore
-			{itemId = 32, count = 3},   -- 3x Coal
-			{itemId = 115, count = 1}   -- 1x Bluesteel Dust
+			{itemId = 115, count = 1}   -- 1x Bluesteel Dust (catalyst)
 		},
 		outputs = { {itemId = 109, count = 1} }  -- 1x Bluesteel Ingot
 	},
@@ -121,8 +119,7 @@ RecipeConfig.Recipes = {
 		category = RecipeConfig.Categories.SMELTING,
 		requiresFurnace = true,
 		inputs = {
-			{itemId = 102, count = 1},  -- 1x Tungsten Ore
-			{itemId = 32, count = 4}    -- 4x Coal
+			{itemId = 102, count = 1}  -- 1x Tungsten Ore
 		},
 		outputs = { {itemId = 110, count = 1} }  -- 1x Tungsten Ingot
 	},
@@ -133,8 +130,7 @@ RecipeConfig.Recipes = {
 		category = RecipeConfig.Categories.SMELTING,
 		requiresFurnace = true,
 		inputs = {
-			{itemId = 103, count = 1},  -- 1x Titanium Ore
-			{itemId = 32, count = 5}    -- 5x Coal
+			{itemId = 103, count = 1}  -- 1x Titanium Ore
 		},
 		outputs = { {itemId = 111, count = 1} }  -- 1x Titanium Ingot
 	},

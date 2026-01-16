@@ -20,13 +20,17 @@ local MobileControls = script.Parent.Parent.Modules.MobileControls
 local InputDetector = require(MobileControls.InputDetector)
 local VirtualThumbstick = require(MobileControls.VirtualThumbstick)
 local MobileCameraController = require(MobileControls.CameraController)
-local ActionButtons = require(MobileControls.ActionButtons)
+local MobileActionBar = require(MobileControls.MobileActionBar)
 local DeviceDetector = require(MobileControls.DeviceDetector)
 local FeedbackSystem = require(MobileControls.FeedbackSystem)
 local ControlSchemes = require(MobileControls.ControlSchemes)
 
 -- Import config
 local MobileControlConfig = require(ReplicatedStorage.Shared.MobileControls.MobileControlConfig)
+
+-- Controllers (lazy-loaded to avoid circular dependencies)
+local SprintController = nil
+local CameraController = nil
 
 local MobileControlController = {}
 MobileControlController.__index = MobileControlController
@@ -38,8 +42,8 @@ function MobileControlController.new(inputProvider)
 	self.inputProvider = inputProvider
 	self.inputDetector = InputDetector.new(inputProvider)
 	self.thumbstick = VirtualThumbstick.new()
-	self.cameraController = MobileCameraController.new(inputProvider)
-	self.actionButtons = ActionButtons.new()
+	self.mobileCameraController = MobileCameraController.new(inputProvider)
+	self.actionBar = MobileActionBar.new()
 	self.deviceDetector = DeviceDetector.new(inputProvider)
 	self.feedbackSystem = FeedbackSystem.new()
 	self.controlSchemes = ControlSchemes.new()
@@ -91,38 +95,170 @@ function MobileControlController:Initialize(inputCallbacks)
 	local recommendedSettings = self.deviceDetector:GetRecommendedSettings()
 	self:ApplySettings(recommendedSettings)
 
-	-- Get SoundManager if available
-	local GameState = require(script.Parent.Parent.Managers.GameState)
-	local Client = require(script.Parent.Parent.GameClient) or {}
-	local soundManager = Client.managers and Client.managers.SoundManager
+	-- Get SoundManager if available (defer to avoid circular dependency with GameClient)
+	-- GameClient requires InputService which requires MobileControlController
+	-- MobileControlController cannot require GameClient during initialization
+	local soundManager = nil
+	task.defer(function()
+		local success, Client = pcall(function()
+			return require(script.Parent.Parent.GameClient)
+		end)
+		if success and Client and Client.managers then
+			soundManager = Client.managers.SoundManager
+			if self.feedbackSystem and soundManager then
+				self.feedbackSystem:SetSoundManager(soundManager)
+			end
+		end
+	end)
 
-	-- Initialize modules
+	-- Initialize core modules (no UI yet - that happens after loading screen)
 	self.inputDetector:Initialize()
-	self.thumbstick:Initialize(nil, nil, self.inputProvider)
-	self.cameraController:Initialize()
-	self.actionButtons:Initialize()
+	self.mobileCameraController:Initialize()
 	self.feedbackSystem:Initialize(soundManager)
 
 	-- Setup character handling
 	self:SetupCharacter()
 
-	-- Setup input connections
-	self:SetupInputHandling()
-
 	-- Setup update loop
 	self:SetupUpdateLoop()
 
-	-- Apply initial control scheme
-	local initialScheme = recommendedSettings.ControlScheme or "Classic"
-	self:SetControlScheme(initialScheme)
+	-- Store settings for later UI creation
+	self._recommendedSettings = recommendedSettings
 
 	self.initialized = true
 	self.enabled = true
 
-	print("✅ Mobile Controls: Initialized")
+	-- NOTE: UI (thumbstick, action bar) is NOT created here
+	-- Call InitializeUI() after loading screen completes to match other UI components
+
+	print("Mobile Controls: Core initialized (UI deferred)")
 	print("   Device:", self.deviceDetector:GetDeviceType())
+end
+
+--[[
+	Initialize mobile UI components (call after loading screen completes)
+	This follows the same pattern as VoxelHotbar, ChestUI, etc.
+]]
+function MobileControlController:InitializeUI()
+	if not self.initialized or not self.isMobileDevice then
+		return
+	end
+
+	if self._uiInitialized then
+		warn("MobileControlController UI already initialized")
+		return
+	end
+
+	print("Mobile Controls: Initializing UI...")
+
+	-- Initialize thumbstick
+	self.thumbstick:Initialize(nil, nil, self.inputProvider)
+
+	-- Initialize action bar with callbacks
+	self.actionBar:Initialize()
+	self:SetupActionBarCallbacks()
+
+	-- Setup input connections (thumbstick direction changes)
+	self:SetupInputHandling()
+
+	-- Apply control scheme
+	local initialScheme = (self._recommendedSettings and self._recommendedSettings.ControlScheme) or "Classic"
+	self:SetControlScheme(initialScheme)
+
+	self._uiInitialized = true
+
+	print("Mobile Controls: UI initialized")
 	print("   Scheme:", initialScheme)
-	print("   UI Scale:", recommendedSettings.UIScale or 1.0)
+	print("   UI Scale:", (self._recommendedSettings and self._recommendedSettings.UIScale) or 1.0)
+end
+
+--[[
+	Setup action bar button callbacks
+]]
+function MobileControlController:SetupActionBarCallbacks()
+	-- Lazy load controllers to avoid circular dependencies
+	if not SprintController then
+		SprintController = require(script.Parent.SprintController)
+	end
+	if not CameraController then
+		CameraController = require(script.Parent.CameraController)
+	end
+
+	-- Helper to get Client controllers (accessed at callback time, not setup time)
+	local function getClient()
+		local success, result = pcall(function()
+			return require(script.Parent.Parent.GameClient)
+		end)
+		return success and result or nil
+	end
+
+	-- Sprint toggle callback
+	self.actionBar.onSprintToggle = function(isActive)
+		if SprintController and SprintController.SetSprinting then
+			SprintController:SetSprinting(isActive)
+		end
+	end
+
+	-- Attack callbacks - triggers both combat (PvP) and block breaking
+	self.actionBar.onAttackStart = function()
+		local Client = getClient()
+		if not Client then return end
+
+		-- Combat system (PvP sword swings)
+		if Client.combatController and Client.combatController.SetHolding then
+			Client.combatController:SetHolding(true)
+		end
+		-- Block breaking system
+		if Client.blockInteraction and Client.blockInteraction.StartBreaking then
+			Client.blockInteraction:StartBreaking()
+		end
+	end
+
+	self.actionBar.onAttackEnd = function()
+		local Client = getClient()
+		if not Client then return end
+
+		-- Combat system
+		if Client.combatController and Client.combatController.SetHolding then
+			Client.combatController:SetHolding(false)
+		end
+		-- Block breaking system
+		if Client.blockInteraction and Client.blockInteraction.StopBreaking then
+			Client.blockInteraction:StopBreaking()
+		end
+	end
+
+	-- Camera mode cycle callback
+	self.actionBar.onCameraMode = function()
+		if CameraController and CameraController.CycleMode then
+			CameraController:CycleMode()
+			-- Update button icon to reflect new mode
+			local currentMode = CameraController:GetCurrentState()
+			if currentMode then
+				self.actionBar:SetCameraMode(currentMode)
+			end
+		end
+	end
+
+	-- Listen for camera state changes to update button icon
+	if CameraController and CameraController.StateChanged then
+		CameraController.StateChanged:Connect(function(newState)
+			self.actionBar:SetCameraMode(newState)
+		end)
+	end
+
+	-- Sync initial sprint state
+	if SprintController and SprintController.IsSprinting then
+		self.actionBar:SetSprintActive(SprintController:IsSprinting())
+	end
+
+	-- Sync initial camera mode
+	if CameraController and CameraController.GetCurrentState then
+		local currentMode = CameraController:GetCurrentState()
+		if currentMode then
+			self.actionBar:SetCameraMode(currentMode)
+		end
+	end
 end
 
 --[[
@@ -154,15 +290,7 @@ function MobileControlController:SetupInputHandling()
 		end
 	end
 
-	-- Connect action buttons
-	self.actionButtons.onButtonPressed = function(buttonType)
-		self:HandleButtonPress(buttonType, true)
-		self.feedbackSystem:OnButtonPress(self.actionButtons.buttons[buttonType].frame)
-	end
-
-	self.actionButtons.onButtonReleased = function(buttonType)
-		self:HandleButtonPress(buttonType, false)
-	end
+	-- Action bar callbacks are set up in SetupActionBarCallbacks()
 end
 
 --[[
@@ -218,37 +346,10 @@ function MobileControlController:ApplyMovement(direction, magnitude)
 end
 
 --[[
-	Handle button press
+	Get action bar reference (for external access)
 ]]
-function MobileControlController:HandleButtonPress(buttonType, pressed)
-	if self.inputCallbacks.onButton then
-		self.inputCallbacks.onButton(buttonType, pressed)
-	end
-
-	if not self.humanoid then return end
-
-	-- Map button types to actions
-	if buttonType == "Jump" and pressed then
-		-- Jump
-		self.humanoid.Jump = true
-	elseif buttonType == "Sprint" then
-		-- Sprint (change walk speed)
-		if pressed then
-			self.humanoid.WalkSpeed = 20 -- Sprint speed
-		else
-			self.humanoid.WalkSpeed = 14 -- Normal speed
-		end
-	elseif buttonType == "Crouch" then
-		-- Crouch (handled by game's crouch system if exists)
-		-- For now, just emit an event or change walk speed
-		if pressed then
-			self.humanoid.WalkSpeed = 8 -- Crouch speed
-		else
-			-- Check if sprinting
-			local sprintPressed = self.actionButtons:IsButtonPressed("Sprint")
-			self.humanoid.WalkSpeed = sprintPressed and 20 or 14
-		end
-	end
+function MobileControlController:GetActionBar()
+	return self.actionBar
 end
 
 function MobileControlController:SetHighContrast(enabled)
@@ -256,8 +357,8 @@ function MobileControlController:SetHighContrast(enabled)
 		self.thumbstick:SetHighContrast(enabled)
 	end
 
-	if self.actionButtons and self.actionButtons.SetHighContrast then
-		self.actionButtons:SetHighContrast(enabled)
+	if self.actionBar and self.actionBar.SetHighContrast then
+		self.actionBar:SetHighContrast(enabled)
 	end
 end
 
@@ -267,8 +368,8 @@ end
 function MobileControlController:SetControlScheme(scheme)
 	local controllers = {
 		thumbstick = self.thumbstick,
-		camera = self.cameraController,
-		actionButtons = self.actionButtons,
+		camera = self.mobileCameraController,
+		actionBar = self.actionBar,
 	}
 
 	return self.controlSchemes:ApplyScheme(scheme, controllers)
@@ -283,18 +384,9 @@ function MobileControlController:ApplySettings(settings)
 		self.thumbstick:SetSize(settings.ThumbstickRadius)
 	end
 
-	-- Apply to action buttons
-	if settings.ButtonSize then
-		self.actionButtons:SetButtonSize(settings.ButtonSize)
-	end
-
-	if settings.ButtonOpacity then
-		self.actionButtons:SetButtonOpacity(settings.ButtonOpacity)
-	end
-
 	-- Apply to camera
 	if settings.SensitivityX or settings.SensitivityY then
-		self.cameraController:SetSensitivity(
+		self.mobileCameraController:SetSensitivity(
 			settings.SensitivityX or 0.5,
 			settings.SensitivityY or 0.5
 		)
@@ -317,7 +409,14 @@ end
 	Set sensitivity
 ]]
 function MobileControlController:SetSensitivity(x, y)
-	self.cameraController:SetSensitivity(x, y)
+	self.mobileCameraController:SetSensitivity(x, y)
+end
+
+--[[
+	Check if UI has been initialized
+]]
+function MobileControlController:IsUIInitialized()
+	return self._uiInitialized == true
 end
 
 --[[
@@ -326,12 +425,14 @@ end
 function MobileControlController:SetEnabled(enabled)
 	self.enabled = enabled
 
-	if self.thumbstick then
-		self.thumbstick:SetVisibility(enabled)
-	end
+	if self._uiInitialized then
+		if self.thumbstick then
+			self.thumbstick:SetVisibility(enabled)
+		end
 
-	if self.actionButtons and self.actionButtons.gui then
-		self.actionButtons.gui.Enabled = enabled
+		if self.actionBar then
+			self.actionBar:SetEnabled(enabled)
+		end
 	end
 end
 
@@ -360,25 +461,6 @@ function MobileControlController:GetDeviceInfo()
 end
 
 --[[
-	Show context button (e.g., "Press to interact")
-]]
-function MobileControlController:ShowContextButton(buttonType, label, icon)
-	if not self.enabled then return end
-
-	local position = UDim2.new(0.5, 0, 1, -100) -- Center-bottom
-	self.actionButtons:ShowContextButton(buttonType, position, icon, label)
-end
-
---[[
-	Hide context button
-]]
-function MobileControlController:HideContextButton(buttonType)
-	if not self.enabled then return end
-
-	self.actionButtons:HideContextButton(buttonType)
-end
-
---[[
 	Cleanup
 ]]
 function MobileControlController:Destroy()
@@ -395,10 +477,10 @@ function MobileControlController:Destroy()
 	-- Destroy modules
 	if self.inputDetector then self.inputDetector:Destroy() end
 	if self.thumbstick then self.thumbstick:Destroy() end
-	if self.cameraController then self.cameraController:Destroy() end
-	if self.actionButtons then self.actionButtons:Destroy() end
+	if self.mobileCameraController then self.mobileCameraController:Destroy() end
+	if self.actionBar then self.actionBar:Destroy() end
 
-	print("🗑️ MobileControlController: Destroyed")
+	print("MobileControlController: Destroyed")
 end
 
 return MobileControlController

@@ -52,6 +52,29 @@ MinionConfig.Types = {
 			return 0
 		end,
 	},
+	COAL = {
+		id = "COAL",
+		displayName = "Coal Golem",
+		placeBlockId = Constants.BlockType.COBBLESTONE,
+		mineBlockId = Constants.BlockType.COBBLESTONE,
+		bonusPlaceBlockId = Constants.BlockType.COAL_ORE,
+		bonusPlaceChance = 0.2, -- 20% chance to place coal ore instead of cobblestone
+		bonusMineBlockId = Constants.BlockType.COAL_ORE,
+		cellCooldownMinSec = 1.1,
+		cellCooldownMaxSec = 1.7,
+		upgradeItemId = Constants.BlockType.COAL,
+		pickupItemId = Constants.BlockType.COAL_MINION,
+		baseIntervalSec = 15,
+		perLevelDeltaSec = -1,
+		maxLevel = 4,
+		baseSlotsUnlocked = 1,
+		getUpgradeCost = function(level)
+			if level == 1 then return 32 end
+			if level == 2 then return 64 end
+			if level == 3 then return 128 end
+			return 0
+		end,
+	},
 }
 
 function MinionConfig.GetTypeDef(minionType)

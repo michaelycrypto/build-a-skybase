@@ -35,7 +35,6 @@ local playerGui = player:WaitForChild("PlayerGui")
 local hudGui
 local moneyLabel
 local gemsLabel
-local topCenterBar
 
 -- UI State
 local menuButtons = {}
@@ -333,12 +332,6 @@ function MainHUD:Create()
 	-- Create components
 	self:CreateBottomLeftCurrency()
 
-	-- Right-side quick actions (mobile)
-	self:CreateRightQuickActions()
-
-	-- Top center teleport to world (lobby only)
-	self:CreateTopCenterTeleport()
-
 	-- Center crosshair (Minecraft-style)
 	Crosshair:Create(hudGui)
 
@@ -358,80 +351,6 @@ function MainHUD:Create()
 	-- Badge and quest/daily tracking removed for simplified mobile UI
 
 	print("MainHUD: Created simplified HUD with Vector Icons")
-end
-
-
---[[
-	Create a top-center "Teleport to World" button (shows only in lobby place)
---]]
-function MainHUD:CreateTopCenterTeleport()
-	-- Lobby place id
-	local LOBBY_PLACE_ID = 139848475014328
-	local isLobby = (game.PlaceId == LOBBY_PLACE_ID)
-	if not isLobby then
-		return
-	end
-
-	topCenterBar = Instance.new("Frame")
-	topCenterBar.Name = "TopCenterBar"
-	topCenterBar.Size = UDim2.new(0, 420, 0, 56)
-	topCenterBar.Position = UDim2.new(0.5, 0, 0, 10)
-	topCenterBar.AnchorPoint = Vector2.new(0.5, 0)
-	topCenterBar.BackgroundTransparency = 1
-	topCenterBar.BorderSizePixel = 0
-	topCenterBar.Parent = hudGui
-
-	local teleportBtn = Instance.new("TextButton")
-	teleportBtn.Name = "TeleportToWorld"
-	teleportBtn.Size = UDim2.new(1, 0, 1, 0)
-	teleportBtn.Position = UDim2.new(0, 0, 0, 0)
-	teleportBtn.BackgroundColor3 = Config.UI_SETTINGS.colors.semantic.button.success
-	teleportBtn.AutoButtonColor = true
-	teleportBtn.Text = "<b><i>Enter Your Realm</i></b>"
-	teleportBtn.RichText = true
-	teleportBtn.TextSize = 24
-	teleportBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-	teleportBtn.Font = BOLD_FONT
-	teleportBtn.Parent = topCenterBar
-
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, Config.UI_SETTINGS.designSystem.borderRadius.lg)
-	corner.Parent = teleportBtn
-
-	local stroke = Instance.new("UIStroke")
-	stroke.Color = Config.UI_SETTINGS.colors.semantic.borders.default
-	stroke.Thickness = Config.UI_SETTINGS.designSystem.borderWidth.medium
-	stroke.Parent = teleportBtn
-
-	-- Restore button if server reports error
-	local function restore()
-		teleportBtn.Active = true
-		teleportBtn.AutoButtonColor = true
-		teleportBtn.Text = "<b><i>Enter Your Realm</i></b>"
-	end
-	local okConn = pcall(function()
-		return EventManager:ConnectToServer("WorldJoinError", function()
-			restore()
-		end)
-	end)
-
-	teleportBtn.MouseButton1Click:Connect(function()
-		-- Debounce quickly to avoid spam
-		teleportBtn.Active = false
-		teleportBtn.AutoButtonColor = false
-		teleportBtn.Text = "<b><i>Teleporting...</i></b>"
-		print("[MainHUD] Sending RequestCreateWorld to server")
-		local ok, err = pcall(function()
-			EventManager:SendToServer("RequestCreateWorld", {})
-		end)
-		if not ok then
-			warn("Failed to send RequestCreateWorld:", err)
-			teleportBtn.Active = true
-			teleportBtn.AutoButtonColor = true
-			teleportBtn.Text = "<b><i>Enter Your Realm</i></b>"
-		end
-	end)
-
 end
 
 
@@ -557,70 +476,7 @@ function MainHUD:CreateBottomLeftCurrency()
 	moneyStroke.Color = Color3.fromRGB(0, 0, 0)
 	moneyStroke.Thickness = 2 -- Medium stroke thickness
 	moneyStroke.Parent = moneyLabel
-end
-
-
-
---[[
-	Create right-side quick actions (mobile-only)
---]]
-function MainHUD:CreateRightQuickActions()
-	-- Mobile only (touch devices without keyboard)
-	local isMobile = InputService.TouchEnabled and not InputService.KeyboardEnabled
-	if not isMobile then return end
-
-	local rightBar = Instance.new("Frame")
-	rightBar.Name = "RightQuickActions"
-	rightBar.Size = UDim2.new(0, SIDEBAR_WIDTH, 0, 0)
-	rightBar.Position = UDim2.new(1, -10, 0.5, 0)
-	rightBar.AnchorPoint = Vector2.new(1, 0.5)
-	rightBar.AutomaticSize = Enum.AutomaticSize.Y
-	rightBar.BackgroundTransparency = 1
-	rightBar.BorderSizePixel = 0
-	rightBar.Parent = hudGui
-
-	local padding = Instance.new("UIPadding")
-	padding.PaddingTop = UDim.new(0, CONTENT_PADDING)
-	padding.PaddingBottom = UDim.new(0, CONTENT_PADDING)
-	padding.PaddingLeft = UDim.new(0, CONTENT_PADDING)
-	padding.PaddingRight = UDim.new(0, CONTENT_PADDING)
-	padding.Parent = rightBar
-
-	local layout = Instance.new("UIListLayout")
-	layout.SortOrder = Enum.SortOrder.LayoutOrder
-	layout.Padding = UDim.new(0, CONTENT_PADDING + 6)
-	layout.FillDirection = Enum.FillDirection.Vertical
-	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-	layout.Parent = rightBar
-
-	-- First-person toggle button (uses Technology.Camera icon)
-	local buttonData = {
-		iconCategory = "Technology",
-		iconName = "Camera",
-		text = "View",
-		buttonText = nil,
-		callback = function()
-			local current = GameState:Get("camera.isFirstPerson") and true or false
-			GameState:Set("camera.isFirstPerson", not current)
-		end
-	}
-
-	local btn = self:CreateMenuButton(buttonData)
-	btn.borderFrame.LayoutOrder = 1
-	btn.borderFrame.Parent = rightBar
-
-	-- Reflect state (active wiggle/size)
-	local function applyState()
-		local active = GameState:Get("camera.isFirstPerson") and true or false
-		setIconActiveForButton(btn, active)
-	end
-	applyState()
-	GameState:OnPropertyChanged("camera.isFirstPerson", function()
-		applyState()
-	end)
-end
-
---[[
+end--[[
 	Create a menu button with individual background frame
 --]]
 function MainHUD:CreateMenuButton(buttonData)

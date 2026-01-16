@@ -119,7 +119,8 @@ local VALID_ITEM_IDS = {
 	[Constants.BlockType.BEETROOT_CROP_3] = true,
 	-- Utility items
 	[Constants.BlockType.COMPOST] = true,
-		[Constants.BlockType.COBBLESTONE_MINION] = true,
+	[Constants.BlockType.COBBLESTONE_MINION] = true,
+	[Constants.BlockType.COAL_MINION] = true,
 	-- Ores (6-tier progression: Copper → Iron → Steel → Bluesteel → Tungsten → Titanium)
 	[Constants.BlockType.COPPER_ORE] = true,
 	[Constants.BlockType.BLUESTEEL_ORE] = true,

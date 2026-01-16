@@ -44,6 +44,15 @@
       },
       "Mobs": {
         "$path": "src/ServerStorage/Mobs"
+      },
+      "Schematics": {
+        "$className": "Folder",
+        "Medieval_Skyblock_Spawn": {
+          "$path": "src/ServerStorage/Medieval_Skyblock_Spawn.lua"
+        },
+        "Winchester_Skyblock": {
+          "$path": "src/ServerStorage/Winchester-Skyblock.lua"
+        }
       }
     },
 

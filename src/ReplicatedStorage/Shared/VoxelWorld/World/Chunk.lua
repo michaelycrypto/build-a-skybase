@@ -319,6 +319,15 @@ function Chunk:deserializeLinear(data)
     local flatMeta = data.flatMeta or {}  -- NEW: Deserialize metadata
     local i = 1
     local count = 0
+    
+    -- Track highest block per column during deserialization (optimize heightMap rebuild)
+    local columnHeights = {}  -- [x + z*sx] = highest y
+    for lx = 0, sx - 1 do
+        for lz = 0, sz - 1 do
+            columnHeights[lx + lz * sx] = 0
+        end
+    end
+    
     for y = 0, sy - 1 do
         for z = 0, sz - 1 do
             for x = 0, sx - 1 do
@@ -328,29 +337,26 @@ function Chunk:deserializeLinear(data)
                 self.metadata[x][y][z] = meta
                 if bid ~= Constants.BlockType.AIR then
                     count += 1
+                    -- Update heightMap during deserialization (single pass)
+                    local colIdx = x + z * sx
+                    if y > columnHeights[colIdx] then
+                        columnHeights[colIdx] = y
+                    end
                 end
                 i += 1
             end
         end
     end
+    
+    -- Copy optimized heightMap
+    for lx = 0, sx - 1 do
+        for lz = 0, sz - 1 do
+            self.heightMap[lx + lz * sx] = columnHeights[lx + lz * sx]
+        end
+    end
 
     self.state = data.state
     self.isDirty = true
-
-    -- Rebuild heightMap
-    for lx = 0, sx - 1 do
-        for lz = 0, sz - 1 do
-            local highest = 0
-            for ly = sy - 1, 0, -1 do
-                local bid = self.blocks[lx][ly][lz]
-                if bid ~= Constants.BlockType.AIR then
-                    highest = ly
-                    break
-                end
-            end
-            self.heightMap[lx + lz * sx] = highest
-        end
-    end
     self.numNonAirBlocks = count
 end
 

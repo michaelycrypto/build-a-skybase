@@ -131,6 +131,10 @@ else
 		dependencies = {"VoxelWorldService", "PlayerInventoryService"},
 		mixins = {}
 	})
+	Injector:Bind("SmeltingService", script.Parent.Parent.Services.SmeltingService, {
+		dependencies = {"VoxelWorldService", "PlayerInventoryService"},
+		mixins = {}
+	})
 	Injector:Bind("DroppedItemService", script.Parent.Parent.Services.DroppedItemService, {
 		dependencies = {"VoxelWorldService", "PlayerInventoryService"},
 		mixins = {}
@@ -165,6 +169,7 @@ local saplingService = not IS_LOBBY and Injector:Resolve("SaplingService") or ni
 local cropService = not IS_LOBBY and Injector:Resolve("CropService") or nil
 local worldOwnershipService = not IS_LOBBY and Injector:Resolve("WorldOwnershipService") or nil
 local chestStorageService = not IS_LOBBY and Injector:Resolve("ChestStorageService") or nil
+local smeltingService = not IS_LOBBY and Injector:Resolve("SmeltingService") or nil
 local droppedItemService = Injector:Resolve("DroppedItemService")
 local mobEntityService = not IS_LOBBY and Injector:Resolve("MobEntityService") or nil
 local activeWorldRegistryService = not IS_LOBBY and Injector:Resolve("ActiveWorldRegistryService") or nil
@@ -207,6 +212,7 @@ local servicesTable = {
 	VoxelWorldService = voxelWorldService,
 	WorldOwnershipService = worldOwnershipService,
 	ChestStorageService = chestStorageService,
+	SmeltingService = smeltingService,
 	DroppedItemService = droppedItemService,
 	MobEntityService = mobEntityService,
 	ActiveWorldRegistryService = activeWorldRegistryService,
@@ -412,9 +418,13 @@ end
 -- client-side readiness gate behaves the same as player-owned worlds.
 if IS_LOBBY then
 	local HUB_WORLD_SEED = 3984757983459578
-	local HUB_RENDER_DISTANCE = 2
+	local HUB_RENDER_DISTANCE = 6 -- Larger render distance for schematic hub
 	voxelWorldService:InitializeWorld(HUB_WORLD_SEED, HUB_RENDER_DISTANCE, "hub_world")
-	logger.Info("✅ Hub voxel world initialized (5x5 chunks)")
+	logger.Info("✅ Hub voxel world initialized (schematic-based)")
+	
+	-- Schematic is now loaded via SchematicWorldGenerator in WorldTypes
+	-- No manual import needed - chunks are generated on-demand from schematic data
+	
 	dispatchWorldState("ready", "hub_initialized")
 
 	local function addHubPlayer(player)

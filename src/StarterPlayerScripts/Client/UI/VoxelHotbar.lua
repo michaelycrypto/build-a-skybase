@@ -91,7 +91,8 @@ local BLOCK_INFO = {
 	[34] = {name = "Diamond", icon = "💠", category = "Materials"},
 	[35] = {name = "Furnace", icon = "🔥", category = "Utility"},
 	[36] = {name = "Glass", icon = "🪟", category = "Building"},
-	[97] = {name = "Stone Golem", icon = "🗿", category = "Utility"}
+	[97] = {name = "Stone Golem", icon = "🗿", category = "Utility"},
+	[123] = {name = "Coal Golem", icon = "⚫", category = "Utility"}
 }
 
 function VoxelHotbar.new()
@@ -447,9 +448,8 @@ function VoxelHotbar:CreateWorldButton()
 		end
 		if self.worldsPanel then
 			self.worldsPanel:Toggle()
-		else
-			warn("VoxelHotbar: Worlds panel reference not set - cannot toggle worlds UI")
 		end
+		-- Silently skip if worldsPanel not yet set (during initialization)
 	end)
 
 	-- Hover effects (matching hotbar slot behavior)
@@ -867,22 +867,7 @@ function VoxelHotbar:BindInput()
 			self:DropSelectedItem()
 		end
 
-		-- B key - Open worlds panel
-		if input.KeyCode == Enum.KeyCode.B then
-			if not self:CanToggleUI() then
-				return
-			end
-			if self.voxelInventory and self.voxelInventory.isOpen then
-				self.voxelInventory:Close("worlds")
-			elseif self.voxelInventory and self.voxelInventory.IsClosing and self.voxelInventory:IsClosing() then
-				self.voxelInventory:SetPendingCloseMode("worlds")
-			end
-			if self.worldsPanel then
-				self.worldsPanel:Toggle()
-			else
-				warn("VoxelHotbar: Worlds panel reference not set - cannot toggle worlds UI")
-			end
-		end
+		-- B key - Worlds panel handling moved to GameClient.client.lua to avoid double-toggle
 	end)
 
 	-- Mouse wheel scrolling
@@ -924,7 +909,9 @@ function VoxelHotbar:SetInventoryReference(inventory)
 end
 
 function VoxelHotbar:SetWorldsPanel(worldsPanel)
+	print("[VoxelHotbar] SetWorldsPanel called, worldsPanel:", worldsPanel)
 	self.worldsPanel = worldsPanel
+	print("[VoxelHotbar] self.worldsPanel set to:", self.worldsPanel)
 end
 
 function VoxelHotbar:Cleanup()

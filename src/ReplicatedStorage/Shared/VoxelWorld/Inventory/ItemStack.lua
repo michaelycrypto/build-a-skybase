@@ -24,6 +24,7 @@ local MAX_STACK_SIZES = {
 do
 	-- Minion item is non-stackable
 	MAX_STACK_SIZES[Constants.BlockType.COBBLESTONE_MINION] = 1
+	MAX_STACK_SIZES[Constants.BlockType.COAL_MINION] = 1
 end
 
 function ItemStack.new(itemId, count, maxStack)

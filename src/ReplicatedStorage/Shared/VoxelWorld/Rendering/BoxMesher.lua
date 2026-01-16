@@ -9,9 +9,9 @@
 	- Handles both uniform blocks (dirt, stone) and multi-face blocks (grass, logs)
 
 	Texture Merging Behavior:
-	- Grass blocks merge with grass blocks ✓ (same textures: top/side/bottom)
-	- Dirt blocks merge with dirt blocks ✓ (uniform texture)
-	- Grass blocks DON'T merge with dirt blocks ✓ (different block types)
+	- Grass blocks merge with grass blocks âœ“ (same textures: top/side/bottom)
+	- Dirt blocks merge with dirt blocks âœ“ (uniform texture)
+	- Grass blocks DON'T merge with dirt blocks âœ“ (different block types)
 	- Future: Rotatable blocks (logs facing up/down/sideways) will need rotation metadata
 ]]
 
@@ -132,45 +132,64 @@ end
 function BoxMesher:GenerateMesh(chunk, worldManager, options)
 	options = options or {}
 	local sampler = options.sampleBlock or DefaultSampleBlock
-	local meshParts = {}
+	local meshParts = table.create(256)  -- Pre-allocate for typical chunk
 	local partsBudget = 0
 	local MAX_PARTS = options.maxParts or 500
 
+	-- Cache constants locally for faster access
+	local CHUNK_SX = Constants.CHUNK_SIZE_X
+	local CHUNK_SZ = Constants.CHUNK_SIZE_Z
+	local CHUNK_SY = Constants.CHUNK_SIZE_Y
+	local BLOCK_SIZE = Constants.BLOCK_SIZE
+	local AIR = Constants.BlockType.AIR
+
 	-- Limit meshing to tallest column + safety layer
-	local yLimit = Constants.CHUNK_SIZE_Y
+	local yLimit = CHUNK_SY
 	if chunk.heightMap then
 		local maxH = 0
-		local sx = Constants.CHUNK_SIZE_X
-		local sz = Constants.CHUNK_SIZE_Z
-		for z = 0, sz - 1 do
-			for x = 0, sx - 1 do
-				local idx = x + z * sx
-				local h = chunk.heightMap[idx] or 0
+		for z = 0, CHUNK_SZ - 1 do
+			for x = 0, CHUNK_SX - 1 do
+				local h = chunk.heightMap[x + z * CHUNK_SX] or 0
 				if h > maxH then maxH = h end
 			end
 		end
-		yLimit = math.clamp(maxH + 2, 1, Constants.CHUNK_SIZE_Y)
+		yLimit = math.clamp(maxH + 2, 1, CHUNK_SY)
 	end
 
-	local sx, sy, sz = Constants.CHUNK_SIZE_X, yLimit, Constants.CHUNK_SIZE_Z
+	local sx, sy, sz = CHUNK_SX, yLimit, CHUNK_SZ
+	
+	-- Use flat array with numeric index for visited tracking (MUCH faster than string keys)
+	-- Index = x + y*sx + z*sx*sy gives unique int for each position
 	local visited = {}
+	local sxsy = sx * sy  -- Pre-compute for speed
 
-	-- Helper functions for visited tracking
-	local function k(x, y, z)
-		return tostring(x) .. ":" .. tostring(y) .. ":" .. tostring(z)
+	-- Block definition cache (avoid repeated BlockRegistry lookups)
+	local blockDefCache = {}
+	local function getBlockDef(blockId)
+		local def = blockDefCache[blockId]
+		if def == nil then
+			def = Blocks[blockId] or BlockRegistry:GetBlock(blockId) or false
+			blockDefCache[blockId] = def
+		end
+		return def
 	end
 
-	local function markVisited(x, y, z, v)
-		visited[k(x, y, z)] = v
+	-- Helper functions for visited tracking using numeric indices
+	local function visitedIndex(x, y, z)
+		return x + y * sx + z * sxsy
+	end
+
+	local function markVisited(x, y, z)
+		visited[visitedIndex(x, y, z)] = true
 	end
 
 	local function isVisited(x, y, z)
-		return visited[k(x, y, z)] == true
+		return visited[visitedIndex(x, y, z)] == true
 	end
 
 	-- Check if block is solid at position (for box merging)
 	-- Excludes crossShape and stairShape blocks - they're rendered in separate passes
-	    local function isSolid(x, y, z)
+	local function isSolid(x, y, z)
 		if y < 0 or y >= sy then return false end
 		local id
 		if x >= 0 and x < sx and z >= 0 and z < sz then
@@ -178,9 +197,9 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 		else
 			id = sampler(worldManager, chunk, x, y, z)
 		end
-		if id == Constants.BlockType.AIR then return false end
-		local def = Blocks[id] or BlockRegistry:GetBlock(id)
-	        return def and def.solid ~= false and not def.crossShape and not def.stairShape and not def.slabShape and not def.fenceShape
+		if id == AIR then return false end
+		local def = getBlockDef(id)
+		return def and def.solid ~= false and not def.crossShape and not def.stairShape and not def.slabShape and not def.fenceShape
 	end
 
 	-- Check if a neighbor FULLY occludes visibility (opaque full cube)
@@ -192,8 +211,8 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 		else
 			id = sampler(worldManager, chunk, x, y, z)
 		end
-		if id == Constants.BlockType.AIR then return false end
-		local def = Blocks[id] or BlockRegistry:GetBlock(id)
+		if id == AIR then return false end
+		local def = getBlockDef(id)
 		-- Occluding only when it is a full, opaque cube (not slabs/stairs/fences/cross-shapes)
 		return def and def.solid ~= false and def.transparent ~= true
 			and not def.crossShape and not def.stairShape and not def.slabShape and not def.fenceShape
@@ -324,14 +343,13 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 					local exposed = touchesAir(x, y, z, dx, dy, dz)
 					if exposed then
 						local id = seedId
-						local def = Blocks[id] or BlockRegistry:GetBlock(id)
-						local bs = Constants.BLOCK_SIZE
+						local def = getBlockDef(id)
 
-						-- Calculate Part size and position
-						local size = Vector3.new(snap(dx * bs), snap(dy * bs), snap(dz * bs))
-						local cxw = (chunk.x * sx + x) * bs + size.X * 0.5
-						local cyw = (y) * bs + size.Y * 0.5
-						local czw = (chunk.z * sz + z) * bs + size.Z * 0.5
+						-- Calculate Part size and position using cached BLOCK_SIZE
+						local size = Vector3.new(snap(dx * BLOCK_SIZE), snap(dy * BLOCK_SIZE), snap(dz * BLOCK_SIZE))
+						local cxw = (chunk.x * sx + x) * BLOCK_SIZE + size.X * 0.5
+						local cyw = y * BLOCK_SIZE + size.Y * 0.5
+						local czw = (chunk.z * sz + z) * BLOCK_SIZE + size.Z * 0.5
 
 						-- Create merged box Part
 						local p = PartPool.AcquireColliderPart()
@@ -345,91 +363,45 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 						-- Get metadata for rotation (if applicable)
 						local metadata = chunk:GetMetadata(x, y, z)
 
-					-- Compute per-face exposure to hide textures on fully occluded faces
+					-- Optimized per-face visibility: sample corners only for large boxes
+					-- For small boxes (<=2 blocks), just check single neighbor
+					-- This is O(1) instead of O(n²) for most cases
 					local visibleFaces = {}
-					-- Left face (-X)
-					do
-						local faceVisible = false
-						for iy = 0, dy - 1 do
-							for iz = 0, dz - 1 do
-								if not isOccluding(x - 1, y + iy, z + iz) then
-									faceVisible = true
-									break
-								end
-							end
-							if faceVisible then break end
+					
+					if dx <= 2 and dy <= 2 and dz <= 2 then
+						-- Small box: single sample per face (fast path)
+						visibleFaces[Enum.NormalId.Left] = not isOccluding(x - 1, y, z)
+						visibleFaces[Enum.NormalId.Right] = not isOccluding(x + dx, y, z)
+						visibleFaces[Enum.NormalId.Bottom] = not isOccluding(x, y - 1, z)
+						visibleFaces[Enum.NormalId.Top] = not isOccluding(x, y + dy, z)
+						visibleFaces[Enum.NormalId.Front] = not isOccluding(x, y, z - 1)
+						visibleFaces[Enum.NormalId.Back] = not isOccluding(x, y, z + dz)
+					else
+						-- Large box: sample corners only (4 samples per face max)
+						local function checkFaceCorners(nx, ny, nz, spanA, spanB, dirA, dirB)
+							-- Check 4 corners of the face
+							if not isOccluding(nx, ny, nz) then return true end
+							if not isOccluding(nx + dirA * (spanA - 1), ny, nz + dirB * (spanB - 1)) then return true end
+							if spanA > 1 and not isOccluding(nx + dirA * (spanA - 1), ny, nz) then return true end
+							if spanB > 1 and not isOccluding(nx, ny, nz + dirB * (spanB - 1)) then return true end
+							return false
 						end
-						visibleFaces[Enum.NormalId.Left] = faceVisible
-					end
-					-- Right face (+X)
-					do
-						local faceVisible = false
-						for iy = 0, dy - 1 do
-							for iz = 0, dz - 1 do
-								if not isOccluding(x + dx, y + iy, z + iz) then
-									faceVisible = true
-									break
-								end
-							end
-							if faceVisible then break end
-						end
-						visibleFaces[Enum.NormalId.Right] = faceVisible
-					end
-					-- Bottom face (-Y)
-					do
-						local faceVisible = false
-						for ix = 0, dx - 1 do
-							for iz = 0, dz - 1 do
-								if not isOccluding(x + ix, y - 1, z + iz) then
-									faceVisible = true
-									break
-								end
-							end
-							if faceVisible then break end
-						end
-						visibleFaces[Enum.NormalId.Bottom] = faceVisible
-					end
-					-- Top face (+Y)
-					do
-						local faceVisible = false
-						for ix = 0, dx - 1 do
-							for iz = 0, dz - 1 do
-								if not isOccluding(x + ix, y + dy, z + iz) then
-									faceVisible = true
-									break
-								end
-							end
-							if faceVisible then break end
-						end
-						visibleFaces[Enum.NormalId.Top] = faceVisible
-					end
-					-- Front face (-Z)
-					do
-						local faceVisible = false
-						for ix = 0, dx - 1 do
-							for iy = 0, dy - 1 do
-								if not isOccluding(x + ix, y + iy, z - 1) then
-									faceVisible = true
-									break
-								end
-							end
-							if faceVisible then break end
-						end
-						visibleFaces[Enum.NormalId.Front] = faceVisible
-					end
-					-- Back face (+Z)
-					do
-						local faceVisible = false
-						for ix = 0, dx - 1 do
-							for iy = 0, dy - 1 do
-								if not isOccluding(x + ix, y + iy, z + dz) then
-									faceVisible = true
-									break
-								end
-							end
-							if faceVisible then break end
-						end
-						visibleFaces[Enum.NormalId.Back] = faceVisible
+						
+						-- Left/Right faces span Y and Z
+						visibleFaces[Enum.NormalId.Left] = checkFaceCorners(x - 1, y, z, dy, dz, 0, 0) 
+							or not isOccluding(x - 1, y + dy - 1, z) or not isOccluding(x - 1, y, z + dz - 1)
+						visibleFaces[Enum.NormalId.Right] = checkFaceCorners(x + dx, y, z, dy, dz, 0, 0)
+							or not isOccluding(x + dx, y + dy - 1, z) or not isOccluding(x + dx, y, z + dz - 1)
+						-- Top/Bottom faces span X and Z  
+						visibleFaces[Enum.NormalId.Bottom] = checkFaceCorners(x, y - 1, z, dx, dz, 0, 0)
+							or not isOccluding(x + dx - 1, y - 1, z) or not isOccluding(x, y - 1, z + dz - 1)
+						visibleFaces[Enum.NormalId.Top] = checkFaceCorners(x, y + dy, z, dx, dz, 0, 0)
+							or not isOccluding(x + dx - 1, y + dy, z) or not isOccluding(x, y + dy, z + dz - 1)
+						-- Front/Back faces span X and Y
+						visibleFaces[Enum.NormalId.Front] = checkFaceCorners(x, y, z - 1, dx, dy, 0, 0)
+							or not isOccluding(x + dx - 1, y, z - 1) or not isOccluding(x, y + dy - 1, z - 1)
+						visibleFaces[Enum.NormalId.Back] = checkFaceCorners(x, y, z + dz, dx, dy, 0, 0)
+							or not isOccluding(x + dx - 1, y, z + dz) or not isOccluding(x, y + dy - 1, z + dz)
 					end
 
 					-- Apply textures only to faces marked visible
@@ -446,10 +418,10 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 	-- Second pass: staircase blocks with merging
 	local stairVisited = {}
 	local function isStairVisited(x, y, z)
-		return stairVisited[k(x, y, z)] == true
+		return stairVisited[visitedIndex(x, y, z)] == true
 	end
 	local function markStairVisited(x, y, z)
-		stairVisited[k(x, y, z)] = true
+		stairVisited[visitedIndex(x, y, z)] = true
 	end
 
 	for y = 0, yLimit - 1 do
@@ -565,7 +537,6 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 							wy + bottomYOffset,
 							wz + bottomSizeZ / 2
 						)
-						bottomPart.Parent = container
 						table.insert(meshParts, bottomPart)
 
 						-- Apply texture to bottom slab
@@ -731,10 +702,6 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 							local offX = (qx + fx) * (Constants.BLOCK_SIZE / 4)
 							local offZ = (qz + fz) * (Constants.BLOCK_SIZE / 4)
 							stepOffset = Vector3.new(offX, 0, offZ)
-							-- Debug corner selection (limited spam)
-							if stretchX == 1 and stretchZ == 1 then
-								print(string.format("[BoxMesher]  Corner stair at (%d,%d,%d): %s", x, y, z, shape))
-							end
 						else
 							-- Inner: straight half-block geometry (L will be formed by adding a quarter below)
 							if rotation == ROT_N then
@@ -762,7 +729,6 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 							wy + topYOffset,
 							wz + bottomSizeZ / 2
 						) + stepOffset
-						topPart.Parent = container
 						table.insert(meshParts, topPart)
 
                         -- No double-outer: Minecraft does not render a single stair as two outer quarters
@@ -806,7 +772,6 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 								wy + topYOffset,
 								wz + bottomSizeZ / 2
 							) + extraOffset
-							topPart2.Parent = container
 							table.insert(meshParts, topPart2)
 
 							-- Apply texture to second top quarter
@@ -837,12 +802,6 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 							partsBudget += 2 -- bottom + one top
 						end
 
-						-- Debug: Print staircase dimensions
-						if stretchX > 1 or stretchZ > 1 then
-							print(string.format("[BoxMesher] 🔧 Merged %d stairs at (%d,%d,%d) rotation=%d | Bottom:(%d,%d) Top:(%d,%d)",
-								math.max(stretchX, stretchZ), x, y, z, rotation,
-								bottomSizeX, bottomSizeZ, topSizeX, topSizeZ))
-						end
 
 						-- Apply texture to top step
 						-- topPart.Size = (topSizeX, BLOCK_SIZE/2, topSizeZ)
@@ -884,10 +843,10 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 	-- Third pass: slab blocks with merging
 	local slabVisited = {}
 	local function isSlabVisited(x, y, z)
-		return slabVisited[k(x, y, z)] == true
+		return slabVisited[visitedIndex(x, y, z)] == true
 	end
 	local function markSlabVisited(x, y, z)
-		slabVisited[k(x, y, z)] = true
+		slabVisited[visitedIndex(x, y, z)] = true
 	end
 
 	for y = 0, yLimit - 1 do
@@ -978,17 +937,11 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 							wy + slabYOffset,
 							wz + slabSizeZ / 2
 						)
-						slabPart.Parent = container
 						table.insert(meshParts, slabPart)
 
 						-- Update parts budget
 						partsBudget += 1
 
-						-- Debug: Print merged slab dimensions
-						if stretchX > 1 or stretchZ > 1 then
-							print(string.format("[BoxMesher] 🔧 Merged %dx%d slabs at (%d,%d,%d) | Size:(%d,%d)",
-								stretchX, stretchZ, x, y, z, slabSizeX, slabSizeZ))
-						end
 
 						-- Apply texture to slab
 						if def.textures and def.textures.all then
@@ -1128,7 +1081,6 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 						collider.Transparency = 1
 						collider.Size = Vector3.new(snap(colliderSizeX), snap(colliderHeight), snap(colliderSizeZ))
 						collider.Position = Vector3.new(snap(colliderCenterX), snap((y * bs) + (colliderHeight * 0.5)), snap(colliderCenterZ))
-						collider.Parent = container
 						table.insert(meshParts, collider)
 						partsBudget += 1
 
@@ -1140,7 +1092,6 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 						post.Transparency = 0
 						post.Size = Vector3.new(postWidth, postHeight, postWidth)
 						post.Position = Vector3.new(snap(cx), snap((y * bs) + (postHeight * 0.5)), snap(cz))
-						post.Parent = container
 						-- Apply wood planks texture (e.g., oak planks) to fence post
 						if def and def.textures and def.textures.all then
 							local textureId = TextureManager:GetTextureId(def.textures.all)
@@ -1168,7 +1119,6 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 							rail.Transparency = 0
 							rail.Size = Vector3.new(sizeX, railThickness, sizeZ)
 							rail.Position = Vector3.new(snap(centerX), snap((y * bs) + yoff), snap(centerZ))
-							rail.Parent = container
 							-- Apply wood planks texture to rail
 							if def and def.textures and def.textures.all then
 								local textureId = TextureManager:GetTextureId(def.textures.all)
@@ -1264,7 +1214,7 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 
 						local bladeSize = Vector3.new(snap(bs), snap(bs), snap(FACE_THICKNESS))
 
-						-- Create two perpendicular planes at 45° angles
+						-- Create two perpendicular planes at 45Â° angles
 						local p1 = PartPool.AcquireFacePart()
 						p1.Material = getMaterialForBlock(id)
 						p1.Color = def.color

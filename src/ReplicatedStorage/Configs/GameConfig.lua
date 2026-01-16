@@ -40,7 +40,9 @@ local SOUND_LIBRARY = {
 			zombieSay2 = {id = "rbxassetid://84419437806718", volume = 0.7},
 			zombieSay3 = {id = "rbxassetid://135638254815605", volume = 0.7},
 			zombieHurt1 = {id = "rbxassetid://96721285901178", volume = 0.75},
-			zombieHurt2 = {id = "rbxassetid://70383423672318", volume = 0.75}
+			zombieHurt2 = {id = "rbxassetid://70383423672318", volume = 0.75},
+			-- Furnace/Smelting sounds
+			smeltReveal = {id = "rbxassetid://9126073064", volume = 0.6} -- Sparkle/magic reveal
 	},
 
 	-- Block break specific audio (hit sounds + crack overlays)
@@ -136,7 +138,7 @@ local GameConfig = {
 	-- Data Store settings
 	DataStore = {
 		PlayerData = {
-			DataStoreVersion = "PlayerData_v60", -- Keep in sync with PlayerDataStoreService (updated for 6-tier system)
+			DataStoreVersion = "PlayerData_v64", -- Keep in sync with PlayerDataStoreService (updated for 6-tier system)
 			SchemaVersion = 5, -- Increment to force migrations/default resets
 			AutoSaveInterval = 300 -- 5 minutes in seconds
 		},
@@ -152,6 +154,18 @@ local GameConfig = {
 		},
 		StarterInventory = {
 			-- ═══════════════════════════════════════════════════════════════
+			-- FURNACE TESTING - Ores & Fuel
+			-- ═══════════════════════════════════════════════════════════════
+			{itemId = 98, count = 64},  -- Copper Ore (T1)
+			{itemId = 30, count = 64},  -- Iron Ore (T2, also for Steel/Bluesteel)
+			{itemId = 102, count = 64}, -- Tungsten Ore (T5)
+			{itemId = 103, count = 64}, -- Titanium Ore (T6)
+			{itemId = 32, count = 64},  -- Coal (fuel)
+			{itemId = 32, count = 64},  -- Coal (more fuel)
+			{itemId = 123, count = 1},  -- Coal Golem (minion)
+			{itemId = 115, count = 64}, -- Bluesteel Dust (for Bluesteel smelting)
+
+			-- ═══════════════════════════════════════════════════════════════
 			-- FULL BLOCKS (9x ingots each)
 			-- ═══════════════════════════════════════════════════════════════
 			{itemId = 116, count = 64}, -- Copper Blocks
@@ -161,11 +175,6 @@ local GameConfig = {
 			{itemId = 120, count = 64}, -- Bluesteel Blocks
 			{itemId = 121, count = 64}, -- Tungsten Blocks
 			{itemId = 122, count = 64}, -- Titanium Blocks
-
-			-- ═══════════════════════════════════════════════════════════════
-			-- SPECIAL MATERIALS
-			-- ═══════════════════════════════════════════════════════════════
-			{itemId = 115, count = 64}, -- Bluesteel Dust
 
 			-- ═══════════════════════════════════════════════════════════════
 			-- CRAFTING MATERIALS

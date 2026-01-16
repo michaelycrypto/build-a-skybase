@@ -6,14 +6,14 @@
 local Constants = {
 	-- Chunk dimensions
 	CHUNK_SIZE_X = 16,
-    CHUNK_SIZE_Y = 128,
+    CHUNK_SIZE_Y = 256,  -- Increased for taller schematics
 	CHUNK_SIZE_Z = 16,
 
 	-- Section dimensions
 	CHUNK_SECTION_SIZE = 16,
 
 	-- World limits
-    WORLD_HEIGHT = 128,
+    WORLD_HEIGHT = 256,  -- Increased for taller schematics
 	MIN_HEIGHT = 0,
 
 	-- Block size in studs
@@ -153,8 +153,9 @@ local Constants = {
 		-- Compost item (used to convert grass/dirt to farmland)
 		COMPOST = 96,
 
-		-- Utility: visual minion block (spawns a mini zombie)
+		-- Utility: visual minion blocks (spawn a mini zombie)
 		COBBLESTONE_MINION = 97,
+		COAL_MINION = 123,
 
 		-- Ores (6-tier progression: Copper → Iron → Steel → Bluesteel → Tungsten → Titanium)
 		COPPER_ORE = 98,

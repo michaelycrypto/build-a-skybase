@@ -1228,6 +1228,39 @@ function EventManager:CreateServerEventConfig(services)
 				end
 			end
 		},
+		-- Furnace/Smelting events
+		{
+			name = "RequestOpenFurnace",
+			handler = function(player, data)
+				if services.SmeltingService and services.SmeltingService.HandleOpenFurnace then
+					services.SmeltingService:HandleOpenFurnace(player, data)
+				end
+			end
+		},
+		{
+			name = "RequestStartSmelt",
+			handler = function(player, data)
+				if services.SmeltingService and services.SmeltingService.HandleStartSmelt then
+					services.SmeltingService:HandleStartSmelt(player, data)
+				end
+			end
+		},
+		{
+			name = "RequestCompleteSmelt",
+			handler = function(player, data)
+				if services.SmeltingService and services.SmeltingService.HandleCompleteSmelt then
+					services.SmeltingService:HandleCompleteSmelt(player, data)
+				end
+			end
+		},
+		{
+			name = "RequestCancelSmelt",
+			handler = function(player, data)
+				if services.SmeltingService and services.SmeltingService.HandleCancelSmelt then
+					services.SmeltingService:HandleCancelSmelt(player, data)
+				end
+			end
+		},
 		-- Armor equip events
 		{
 			name = "ArmorSlotClick",

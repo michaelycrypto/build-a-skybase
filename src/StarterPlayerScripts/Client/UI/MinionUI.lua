@@ -14,9 +14,11 @@ local IconManager = require(script.Parent.Parent.Managers.IconManager)
 local UIVisibilityManager = require(script.Parent.Parent.Managers.UIVisibilityManager)
 local ItemStack = require(ReplicatedStorage.Shared.VoxelWorld.Inventory.ItemStack)
 local BlockViewportCreator = require(ReplicatedStorage.Shared.VoxelWorld.Rendering.BlockViewportCreator)
+local BlockRegistry = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockRegistry)
 local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
 local ArmorConfig = require(ReplicatedStorage.Configs.ArmorConfig)
 local SpawnEggConfig = require(ReplicatedStorage.Configs.SpawnEggConfig)
+local MinionConfig = require(ReplicatedStorage.Configs.MinionConfig)
 local Config = require(ReplicatedStorage.Shared.Config)
 local EventManager = require(ReplicatedStorage.Shared.EventManager)
 local SpawnEggIcon = require(script.Parent.SpawnEggIcon)
@@ -70,7 +72,6 @@ local function GetItemDisplayName(itemId)
 	end
 
 	-- Otherwise, it's a block - use BlockRegistry
-	local BlockRegistry = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockRegistry)
 	local blockDef = BlockRegistry.Blocks[itemId]
 	return blockDef and blockDef.name or "Item"
 end
@@ -92,6 +93,7 @@ function MinionUI.new(inventoryManager, inventoryPanel, chestUI)
 	self.slotsUnlocked = 1
 	self.waitSeconds = 15
 	self.nextUpgradeCost = 32
+	self.minionType = "COBBLESTONE"
 
 	-- Minion slots (12 max)
 	self.slots = {}
@@ -143,7 +145,6 @@ end
 function MinionUI:ShowTooltip(slot, itemId, count)
 	if not self.tooltip then return end
 
-	local BlockRegistry = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockRegistry)
 	local block = BlockRegistry:GetBlock(itemId)
 	local name = block.name or "Unknown"
 
@@ -844,7 +845,9 @@ function MinionUI:UpdateAllDisplays()
 	-- Update title
 	local romanNumerals = {"I", "II", "III", "IV"}
 	local roman = romanNumerals[self.level] or "IV"
-	self.titleLabel.Text = string.format("<b><i>Stone Golem %s</i></b>", roman)
+	local typeDef = MinionConfig.GetTypeDef(self.minionType)
+	local displayName = (typeDef and typeDef.displayName) or "Golem"
+	self.titleLabel.Text = string.format("<b><i>%s %s</i></b>", displayName, roman)
 
 	-- Update info
 	self.levelLabel.Text = string.format("Level: %s", roman)
@@ -856,7 +859,8 @@ function MinionUI:UpdateAllDisplays()
 	end
 
 	-- Update upgrade button
-	if self.level >= 4 then
+	local maxLevel = (typeDef and typeDef.maxLevel) or 4
+	if self.level >= maxLevel then
 		self.upgradeBtn.Text = "Max Level"
 		self.upgradeCostLabel.Text = ""
 		self.upgradeBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
@@ -864,7 +868,10 @@ function MinionUI:UpdateAllDisplays()
 	else
 		local nextRoman = romanNumerals[self.level + 1]
 		self.upgradeBtn.Text = string.format("Upgrade to %s", nextRoman)
-		self.upgradeCostLabel.Text = string.format("Cost: %d Cobblestone", self.nextUpgradeCost)
+		local upgradeItemId = MinionConfig.GetUpgradeItemId(self.minionType)
+		local upgradeDef = BlockRegistry:GetBlock(upgradeItemId)
+		local upgradeName = (upgradeDef and upgradeDef.name) or "Item"
+		self.upgradeCostLabel.Text = string.format("Cost: %d %s", self.nextUpgradeCost, upgradeName)
 		self.upgradeBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
 		self.upgradeBtn.Active = true
 	end
@@ -901,6 +908,7 @@ function MinionUI:Open(anchorPos, state)
 				self.slotsUnlocked = state.slotsUnlocked or self.slotsUnlocked
 				self.waitSeconds = state.waitSeconds or self.waitSeconds
 				self.nextUpgradeCost = state.nextUpgradeCost or self.nextUpgradeCost
+				self.minionType = state.type or self.minionType
 				if state.slots then
 					for i = 1, 12 do
 						if state.slots[i] then
@@ -930,6 +938,7 @@ function MinionUI:Open(anchorPos, state)
 	self.slotsUnlocked = state.slotsUnlocked or 1
 	self.waitSeconds = state.waitSeconds or 15
 	self.nextUpgradeCost = state.nextUpgradeCost or 32
+	self.minionType = state.type or "COBBLESTONE"
 
 	-- Load slots
 	if state.slots then
@@ -1029,6 +1038,7 @@ function MinionUI:RegisterEvents()
 			self.slotsUnlocked = data.state.slotsUnlocked or self.slotsUnlocked
 			self.waitSeconds = data.state.waitSeconds or self.waitSeconds
 			self.nextUpgradeCost = data.state.nextUpgradeCost or self.nextUpgradeCost
+			self.minionType = data.state.type or self.minionType
 
 			-- Update slots if provided
 			if data.state.slots then

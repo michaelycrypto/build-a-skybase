@@ -33,6 +33,11 @@ local boxMesher = BoxMesher.new()
 local voxelWorldContainer = nil
 local chunkFolders = {}
 local frustum = CameraFrustum.new()
+
+-- Staging container in ReplicatedStorage (not rendered, better for building meshes)
+local meshStagingContainer = Instance.new("Folder")
+meshStagingContainer.Name = "_ChunkMeshStaging"
+meshStagingContainer.Parent = ReplicatedStorage
 local _lastFogEnd
 local isHubWorld = Workspace:GetAttribute("IsHubWorld") == true
 local hubRenderDistance = Workspace:GetAttribute("HubRenderDistance")
@@ -47,6 +52,249 @@ Workspace:GetAttributeChangedSignal("HubRenderDistance"):Connect(function()
 	hubRenderDistance = Workspace:GetAttribute("HubRenderDistance")
 end)
 
+-- Background mesh generation system (avoids blocking RenderStepped)
+local meshReadyQueue = {}  -- {key, model} pairs ready to be parented
+local meshBuildingSet = {} -- Keys currently being built (prevent duplicates)
+local meshWorkerRunning = false
+
+-- Spawn chunk tracking for loading screen
+local spawnChunkKey = nil  -- "cx,cz" key for the chunk player spawns in
+local spawnChunkReady = false
+local onSpawnChunkReadyCallbacks = {}  -- Callbacks to fire when spawn chunk loads
+
+-- Multi-chunk loading tracking
+local requiredChunkKeys = {}  -- All chunk keys we want loaded before completing
+local minimumChunksRequired = 49  -- Minimum chunks to load (7x7 around spawn = 49)
+local loadingChunkRadius = 3  -- Radius around spawn chunk to require (1 = 3x3, 2 = 5x5, 3 = 7x7, 4 = 9x9)
+
+-- Check if a specific chunk is ready (meshed and parented)
+local function isChunkReady(chunkKey)
+	return chunkFolders[chunkKey] ~= nil
+end
+
+-- Count how many required chunks are loaded
+local function countLoadedRequiredChunks()
+	local count = 0
+	for _, key in ipairs(requiredChunkKeys) do
+		if isChunkReady(key) then
+			count = count + 1
+		end
+	end
+	return count
+end
+
+-- Check if minimum chunks are loaded
+local function areMinimumChunksLoaded()
+	local loaded = countLoadedRequiredChunks()
+	local required = math.min(minimumChunksRequired, #requiredChunkKeys)
+	return loaded >= required
+end
+
+-- Register callback for when spawn chunk is ready
+local function onSpawnChunkReady(callback)
+	if spawnChunkReady then
+		-- Already ready, call immediately
+		task.defer(callback)
+	else
+		table.insert(onSpawnChunkReadyCallbacks, callback)
+	end
+end
+
+-- Fire spawn chunk ready callbacks
+local function fireSpawnChunkReady()
+	if spawnChunkReady then return end
+	spawnChunkReady = true
+	local loaded = countLoadedRequiredChunks()
+	local total = #requiredChunkKeys
+	print(string.format("[VoxelWorld] Spawn chunks ready (%d/%d) - firing callbacks", loaded, total))
+	for _, callback in ipairs(onSpawnChunkReadyCallbacks) do
+		task.defer(callback)
+	end
+	onSpawnChunkReadyCallbacks = {}
+end
+
+-- Check spawn readiness when a chunk loads (called from mesh parenting)
+local function checkSpawnChunksReady()
+	if spawnChunkReady then return end
+	if areMinimumChunksLoaded() then
+		fireSpawnChunkReady()
+	end
+end
+
+-- Set the spawn chunk key based on world position
+local function setSpawnPosition(worldX, worldZ)
+	local CHUNK_SX = Constants.CHUNK_SIZE_X
+	local CHUNK_SZ = Constants.CHUNK_SIZE_Z
+	local bs = Constants.BLOCK_SIZE
+	local cx = math.floor(worldX / (CHUNK_SX * bs))
+	local cz = math.floor(worldZ / (CHUNK_SZ * bs))
+	spawnChunkKey = tostring(cx) .. "," .. tostring(cz)
+	spawnChunkReady = false
+	
+	-- Generate list of required chunk keys (square around spawn)
+	requiredChunkKeys = {}
+	for dx = -loadingChunkRadius, loadingChunkRadius do
+		for dz = -loadingChunkRadius, loadingChunkRadius do
+			local key = tostring(cx + dx) .. "," .. tostring(cz + dz)
+			table.insert(requiredChunkKeys, key)
+		end
+	end
+	
+	local total = #requiredChunkKeys
+	print(string.format("[VoxelWorld] Spawn position set to chunk (%d,%d), requiring %d chunks (radius %d)", 
+		cx, cz, total, loadingChunkRadius))
+
+	-- Check if already loaded
+	if areMinimumChunksLoaded() then
+		fireSpawnChunkReady()
+	end
+end
+
+-- Background mesh worker - runs in a separate task, doesn't block rendering
+local function startMeshWorker()
+	if meshWorkerRunning then return end
+	meshWorkerRunning = true
+
+	task.spawn(function()
+		-- Cache config values outside the loop
+		local vwConfig = require(ReplicatedStorage.Shared.VoxelWorld.Core.Config)
+		local vwDebug = vwConfig.DEBUG
+		local maxParts = (vwDebug and vwDebug.MAX_PARTS_PER_CHUNK) or 600
+		local bs = Constants.BLOCK_SIZE
+		local CHUNK_SX = Constants.CHUNK_SIZE_X
+		local CHUNK_SZ = Constants.CHUNK_SIZE_Z
+		local AIR = Constants.BlockType.AIR
+		
+		-- Reference to LoadingScreen for burst mode during loading
+		local LoadingScreenRef = require(script.Parent.UI.LoadingScreen)
+
+		while meshWorkerRunning do
+			local cm = voxelWorldHandle and voxelWorldHandle.chunkManager
+			local wm = voxelWorldHandle and voxelWorldHandle.GetWorldManager and voxelWorldHandle:GetWorldManager()
+
+			if not cm or not cm.meshUpdateQueue or not next(cm.meshUpdateQueue) then
+				-- No work to do, wait a bit
+				task.wait(0.05)
+				continue
+			end
+
+			-- Get camera position for prioritization
+			local camera = workspace.CurrentCamera
+			local camPos = camera and camera.CFrame.Position or Vector3.new(0, 0, 0)
+			local bx = camPos.X / bs
+			local bz = camPos.Z / bs
+			local pcx = math.floor(bx / CHUNK_SX)
+			local pcz = math.floor(bz / CHUNK_SZ)
+
+			-- Build prioritized list of chunks to mesh
+			local candidates = {}
+
+			for key, chunk in pairs(cm.meshUpdateQueue) do
+				-- Skip if already being built
+				if not meshBuildingSet[key] then
+					local dxChunks = chunk.x - pcx
+					local dzChunks = chunk.z - pcz
+					local dist = dxChunks * dxChunks + dzChunks * dzChunks
+					table.insert(candidates, { key = key, chunk = chunk, dist = dist })
+				end
+			end
+
+			-- Sort by distance (closest first)
+			table.sort(candidates, function(a, b) return a.dist < b.dist end)
+
+			-- FAST MODE: Process multiple chunks per cycle
+			-- During loading screen, be very aggressive (visual stutters invisible)
+			-- During gameplay, keep low to avoid frame spikes
+			local isLoadingActive = LoadingScreenRef and LoadingScreenRef.IsActive and LoadingScreenRef:IsActive()
+			local maxChunksPerCycle = isLoadingActive and 32 or (isHubWorld and 6 or 2)
+			local chunksBuiltThisCycle = 0
+
+			for _, item in ipairs(candidates) do
+				if chunksBuiltThisCycle >= maxChunksPerCycle then break end
+
+				local key = item.key
+				local chunk = item.chunk
+
+				-- Mark as building
+				meshBuildingSet[key] = true
+
+				-- Pre-cache neighbor chunks for faster lookups
+				local neighborCache = {}
+				if wm and wm.chunks then
+					for dx = -1, 1 do
+						for dz = -1, 1 do
+							local nkey = tostring(chunk.x + dx) .. "," .. tostring(chunk.z + dz)
+							neighborCache[nkey] = wm.chunks[nkey]
+						end
+					end
+				end
+
+				-- Optimized neighbor sampler with cached lookups
+				local function neighborSampler(_, baseChunk, lx, ly, lz)
+					if lx >= 0 and lx < CHUNK_SX and lz >= 0 and lz < CHUNK_SZ then
+						return baseChunk:GetBlock(lx, ly, lz)
+					end
+					local cx, cz = baseChunk.x, baseChunk.z
+					local nx, nz = lx, lz
+					if nx < 0 then cx -= 1; nx += CHUNK_SX
+					elseif nx >= CHUNK_SX then cx += 1; nx -= CHUNK_SX end
+					if nz < 0 then cz -= 1; nz += CHUNK_SZ
+					elseif nz >= CHUNK_SZ then cz += 1; nz -= CHUNK_SZ end
+					local nkey = tostring(cx) .. "," .. tostring(cz)
+					local neighbor = neighborCache[nkey]
+					if not neighbor then return AIR end
+					return neighbor:GetBlock(nx, ly, nz)
+				end
+
+				-- Generate mesh (runs in background task)
+				local parts = boxMesher:GenerateMesh(chunk, wm, {
+					maxParts = maxParts,
+					sampleBlock = neighborSampler,
+				})
+
+				-- Create model in staging container (ReplicatedStorage = not rendered)
+				-- This allows all parts to be assembled without visual impact
+				local nextModel = Instance.new("Model")
+				nextModel.Name = "Chunk_" .. key
+
+				-- Parent to staging first (Roblox skips render calculations here)
+				nextModel.Parent = meshStagingContainer
+
+				-- Now parent all parts - they're in a non-rendered container
+				for i = 1, #parts do
+					parts[i].Parent = nextModel
+				end
+
+				-- Set pivot while still in staging
+				local origin = Vector3.new((chunk.x * CHUNK_SX) * bs, 0, (chunk.z * CHUNK_SZ) * bs)
+				pcall(function()
+					nextModel.WorldPivot = CFrame.new(origin)
+				end)
+
+				-- Small yield to let physics/rendering settle before moving to workspace
+				-- Skip during loading screen for maximum throughput
+				if not isLoadingActive then
+					task.wait()
+				end
+
+				-- Queue for parenting on main thread (will move from staging to workspace)
+				table.insert(meshReadyQueue, { key = key, model = nextModel })
+				meshBuildingSet[key] = nil
+				chunksBuiltThisCycle += 1
+			end
+
+			-- Minimal delay between cycles for fast loading
+			-- Skip during loading screen for maximum throughput
+			if isLoadingActive then
+				task.wait()  -- Minimal yield to prevent script timeout
+			else
+				task.wait(0.016)  -- ~1 frame between cycles during gameplay
+			end
+		end
+	end)
+end
+
+-- Lightweight RenderStepped handler - only parents ready meshes and updates fog
 local function updateVoxelWorld()
 	if not voxelWorldHandle then
 		return
@@ -55,189 +303,105 @@ local function updateVoxelWorld()
 	if not camera then
 		return
 	end
-	-- Update frustum from camera for culling
+
+	-- Start background worker if not running
+	startMeshWorker()
+
+	-- Ensure container exists
+	if not voxelWorldContainer then
+		voxelWorldContainer = Instance.new("Folder")
+		voxelWorldContainer.Name = "VoxelWorld"
+		voxelWorldContainer.Parent = workspace
+	end
+
+	local cm = voxelWorldHandle.chunkManager
+	local vwConfig = require(ReplicatedStorage.Shared.VoxelWorld.Core.Config)
+
+	-- Update frustum (lightweight)
 	frustum:UpdateFromCamera(camera)
-	local pos = camera.CFrame.Position
-	-- Convert studs to voxel block coordinates for chunk manager
-    local bx = pos.X / Constants.BLOCK_SIZE
-    local bz = pos.Z / Constants.BLOCK_SIZE
 
-	-- Process any pending mesh updates from streamed chunks
-	local cm = voxelWorldHandle and voxelWorldHandle.chunkManager
-	local wm = voxelWorldHandle and voxelWorldHandle.GetWorldManager and voxelWorldHandle:GetWorldManager()
-	if cm and cm.meshUpdateQueue then
-		-- Ensure a container exists for voxel meshes
-		if not voxelWorldContainer then
-			voxelWorldContainer = Instance.new("Folder")
-			voxelWorldContainer.Name = "VoxelWorld"
-			voxelWorldContainer.Parent = workspace
+	-- Dynamic fog (lightweight, only updates when needed)
+	local clientVisualRadius = math.min(
+		(cm and cm.renderDistance) or 8,
+		(vwConfig.PERFORMANCE.MAX_RENDER_DISTANCE or 8)
+	)
+	if isHubWorld and hubRenderDistance then
+		clientVisualRadius = math.max(clientVisualRadius, hubRenderDistance)
+	end
+	local horizonStuds = clientVisualRadius * Constants.CHUNK_SIZE_X * Constants.BLOCK_SIZE
+	local fogStart = math.max(0, horizonStuds * 0.6)
+	local fogEnd = math.max(fogStart + 10, horizonStuds * 0.9)
+	if not _lastFogEnd or math.abs((_lastFogEnd or 0) - fogEnd) > 4 then
+		local atm = Lighting:FindFirstChildOfClass("Atmosphere")
+		if not atm then
+			atm = Instance.new("Atmosphere")
+			atm.Parent = Lighting
 		end
+		atm.Density = 0.35
+		atm.Haze = 1
+		Lighting.FogColor = Color3.fromRGB(200, 220, 255)
+		Lighting.FogStart = fogStart
+		Lighting.FogEnd = fogEnd
+		_lastFogEnd = fogEnd
+	end
 
-		-- Apply per-frame budgets (count and time), and prioritize by distance inside the camera frustum
-		local updates = 0
-		local vwConfig = require(ReplicatedStorage.Shared.VoxelWorld.Core.Config)
-		local budget = (vwConfig.PERFORMANCE.MAX_MESH_UPDATES_PER_FRAME or 2)
-		local timeBudgetSec = (vwConfig.PERFORMANCE.MESH_UPDATE_BUDGET_MS or 5) / 1000
-		local hubFastMesh = isHubWorld and hubInitialMeshPending
-		if hubFastMesh then
-			budget = math.max(budget, 200)
-			timeBudgetSec = math.max(timeBudgetSec, 0.3)
-		end
-		local frameStart = os.clock()
+	-- Parent ready meshes (very fast - just parenting pre-built models)
+	-- During loading screen, parent aggressively (visual stutters invisible)
+	-- During gameplay, keep very low to avoid frame spikes
+	local LoadingScreenRef = require(script.Parent.UI.LoadingScreen)
+	local isLoadingActive = LoadingScreenRef and LoadingScreenRef.IsActive and LoadingScreenRef:IsActive()
+	local maxParentsPerFrame = isLoadingActive and 50 or 2
+	local parented = 0
+	local cleanupQueue = {}
 
-		-- Client-side visual radius gate (prevents meshing/keeping far-away chunks)
-		local clientVisualRadius = math.min(
-			(voxelWorldHandle and voxelWorldHandle.chunkManager and voxelWorldHandle.chunkManager.renderDistance) or 8,
-			(vwConfig.PERFORMANCE.MAX_RENDER_DISTANCE or 8)
-		)
-		if isHubWorld and hubRenderDistance then
-			clientVisualRadius = math.max(clientVisualRadius, hubRenderDistance)
-		end
+	while #meshReadyQueue > 0 and parented < maxParentsPerFrame do
+		local ready = table.remove(meshReadyQueue, 1)
+		local key = ready.key
+		local nextModel = ready.model
 
-		-- Dynamic horizon fog to mask pop-in based on effective render distance
-		local rd = (voxelWorldHandle and voxelWorldHandle.chunkManager and voxelWorldHandle.chunkManager.renderDistance) or clientVisualRadius
-		local horizonStuds = rd * Constants.CHUNK_SIZE_X * Constants.BLOCK_SIZE
-		local fogStart = math.max(0, horizonStuds * 0.6)
-		local fogEnd = math.max(fogStart + 10, horizonStuds * 0.9)
-		if not _lastFogEnd or math.abs((_lastFogEnd or 0) - fogEnd) > 4 then
-			local atm = Lighting:FindFirstChildOfClass("Atmosphere")
-			if not atm then
-				atm = Instance.new("Atmosphere")
-				atm.Parent = Lighting
+		-- Only parent if chunk is still in the update queue (wasn't unloaded)
+		if cm and cm.meshUpdateQueue and cm.meshUpdateQueue[key] then
+			-- Parent new model (very fast)
+			nextModel.Parent = voxelWorldContainer
+
+			-- Queue old model for cleanup
+			local prev = chunkFolders[key]
+			if prev then
+				table.insert(cleanupQueue, prev)
 			end
-			-- Gentle haze to soften horizon; tuned for voxel scale
-			atm.Density = 0.35
-			atm.Haze = 1
-			-- Classic fog for firm cutoff
-			Lighting.FogColor = Color3.fromRGB(200, 220, 255)
-			Lighting.FogStart = fogStart
-			Lighting.FogEnd = fogEnd
-			_lastFogEnd = fogEnd
-		end
-        -- Build prioritized candidate list (frustum culled, but always include 7x7 around player)
-		local candidates = {}
-        -- Compute player chunk once for must-include set
-        local pcx = math.floor(bx / Constants.CHUNK_SIZE_X)
-        local pcz = math.floor(bz / Constants.CHUNK_SIZE_Z)
-		local vwDebug = vwConfig.DEBUG
-		local bs = Constants.BLOCK_SIZE
-		local sizeX = Constants.CHUNK_SIZE_X * bs
-		local sizeZ = Constants.CHUNK_SIZE_Z * bs
-		local pad = bs * 0.25
-		local maxParts = (vwDebug and vwDebug.MAX_PARTS_PER_CHUNK) or 600
 
-		for key, chunk in pairs(cm.meshUpdateQueue) do
-			local chunkWorldX = (chunk.x * Constants.CHUNK_SIZE_X) * bs
-			local chunkWorldZ = (chunk.z * Constants.CHUNK_SIZE_Z) * bs
-            local min = Vector3.new(chunkWorldX, 0, chunkWorldZ)
-            local max = Vector3.new(chunkWorldX + sizeX, Constants.WORLD_HEIGHT * bs, chunkWorldZ + sizeZ)
-            -- Conservative expansion to avoid precision pop-in at edges
-            local minExp = min - Vector3.new(pad, pad * 2, pad)
-            local maxExp = max + Vector3.new(pad, pad * 2, pad)
-			local mustInclude = (math.abs(chunk.x - pcx) <= 3 and math.abs(chunk.z - pcz) <= 3)
-			local dxChunks = chunk.x - pcx
-			local dzChunks = chunk.z - pcz
-			local withinVisualRadius = (dxChunks * dxChunks + dzChunks * dzChunks) <= (clientVisualRadius * clientVisualRadius)
-			if isHubWorld then
-				withinVisualRadius = true
-			end
-			if withinVisualRadius and (mustInclude or vwDebug.DISABLE_FRUSTUM_CULLING or frustum:IsAABBVisible(minExp, maxExp)) then
-				local center = Vector3.new(chunkWorldX + sizeX * 0.5, pos.Y, chunkWorldZ + sizeZ * 0.5)
-				local dist = (center - pos).Magnitude
-				table.insert(candidates, { key = key, chunk = chunk, dist = dist })
-			end
-		end
-		table.sort(candidates, function(a, b)
-			return a.dist < b.dist
-		end)
-
-        -- For small queues (block edits), process all chunks together to avoid border flicker
-        -- For large queues (world loading), respect the budget
-        local queueSize = #candidates
-        local effectiveBudget = budget
-        if queueSize <= 5 then
-            -- Small batch (likely from a single block change) - process all together
-            effectiveBudget = math.max(budget, queueSize)
-        end
-
-		-- Neighbor sampler function for cross-chunk block lookups (shared across all chunks this frame)
-		local function neighborSampler(worldManagerRef, baseChunk, lx, ly, lz)
-			-- Fast path: block is within the base chunk
-			if lx >= 0 and lx < Constants.CHUNK_SIZE_X and lz >= 0 and lz < Constants.CHUNK_SIZE_Z then
-				return baseChunk:GetBlock(lx, ly, lz)
-			end
-			-- Need to look up neighbor chunk
-			if not worldManagerRef then return Constants.BlockType.AIR end
-			local cx, cz = baseChunk.x, baseChunk.z
-			local nx, nz = lx, lz
-			if nx < 0 then cx -= 1; nx += Constants.CHUNK_SIZE_X
-			elseif nx >= Constants.CHUNK_SIZE_X then cx += 1; nx -= Constants.CHUNK_SIZE_X end
-			if nz < 0 then cz -= 1; nz += Constants.CHUNK_SIZE_Z
-			elseif nz >= Constants.CHUNK_SIZE_Z then cz += 1; nz -= Constants.CHUNK_SIZE_Z end
-			local neighborKey = tostring(cx) .. "," .. tostring(cz)
-			local neighbor = worldManagerRef.chunks and worldManagerRef.chunks[neighborKey]
-			if not neighbor then return Constants.BlockType.AIR end
-			return neighbor:GetBlock(nx, ly, nz)
-		end
-
-		-- Phase 1: Build all meshes (without parenting yet)
-		local builtMeshes = {}
-        for i, item in ipairs(candidates) do
-			if updates >= effectiveBudget then break end
-			-- Only check time budget for large queues
-			if queueSize > 5 and (os.clock() - frameStart) >= timeBudgetSec then break end
-
-            local key = item.key
-            local chunk = item.chunk
-
-            -- Generate merged box mesh with textures
-			local parts = boxMesher:GenerateMesh(chunk, wm, {
-                maxParts = maxParts,
-                sampleBlock = neighborSampler,
-            })
-
-            -- Assemble new model (not parented yet)
-            local nextModel = Instance.new("Model")
-            nextModel.Name = "Chunk_" .. tostring(key)
-            for _, part in ipairs(parts) do
-                part.Parent = nextModel
-            end
-
-            -- Set a fixed pivot at chunk origin
-            local origin = Vector3.new((chunk.x * Constants.CHUNK_SIZE_X) * bs, 0, (chunk.z * Constants.CHUNK_SIZE_Z) * bs)
-            pcall(function()
-                nextModel.WorldPivot = CFrame.new(origin)
-            end)
-
-            table.insert(builtMeshes, {key = key, model = nextModel})
-			updates += 1
-		end
-
-		-- Phase 2: Swap all built meshes atomically (minimizes visual gaps)
-		for _, built in ipairs(builtMeshes) do
-			local key = built.key
-			local nextModel = built.model
-
-            -- Parent new model
-            nextModel.Parent = voxelWorldContainer
-
-            -- Remove old model
-            local prev = chunkFolders[key]
-            if prev then
-                PartPool.ReleaseAllFromModel(prev)
-                prev:Destroy()
-            end
-
-            chunkFolders[key] = nextModel
+			chunkFolders[key] = nextModel
 			cm.meshUpdateQueue[key] = nil
+
+			-- Check if enough spawn area chunks are loaded
+			if not spawnChunkReady and #requiredChunkKeys > 0 then
+				checkSpawnChunksReady()
+			end
+		else
+			-- Chunk was unloaded, defer destruction to avoid frame cost
+			task.defer(function()
+				nextModel:Destroy()
+			end)
 		end
 
-		-- Check if hub initial mesh build is complete
-		if hubFastMesh then
-			if not next(cm.meshUpdateQueue) then
-				hubInitialMeshPending = false
-				print("[VoxelWorld] Hub voxel mesh build complete")
+		parented += 1
+	end
+
+	-- Deferred cleanup (batch process for speed)
+	if #cleanupQueue > 0 then
+		task.defer(function()
+			for _, oldModel in ipairs(cleanupQueue) do
+				PartPool.ReleaseAllFromModel(oldModel)
+				oldModel:Destroy()
 			end
+		end)
+	end
+
+	-- Check if hub initial mesh build is complete
+	if isHubWorld and hubInitialMeshPending then
+		if cm and (not cm.meshUpdateQueue or not next(cm.meshUpdateQueue)) and #meshReadyQueue == 0 then
+			hubInitialMeshPending = false
+			print("[VoxelWorld] Hub voxel mesh build complete")
 		end
 	end
 end
@@ -634,6 +798,14 @@ local function completeInitialization(EmoteManager)
 	Client.cloudController = CloudController
 	print("☁️ Cloud Controller initialized")
 
+	-- Initialize Mobile UI (action bar, thumbstick) after loading screen
+	-- This follows the same pattern as other UI components
+	local mobileController = InputService._mobileController
+	if mobileController and mobileController.InitializeUI then
+		mobileController:InitializeUI()
+		print("📱 Mobile Action Bar initialized")
+	end
+
 	local worldsPanel = nil
 	local UI_TOGGLE_DEBOUNCE = 0.3
 	local lastUiToggleTime = 0
@@ -655,6 +827,14 @@ local function completeInitialization(EmoteManager)
 
 	print("📦 Chest UI initialized")
 
+	-- Initialize Furnace UI (smelting mini-game)
+	local FurnaceUI = require(script.Parent.UI.FurnaceUI)
+	local furnaceUI = FurnaceUI.new(inventoryManager)
+	furnaceUI:Initialize()
+	Client.furnaceUI = furnaceUI
+
+	print("🔥 Furnace UI initialized")
+
 	-- Initialize Minion UI (after ChestUI due to dependency)
 	local MinionUI = require(script.Parent.UI.MinionUI)
 	local minionUI = MinionUI.new(inventoryManager, inventory, chestUI)
@@ -667,6 +847,10 @@ local function completeInitialization(EmoteManager)
 		if gameProcessed then return end
 		if input.KeyCode == Enum.KeyCode.E then
 			if not canProcessUiToggle() then
+				return
+			end
+			-- Block input during furnace smelting mini-game
+			if furnaceUI and furnaceUI.isSmelting then
 				return
 			end
 			if worldsPanel and worldsPanel:IsOpen() then
@@ -683,6 +867,12 @@ local function completeInitialization(EmoteManager)
 				minionUI:Close()
 			elseif chestUI and chestUI.isOpen then
 				chestUI:Close()
+			elseif furnaceUI and furnaceUI.isOpen then
+				-- Close furnace and open inventory
+				furnaceUI:Close("inventory")
+				if inventory and not inventory.isOpen then
+					inventory:Open()
+				end
 			else
 				if inventory then
 					inventory:Toggle()
@@ -696,12 +886,20 @@ local function completeInitialization(EmoteManager)
 			if not canProcessUiToggle() then
 				return
 			end
+			-- Block input during furnace smelting mini-game
+			if furnaceUI and furnaceUI.isSmelting then
+				return
+			end
 			if minionUI and minionUI.isOpen then
 				minionUI:Close()
 			end
 			if chestUI and chestUI.isOpen then
 				local targetMode = worldsPanel and "worlds" or nil
 				chestUI:Close(targetMode)
+			end
+			if furnaceUI and furnaceUI.isOpen then
+				-- Close furnace when opening worlds
+				furnaceUI:Close("worlds")
 			end
 			if inventory then
 				if inventory.isOpen then
@@ -716,14 +914,20 @@ local function completeInitialization(EmoteManager)
 				else
 					worldsPanel:Open()
 				end
-			else
-				warn("Worlds panel is not available in this place.")
 			end
+			-- Silently skip if worldsPanel not yet initialized
 		elseif input.KeyCode == Enum.KeyCode.Escape then
 			if minionUI and minionUI.isOpen then
 				minionUI:Close()
 			elseif chestUI and chestUI.isOpen then
 				chestUI:Close()
+			elseif furnaceUI and furnaceUI.isOpen then
+				-- ESC closes furnace (or cancels smelting if active)
+				if furnaceUI.isSmelting then
+					furnaceUI:OnCancelSmelt()
+				else
+					furnaceUI:Close()
+				end
 			elseif inventory and inventory.isOpen then
 				inventory:Close()
 			elseif worldsPanel and worldsPanel:IsOpen() then
@@ -793,8 +997,13 @@ local function completeInitialization(EmoteManager)
 	Client.managers.WorldsPanel = worldsPanelInstance
 	worldsPanel = worldsPanelInstance
 	if hotbar then
+		print("🌍 Setting worldsPanel reference on hotbar...")
 		hotbar:SetWorldsPanel(worldsPanelInstance)
+		print("🌍 WorldsPanel reference set successfully")
+	else
+		warn("🌍 hotbar is nil! Cannot set worldsPanel reference")
 	end
+	print("🌍 Worlds Panel initialized")
 
 	-- Create main HUD (after panels are registered)
 	local MainHUD = require(script.Parent.UI.MainHUD)
@@ -1101,6 +1310,7 @@ local function initialize()
 
     -- Request initial chunks after our custom entity spawns
     local initializedFromEntity = false
+    local playerSpawnPosition = nil
     print("🎯 Waiting for PlayerEntitySpawned event from server...")
     EventManager:RegisterEvent("PlayerEntitySpawned", function(data)
         print("🎉 Received PlayerEntitySpawned event!", data)
@@ -1129,17 +1339,73 @@ local function initialize()
 
         -- Get current position from character (server already spawned it at correct location)
         local pos = rootPart.Position
+        playerSpawnPosition = pos
         print("📍 Character spawned at:", pos)
+
+        -- Set spawn chunk for loading tracking (all worlds)
+        setSpawnPosition(pos.X, pos.Z)
 
         -- Set replication focus to character
         pcall(function()
             localPlayer.ReplicationFocus = rootPart
         end)
 
-        -- Send initial position to server
+        -- Send initial position to server and request chunks
         EventManager:SendToServer("VoxelPlayerPositionUpdate", { x = pos.X, z = pos.Z })
         EventManager:SendToServer("VoxelRequestInitialChunks")
         print("📦 Requested initial chunks for voxel world (entity spawn)")
+
+        -- Hold loading screen until minimum chunks are loaded
+        local LoadingScreen = require(script.Parent.UI.LoadingScreen)
+        if LoadingScreen.IsActive and LoadingScreen:IsActive() then
+            local totalRequired = #requiredChunkKeys
+            LoadingScreen:HoldForWorldStatus("Loading World", "Terrain 0%")
+
+            -- Update progress periodically while waiting
+            local progressUpdateConnection
+            progressUpdateConnection = game:GetService("RunService").Heartbeat:Connect(function()
+                if spawnChunkReady then
+                    if progressUpdateConnection then
+                        progressUpdateConnection:Disconnect()
+                        progressUpdateConnection = nil
+                    end
+                    return
+                end
+                local loaded = countLoadedRequiredChunks()
+                local percent = math.floor((loaded / totalRequired) * 100)
+                if LoadingScreen.HoldForWorldStatus then
+                    LoadingScreen:HoldForWorldStatus("Loading World", string.format("Terrain %d%%", percent))
+                end
+            end)
+
+            -- Wait for spawn chunks to be ready, then release
+            onSpawnChunkReady(function()
+                if progressUpdateConnection then
+                    progressUpdateConnection:Disconnect()
+                    progressUpdateConnection = nil
+                end
+                print("✅ Spawn area chunks ready - releasing loading screen")
+                if LoadingScreen.ReleaseWorldHold then
+                    LoadingScreen:ReleaseWorldHold()
+                end
+            end)
+
+            -- Timeout fallback - don't hold forever
+            task.delay(20, function()
+                if not spawnChunkReady then
+                    if progressUpdateConnection then
+                        progressUpdateConnection:Disconnect()
+                        progressUpdateConnection = nil
+                    end
+                    local loaded = countLoadedRequiredChunks()
+                    warn(string.format("⚠️ Spawn chunk load timeout (%d/%d loaded) - forcing loading screen release", loaded, totalRequired))
+                    spawnChunkReady = true
+                    if LoadingScreen.ReleaseWorldHold then
+                        LoadingScreen:ReleaseWorldHold()
+                    end
+                end
+            end)
+        end
     end)
 
     -- Player snapshots (DISABLED - no custom controller)

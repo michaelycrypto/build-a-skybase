@@ -74,6 +74,11 @@ local function _blockWorldCenter(blockPos)
 	)
 end
 
+local function _isMinionBlock(blockId)
+	return blockId == Constants.BlockType.COBBLESTONE_MINION
+		or blockId == Constants.BlockType.COAL_MINION
+end
+
 local lastCancelKey = nil
 local lastCancelAt = 0
 local hitSoundTimestamps = {}
@@ -661,7 +666,15 @@ local function interactOrPlace()
 					z = blockPos.Z
 				})
 				return true
-			elseif blockId == Constants.BlockType.COBBLESTONE_MINION then
+			elseif blockId == Constants.BlockType.FURNACE then
+				print("Opening furnace at", blockPos.X, blockPos.Y, blockPos.Z)
+				EventManager:SendToServer("RequestOpenFurnace", {
+					x = blockPos.X,
+					y = blockPos.Y,
+					z = blockPos.Z
+				})
+				return true
+			elseif _isMinionBlock(blockId) then
 				local now = os.clock()
 				if (now - lastMinionOpenRequestAt) < MINION_OPEN_DEBOUNCE then
 					print("[BlockInteraction] Minion open request debounced (block path)")
@@ -1154,6 +1167,28 @@ function BlockInteraction:UpdateTargeting()
 	-- Clear last targeted block to force a fresh update
 	lastTargetedBlock = nil
 	updateSelectionBox()
+end
+
+--[[
+	Start breaking the targeted block (for mobile action bar)
+	This allows external callers to trigger breaking without touch events
+]]
+function BlockInteraction:StartBreaking()
+	startBreaking()
+end
+
+--[[
+	Stop breaking the current block (for mobile action bar)
+]]
+function BlockInteraction:StopBreaking()
+	stopBreaking()
+end
+
+--[[
+	Try to place a block at the targeted position (for mobile action bar)
+]]
+function BlockInteraction:TryPlace()
+	tryPlaceBlock()
 end
 
 return BlockInteraction

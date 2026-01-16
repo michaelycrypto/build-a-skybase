@@ -99,6 +99,37 @@ local UI_MODES = {
 			persist = true
 		},
 		cursorMode = "ui"
+	},
+	furnace = {
+		visibleComponents = {"furnaceUI"},
+		hiddenComponents = {"mainHUD", "voxelHotbar", "statusBarsHUD", "crosshair", "voxelInventory", "worldsPanel"},
+		backdrop = true,
+		backdropConfig = {
+			blur = true,
+			blurSize = 24,
+			overlay = true,
+			overlayColor = Color3.fromRGB(58, 58, 58),
+			overlayTransparency = 0.35,
+			displayOrder = 99,
+			persist = true
+		},
+		cursorMode = "ui"
+	},
+	-- Smelting mini-game mode (more immersive, darker)
+	smelting = {
+		visibleComponents = {"furnaceUI"},
+		hiddenComponents = {"mainHUD", "voxelHotbar", "statusBarsHUD", "crosshair", "voxelInventory", "worldsPanel"},
+		backdrop = true,
+		backdropConfig = {
+			blur = true,
+			blurSize = 32,
+			overlay = true,
+			overlayColor = Color3.fromRGB(20, 12, 8),
+			overlayTransparency = 0.15,
+			displayOrder = 99,
+			persist = true
+		},
+		cursorMode = "ui"
 	}
 }
 

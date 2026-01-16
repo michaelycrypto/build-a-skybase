@@ -26,20 +26,15 @@ function ControlSchemes.new()
 	self.currentScheme = SchemeType.Classic
 
 	-- Scheme definitions
+	-- Note: Action bar (Sprint/Attack/Camera) uses fixed positioning on right edge
 	self.schemes = {
 		[SchemeType.Classic] = {
 			name = "Classic",
-			description = "Full-screen camera, thumbstick on left",
+			description = "Full-screen camera, thumbstick on left, action bar on right",
 			thumbstickPosition = UDim2.new(0, 100, 1, -150),
 			cameraZone = "FullScreen",
-			buttonLayout = "RightSide",
 			splitRatio = 0,
 			showCrosshair = false,
-			buttons = {
-				Jump = UDim2.new(1, -90, 1, -150),
-				Crouch = UDim2.new(1, -90, 1, -240),
-				Sprint = UDim2.new(1, -180, 1, -150),
-			},
 		},
 
 		[SchemeType.Split] = {
@@ -47,14 +42,8 @@ function ControlSchemes.new()
 			description = "Left side movement, right side camera (Minecraft-style)",
 			thumbstickPosition = UDim2.new(0, 100, 1, -150),
 			cameraZone = "RightHalf",
-			buttonLayout = "RightSide",
 			splitRatio = 0.4,
 			showCrosshair = true,
-			buttons = {
-				Jump = UDim2.new(1, -90, 1, -150),
-				Crouch = UDim2.new(0, 120, 1, -240),
-				Sprint = UDim2.new(0, 210, 1, -240),
-			},
 		},
 
 		[SchemeType.OneHandedLeft] = {
@@ -62,15 +51,9 @@ function ControlSchemes.new()
 			description = "All controls on left side",
 			thumbstickPosition = UDim2.new(0, 100, 1, -150),
 			cameraZone = "FullScreen",
-			buttonLayout = "LeftSide",
 			splitRatio = 0,
 			showCrosshair = false,
 			autoAim = true,
-			buttons = {
-				Jump = UDim2.new(0, 100, 1, -80),
-				Crouch = UDim2.new(0, 190, 1, -150),
-				Sprint = UDim2.new(0, 190, 1, -240),
-			},
 		},
 
 		[SchemeType.OneHandedRight] = {
@@ -78,15 +61,9 @@ function ControlSchemes.new()
 			description = "All controls on right side",
 			thumbstickPosition = UDim2.new(1, -150, 1, -150),
 			cameraZone = "FullScreen",
-			buttonLayout = "RightSide",
 			splitRatio = 0,
 			showCrosshair = false,
 			autoAim = true,
-			buttons = {
-				Jump = UDim2.new(1, -150, 1, -80),
-				Crouch = UDim2.new(1, -240, 1, -150),
-				Sprint = UDim2.new(1, -240, 1, -240),
-			},
 		},
 	}
 
@@ -160,12 +137,8 @@ function ControlSchemes:ApplyScheme(schemeType, controllers)
 		end
 	end
 
-	-- Apply to action buttons
-	if controllers.actionButtons then
-		for buttonType, position in pairs(schemeData.buttons) do
-			controllers.actionButtons:SetButtonPosition(buttonType, position)
-		end
-	end
+	-- Action bar uses fixed positioning - no scheme-specific adjustment needed
+	-- It stays on the right edge regardless of control scheme
 
 	-- Apply crosshair visibility (if exists)
 	if controllers.crosshair and schemeData.showCrosshair ~= nil then
@@ -177,13 +150,11 @@ function ControlSchemes:ApplyScheme(schemeType, controllers)
 end
 
 --[[
-	Get scheme button positions
+	Get scheme button positions (deprecated - action bar uses fixed positioning)
 ]]
 function ControlSchemes:GetButtonPositions(schemeType)
-	local schemeData = self.schemes[schemeType or self.currentScheme]
-	if not schemeData then return {} end
-
-	return schemeData.buttons
+	-- Action bar handles its own button positioning
+	return {}
 end
 
 --[[

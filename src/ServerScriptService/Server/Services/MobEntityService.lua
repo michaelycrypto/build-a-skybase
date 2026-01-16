@@ -750,8 +750,12 @@ function MobEntityService:_updateMob(ctx, mob, dt)
 			-- Scan 5x5 footprint for air and target resource; avoid cells claimed by other minions this tick
 			local targetForPlace
 			local targetForMine
-			local BLOCK_TO_PLACE = MinionConfig.GetPlaceBlockId(minionType)
-			local BLOCK_TO_MINE = MinionConfig.GetMineBlockId(minionType)
+			local typeDef = MinionConfig.GetTypeDef(minionType)
+			local BLOCK_TO_PLACE = typeDef.placeBlockId
+			local BLOCK_TO_MINE = typeDef.mineBlockId
+			local BONUS_PLACE_ID = typeDef.bonusPlaceBlockId
+			local BONUS_PLACE_CHANCE = typeDef.bonusPlaceChance or 0
+			local BONUS_MINE_ID = typeDef.bonusMineBlockId
 			-- Randomize scan order to reduce contention patterns across minions
 			local startI = self._rng:NextInteger(0, 4)
 			local dirI = (self._rng:NextNumber(0, 1) < 0.5) and 1 or -1
@@ -774,7 +778,7 @@ function MobEntityService:_updateMob(ctx, mob, dt)
 						local id = getBlock(bx, platformY, bz)
 						if id == BLOCK.AIR and not targetForPlace then
 							targetForPlace = { x = bx, y = platformY, z = bz, key = k }
-						elseif id == BLOCK_TO_MINE and not targetForMine then
+						elseif (id == BLOCK_TO_MINE or (BONUS_MINE_ID and id == BONUS_MINE_ID)) and not targetForMine then
 							targetForMine = { x = bx, y = platformY, z = bz, key = k }
 						end
 					end
@@ -807,7 +811,13 @@ function MobEntityService:_updateMob(ctx, mob, dt)
 				if targetForPlace and target == targetForPlace then
 					-- Re-verify target cell is still AIR before placing (race safety)
 					if getBlock(target.x, target.y, target.z) == BLOCK.AIR then
-						setBlock(target.x, target.y, target.z, BLOCK_TO_PLACE)
+						local placeId = BLOCK_TO_PLACE
+						if BONUS_PLACE_ID and BONUS_PLACE_CHANCE > 0 then
+							if self._rng:NextNumber(0, 1) <= BONUS_PLACE_CHANCE then
+								placeId = BONUS_PLACE_ID
+							end
+						end
+						setBlock(target.x, target.y, target.z, placeId)
 						-- Update last active timestamp for offline catch-up
 						if vws then
 							local anchorKey = brain.basePlatformY and string.format("%d,%d,%d",
@@ -822,7 +832,8 @@ function MobEntityService:_updateMob(ctx, mob, dt)
 					end
 				else
 					-- Mine only if still matching target block
-					if getBlock(target.x, target.y, target.z) == BLOCK_TO_MINE then
+					local minedId = getBlock(target.x, target.y, target.z)
+					if minedId == BLOCK_TO_MINE or (BONUS_MINE_ID and minedId == BONUS_MINE_ID) then
 						-- Try to add to minion's storage
 						local anchorKey = mob.metadata and mob.metadata.anchorKey
 						-- Fallback: compute anchorKey from spawn position if missing (for persisted minions)
@@ -837,7 +848,7 @@ function MobEntityService:_updateMob(ctx, mob, dt)
 							end
 						end
 						if anchorKey and vws and vws.AddItemToMinion then
-							local added = vws:AddItemToMinion(anchorKey, BLOCK_TO_MINE, 1)
+							local added = vws:AddItemToMinion(anchorKey, minedId, 1)
 							if added then
 								-- Successfully stored, mine the block
 								setBlock(target.x, target.y, target.z, BLOCK.AIR)

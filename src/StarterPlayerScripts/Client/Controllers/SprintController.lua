@@ -48,6 +48,26 @@ local function stopSprint()
 	print("🚶 Sprint OFF - WalkSpeed:", NORMAL_WALKSPEED)
 end
 
+--[[
+	Set sprint state programmatically (for mobile toggle)
+	@param enabled boolean - true to sprint, false to stop
+]]
+function SprintController:SetSprinting(enabled)
+	if enabled then
+		startSprint()
+	else
+		stopSprint()
+	end
+end
+
+--[[
+	Check if currently sprinting
+	@return boolean
+]]
+function SprintController:IsSprinting()
+	return isSprinting
+end
+
 function SprintController:Initialize()
 	-- Setup character
 	character = player.Character or player.CharacterAdded:Wait()

@@ -33,7 +33,7 @@ WorldConfig.TOTAL_CHUNKS = WorldConfig.CHUNKS_X * WorldConfig.CHUNKS_Z
 WorldConfig.WORLD_BOUNDS_MIN = Vector3.new(0, 0, 0)
 WorldConfig.WORLD_BOUNDS_MAX = Vector3.new(
 	WorldConfig.MAP_SIZE_X * 3, -- Using BLOCK_SIZE = 3
-    128 * 3, -- Max height * BLOCK_SIZE
+    256 * 3, -- Max height (256) * BLOCK_SIZE
 	WorldConfig.MAP_SIZE_Z * 3
 )
 
