@@ -24,29 +24,29 @@ WorldTypes.registry = {
 		},
 	},
 
-	-- Hub world using imported Minecraft schematic (Winchester Skyblock)
+	-- Hub world using imported Minecraft schematic (SmallTowerHub)
 	hub_world = {
 		id = "hub_world",
 		name = "Lobby Hub",
 		generatorModule = SchematicWorldGenerator,
 		generatorOptions = {
 			-- Path to schematic in ServerStorage
-			schematicPath = "Schematics.Winchester_Skyblock",
-			
+			schematicPath = "Schematics.SmallTowerHub",
+
 			-- Offset to position schematic in world
-			-- Schematic is 135x183x133, centering around origin
-			offsetX = -67,
+			-- Schematic is 181x233x209, centering around origin
+			offsetX = -90,
 			offsetY = 0,
-			offsetZ = -66,
-			
+			offsetZ = -104,
+
 			-- Chunk bounds for streaming optimization
-			-- Calculated from schematic size: 135/16 ≈ 9 chunks, 133/16 ≈ 9 chunks
-			-- With offset, chunks span roughly -5 to 4 on each axis
+			-- Calculated from schematic size: 181/16 ≈ 12 chunks, 209/16 ≈ 14 chunks
+			-- With offset, chunks span roughly -6 to 6 on X, -7 to 7 on Z
 			chunkBounds = {
 				minChunkX = -6,
-				maxChunkX = 5,
-				minChunkZ = -6,
-				maxChunkZ = 5,
+				maxChunkX = 6,
+				minChunkZ = -7,
+				maxChunkZ = 7,
 			},
 		},
 		renderDistance = 6, -- Larger render distance for hub schematic

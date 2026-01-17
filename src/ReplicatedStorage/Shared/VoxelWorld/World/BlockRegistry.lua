@@ -71,7 +71,7 @@ BlockRegistry.Blocks = {
 		transparent = false,
 		color = Color3.fromRGB(84, 84, 84),
 		textures = {
-			all = "bedrock"
+			all = "rbxassetid://72951007570270"
 		},
 		crossShape = false
 	},
@@ -446,8 +446,1162 @@ BlockRegistry.Blocks = {
 			all = "rbxassetid://125273472115959"
 		},
 		crossShape = false
-	}
-,
+	},
+
+	-- Stained Glass blocks (16 colors)
+	[Constants.BlockType.WHITE_STAINED_GLASS] = {
+		name = "White Stained Glass",
+		solid = true,
+		transparent = true,
+		color = Color3.fromRGB(255, 255, 255),
+		textures = {
+			all = "rbxassetid://101559724196735"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.ORANGE_STAINED_GLASS] = {
+		name = "Orange Stained Glass",
+		solid = true,
+		transparent = true,
+		color = Color3.fromRGB(249, 128, 29),
+		textures = {
+			all = "rbxassetid://121766028214736"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.MAGENTA_STAINED_GLASS] = {
+		name = "Magenta Stained Glass",
+		solid = true,
+		transparent = true,
+		color = Color3.fromRGB(189, 68, 179),
+		textures = {
+			all = "rbxassetid://127227482448978"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.LIGHT_BLUE_STAINED_GLASS] = {
+		name = "Light Blue Stained Glass",
+		solid = true,
+		transparent = true,
+		color = Color3.fromRGB(58, 179, 218),
+		textures = {
+			all = "rbxassetid://79305777266996"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.YELLOW_STAINED_GLASS] = {
+		name = "Yellow Stained Glass",
+		solid = true,
+		transparent = true,
+		color = Color3.fromRGB(254, 216, 61),
+		textures = {
+			all = "rbxassetid://129154023775403"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.LIME_STAINED_GLASS] = {
+		name = "Lime Stained Glass",
+		solid = true,
+		transparent = true,
+		color = Color3.fromRGB(128, 199, 31),
+		textures = {
+			all = "rbxassetid://81265789094800"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.PINK_STAINED_GLASS] = {
+		name = "Pink Stained Glass",
+		solid = true,
+		transparent = true,
+		color = Color3.fromRGB(243, 139, 170),
+		textures = {
+			all = "rbxassetid://92565059330167"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.GRAY_STAINED_GLASS] = {
+		name = "Gray Stained Glass",
+		solid = true,
+		transparent = true,
+		color = Color3.fromRGB(63, 63, 63),
+		textures = {
+			all = "rbxassetid://77116232897703"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.LIGHT_GRAY_STAINED_GLASS] = {
+		name = "Light Gray Stained Glass",
+		solid = true,
+		transparent = true,
+		color = Color3.fromRGB(155, 155, 155),
+		textures = {
+			all = "rbxassetid://105560986972055"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.CYAN_STAINED_GLASS] = {
+		name = "Cyan Stained Glass",
+		solid = true,
+		transparent = true,
+		color = Color3.fromRGB(22, 156, 156),
+		textures = {
+			all = "rbxassetid://111757732547609"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.PURPLE_STAINED_GLASS] = {
+		name = "Purple Stained Glass",
+		solid = true,
+		transparent = true,
+		color = Color3.fromRGB(122, 42, 173),
+		textures = {
+			all = "rbxassetid://74096747910416"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.BLUE_STAINED_GLASS] = {
+		name = "Blue Stained Glass",
+		solid = true,
+		transparent = true,
+		color = Color3.fromRGB(60, 68, 170),
+		textures = {
+			all = "rbxassetid://85136323316961"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.BROWN_STAINED_GLASS] = {
+		name = "Brown Stained Glass",
+		solid = true,
+		transparent = true,
+		color = Color3.fromRGB(106, 57, 9),
+		textures = {
+			all = "rbxassetid://73610167807060"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.GREEN_STAINED_GLASS] = {
+		name = "Green Stained Glass",
+		solid = true,
+		transparent = true,
+		color = Color3.fromRGB(84, 109, 27),
+		textures = {
+			all = "rbxassetid://110462844931723"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.RED_STAINED_GLASS] = {
+		name = "Red Stained Glass",
+		solid = true,
+		transparent = true,
+		color = Color3.fromRGB(142, 33, 33),
+		textures = {
+			all = "rbxassetid://102994509797687"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.BLACK_STAINED_GLASS] = {
+		name = "Black Stained Glass",
+		solid = true,
+		transparent = true,
+		color = Color3.fromRGB(20, 21, 25),
+		textures = {
+			all = "rbxassetid://107452960839875"
+		},
+		crossShape = false
+	},
+
+	-- Terracotta blocks (17 colors)
+	[Constants.BlockType.TERRACOTTA] = {
+		name = "Terracotta",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(152, 94, 68),
+		textures = {
+			all = "rbxassetid://97059974560305"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.WHITE_TERRACOTTA] = {
+		name = "White Terracotta",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(209, 177, 161),
+		textures = {
+			all = "rbxassetid://89540083505437"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.ORANGE_TERRACOTTA] = {
+		name = "Orange Terracotta",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(159, 82, 36),
+		textures = {
+			all = "rbxassetid://90843590584261"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.MAGENTA_TERRACOTTA] = {
+		name = "Magenta Terracotta",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(149, 87, 108),
+		textures = {
+			all = "rbxassetid://135705054844099"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.LIGHT_BLUE_TERRACOTTA] = {
+		name = "Light Blue Terracotta",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(112, 108, 138),
+		textures = {
+			all = "rbxassetid://99778109908231"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.YELLOW_TERRACOTTA] = {
+		name = "Yellow Terracotta",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(186, 133, 36),
+		textures = {
+			all = "rbxassetid://89038002746670"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.LIME_TERRACOTTA] = {
+		name = "Lime Terracotta",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(103, 117, 53),
+		textures = {
+			all = "rbxassetid://128397464621655"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.PINK_TERRACOTTA] = {
+		name = "Pink Terracotta",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(160, 77, 78),
+		textures = {
+			all = "rbxassetid://124703932136783"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.GRAY_TERRACOTTA] = {
+		name = "Gray Terracotta",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(57, 41, 35),
+		textures = {
+			all = "rbxassetid://92602201738916"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.LIGHT_GRAY_TERRACOTTA] = {
+		name = "Light Gray Terracotta",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(135, 107, 98),
+		textures = {
+			all = "rbxassetid://140641571434848"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.CYAN_TERRACOTTA] = {
+		name = "Cyan Terracotta",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(87, 91, 91),
+		textures = {
+			all = "rbxassetid://114368208575156"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.PURPLE_TERRACOTTA] = {
+		name = "Purple Terracotta",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(122, 73, 88),
+		textures = {
+			all = "rbxassetid://89309009255562"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.BLUE_TERRACOTTA] = {
+		name = "Blue Terracotta",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(74, 60, 91),
+		textures = {
+			all = "rbxassetid://94990685323008"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.BROWN_TERRACOTTA] = {
+		name = "Brown Terracotta",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(77, 51, 36),
+		textures = {
+			all = "rbxassetid://108346640958472"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.GREEN_TERRACOTTA] = {
+		name = "Green Terracotta",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(76, 83, 42),
+		textures = {
+			all = "rbxassetid://79867171164469"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.RED_TERRACOTTA] = {
+		name = "Red Terracotta",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(142, 60, 46),
+		textures = {
+			all = "rbxassetid://85487817833931"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.BLACK_TERRACOTTA] = {
+		name = "Black Terracotta",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(37, 22, 16),
+		textures = {
+			all = "rbxassetid://138500268109404"
+		},
+		crossShape = false
+	},
+
+	-- Wool blocks (16 colors)
+	[Constants.BlockType.WHITE_WOOL] = {
+		name = "White Wool",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(233, 236, 236),
+		textures = {
+			all = "rbxassetid://89541443504786"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.ORANGE_WOOL] = {
+		name = "Orange Wool",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(249, 128, 29),
+		textures = {
+			all = "rbxassetid://128892676881010"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.MAGENTA_WOOL] = {
+		name = "Magenta Wool",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(189, 68, 179),
+		textures = {
+			all = "rbxassetid://131270645277697"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.LIGHT_BLUE_WOOL] = {
+		name = "Light Blue Wool",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(58, 179, 218),
+		textures = {
+			all = "rbxassetid://108882719531816"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.YELLOW_WOOL] = {
+		name = "Yellow Wool",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(254, 216, 61),
+		textures = {
+			all = "rbxassetid://114616257363493"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.LIME_WOOL] = {
+		name = "Lime Wool",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(128, 199, 31),
+		textures = {
+			all = "rbxassetid://116704379882608"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.PINK_WOOL] = {
+		name = "Pink Wool",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(243, 139, 170),
+		textures = {
+			all = "rbxassetid://131985514888841"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.GRAY_WOOL] = {
+		name = "Gray Wool",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(63, 63, 63),
+		textures = {
+			all = "rbxassetid://83395797424120"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.LIGHT_GRAY_WOOL] = {
+		name = "Light Gray Wool",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(155, 155, 155),
+		textures = {
+			all = "rbxassetid://116426811683404"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.CYAN_WOOL] = {
+		name = "Cyan Wool",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(22, 156, 156),
+		textures = {
+			all = "rbxassetid://136581279855939"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.PURPLE_WOOL] = {
+		name = "Purple Wool",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(122, 42, 173),
+		textures = {
+			all = "rbxassetid://128367088551959"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.BLUE_WOOL] = {
+		name = "Blue Wool",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(60, 68, 170),
+		textures = {
+			all = "rbxassetid://84908082320166"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.BROWN_WOOL] = {
+		name = "Brown Wool",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(106, 57, 9),
+		textures = {
+			all = "rbxassetid://95346063217465"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.GREEN_WOOL] = {
+		name = "Green Wool",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(84, 109, 27),
+		textures = {
+			all = "rbxassetid://109069031644742"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.RED_WOOL] = {
+		name = "Red Wool",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(142, 33, 33),
+		textures = {
+			all = "rbxassetid://76065063448794"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.BLACK_WOOL] = {
+		name = "Black Wool",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(20, 21, 25),
+		textures = {
+			all = "rbxassetid://99030790400384"
+		},
+		crossShape = false
+	},
+
+	-- Additional blocks
+	[Constants.BlockType.NETHER_BRICKS] = {
+		name = "Nether Bricks",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(48, 24, 28),
+		textures = {
+			all = "rbxassetid://128785967170527"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.GRAVEL] = {
+		name = "Gravel",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(127, 127, 127),
+		textures = {
+			all = "rbxassetid://120564951796528"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.COARSE_DIRT] = {
+		name = "Coarse Dirt",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(135, 96, 66),
+		textures = {
+			all = "rbxassetid://99120189484076"
+		},
+		crossShape = false
+	},
+
+	-- Stone variants
+	[Constants.BlockType.SANDSTONE] = {
+		name = "Sandstone",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(220, 202, 160),
+		textures = {
+			top = "rbxassetid://137930792211357",
+			bottom = "rbxassetid://136805892114309",
+			side = "rbxassetid://137701739718359",
+			all = "rbxassetid://137701739718359" -- Fallback
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.DIORITE] = {
+		name = "Diorite",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(220, 220, 220),
+		textures = {
+			all = "rbxassetid://109151622306052"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.POLISHED_DIORITE] = {
+		name = "Polished Diorite",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(220, 220, 220),
+		textures = {
+			all = "rbxassetid://126833103762414"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.ANDESITE] = {
+		name = "Andesite",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(136, 136, 136),
+		textures = {
+			all = "rbxassetid://125993902053331"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.POLISHED_ANDESITE] = {
+		name = "Polished Andesite",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(136, 136, 136),
+		textures = {
+			all = "rbxassetid://103374196150633"
+		},
+		crossShape = false
+	},
+
+	-- Concrete blocks (16 colors)
+	[Constants.BlockType.WHITE_CONCRETE] = {
+		name = "White Concrete",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(207, 213, 214),
+		textures = {
+			all = "rbxassetid://134061445903358"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.ORANGE_CONCRETE] = {
+		name = "Orange Concrete",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(224, 97, 1),
+		textures = {
+			all = "rbxassetid://132020713388236"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.MAGENTA_CONCRETE] = {
+		name = "Magenta Concrete",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(169, 48, 159),
+		textures = {
+			all = "rbxassetid://108944072842970"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.LIGHT_BLUE_CONCRETE] = {
+		name = "Light Blue Concrete",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(36, 137, 199),
+		textures = {
+			all = "rbxassetid://121912341948653"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.YELLOW_CONCRETE] = {
+		name = "Yellow Concrete",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(241, 175, 21),
+		textures = {
+			all = "rbxassetid://122653472121870"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.LIME_CONCRETE] = {
+		name = "Lime Concrete",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(94, 169, 24),
+		textures = {
+			all = "rbxassetid://126257202987136"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.PINK_CONCRETE] = {
+		name = "Pink Concrete",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(214, 101, 143),
+		textures = {
+			all = "rbxassetid://87337779708956"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.GRAY_CONCRETE] = {
+		name = "Gray Concrete",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(55, 58, 62),
+		textures = {
+			all = "rbxassetid://92380672034294"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.LIGHT_GRAY_CONCRETE] = {
+		name = "Light Gray Concrete",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(125, 125, 115),
+		textures = {
+			all = "rbxassetid://92556473453315"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.CYAN_CONCRETE] = {
+		name = "Cyan Concrete",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(21, 119, 136),
+		textures = {
+			all = "rbxassetid://79009543043665"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.PURPLE_CONCRETE] = {
+		name = "Purple Concrete",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(100, 32, 156),
+		textures = {
+			all = "rbxassetid://115975571453155"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.BLUE_CONCRETE] = {
+		name = "Blue Concrete",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(45, 47, 143),
+		textures = {
+			all = "rbxassetid://115359561390718"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.BROWN_CONCRETE] = {
+		name = "Brown Concrete",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(96, 60, 32),
+		textures = {
+			all = "rbxassetid://131769185067505"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.GREEN_CONCRETE] = {
+		name = "Green Concrete",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(73, 91, 36),
+		textures = {
+			all = "rbxassetid://95624876732859"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.RED_CONCRETE] = {
+		name = "Red Concrete",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(142, 33, 33),
+		textures = {
+			all = "rbxassetid://116816202250681"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.BLACK_CONCRETE] = {
+		name = "Black Concrete",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(8, 10, 15),
+		textures = {
+			all = "rbxassetid://77780395031462"
+		},
+		crossShape = false
+	},
+
+	-- Concrete powder blocks (16 colors)
+	[Constants.BlockType.WHITE_CONCRETE_POWDER] = {
+		name = "White Concrete Powder",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(207, 213, 214),
+		textures = {
+			all = "rbxassetid://140409192582723"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.ORANGE_CONCRETE_POWDER] = {
+		name = "Orange Concrete Powder",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(224, 97, 1),
+		textures = {
+			all = "rbxassetid://116942281728029"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.MAGENTA_CONCRETE_POWDER] = {
+		name = "Magenta Concrete Powder",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(169, 48, 159),
+		textures = {
+			all = "rbxassetid://96648021299794"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.LIGHT_BLUE_CONCRETE_POWDER] = {
+		name = "Light Blue Concrete Powder",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(36, 137, 199),
+		textures = {
+			all = "rbxassetid://134088524735223"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.YELLOW_CONCRETE_POWDER] = {
+		name = "Yellow Concrete Powder",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(241, 175, 21),
+		textures = {
+			all = "rbxassetid://95372717832752"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.LIME_CONCRETE_POWDER] = {
+		name = "Lime Concrete Powder",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(94, 169, 24),
+		textures = {
+			all = "rbxassetid://124469408477863"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.PINK_CONCRETE_POWDER] = {
+		name = "Pink Concrete Powder",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(214, 101, 143),
+		textures = {
+			all = "rbxassetid://123360325811963"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.GRAY_CONCRETE_POWDER] = {
+		name = "Gray Concrete Powder",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(55, 58, 62),
+		textures = {
+			all = "rbxassetid://92018875964263"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.LIGHT_GRAY_CONCRETE_POWDER] = {
+		name = "Light Gray Concrete Powder",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(125, 125, 115),
+		textures = {
+			all = "rbxassetid://77743881447116"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.CYAN_CONCRETE_POWDER] = {
+		name = "Cyan Concrete Powder",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(21, 119, 136),
+		textures = {
+			all = "rbxassetid://125728638453972"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.PURPLE_CONCRETE_POWDER] = {
+		name = "Purple Concrete Powder",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(100, 32, 156),
+		textures = {
+			all = "rbxassetid://84621794876713"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.BLUE_CONCRETE_POWDER] = {
+		name = "Blue Concrete Powder",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(45, 47, 143),
+		textures = {
+			all = "rbxassetid://140116393996653"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.BROWN_CONCRETE_POWDER] = {
+		name = "Brown Concrete Powder",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(96, 60, 32),
+		textures = {
+			all = "rbxassetid://123132798731793"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.GREEN_CONCRETE_POWDER] = {
+		name = "Green Concrete Powder",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(73, 91, 36),
+		textures = {
+			all = "rbxassetid://98371532667643"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.RED_CONCRETE_POWDER] = {
+		name = "Red Concrete Powder",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(142, 33, 33),
+		textures = {
+			all = "rbxassetid://113707793327671"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.BLACK_CONCRETE_POWDER] = {
+		name = "Black Concrete Powder",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(8, 10, 15),
+		textures = {
+			all = "rbxassetid://104777196974200"
+		},
+		crossShape = false
+	},
+
+	-- Additional stair types (using textures from base blocks)
+	[Constants.BlockType.ANDESITE_STAIRS] = {
+		name = "Andesite Stairs",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(136, 136, 136),
+		textures = {
+			all = "rbxassetid://125993902053331"
+		},
+		stairShape = true,
+		hasRotation = true
+	},
+
+	[Constants.BlockType.DIORITE_STAIRS] = {
+		name = "Diorite Stairs",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(220, 220, 220),
+		textures = {
+			all = "rbxassetid://109151622306052"
+		},
+		stairShape = true,
+		hasRotation = true
+	},
+
+	[Constants.BlockType.SANDSTONE_STAIRS] = {
+		name = "Sandstone Stairs",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(220, 202, 160),
+		textures = {
+			top = "rbxassetid://137930792211357",
+			bottom = "rbxassetid://136805892114309",
+			side = "rbxassetid://137701739718359",
+			all = "rbxassetid://137701739718359" -- Fallback
+		},
+		stairShape = true,
+		hasRotation = true
+	},
+
+	[Constants.BlockType.NETHER_BRICK_STAIRS] = {
+		name = "Nether Brick Stairs",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(48, 24, 28),
+		textures = {
+			all = "rbxassetid://128785967170527"
+		},
+		stairShape = true,
+		hasRotation = true
+	},
+
+	-- Quartz blocks
+	[Constants.BlockType.QUARTZ_BLOCK] = {
+		name = "Quartz Block",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(236, 233, 227),
+		textures = {
+			top = "rbxassetid://83975873493407",
+			bottom = "rbxassetid://112797281792184",
+			side = "rbxassetid://86606476374001",
+			all = "rbxassetid://86606476374001" -- Fallback
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.QUARTZ_PILLAR] = {
+		name = "Quartz Pillar",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(236, 233, 227),
+		textures = {
+			top = "rbxassetid://108915086867923",
+			bottom = "rbxassetid://108915086867923",
+			side = "rbxassetid://99859045449711",
+			all = "rbxassetid://99859045449711" -- Fallback
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.CHISELED_QUARTZ_BLOCK] = {
+		name = "Chiseled Quartz Block",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(236, 233, 227),
+		textures = {
+			top = "rbxassetid://75555939359221",
+			bottom = "rbxassetid://75555939359221",
+			side = "rbxassetid://129059241151222",
+			all = "rbxassetid://129059241151222" -- Fallback
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.QUARTZ_STAIRS] = {
+		name = "Quartz Stairs",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(236, 233, 227),
+		textures = {
+			all = "rbxassetid://86606476374001" -- Use quartz block side texture
+		},
+		stairShape = true,
+		hasRotation = true
+	},
+
+	[Constants.BlockType.BLACKSTONE] = {
+		name = "Blackstone",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(84, 84, 84),
+		textures = {
+			all = "rbxassetid://72951007570270" -- Uses bedrock texture
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.GRANITE] = {
+		name = "Granite",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(146, 100, 88),
+		textures = {
+			all = "rbxassetid://102350830817868"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.POLISHED_GRANITE] = {
+		name = "Polished Granite",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(146, 100, 88),
+		textures = {
+			all = "rbxassetid://103738974930285"
+		},
+		crossShape = false
+	},
+
+	[Constants.BlockType.GRANITE_STAIRS] = {
+		name = "Granite Stairs",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(146, 100, 88),
+		textures = {
+			all = "rbxassetid://102350830817868" -- Use granite texture
+		},
+		stairShape = true,
+		hasRotation = true
+	},
+
+	[Constants.BlockType.PODZOL] = {
+		name = "Podzol",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(123, 88, 60),
+		textures = {
+			top = "rbxassetid://83330783906624",
+			bottom = "rbxassetid://73446970436738",
+			side = "rbxassetid://73446970436738",
+			all = "rbxassetid://73446970436738" -- Fallback
+		},
+		crossShape = false
+	},
 
 	-- Utility: Stone Golem block (visual mob, block itself is invisible)
 	[Constants.BlockType.COBBLESTONE_MINION] = {

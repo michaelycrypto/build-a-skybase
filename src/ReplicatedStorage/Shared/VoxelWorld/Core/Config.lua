@@ -46,7 +46,9 @@ local Config = {
 		MAX_CHUNKS_PER_FRAME = 2, -- Lower per-frame generation load
 		MAX_MESH_UPDATES_PER_FRAME = 3, -- Optimized: can handle more chunks per frame
 		MESH_UPDATE_BUDGET_MS = 6, -- Increased budget after optimizations
-		GENERATION_BUDGET_MS = 3 -- Smaller generation time budget
+		GENERATION_BUDGET_MS = 3, -- Smaller generation time budget
+		MAX_PARTS_PER_CHUNK = 600, -- Default max mesh parts per chunk
+		MAX_PARTS_PER_CHUNK_HUB = 10000 -- Higher limit for hub worlds with complex schematics (SimpleHub has ~6k blocks/chunk)
 	},
 
 	-- Unload delay (seconds) used by ChunkManager

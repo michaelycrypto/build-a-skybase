@@ -130,7 +130,7 @@ local function setSpawnPosition(worldX, worldZ)
 	local cz = math.floor(worldZ / (CHUNK_SZ * bs))
 	spawnChunkKey = tostring(cx) .. "," .. tostring(cz)
 	spawnChunkReady = false
-	
+
 	-- Generate list of required chunk keys (square around spawn)
 	requiredChunkKeys = {}
 	for dx = -loadingChunkRadius, loadingChunkRadius do
@@ -139,9 +139,9 @@ local function setSpawnPosition(worldX, worldZ)
 			table.insert(requiredChunkKeys, key)
 		end
 	end
-	
+
 	local total = #requiredChunkKeys
-	print(string.format("[VoxelWorld] Spawn position set to chunk (%d,%d), requiring %d chunks (radius %d)", 
+	print(string.format("[VoxelWorld] Spawn position set to chunk (%d,%d), requiring %d chunks (radius %d)",
 		cx, cz, total, loadingChunkRadius))
 
 	-- Check if already loaded
@@ -159,12 +159,15 @@ local function startMeshWorker()
 		-- Cache config values outside the loop
 		local vwConfig = require(ReplicatedStorage.Shared.VoxelWorld.Core.Config)
 		local vwDebug = vwConfig.DEBUG
-		local maxParts = (vwDebug and vwDebug.MAX_PARTS_PER_CHUNK) or 600
+		local vwPerf = vwConfig.PERFORMANCE
+		-- Higher limit for hub worlds with complex schematics (can have 5000+ blocks per chunk)
+		local defaultMaxParts = isHubWorld and (vwPerf.MAX_PARTS_PER_CHUNK_HUB or 2000) or (vwPerf.MAX_PARTS_PER_CHUNK or 600)
+		local maxParts = (vwDebug and vwDebug.MAX_PARTS_PER_CHUNK) or defaultMaxParts
 		local bs = Constants.BLOCK_SIZE
 		local CHUNK_SX = Constants.CHUNK_SIZE_X
 		local CHUNK_SZ = Constants.CHUNK_SIZE_Z
 		local AIR = Constants.BlockType.AIR
-		
+
 		-- Reference to LoadingScreen for burst mode during loading
 		local LoadingScreenRef = require(script.Parent.UI.LoadingScreen)
 

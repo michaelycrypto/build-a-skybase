@@ -157,7 +157,7 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 	end
 
 	local sx, sy, sz = CHUNK_SX, yLimit, CHUNK_SZ
-	
+
 	-- Use flat array with numeric index for visited tracking (MUCH faster than string keys)
 	-- Index = x + y*sx + z*sx*sy gives unique int for each position
 	local visited = {}
@@ -367,7 +367,7 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 					-- For small boxes (<=2 blocks), just check single neighbor
 					-- This is O(1) instead of O(n²) for most cases
 					local visibleFaces = {}
-					
+
 					if dx <= 2 and dy <= 2 and dz <= 2 then
 						-- Small box: single sample per face (fast path)
 						visibleFaces[Enum.NormalId.Left] = not isOccluding(x - 1, y, z)
@@ -386,13 +386,13 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 							if spanB > 1 and not isOccluding(nx, ny, nz + dirB * (spanB - 1)) then return true end
 							return false
 						end
-						
+
 						-- Left/Right faces span Y and Z
-						visibleFaces[Enum.NormalId.Left] = checkFaceCorners(x - 1, y, z, dy, dz, 0, 0) 
+						visibleFaces[Enum.NormalId.Left] = checkFaceCorners(x - 1, y, z, dy, dz, 0, 0)
 							or not isOccluding(x - 1, y + dy - 1, z) or not isOccluding(x - 1, y, z + dz - 1)
 						visibleFaces[Enum.NormalId.Right] = checkFaceCorners(x + dx, y, z, dy, dz, 0, 0)
 							or not isOccluding(x + dx, y + dy - 1, z) or not isOccluding(x + dx, y, z + dz - 1)
-						-- Top/Bottom faces span X and Z  
+						-- Top/Bottom faces span X and Z
 						visibleFaces[Enum.NormalId.Bottom] = checkFaceCorners(x, y - 1, z, dx, dz, 0, 0)
 							or not isOccluding(x + dx - 1, y - 1, z) or not isOccluding(x, y - 1, z + dz - 1)
 						visibleFaces[Enum.NormalId.Top] = checkFaceCorners(x, y + dy, z, dx, dz, 0, 0)
@@ -673,20 +673,20 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 						local topSizeX, topSizeZ, stepOffset
 						if shape == "straight" then
 							if rotation == ROT_N then
-								-- Step at back (+Z side)
+								-- Step at back (-Z side) - Z axis flipped
 								topSizeX = bottomSizeX
 								topSizeZ = Constants.BLOCK_SIZE / 2
-								stepOffset = Vector3.new(0, 0, Constants.BLOCK_SIZE / 4)
+								stepOffset = Vector3.new(0, 0, -Constants.BLOCK_SIZE / 4)
 							elseif rotation == ROT_E then
 								-- Step at right (+X side)
 								topSizeX = Constants.BLOCK_SIZE / 2
 								topSizeZ = bottomSizeZ
 								stepOffset = Vector3.new(Constants.BLOCK_SIZE / 4, 0, 0)
 							elseif rotation == ROT_S then
-								-- Step at front (-Z side)
+								-- Step at front (+Z side) - Z axis flipped
 								topSizeX = bottomSizeX
 								topSizeZ = Constants.BLOCK_SIZE / 2
-								stepOffset = Vector3.new(0, 0, -Constants.BLOCK_SIZE / 4)
+								stepOffset = Vector3.new(0, 0, Constants.BLOCK_SIZE / 4)
 							else
 								-- WEST: Step at left (-X side)
 								topSizeX = Constants.BLOCK_SIZE / 2
@@ -701,13 +701,17 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 							local qz = (shape == "outer_right") and rz or lz
 							local offX = (qx + fx) * (Constants.BLOCK_SIZE / 4)
 							local offZ = (qz + fz) * (Constants.BLOCK_SIZE / 4)
+							-- Flip Z axis for North/South rotations
+							if rotation == ROT_N or rotation == ROT_S then
+								offZ = -offZ
+							end
 							stepOffset = Vector3.new(offX, 0, offZ)
 						else
 							-- Inner: straight half-block geometry (L will be formed by adding a quarter below)
 							if rotation == ROT_N then
 								topSizeX = bottomSizeX
 								topSizeZ = Constants.BLOCK_SIZE / 2
-								stepOffset = Vector3.new(0, 0, Constants.BLOCK_SIZE / 4)
+								stepOffset = Vector3.new(0, 0, -Constants.BLOCK_SIZE / 4) -- Z axis flipped
 							elseif rotation == ROT_E then
 								topSizeX = Constants.BLOCK_SIZE / 2
 								topSizeZ = bottomSizeZ
@@ -715,7 +719,7 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 							elseif rotation == ROT_S then
 								topSizeX = bottomSizeX
 								topSizeZ = Constants.BLOCK_SIZE / 2
-								stepOffset = Vector3.new(0, 0, -Constants.BLOCK_SIZE / 4)
+								stepOffset = Vector3.new(0, 0, Constants.BLOCK_SIZE / 4) -- Z axis flipped
 							else
 								topSizeX = Constants.BLOCK_SIZE / 2
 								topSizeZ = bottomSizeZ
@@ -763,6 +767,10 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 								offX, _, offZ = rx * q, 0, rz * q
 							else
 								offX, _, offZ = lx * q, 0, lz * q
+							end
+							-- Flip Z axis for North/South rotations
+							if rotation == ROT_N or rotation == ROT_S then
+								offZ = -offZ
 							end
 							extraOffset = Vector3.new(offX, 0, offZ)
 

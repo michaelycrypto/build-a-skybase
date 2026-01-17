@@ -52,6 +52,15 @@
         },
         "Winchester_Skyblock": {
           "$path": "src/ServerStorage/Winchester-Skyblock.lua"
+        },
+        "InsaneCraft_Lobby": {
+          "$path": "src/ServerStorage/InsaneCraft_Lobby.lua"
+        },
+        "SimpleHub": {
+          "$path": "src/ServerStorage/SimpleHub.lua"
+        },
+        "SmallTowerHub": {
+          "$path": "src/ServerStorage/SmallTowerHub.lua"
         }
       }
     },
