@@ -122,6 +122,7 @@ local BLOCK_MAPPING = {
 	["brick_slab"] = BlockType.BRICK_SLAB,
 	["andesite_slab"] = BlockType.STONE_SLAB,
 	["sandstone_slab"] = BlockType.STONE_SLAB,
+	["granite_slab"] = BlockType.GRANITE_SLAB,
 
 	-- Fences
 	["oak_fence"] = BlockType.OAK_FENCE,
@@ -309,6 +310,7 @@ local BLOCK_MAPPING = {
 	-- Quartz variants
 	["quartz_stairs"] = BlockType.QUARTZ_STAIRS,
 	["quartz_slab"] = BlockType.STONE_SLAB,
+	["smooth_quartz_slab"] = BlockType.SMOOTH_QUARTZ_SLAB,
 
 	-- Sandstone variants (already mapped above, but keeping for reference)
 	-- ["sandstone_stairs"] = BlockType.SANDSTONE_STAIRS, -- Mapped above

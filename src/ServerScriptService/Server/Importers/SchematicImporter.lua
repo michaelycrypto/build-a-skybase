@@ -170,7 +170,8 @@ local BLOCK_MAPPING = {
 	["brick_slab"] = BLOCK.BRICK_SLAB,
 	["andesite_slab"] = BLOCK.STONE_SLAB,
 	["sandstone_slab"] = BLOCK.STONE_SLAB,
-
+	["granite_slab"] = BLOCK.GRANITE_SLAB,
+	
 	-- Fences (all map to oak fence for now)
 	["oak_fence"] = BLOCK.OAK_FENCE,
 	["spruce_fence"] = BLOCK.OAK_FENCE,
@@ -316,7 +317,7 @@ local BLOCK_MAPPING = {
 	-- Blackstone (uses bedrock texture)
 	["blackstone"] = BLOCK.BLACKSTONE,
 	["blackstone_stairs"] = BLOCK.STONE_STAIRS, -- Map to stone stairs
-	["blackstone_slab"] = BLOCK.STONE_SLAB, -- Map to stone slab
+	["blackstone_slab"] = BLOCK.BLACKSTONE_SLAB,
 
 	-- Quartz blocks
 	["quartz_block"] = BLOCK.QUARTZ_BLOCK,
@@ -324,6 +325,7 @@ local BLOCK_MAPPING = {
 	["chiseled_quartz_block"] = BLOCK.CHISELED_QUARTZ_BLOCK,
 	["quartz_pillar"] = BLOCK.QUARTZ_PILLAR,
 	["quartz_bricks"] = BLOCK.QUARTZ_BLOCK, -- Use same texture as quartz_block
+	["smooth_quartz_slab"] = BLOCK.SMOOTH_QUARTZ_SLAB,
 
 	-- Prismarine → Stone
 	["prismarine"] = BLOCK.STONE,

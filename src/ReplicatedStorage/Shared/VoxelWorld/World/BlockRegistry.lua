@@ -1603,6 +1603,40 @@ BlockRegistry.Blocks = {
 		crossShape = false
 	},
 
+	-- Additional slab types (using textures from base blocks)
+	[Constants.BlockType.GRANITE_SLAB] = {
+		name = "Granite Slab",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(146, 100, 88),
+		textures = {
+			all = "rbxassetid://102350830817868"
+		},
+		slabShape = true
+	},
+
+	[Constants.BlockType.BLACKSTONE_SLAB] = {
+		name = "Blackstone Slab",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(84, 84, 84),
+		textures = {
+			all = "rbxassetid://72951007570270" -- Uses bedrock texture
+		},
+		slabShape = true
+	},
+
+	[Constants.BlockType.SMOOTH_QUARTZ_SLAB] = {
+		name = "Smooth Quartz Slab",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(236, 233, 227),
+		textures = {
+			all = "rbxassetid://86606476374001" -- Use quartz block side texture
+		},
+		slabShape = true
+	},
+
 	-- Utility: Stone Golem block (visual mob, block itself is invisible)
 	[Constants.BlockType.COBBLESTONE_MINION] = {
 		name = "Stone Golem",

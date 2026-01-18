@@ -304,7 +304,12 @@ local Constants = {
 		GRANITE_STAIRS = 224,
 
 		-- Podzol
-		PODZOL = 223
+		PODZOL = 223,
+		
+		-- Additional slab types (using textures from base blocks)
+		GRANITE_SLAB = 225,
+		BLACKSTONE_SLAB = 226,
+		SMOOTH_QUARTZ_SLAB = 227
 		-- BEDROCK already exists at ID 4
 	},
 
@@ -320,6 +325,9 @@ local Constants = {
 		[52] = 49,  -- DARK_OAK_SLAB → DARK_OAK_PLANKS
 		[57] = 54,  -- BIRCH_SLAB → BIRCH_PLANKS
 		[62] = 59,  -- ACACIA_SLAB → ACACIA_PLANKS
+		[225] = 221,  -- GRANITE_SLAB → GRANITE
+		[226] = 220,  -- BLACKSTONE_SLAB → BLACKSTONE
+		[227] = 216,  -- SMOOTH_QUARTZ_SLAB → QUARTZ_BLOCK
 	},
 
 	-- Reverse mapping: Full block ID → Slab ID (what to drop when broken)
@@ -334,6 +342,9 @@ local Constants = {
 		[49] = 52,  -- DARK_OAK_PLANKS → DARK_OAK_SLAB
 		[54] = 57,  -- BIRCH_PLANKS → BIRCH_SLAB
 		[59] = 62,  -- ACACIA_PLANKS → ACACIA_SLAB
+		[221] = 225,  -- GRANITE → GRANITE_SLAB
+		[220] = 226,  -- BLACKSTONE → BLACKSTONE_SLAB
+		[216] = 227,  -- QUARTZ_BLOCK → SMOOTH_QUARTZ_SLAB
 	},
 
 	-- Mapping: Ore block ID → Material item ID (what to drop when mined)
