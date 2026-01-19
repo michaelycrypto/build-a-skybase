@@ -109,8 +109,14 @@ local _pendingState = nil
 
 -- Helper functions
 local function setupCharacter(character)
-	local humanoid = character:WaitForChild("Humanoid")
-	character:WaitForChild("HumanoidRootPart")
+	local humanoid = character:WaitForChild("Humanoid", 5)
+	local hrp = character:WaitForChild("HumanoidRootPart", 5)
+
+	if not humanoid or not hrp then
+		warn("[CameraController] Character missing required parts, aborting setup")
+		return nil
+	end
+
 	task.wait(0.1)
 
 	_humanoid = humanoid

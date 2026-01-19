@@ -855,14 +855,21 @@ end
 
 function VoxelWorldService:_streamSpawnChunksForPlayer(player, chunkX, chunkZ)
 	if not chunkX or not chunkZ then
+		warn("[VoxelWorldService] _streamSpawnChunksForPlayer: Invalid chunk coords", chunkX, chunkZ)
 		return
 	end
 
+	print(string.format("[VoxelWorldService] Streaming spawn chunks around (%d,%d) for %s", chunkX, chunkZ, player.Name))
+	local streamed = 0
 	for dx = -1, 1 do
 		for dz = -1, 1 do
-			self:StreamChunkToPlayer(player, chunkX + dx, chunkZ + dz)
+			local ok = self:StreamChunkToPlayer(player, chunkX + dx, chunkZ + dz)
+			if ok then
+				streamed = streamed + 1
+			end
 		end
 	end
+	print(string.format("[VoxelWorldService] Streamed %d/9 spawn chunks to %s", streamed, player.Name))
 end
 
 -- Update world seed (called when owner joins)
@@ -885,18 +892,28 @@ end
 -- Stream chunk to player
 function VoxelWorldService:StreamChunkToPlayer(player, chunkX, chunkZ)
 	local playerData = self.players[player]
-	if not playerData then return false end
+	if not playerData then
+		warn(string.format("[VoxelWorldService] StreamChunkToPlayer: No player data for %s", player.Name))
+		return false
+	end
 
 	local key = string.format("%d,%d", chunkX, chunkZ)
 
 	-- Skip known-empty chunks (Skyblock/void worlds)
 	if self.worldManager and self.worldManager.IsChunkEmpty and self.worldManager:IsChunkEmpty(chunkX, chunkZ) then
+		-- Debug log for spawn chunks (around 0,0)
+		if math.abs(chunkX) <= 2 and math.abs(chunkZ) <= 2 then
+			print(string.format("[VoxelWorldService] Chunk (%d,%d) marked as EMPTY - skipping stream", chunkX, chunkZ))
+		end
 		return false
 	end
 
 	-- Get or create chunk
 	local chunk = self.worldManager:GetChunk(chunkX, chunkZ)
-	if not chunk then return false end
+	if not chunk then
+		warn(string.format("[VoxelWorldService] StreamChunkToPlayer: Failed to get chunk (%d,%d)", chunkX, chunkZ))
+		return false
+	end
 
     -- Serialize and send via EventManager (with caching)
     local startTime = os.clock()
@@ -910,6 +927,25 @@ function VoxelWorldService:StreamChunkToPlayer(player, chunkX, chunkZ)
     if not compressed or chunk.isDirty then
         chunk._compressing = true
         local linear = chunk:SerializeLinear()
+
+        -- DEBUG: Log sample block IDs from the flat array
+        if linear.flat and #linear.flat > 0 then
+            local blockCounts = {}
+            for i = 1, math.min(1000, #linear.flat) do
+                local bid = linear.flat[i]
+                if bid and bid ~= 0 then
+                    blockCounts[bid] = (blockCounts[bid] or 0) + 1
+                end
+            end
+            local sample = {}
+            for bid, count in pairs(blockCounts) do
+                table.insert(sample, string.format("%d:%d", bid, count))
+            end
+            if #sample > 0 then
+                print(string.format("[VoxelWorldService] Chunk %d,%d linear sample: %s", chunkX, chunkZ, table.concat(sample, ", ")))
+            end
+        end
+
         compressed = ChunkCompressor.CompressForNetwork(linear)
         compressed.x = linear.x
         compressed.z = linear.z

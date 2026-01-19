@@ -2283,6 +2283,1225 @@ BlockRegistry.Blocks = {
 		color = Color3.fromRGB(193, 242, 242), -- #c1f2f2
 		textures = { all = "rbxassetid://120386947860707" },
 		crossShape = false
+	},
+
+	-- ═══════════════════════════════════════════════════════════════════════════
+	-- ICE VARIANTS
+	-- ═══════════════════════════════════════════════════════════════════════════
+	[Constants.BlockType.ICE] = {
+		name = "Ice",
+		solid = true,
+		transparent = true,
+		color = Color3.fromRGB(160, 200, 255),
+		textures = { all = "rbxassetid://96743487700676" },
+		crossShape = false
+	},
+	[Constants.BlockType.PACKED_ICE] = {
+		name = "Packed Ice",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(140, 180, 220),
+		textures = { all = "rbxassetid://75266323917626" },
+		crossShape = false
+	},
+	[Constants.BlockType.BLUE_ICE] = {
+		name = "Blue Ice",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(100, 150, 220),
+		textures = { all = "rbxassetid://84379385514767" },
+		crossShape = false
+	},
+
+	-- ═══════════════════════════════════════════════════════════════════════════
+	-- SNOW & SPONGE
+	-- ═══════════════════════════════════════════════════════════════════════════
+	[Constants.BlockType.SNOW_BLOCK] = {
+		name = "Snow Block",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(249, 255, 255),
+		textures = { all = "rbxassetid://92415018888386" },
+		crossShape = false
+	},
+	[Constants.BlockType.SPONGE] = {
+		name = "Sponge",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(195, 192, 74),
+		textures = { all = "rbxassetid://79375009831611" },
+		crossShape = false
+	},
+	[Constants.BlockType.WET_SPONGE] = {
+		name = "Wet Sponge",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(160, 160, 70),
+		textures = { all = "rbxassetid://92174994791697" },
+		crossShape = false
+	},
+
+	-- ═══════════════════════════════════════════════════════════════════════════
+	-- NETHER BLOCKS
+	-- ═══════════════════════════════════════════════════════════════════════════
+	[Constants.BlockType.NETHERRACK] = {
+		name = "Netherrack",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(97, 38, 38),
+		textures = { all = "rbxassetid://107740562127200" },
+		crossShape = false
+	},
+	[Constants.BlockType.SOUL_SAND] = {
+		name = "Soul Sand",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(81, 62, 50),
+		textures = { all = "rbxassetid://94512551206593" },
+		crossShape = false
+	},
+	[Constants.BlockType.MAGMA_BLOCK] = {
+		name = "Magma Block",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(142, 63, 31),
+		textures = { all = "rbxassetid://104970673405330" },
+		crossShape = false
+	},
+	[Constants.BlockType.GLOWSTONE] = {
+		name = "Glowstone",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(171, 131, 84),
+		textures = { all = "rbxassetid://106914203863166" },
+		crossShape = false
+	},
+	[Constants.BlockType.NETHER_WART_BLOCK] = {
+		name = "Nether Wart Block",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(114, 2, 2),
+		textures = { all = "rbxassetid://83259084292401" },
+		crossShape = false
+	},
+	[Constants.BlockType.RED_NETHER_BRICKS] = {
+		name = "Red Nether Bricks",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(69, 7, 9),
+		textures = { all = "rbxassetid://88910294399355" },
+		crossShape = false
+	},
+
+	-- ═══════════════════════════════════════════════════════════════════════════
+	-- OCEAN BLOCKS
+	-- ═══════════════════════════════════════════════════════════════════════════
+	[Constants.BlockType.SEA_LANTERN] = {
+		name = "Sea Lantern",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(172, 199, 190),
+		textures = { all = "rbxassetid://117550873516062" },
+		crossShape = false
+	},
+	[Constants.BlockType.PRISMARINE] = {
+		name = "Prismarine",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(99, 156, 151),
+		textures = { all = "rbxassetid://98862659002356" },
+		crossShape = false
+	},
+	[Constants.BlockType.PRISMARINE_BRICKS] = {
+		name = "Prismarine Bricks",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(99, 171, 158),
+		textures = { all = "rbxassetid://131504940340385" },
+		crossShape = false
+	},
+	[Constants.BlockType.DARK_PRISMARINE] = {
+		name = "Dark Prismarine",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(51, 91, 75),
+		textures = { all = "rbxassetid://103531221763856" },
+		crossShape = false
+	},
+
+	-- ═══════════════════════════════════════════════════════════════════════════
+	-- END BLOCKS (Purpur)
+	-- ═══════════════════════════════════════════════════════════════════════════
+	[Constants.BlockType.PURPUR_BLOCK] = {
+		name = "Purpur Block",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(169, 125, 169),
+		textures = { all = "rbxassetid://92744126775031" },
+		crossShape = false
+	},
+	[Constants.BlockType.PURPUR_PILLAR] = {
+		name = "Purpur Pillar",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(169, 125, 169),
+		textures = {
+			top = "rbxassetid://94027067868528",
+			bottom = "rbxassetid://94027067868528",
+			side = "rbxassetid://85132853149472",
+			all = "rbxassetid://85132853149472"
+		},
+		crossShape = false
+	},
+	[Constants.BlockType.END_STONE] = {
+		name = "End Stone",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(219, 222, 158),
+		textures = { all = "rbxassetid://115183801525313" }, -- Using stone as fallback
+		crossShape = false
+	},
+	[Constants.BlockType.END_STONE_BRICKS] = {
+		name = "End Stone Bricks",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(219, 222, 158),
+		textures = { all = "rbxassetid://101759303836378" }, -- Using stone bricks as fallback
+		crossShape = false
+	},
+
+	-- ═══════════════════════════════════════════════════════════════════════════
+	-- MELON & PUMPKIN
+	-- ═══════════════════════════════════════════════════════════════════════════
+	[Constants.BlockType.MELON] = {
+		name = "Melon",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(111, 145, 31),
+		textures = {
+			top = "rbxassetid://102480458382931",
+			bottom = "rbxassetid://102480458382931",
+			side = "rbxassetid://124722007953987",
+			all = "rbxassetid://124722007953987"
+		},
+		crossShape = false
+	},
+	[Constants.BlockType.PUMPKIN] = {
+		name = "Pumpkin",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(198, 118, 24),
+		textures = {
+			top = "rbxassetid://80664775024999",
+			bottom = "rbxassetid://80664775024999",
+			side = "rbxassetid://97456610277877",
+			all = "rbxassetid://97456610277877"
+		},
+		crossShape = false
+	},
+	[Constants.BlockType.CARVED_PUMPKIN] = {
+		name = "Carved Pumpkin",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(198, 118, 24),
+		textures = {
+			top = "rbxassetid://80664775024999",
+			bottom = "rbxassetid://80664775024999",
+			front = "rbxassetid://134873735074293",
+			side = "rbxassetid://97456610277877",
+			all = "rbxassetid://97456610277877"
+		},
+		crossShape = false,
+		hasRotation = true
+	},
+	[Constants.BlockType.JACK_O_LANTERN] = {
+		name = "Jack o'Lantern",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(198, 118, 24),
+		textures = {
+			top = "rbxassetid://80664775024999",
+			bottom = "rbxassetid://80664775024999",
+			front = "rbxassetid://100828620621190",
+			side = "rbxassetid://97456610277877",
+			all = "rbxassetid://97456610277877"
+		},
+		crossShape = false,
+		hasRotation = true
+	},
+
+	-- ═══════════════════════════════════════════════════════════════════════════
+	-- PLANTS
+	-- ═══════════════════════════════════════════════════════════════════════════
+	[Constants.BlockType.CACTUS] = {
+		name = "Cactus",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(85, 127, 43),
+		textures = {
+			top = "rbxassetid://94563015961260",
+			bottom = "rbxassetid://97822724502105",
+			side = "rbxassetid://79094656952253",
+			all = "rbxassetid://79094656952253"
+		},
+		crossShape = false
+	},
+	[Constants.BlockType.SUGAR_CANE] = {
+		name = "Sugar Cane",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(148, 192, 101),
+		textures = { all = "rbxassetid://128037896541445" },
+		crossShape = true
+	},
+	[Constants.BlockType.HAY_BLOCK] = {
+		name = "Hay Block",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(166, 139, 28),
+		textures = {
+			top = "rbxassetid://114055682157370",
+			bottom = "rbxassetid://114055682157370",
+			side = "rbxassetid://92792702867171",
+			all = "rbxassetid://92792702867171"
+		},
+		crossShape = false
+	},
+	[Constants.BlockType.DEAD_BUSH] = {
+		name = "Dead Bush",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(107, 78, 40),
+		textures = { all = "rbxassetid://116161927933610" },
+		crossShape = true
+	},
+	[Constants.BlockType.LILY_PAD] = {
+		name = "Lily Pad",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(32, 128, 48),
+		textures = { all = "rbxassetid://119985599542708" },
+		crossShape = true
+	},
+
+	-- ═══════════════════════════════════════════════════════════════════════════
+	-- MUSHROOMS
+	-- ═══════════════════════════════════════════════════════════════════════════
+	[Constants.BlockType.BROWN_MUSHROOM] = {
+		name = "Brown Mushroom",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(149, 111, 82),
+		textures = { all = "rbxassetid://78203109427997" },
+		crossShape = true
+	},
+	[Constants.BlockType.RED_MUSHROOM] = {
+		name = "Red Mushroom",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(216, 75, 67),
+		textures = { all = "rbxassetid://130349192960951" },
+		crossShape = true
+	},
+	[Constants.BlockType.BROWN_MUSHROOM_BLOCK] = {
+		name = "Brown Mushroom Block",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(149, 111, 82),
+		textures = { all = "rbxassetid://125837820790379" },
+		crossShape = false
+	},
+	[Constants.BlockType.RED_MUSHROOM_BLOCK] = {
+		name = "Red Mushroom Block",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(200, 46, 45),
+		textures = { all = "rbxassetid://98579956986334" },
+		crossShape = false
+	},
+	[Constants.BlockType.MUSHROOM_STEM] = {
+		name = "Mushroom Stem",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(203, 195, 185),
+		textures = { all = "rbxassetid://110653819771271" },
+		crossShape = false
+	},
+
+	-- ═══════════════════════════════════════════════════════════════════════════
+	-- SPECIAL BLOCKS
+	-- ═══════════════════════════════════════════════════════════════════════════
+	[Constants.BlockType.SLIME_BLOCK] = {
+		name = "Slime Block",
+		solid = true,
+		transparent = true,
+		color = Color3.fromRGB(112, 192, 91),
+		textures = { all = "rbxassetid://106116802685553" },
+		crossShape = false
+	},
+	[Constants.BlockType.HONEY_BLOCK] = {
+		name = "Honey Block",
+		solid = true,
+		transparent = true,
+		color = Color3.fromRGB(250, 171, 62),
+		textures = { all = "rbxassetid://106116802685553" }, -- Using slime texture as fallback
+		crossShape = false
+	},
+	[Constants.BlockType.BONE_BLOCK] = {
+		name = "Bone Block",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(229, 225, 207),
+		textures = {
+			top = "rbxassetid://87899701364563",
+			bottom = "rbxassetid://87899701364563",
+			side = "rbxassetid://123505514936937",
+			all = "rbxassetid://123505514936937"
+		},
+		crossShape = false
+	},
+	[Constants.BlockType.COBWEB] = {
+		name = "Cobweb",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(228, 233, 234),
+		textures = { all = "rbxassetid://82949317923507" },
+		crossShape = true
+	},
+
+	-- ═══════════════════════════════════════════════════════════════════════════
+	-- UTILITY BLOCKS
+	-- ═══════════════════════════════════════════════════════════════════════════
+	[Constants.BlockType.BOOKSHELF] = {
+		name = "Bookshelf",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(162, 130, 78),
+		textures = {
+			top = "rbxassetid://133840556774740",
+			bottom = "rbxassetid://133840556774740",
+			side = "rbxassetid://96702038987751",
+			all = "rbxassetid://96702038987751"
+		},
+		crossShape = false
+	},
+	[Constants.BlockType.JUKEBOX] = {
+		name = "Jukebox",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(107, 71, 45),
+		textures = {
+			top = "rbxassetid://92669609784698",
+			bottom = "rbxassetid://92669609784698",
+			side = "rbxassetid://113071519822080",
+			all = "rbxassetid://113071519822080"
+		},
+		crossShape = false
+	},
+	[Constants.BlockType.NOTE_BLOCK] = {
+		name = "Note Block",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(107, 71, 45),
+		textures = { all = "rbxassetid://136511262353941" },
+		crossShape = false
+	},
+	[Constants.BlockType.TNT] = {
+		name = "TNT",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(219, 68, 26),
+		textures = {
+			top = "rbxassetid://99397443420413",
+			bottom = "rbxassetid://82999094870264",
+			side = "rbxassetid://101000178767581",
+			all = "rbxassetid://101000178767581"
+		},
+		crossShape = false
+	},
+	[Constants.BlockType.SPAWNER] = {
+		name = "Spawner",
+		solid = true,
+		transparent = true,
+		color = Color3.fromRGB(37, 55, 62),
+		textures = { all = "rbxassetid://112195000812184" },
+		crossShape = false
+	},
+	[Constants.BlockType.OBSIDIAN] = {
+		name = "Obsidian",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(15, 10, 24),
+		textures = { all = "rbxassetid://136505434230911" },
+		crossShape = false
+	},
+	[Constants.BlockType.DRIED_KELP_BLOCK] = {
+		name = "Dried Kelp Block",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(50, 58, 35),
+		textures = {
+			top = "rbxassetid://102483596486958",
+			bottom = "rbxassetid://129485023640765",
+			side = "rbxassetid://140536801666725",
+			all = "rbxassetid://140536801666725"
+		},
+		crossShape = false
+	},
+
+	-- ═══════════════════════════════════════════════════════════════════════════
+	-- STONE VARIANTS (additional)
+	-- ═══════════════════════════════════════════════════════════════════════════
+	[Constants.BlockType.SMOOTH_STONE] = {
+		name = "Smooth Stone",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(158, 158, 158),
+		textures = { all = "rbxassetid://115183801525313" },
+		crossShape = false
+	},
+	[Constants.BlockType.MOSSY_COBBLESTONE] = {
+		name = "Mossy Cobblestone",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(110, 118, 94),
+		textures = { all = "rbxassetid://79369165726496" },
+		crossShape = false
+	},
+	[Constants.BlockType.MOSSY_STONE_BRICKS] = {
+		name = "Mossy Stone Bricks",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(115, 121, 105),
+		textures = { all = "rbxassetid://117764250729527" },
+		crossShape = false
+	},
+	[Constants.BlockType.CRACKED_STONE_BRICKS] = {
+		name = "Cracked Stone Bricks",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(118, 118, 118),
+		textures = { all = "rbxassetid://79352827156243" },
+		crossShape = false
+	},
+	[Constants.BlockType.CHISELED_STONE_BRICKS] = {
+		name = "Chiseled Stone Bricks",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(120, 120, 120),
+		textures = { all = "rbxassetid://91362927949400" },
+		crossShape = false
+	},
+	[Constants.BlockType.MYCELIUM] = {
+		name = "Mycelium",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(111, 99, 106),
+		textures = {
+			top = "rbxassetid://134502316741177",
+			bottom = "rbxassetid://119220930990167",
+			side = "rbxassetid://139241008869261",
+			all = "rbxassetid://139241008869261"
+		},
+		crossShape = false
+	},
+	[Constants.BlockType.CLAY_BLOCK] = {
+		name = "Clay",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(160, 166, 179),
+		textures = { all = "rbxassetid://110798275614273" },
+		crossShape = false
+	},
+
+	-- ═══════════════════════════════════════════════════════════════════════════
+	-- SANDSTONE VARIANTS
+	-- ═══════════════════════════════════════════════════════════════════════════
+	[Constants.BlockType.RED_SANDSTONE] = {
+		name = "Red Sandstone",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(186, 99, 29),
+		textures = {
+			top = "rbxassetid://112358652150634",
+			bottom = "rbxassetid://120934199558038",
+			side = "rbxassetid://106028151834528",
+			all = "rbxassetid://106028151834528"
+		},
+		crossShape = false
+	},
+	[Constants.BlockType.RED_SAND] = {
+		name = "Red Sand",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(190, 102, 33),
+		textures = { all = "rbxassetid://129949771602581" },
+		crossShape = false
+	},
+	[Constants.BlockType.CUT_SANDSTONE] = {
+		name = "Cut Sandstone",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(220, 202, 160),
+		textures = { all = "rbxassetid://139354278952882" },
+		crossShape = false
+	},
+	[Constants.BlockType.CHISELED_SANDSTONE] = {
+		name = "Chiseled Sandstone",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(220, 202, 160),
+		textures = { all = "rbxassetid://125661543214474" },
+		crossShape = false
+	},
+	[Constants.BlockType.SMOOTH_SANDSTONE] = {
+		name = "Smooth Sandstone",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(220, 202, 160),
+		textures = { all = "rbxassetid://92878917320673" },
+		crossShape = false
+	},
+	[Constants.BlockType.CUT_RED_SANDSTONE] = {
+		name = "Cut Red Sandstone",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(186, 99, 29),
+		textures = { all = "rbxassetid://138179782463303" },
+		crossShape = false
+	},
+	[Constants.BlockType.CHISELED_RED_SANDSTONE] = {
+		name = "Chiseled Red Sandstone",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(186, 99, 29),
+		textures = { all = "rbxassetid://94772791776170" },
+		crossShape = false
+	},
+	[Constants.BlockType.SMOOTH_RED_SANDSTONE] = {
+		name = "Smooth Red Sandstone",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(186, 99, 29),
+		textures = { all = "rbxassetid://112358652150634" },
+		crossShape = false
+	},
+
+	-- ═══════════════════════════════════════════════════════════════════════════
+	-- STRIPPED LOGS
+	-- ═══════════════════════════════════════════════════════════════════════════
+	[Constants.BlockType.STRIPPED_OAK_LOG] = {
+		name = "Stripped Oak Log",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(177, 144, 86),
+		textures = {
+			top = "rbxassetid://86207536636319",
+			bottom = "rbxassetid://86207536636319",
+			side = "rbxassetid://116598275917241",
+			all = "rbxassetid://116598275917241"
+		},
+		crossShape = false
+	},
+	[Constants.BlockType.STRIPPED_SPRUCE_LOG] = {
+		name = "Stripped Spruce Log",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(115, 89, 52),
+		textures = {
+			top = "rbxassetid://107050453215631",
+			bottom = "rbxassetid://107050453215631",
+			side = "rbxassetid://124010513442397",
+			all = "rbxassetid://124010513442397"
+		},
+		crossShape = false
+	},
+	[Constants.BlockType.STRIPPED_BIRCH_LOG] = {
+		name = "Stripped Birch Log",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(196, 176, 118),
+		textures = {
+			top = "rbxassetid://81347121658265",
+			bottom = "rbxassetid://81347121658265",
+			side = "rbxassetid://109105316431438",
+			all = "rbxassetid://109105316431438"
+		},
+		crossShape = false
+	},
+	[Constants.BlockType.STRIPPED_JUNGLE_LOG] = {
+		name = "Stripped Jungle Log",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(171, 132, 84),
+		textures = {
+			top = "rbxassetid://132310236236978",
+			bottom = "rbxassetid://132310236236978",
+			side = "rbxassetid://76554799409444",
+			all = "rbxassetid://76554799409444"
+		},
+		crossShape = false
+	},
+	[Constants.BlockType.STRIPPED_ACACIA_LOG] = {
+		name = "Stripped Acacia Log",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(174, 92, 59),
+		textures = {
+			top = "rbxassetid://128133586280282",
+			bottom = "rbxassetid://128133586280282",
+			side = "rbxassetid://90228715307033",
+			all = "rbxassetid://90228715307033"
+		},
+		crossShape = false
+	},
+	[Constants.BlockType.STRIPPED_DARK_OAK_LOG] = {
+		name = "Stripped Dark Oak Log",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(96, 76, 49),
+		textures = {
+			top = "rbxassetid://129194372797805",
+			bottom = "rbxassetid://129194372797805",
+			side = "rbxassetid://74759388892088",
+			all = "rbxassetid://74759388892088"
+		},
+		crossShape = false
+	},
+
+	-- ═══════════════════════════════════════════════════════════════════════════
+	-- COPPER VARIANTS
+	-- ═══════════════════════════════════════════════════════════════════════════
+	[Constants.BlockType.CUT_COPPER] = {
+		name = "Cut Copper",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(188, 105, 47),
+		textures = { all = "rbxassetid://115933247878677" },
+		crossShape = false
+	},
+	[Constants.BlockType.EXPOSED_COPPER] = {
+		name = "Exposed Copper",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(161, 125, 103),
+		textures = { all = "rbxassetid://115933247878677" },
+		crossShape = false
+	},
+	[Constants.BlockType.WEATHERED_COPPER] = {
+		name = "Weathered Copper",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(108, 153, 110),
+		textures = { all = "rbxassetid://115933247878677" },
+		crossShape = false
+	},
+	[Constants.BlockType.OXIDIZED_COPPER] = {
+		name = "Oxidized Copper",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(82, 162, 132),
+		textures = { all = "rbxassetid://115933247878677" },
+		crossShape = false
+	},
+
+	-- ═══════════════════════════════════════════════════════════════════════════
+	-- DEEPSLATE & TUFF
+	-- ═══════════════════════════════════════════════════════════════════════════
+	[Constants.BlockType.DEEPSLATE] = {
+		name = "Deepslate",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(80, 80, 82),
+		textures = { all = "rbxassetid://72951007570270" },
+		crossShape = false
+	},
+	[Constants.BlockType.COBBLED_DEEPSLATE] = {
+		name = "Cobbled Deepslate",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(77, 77, 80),
+		textures = { all = "rbxassetid://130912274010831" },
+		crossShape = false
+	},
+	[Constants.BlockType.POLISHED_DEEPSLATE] = {
+		name = "Polished Deepslate",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(72, 72, 73),
+		textures = { all = "rbxassetid://72951007570270" },
+		crossShape = false
+	},
+	[Constants.BlockType.DEEPSLATE_BRICKS] = {
+		name = "Deepslate Bricks",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(70, 70, 71),
+		textures = { all = "rbxassetid://101759303836378" },
+		crossShape = false
+	},
+	[Constants.BlockType.DEEPSLATE_TILES] = {
+		name = "Deepslate Tiles",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(54, 54, 55),
+		textures = { all = "rbxassetid://101759303836378" },
+		crossShape = false
+	},
+	[Constants.BlockType.TUFF] = {
+		name = "Tuff",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(108, 109, 102),
+		textures = { all = "rbxassetid://124393974492403" },
+		crossShape = false
+	},
+	[Constants.BlockType.CALCITE] = {
+		name = "Calcite",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(223, 224, 220),
+		textures = { all = "rbxassetid://92415018888386" },
+		crossShape = false
+	},
+
+	-- ═══════════════════════════════════════════════════════════════════════════
+	-- AMETHYST
+	-- ═══════════════════════════════════════════════════════════════════════════
+	[Constants.BlockType.AMETHYST_BLOCK] = {
+		name = "Amethyst Block",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(133, 97, 191),
+		textures = { all = "rbxassetid://92744126775031" },
+		crossShape = false
+	},
+	[Constants.BlockType.BUDDING_AMETHYST] = {
+		name = "Budding Amethyst",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(133, 97, 191),
+		textures = { all = "rbxassetid://92744126775031" },
+		crossShape = false
+	},
+
+	-- ═══════════════════════════════════════════════════════════════════════════
+	-- BASALT
+	-- ═══════════════════════════════════════════════════════════════════════════
+	[Constants.BlockType.BASALT] = {
+		name = "Basalt",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(73, 72, 77),
+		textures = { all = "rbxassetid://72951007570270" },
+		crossShape = false
+	},
+	[Constants.BlockType.POLISHED_BASALT] = {
+		name = "Polished Basalt",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(65, 65, 68),
+		textures = { all = "rbxassetid://72951007570270" },
+		crossShape = false
+	},
+	[Constants.BlockType.SMOOTH_BASALT] = {
+		name = "Smooth Basalt",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(72, 72, 72),
+		textures = { all = "rbxassetid://72951007570270" },
+		crossShape = false
+	},
+
+	-- ═══════════════════════════════════════════════════════════════════════════
+	-- MISC NETHER/END BLOCKS
+	-- ═══════════════════════════════════════════════════════════════════════════
+	[Constants.BlockType.CRYING_OBSIDIAN] = {
+		name = "Crying Obsidian",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(32, 10, 60),
+		textures = { all = "rbxassetid://136505434230911" },
+		crossShape = false
+	},
+	[Constants.BlockType.SHROOMLIGHT] = {
+		name = "Shroomlight",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(240, 146, 70),
+		textures = { all = "rbxassetid://106914203863166" },
+		crossShape = false
+	},
+	[Constants.BlockType.WARPED_WART_BLOCK] = {
+		name = "Warped Wart Block",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(22, 119, 121),
+		textures = { all = "rbxassetid://83259084292401" },
+		crossShape = false
+	},
+	[Constants.BlockType.SOUL_SOIL] = {
+		name = "Soul Soil",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(75, 56, 46),
+		textures = { all = "rbxassetid://94512551206593" },
+		crossShape = false
+	},
+	[Constants.BlockType.NETHER_GOLD_ORE] = {
+		name = "Nether Gold Ore",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(115, 54, 42),
+		textures = { all = "rbxassetid://107740562127200" },
+		crossShape = false
+	},
+	[Constants.BlockType.ANCIENT_DEBRIS] = {
+		name = "Ancient Debris",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(95, 74, 59),
+		textures = { all = "rbxassetid://107740562127200" },
+		crossShape = false
+	},
+	[Constants.BlockType.LODESTONE] = {
+		name = "Lodestone",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(147, 147, 147),
+		textures = { all = "rbxassetid://101759303836378" },
+		crossShape = false
+	},
+	[Constants.BlockType.RESPAWN_ANCHOR] = {
+		name = "Respawn Anchor",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(35, 13, 55),
+		textures = { all = "rbxassetid://136505434230911" },
+		crossShape = false
+	},
+	[Constants.BlockType.CHAIN] = {
+		name = "Chain",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(54, 60, 74),
+		textures = { all = "rbxassetid://140497075939141" },
+		crossShape = true
+	},
+
+	-- ═══════════════════════════════════════════════════════════════════════════
+	-- SCULK (Deep Dark)
+	-- ═══════════════════════════════════════════════════════════════════════════
+	[Constants.BlockType.SCULK] = {
+		name = "Sculk",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(12, 28, 36),
+		textures = { all = "rbxassetid://72951007570270" },
+		crossShape = false
+	},
+	[Constants.BlockType.SCULK_CATALYST] = {
+		name = "Sculk Catalyst",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(15, 30, 38),
+		textures = { all = "rbxassetid://72951007570270" },
+		crossShape = false
+	},
+	[Constants.BlockType.REINFORCED_DEEPSLATE] = {
+		name = "Reinforced Deepslate",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(55, 55, 56),
+		textures = { all = "rbxassetid://72951007570270" },
+		crossShape = false
+	},
+
+	-- ═══════════════════════════════════════════════════════════════════════════
+	-- MANGROVE & MUD
+	-- ═══════════════════════════════════════════════════════════════════════════
+	[Constants.BlockType.MUD] = {
+		name = "Mud",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(60, 57, 61),
+		textures = { all = "rbxassetid://119220930990167" },
+		crossShape = false
+	},
+	[Constants.BlockType.PACKED_MUD] = {
+		name = "Packed Mud",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(142, 106, 79),
+		textures = { all = "rbxassetid://119220930990167" },
+		crossShape = false
+	},
+	[Constants.BlockType.MUD_BRICKS] = {
+		name = "Mud Bricks",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(137, 104, 77),
+		textures = { all = "rbxassetid://129539517338826" },
+		crossShape = false
+	},
+	[Constants.BlockType.MANGROVE_LOG] = {
+		name = "Mangrove Log",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(84, 67, 41),
+		textures = {
+			top = "rbxassetid://125270540000651",
+			bottom = "rbxassetid://125270540000651",
+			side = "rbxassetid://74397475943828",
+			all = "rbxassetid://74397475943828"
+		},
+		crossShape = false
+	},
+	[Constants.BlockType.MANGROVE_PLANKS] = {
+		name = "Mangrove Planks",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(117, 54, 48),
+		textures = { all = "rbxassetid://118059443047835" },
+		crossShape = false
+	},
+	[Constants.BlockType.STRIPPED_MANGROVE_LOG] = {
+		name = "Stripped Mangrove Log",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(119, 54, 47),
+		textures = {
+			top = "rbxassetid://125270540000651",
+			bottom = "rbxassetid://125270540000651",
+			side = "rbxassetid://74397475943828",
+			all = "rbxassetid://74397475943828"
+		},
+		crossShape = false
+	},
+	[Constants.BlockType.MANGROVE_LEAVES] = {
+		name = "Mangrove Leaves",
+		solid = true,
+		transparent = true,
+		color = Color3.fromRGB(85, 119, 47),
+		textures = { all = "rbxassetid://100299341230111" },
+		crossShape = false
+	},
+
+	-- ═══════════════════════════════════════════════════════════════════════════
+	-- MOSS & DRIPSTONE
+	-- ═══════════════════════════════════════════════════════════════════════════
+	[Constants.BlockType.MOSS_BLOCK] = {
+		name = "Moss Block",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(89, 109, 45),
+		textures = { all = "rbxassetid://72610229433669" },
+		crossShape = false
+	},
+	[Constants.BlockType.MOSS_CARPET] = {
+		name = "Moss Carpet",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(89, 109, 45),
+		textures = { all = "rbxassetid://72610229433669" },
+		crossShape = false
+	},
+	[Constants.BlockType.DRIPSTONE_BLOCK] = {
+		name = "Dripstone Block",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(134, 107, 92),
+		textures = { all = "rbxassetid://115183801525313" },
+		crossShape = false
+	},
+
+	-- ═══════════════════════════════════════════════════════════════════════════
+	-- CRIMSON & WARPED (Nether Wood)
+	-- ═══════════════════════════════════════════════════════════════════════════
+	[Constants.BlockType.CRIMSON_STEM] = {
+		name = "Crimson Stem",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(101, 48, 70),
+		textures = {
+			top = "rbxassetid://138232486242288",
+			bottom = "rbxassetid://138232486242288",
+			side = "rbxassetid://139268979301523",
+			all = "rbxassetid://139268979301523"
+		},
+		crossShape = false
+	},
+	[Constants.BlockType.WARPED_STEM] = {
+		name = "Warped Stem",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(58, 58, 77),
+		textures = {
+			top = "rbxassetid://125270540000651",
+			bottom = "rbxassetid://125270540000651",
+			side = "rbxassetid://74397475943828",
+			all = "rbxassetid://74397475943828"
+		},
+		crossShape = false
+	},
+	[Constants.BlockType.CRIMSON_PLANKS] = {
+		name = "Crimson Planks",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(101, 48, 70),
+		textures = { all = "rbxassetid://91916919581806" },
+		crossShape = false
+	},
+	[Constants.BlockType.WARPED_PLANKS] = {
+		name = "Warped Planks",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(43, 105, 99),
+		textures = { all = "rbxassetid://118059443047835" },
+		crossShape = false
+	},
+	[Constants.BlockType.STRIPPED_CRIMSON_STEM] = {
+		name = "Stripped Crimson Stem",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(137, 57, 90),
+		textures = {
+			top = "rbxassetid://129194372797805",
+			bottom = "rbxassetid://129194372797805",
+			side = "rbxassetid://74759388892088",
+			all = "rbxassetid://74759388892088"
+		},
+		crossShape = false
+	},
+	[Constants.BlockType.STRIPPED_WARPED_STEM] = {
+		name = "Stripped Warped Stem",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(57, 150, 147),
+		textures = {
+			top = "rbxassetid://132310236236978",
+			bottom = "rbxassetid://132310236236978",
+			side = "rbxassetid://76554799409444",
+			all = "rbxassetid://76554799409444"
+		},
+		crossShape = false
+	},
+	[Constants.BlockType.CRIMSON_NYLIUM] = {
+		name = "Crimson Nylium",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(130, 31, 31),
+		textures = {
+			top = "rbxassetid://83259084292401",
+			bottom = "rbxassetid://107740562127200",
+			side = "rbxassetid://107740562127200",
+			all = "rbxassetid://107740562127200"
+		},
+		crossShape = false
+	},
+	[Constants.BlockType.WARPED_NYLIUM] = {
+		name = "Warped Nylium",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(43, 114, 101),
+		textures = {
+			top = "rbxassetid://83259084292401",
+			bottom = "rbxassetid://107740562127200",
+			side = "rbxassetid://107740562127200",
+			all = "rbxassetid://107740562127200"
+		},
+		crossShape = false
+	},
+
+	-- ═══════════════════════════════════════════════════════════════════════════
+	-- ADDITIONAL UTILITY BLOCKS
+	-- ═══════════════════════════════════════════════════════════════════════════
+	[Constants.BlockType.CAULDRON] = {
+		name = "Cauldron",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(73, 73, 73),
+		textures = {
+			top = "rbxassetid://133845825728368",
+			bottom = "rbxassetid://75000267472243",
+			side = "rbxassetid://75129759837324",
+			all = "rbxassetid://75129759837324"
+		},
+		crossShape = false
+	},
+	[Constants.BlockType.ANVIL] = {
+		name = "Anvil",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(73, 73, 73),
+		textures = {
+			top = "rbxassetid://93850827330617",
+			bottom = "rbxassetid://93850827330617",
+			side = "rbxassetid://113323068322069",
+			all = "rbxassetid://113323068322069"
+		},
+		crossShape = false,
+		hasRotation = true
+	},
+	[Constants.BlockType.BREWING_STAND] = {
+		name = "Brewing Stand",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(139, 139, 129),
+		textures = {
+			top = "rbxassetid://85702259653816",
+			bottom = "rbxassetid://91881858143089",
+			side = "rbxassetid://85702259653816",
+			all = "rbxassetid://85702259653816"
+		},
+		crossShape = true,
+		interactable = true
+	},
+	[Constants.BlockType.ENCHANTING_TABLE] = {
+		name = "Enchanting Table",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(114, 20, 20),
+		textures = {
+			top = "rbxassetid://102192486725769",
+			bottom = "rbxassetid://78755549354143",
+			side = "rbxassetid://140224980615436",
+			all = "rbxassetid://140224980615436"
+		},
+		crossShape = false,
+		interactable = true
+	},
+	[Constants.BlockType.BEACON] = {
+		name = "Beacon",
+		solid = true,
+		transparent = true,
+		color = Color3.fromRGB(117, 225, 215),
+		textures = { all = "rbxassetid://124890497501415" },
+		crossShape = false
+	},
+	[Constants.BlockType.REDSTONE_LAMP] = {
+		name = "Redstone Lamp",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(100, 60, 30),
+		textures = { all = "rbxassetid://106914203863166" },
+		crossShape = false
+	},
+	[Constants.BlockType.LANTERN] = {
+		name = "Lantern",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(198, 137, 68),
+		textures = { all = "rbxassetid://91918732182012" },
+		crossShape = true
+	},
+	[Constants.BlockType.SOUL_LANTERN] = {
+		name = "Soul Lantern",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(70, 185, 186),
+		textures = { all = "rbxassetid://91918732182012" },
+		crossShape = true
 	}
 }
 

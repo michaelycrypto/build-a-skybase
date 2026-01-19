@@ -305,12 +305,216 @@ local Constants = {
 
 		-- Podzol
 		PODZOL = 223,
-		
+
 		-- Additional slab types (using textures from base blocks)
 		GRANITE_SLAB = 225,
 		BLACKSTONE_SLAB = 226,
-		SMOOTH_QUARTZ_SLAB = 227
-		-- BEDROCK already exists at ID 4
+		SMOOTH_QUARTZ_SLAB = 227,
+
+		-- ═══════════════════════════════════════════════════════════════════════
+		-- ICE VARIANTS
+		-- ═══════════════════════════════════════════════════════════════════════
+		ICE = 228,
+		PACKED_ICE = 229,
+		BLUE_ICE = 230,
+
+		-- ═══════════════════════════════════════════════════════════════════════
+		-- SNOW & SPONGE
+		-- ═══════════════════════════════════════════════════════════════════════
+		SNOW_BLOCK = 231,
+		SPONGE = 232,
+		WET_SPONGE = 233,
+
+		-- ═══════════════════════════════════════════════════════════════════════
+		-- NETHER BLOCKS
+		-- ═══════════════════════════════════════════════════════════════════════
+		NETHERRACK = 234,
+		SOUL_SAND = 235,
+		MAGMA_BLOCK = 236,
+		GLOWSTONE = 237,
+		NETHER_WART_BLOCK = 238,
+		RED_NETHER_BRICKS = 239,
+
+		-- ═══════════════════════════════════════════════════════════════════════
+		-- OCEAN & PRISMARINE
+		-- ═══════════════════════════════════════════════════════════════════════
+		SEA_LANTERN = 240,
+		PRISMARINE = 241,
+		PRISMARINE_BRICKS = 242,
+		DARK_PRISMARINE = 243,
+
+		-- ═══════════════════════════════════════════════════════════════════════
+		-- END BLOCKS (Purpur)
+		-- ═══════════════════════════════════════════════════════════════════════
+		PURPUR_BLOCK = 244,
+		PURPUR_PILLAR = 245,
+		END_STONE = 246,
+		END_STONE_BRICKS = 247,
+
+		-- ═══════════════════════════════════════════════════════════════════════
+		-- PLANTS & VEGETATION
+		-- ═══════════════════════════════════════════════════════════════════════
+		MELON = 248,
+		PUMPKIN = 249,
+		CARVED_PUMPKIN = 250,
+		JACK_O_LANTERN = 251,
+		CACTUS = 252,
+		SUGAR_CANE = 253,
+		HAY_BLOCK = 254,
+		DEAD_BUSH = 255,
+		LILY_PAD = 256,
+
+		-- ═══════════════════════════════════════════════════════════════════════
+		-- MUSHROOM BLOCKS
+		-- ═══════════════════════════════════════════════════════════════════════
+		BROWN_MUSHROOM = 257,
+		RED_MUSHROOM = 258,
+		BROWN_MUSHROOM_BLOCK = 259,
+		RED_MUSHROOM_BLOCK = 260,
+		MUSHROOM_STEM = 261,
+
+		-- ═══════════════════════════════════════════════════════════════════════
+		-- UTILITY & DECORATION
+		-- ═══════════════════════════════════════════════════════════════════════
+		SLIME_BLOCK = 262,
+		HONEY_BLOCK = 263,
+		BONE_BLOCK = 264,
+		COBWEB = 265,
+		BOOKSHELF = 266,
+		JUKEBOX = 267,
+		NOTE_BLOCK = 268,
+		TNT = 269,
+		SPAWNER = 270,
+		OBSIDIAN = 271,
+		DRIED_KELP_BLOCK = 272,
+
+		-- ═══════════════════════════════════════════════════════════════════════
+		-- STONE VARIANTS (additional)
+		-- ═══════════════════════════════════════════════════════════════════════
+		SMOOTH_STONE = 273,
+		MOSSY_COBBLESTONE = 274,
+		MOSSY_STONE_BRICKS = 275,
+		CRACKED_STONE_BRICKS = 276,
+		CHISELED_STONE_BRICKS = 277,
+		MYCELIUM = 278,
+		CLAY_BLOCK = 279,
+
+		-- ═══════════════════════════════════════════════════════════════════════
+		-- SANDSTONE VARIANTS
+		-- ═══════════════════════════════════════════════════════════════════════
+		RED_SANDSTONE = 280,
+		RED_SAND = 281,
+		CUT_SANDSTONE = 282,
+		CHISELED_SANDSTONE = 283,
+		SMOOTH_SANDSTONE = 284,
+		CUT_RED_SANDSTONE = 285,
+		CHISELED_RED_SANDSTONE = 286,
+		SMOOTH_RED_SANDSTONE = 287,
+
+		-- ═══════════════════════════════════════════════════════════════════════
+		-- STRIPPED LOGS (6 wood types)
+		-- ═══════════════════════════════════════════════════════════════════════
+		STRIPPED_OAK_LOG = 288,
+		STRIPPED_SPRUCE_LOG = 289,
+		STRIPPED_BIRCH_LOG = 290,
+		STRIPPED_JUNGLE_LOG = 291,
+		STRIPPED_ACACIA_LOG = 292,
+		STRIPPED_DARK_OAK_LOG = 293,
+
+		-- ═══════════════════════════════════════════════════════════════════════
+		-- COPPER VARIANTS
+		-- ═══════════════════════════════════════════════════════════════════════
+		CUT_COPPER = 294,
+		EXPOSED_COPPER = 295,
+		WEATHERED_COPPER = 296,
+		OXIDIZED_COPPER = 297,
+
+		-- ═══════════════════════════════════════════════════════════════════════
+		-- DEEPSLATE & TUFF
+		-- ═══════════════════════════════════════════════════════════════════════
+		DEEPSLATE = 298,
+		COBBLED_DEEPSLATE = 299,
+		POLISHED_DEEPSLATE = 300,
+		DEEPSLATE_BRICKS = 301,
+		DEEPSLATE_TILES = 302,
+		TUFF = 303,
+		CALCITE = 304,
+
+		-- ═══════════════════════════════════════════════════════════════════════
+		-- AMETHYST
+		-- ═══════════════════════════════════════════════════════════════════════
+		AMETHYST_BLOCK = 305,
+		BUDDING_AMETHYST = 306,
+
+		-- ═══════════════════════════════════════════════════════════════════════
+		-- BASALT
+		-- ═══════════════════════════════════════════════════════════════════════
+		BASALT = 307,
+		POLISHED_BASALT = 308,
+		SMOOTH_BASALT = 309,
+
+		-- ═══════════════════════════════════════════════════════════════════════
+		-- MISC BLOCKS
+		-- ═══════════════════════════════════════════════════════════════════════
+		CRYING_OBSIDIAN = 310,
+		SHROOMLIGHT = 311,
+		WARPED_WART_BLOCK = 312,
+		SOUL_SOIL = 313,
+		NETHER_GOLD_ORE = 314,
+		ANCIENT_DEBRIS = 315,
+		LODESTONE = 316,
+		RESPAWN_ANCHOR = 317,
+		CHAIN = 318,
+
+		-- ═══════════════════════════════════════════════════════════════════════
+		-- SCULK (Deep Dark)
+		-- ═══════════════════════════════════════════════════════════════════════
+		SCULK = 319,
+		SCULK_CATALYST = 320,
+		REINFORCED_DEEPSLATE = 321,
+
+		-- ═══════════════════════════════════════════════════════════════════════
+		-- MANGROVE & MUD
+		-- ═══════════════════════════════════════════════════════════════════════
+		MUD = 322,
+		PACKED_MUD = 323,
+		MUD_BRICKS = 324,
+		MANGROVE_LOG = 325,
+		MANGROVE_PLANKS = 326,
+		STRIPPED_MANGROVE_LOG = 327,
+		MANGROVE_LEAVES = 328,
+
+		-- ═══════════════════════════════════════════════════════════════════════
+		-- MOSS & DRIPSTONE
+		-- ═══════════════════════════════════════════════════════════════════════
+		MOSS_BLOCK = 329,
+		MOSS_CARPET = 330,
+		DRIPSTONE_BLOCK = 331,
+
+		-- ═══════════════════════════════════════════════════════════════════════
+		-- CRIMSON & WARPED (Nether Wood)
+		-- ═══════════════════════════════════════════════════════════════════════
+		CRIMSON_STEM = 332,
+		WARPED_STEM = 333,
+		CRIMSON_PLANKS = 334,
+		WARPED_PLANKS = 335,
+		STRIPPED_CRIMSON_STEM = 336,
+		STRIPPED_WARPED_STEM = 337,
+		CRIMSON_NYLIUM = 338,
+		WARPED_NYLIUM = 339,
+
+		-- ═══════════════════════════════════════════════════════════════════════
+		-- ADDITIONAL UTILITY
+		-- ═══════════════════════════════════════════════════════════════════════
+		CAULDRON = 340,
+		ANVIL = 341,
+		BREWING_STAND = 342,
+		ENCHANTING_TABLE = 343,
+		BEACON = 344,
+		REDSTONE_LAMP = 345,
+		LANTERN = 346,
+		SOUL_LANTERN = 347
+		-- Note: Block IDs continue from 348+
 	},
 
 	-- Mapping: Slab block ID → Full block ID (when two slabs combine)

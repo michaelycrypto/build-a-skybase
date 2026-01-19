@@ -8,194 +8,194 @@ return {
   size = { width = 202, height = 136, length = 166 },
   chunkSize = { x = 16, y = 256, z = 16 },
   palette = {
-    "gray_wool",
-    "cyan_terracotta",
-    "acacia_log",
-    "stone",
-    "orange_terracotta",
-    "oak_leaves",
-    "jungle_leaves",
-    "jungle_slab[t=t]",
-    "dirt",
-    "green_stained_glass",
-    "green_terracotta",
-    "grass_block",
-    "slime",
-    "red_flower",
-    "tallgrass",
-    "melon_block",
-    "green_wool",
-    "stone_brick_slab[t=t]",
-    "oak_log",
-    "spruce_planks",
-    "stone_brick_stairs[f=w,h=b]",
-    "stone_brick_stairs[f=n,h=b]",
-    "stone_brick_stairs[f=e,h=b]",
-    "farmland",
-    "light_gray_wool",
-    "clay",
-    "stone_brick_stairs[f=s,h=b]",
-    "light_gray_concrete_powder",
-    "orange_wool",
-    "yellow_terracotta",
-    "brown_mushroom_block",
-    "oak_log[a=y]",
-    "spruce_fence",
-    "double_plant",
-    "mossy_cobblestone",
-    "cauldron",
-    "gray_carpet",
-    "cobblestone_wall",
-    "bookshelf",
-    "trapdoor",
-    "anvil",
-    "birch_leaves",
-    "spruce_slab[t=t]",
-    "chest",
-    "dark_oak_stairs[f=e,h=t]",
-    "dark_oak_stairs[f=w,h=b]",
-    "spruce_door",
-    "hay_block",
-    "dark_oak_fence",
-    "end_portal_frame",
-    "dark_oak_stairs[f=s,h=t]",
-    "oak_planks",
-    "acacia_planks",
-    "dark_oak_stairs[f=n,h=b]",
-    "jungle_door",
-    "brick_block",
-    "spruce_stairs[f=s,h=t]",
-    "spruce_fence_gate",
-    "dark_oak_door",
-    "spruce_stairs[f=n,h=b]",
-    "spruce_leaves",
-    "fence",
-    "wheat",
-    "spruce_slab[t=b]",
-    "red_terracotta",
-    "light_weighted_pressure_plate",
-    "dark_oak_slab[t=b]",
-    "brown_terracotta",
-    "nether_brick_fence",
-    "stone_slab[t=b]",
-    "stone_brick_slab[t=b]",
-    "cobblestone_slab[t=b]",
-    "hopper",
-    "furnace",
-    "stone_slab",
-    "dark_oak_stairs[f=s,h=b]",
-    "dark_oak_stairs[f=n,h=t]",
-    "torch",
-    "stone_stairs[f=w,h=b]",
-    "stone_stairs[f=e,h=b]",
-    "stone_button",
-    "dark_oak_planks",
-    "iron_trapdoor",
-    "detector_rail",
-    "obsidian",
-    "dark_oak_stairs[f=e,h=b]",
-    "dark_oak_stairs[f=w,h=t]",
-    "wall_sign",
-    "red_wool",
-    "white_wool",
-    "light_gray_carpet",
-    "brown_wool",
-    "netherrack",
-    "hardened_clay",
-    "stone_stairs[f=e,h=t]",
-    "stone_stairs[f=w,h=t]",
-    "wooden_button",
-    "stone_brick_stairs[f=w,h=t]",
-    "stone_brick_stairs[f=e,h=t]",
-    "stone_stairs[f=n,h=b]",
-    "stone_stairs[f=s,h=b]",
-    "cobblestone_slab[t=t]",
-    "stone_stairs[f=n,h=t]",
-    "ender_chest",
-    "light_gray_stained_glass_pane",
-    "light_gray_stained_glass",
-    "sandstone_stairs[f=s,h=b]",
-    "stonebrick",
-    "beacon",
-    "stone_stairs[f=s,h=t]",
-    "snow_layer",
-    "oak_log[a=x]",
-    "spruce_stairs[f=n,h=t]",
-    "spruce_stairs[f=w,h=b]",
-    "web",
-    "stone_brick_stairs[f=n,h=t]",
-    "stone_brick_stairs[f=s,h=t]",
-    "fire",
-    "white_stained_glass_pane",
-    "sandstone_stairs[f=e,h=b]",
-    "sandstone_stairs[f=w,h=b]",
-    "sandstone_stairs[f=n,h=b]",
-    "ladder",
-    "smooth_sandstone",
-    "sandstone",
-    "cobblestone",
-    "brick_stairs[f=n,h=b]",
-    "spruce_stairs[f=s,h=b]",
-    "stone_brick_slab",
-    "spruce_stairs[f=e,h=b]",
-    "flower_pot",
-    "red_carpet",
-    "fence_gate",
-    "iron_bars",
-    "brick_stairs[f=s,h=b]",
-    "birch_planks",
-    "bed",
-    "oak_stairs[f=e,h=b]",
-    "oak_stairs[f=s,h=b]",
-    "oak_stairs[f=w,h=b]",
-    "oak_stairs[f=n,h=b]",
-    "tripwire_hook",
-    "spruce_log[a=z]",
-    "brick_stairs[f=w,h=t]",
-    "brick_stairs[f=e,h=t]",
-    "cake",
-    "brick_stairs[f=e,h=b]",
-    "brick_stairs[f=s,h=t]",
-    "brick_stairs[f=w,h=b]",
-    "heavy_weighted_pressure_plate",
-    "brown_stained_glass_pane",
-    "spruce_stairs[f=e,h=t]",
-    "birch_stairs[f=w,h=t]",
-    "birch_stairs[f=e,h=t]",
-    "birch_stairs[f=s,h=t]",
-    "birch_stairs[f=n,h=t]",
-    "spruce_stairs[f=w,h=t]",
-    "oak_log[a=z]",
-    "oak_stairs[f=s,h=t]",
-    "birch_slab[t=t]",
-    "oak_stairs[f=e,h=t]",
-    "oak_stairs[f=w,h=t]",
-    "oak_stairs[f=n,h=t]",
-    "barrier",
-    "crafting_table",
-    "red_concrete",
-    "jungle_planks",
-    "jungle_slab[t=b]",
-    "jungle_stairs[f=n,h=b]",
-    "jungle_stairs[f=s,h=b]",
-    "wall_banner",
-    "white_carpet",
-    "enchanting_table",
-    "acacia_slab[t=t]",
-    "jungle_stairs[f=w,h=b]",
-    "jungle_stairs[f=e,h=b]",
-    "jungle_slab",
-    "wooden_pressure_plate",
-    "lit_redstone_lamp",
-    "redstone_block",
-    "sandstone_stairs[f=n,h=t]",
-    "sandstone_stairs[f=e,h=t]",
-    "sandstone_stairs[f=s,h=t]",
-    "daylight_detector",
-    "black_concrete",
-    "jungle_fence",
-    "sandstone_stairs[f=w,h=t]",
-    "piston_head",
+    "gray_wool",                       -- 1: OK
+    "cyan_terracotta",                 -- 2: OK
+    "acacia_log",                      -- 3: OK
+    "stone",                           -- 4: OK
+    "orange_terracotta",               -- 5: OK
+    "oak_leaves",                      -- 6: OK
+    "jungle_leaves",                   -- 7: OK
+    "jungle_slab[t=t]",                -- 8: OK
+    "dirt",                            -- 9: OK
+    "green_stained_glass",             -- 10: OK
+    "green_terracotta",                -- 11: OK
+    "grass_block",                     -- 12: OK
+    "slime_block",                     -- 13: FIXED (was: slime)
+    "poppy",                           -- 14: FIXED (was: red_flower)
+    "short_grass",                     -- 15: FIXED (was: tallgrass)
+    "melon",                           -- 16: FIXED (was: melon_block)
+    "green_wool",                      -- 17: OK
+    "stone_brick_slab[t=t]",           -- 18: OK
+    "oak_log",                         -- 19: OK
+    "spruce_planks",                   -- 20: OK
+    "stone_brick_stairs[f=w,h=b]",     -- 21: OK
+    "stone_brick_stairs[f=n,h=b]",     -- 22: OK
+    "stone_brick_stairs[f=e,h=b]",     -- 23: OK
+    "farmland",                        -- 24: OK
+    "light_gray_wool",                 -- 25: OK
+    "clay",                            -- 26: OK
+    "stone_brick_stairs[f=s,h=b]",     -- 27: OK
+    "light_gray_concrete_powder",      -- 28: OK
+    "orange_wool",                     -- 29: OK
+    "yellow_terracotta",               -- 30: OK
+    "brown_mushroom_block",            -- 31: OK
+    "oak_log[a=y]",                    -- 32: OK
+    "spruce_fence",                    -- 33: OK
+    "tall_grass",                      -- 34: FIXED (was: double_plant)
+    "mossy_cobblestone",               -- 35: OK
+    "cauldron",                        -- 36: SKIP
+    "gray_carpet",                     -- 37: SKIP
+    "cobblestone_wall",                -- 38: SKIP
+    "bookshelf",                       -- 39: SKIP
+    "oak_trapdoor",                    -- 40: FIXED (was: trapdoor)
+    "anvil",                           -- 41: SKIP
+    "birch_leaves",                    -- 42: OK
+    "spruce_slab[t=t]",                -- 43: OK
+    "chest",                           -- 44: OK
+    "dark_oak_stairs[f=e,h=t]",        -- 45: OK
+    "dark_oak_stairs[f=w,h=b]",        -- 46: OK
+    "spruce_door",                     -- 47: SKIP
+    "hay_block",                       -- 48: OK
+    "dark_oak_fence",                  -- 49: SKIP
+    "end_portal_frame",                -- 50: SKIP
+    "dark_oak_stairs[f=s,h=t]",        -- 51: OK
+    "oak_planks",                      -- 52: OK
+    "acacia_planks",                   -- 53: OK
+    "dark_oak_stairs[f=n,h=b]",        -- 54: OK
+    "jungle_door",                     -- 55: SKIP
+    "bricks",                          -- 56: FIXED (was: brick_block)
+    "spruce_stairs[f=s,h=t]",          -- 57: OK
+    "spruce_fence_gate",               -- 58: SKIP
+    "dark_oak_door",                   -- 59: SKIP
+    "spruce_stairs[f=n,h=b]",          -- 60: OK
+    "spruce_leaves",                   -- 61: OK
+    "oak_fence",                       -- 62: FIXED (was: fence)
+    "wheat",                           -- 63: OK
+    "spruce_slab[t=b]",                -- 64: OK
+    "red_terracotta",                  -- 65: OK
+    "light_weighted_pressure_plate",   -- 66: SKIP
+    "dark_oak_slab[t=b]",              -- 67: OK
+    "brown_terracotta",                -- 68: OK
+    "nether_brick_fence",              -- 69: OK
+    "stone_slab[t=b]",                 -- 70: OK
+    "stone_brick_slab[t=b]",           -- 71: OK
+    "cobblestone_slab[t=b]",           -- 72: OK
+    "hopper",                          -- 73: SKIP
+    "furnace",                         -- 74: OK
+    "stone_slab",                      -- 75: OK
+    "dark_oak_stairs[f=s,h=b]",        -- 76: OK
+    "dark_oak_stairs[f=n,h=t]",        -- 77: OK
+    "torch",                           -- 78: SKIP
+    "stone_stairs[f=w,h=b]",           -- 79: OK
+    "stone_stairs[f=e,h=b]",           -- 80: OK
+    "stone_button",                    -- 81: SKIP
+    "dark_oak_planks",                 -- 82: OK
+    "iron_trapdoor",                   -- 83: SKIP
+    "detector_rail",                   -- 84: SKIP
+    "obsidian",                        -- 85: OK
+    "dark_oak_stairs[f=e,h=b]",        -- 86: OK
+    "dark_oak_stairs[f=w,h=t]",        -- 87: OK
+    "wall_sign",                       -- 88: SKIP
+    "red_wool",                        -- 89: OK
+    "white_wool",                      -- 90: OK
+    "light_gray_carpet",               -- 91: SKIP
+    "brown_wool",                      -- 92: OK
+    "netherrack",                      -- 93: OK
+    "terracotta",                      -- 94: FIXED (was: hardened_clay)
+    "stone_stairs[f=e,h=t]",           -- 95: OK
+    "stone_stairs[f=w,h=t]",           -- 96: OK
+    "oak_button",                      -- 97: FIXED (was: wooden_button)
+    "stone_brick_stairs[f=w,h=t]",     -- 98: OK
+    "stone_brick_stairs[f=e,h=t]",     -- 99: OK
+    "stone_stairs[f=n,h=b]",           -- 100: OK
+    "stone_stairs[f=s,h=b]",           -- 101: OK
+    "cobblestone_slab[t=t]",           -- 102: OK
+    "stone_stairs[f=n,h=t]",           -- 103: OK
+    "ender_chest",                     -- 104: SKIP
+    "light_gray_stained_glass_pane",   -- 105: OK
+    "light_gray_stained_glass",        -- 106: OK
+    "sandstone_stairs[f=s,h=b]",       -- 107: OK
+    "stone_bricks",                    -- 108: FIXED (was: stonebrick)
+    "beacon",                          -- 109: SKIP
+    "stone_stairs[f=s,h=t]",           -- 110: OK
+    "snow",                            -- 111: FIXED (was: snow_layer)
+    "oak_log[a=x]",                    -- 112: OK
+    "spruce_stairs[f=n,h=t]",          -- 113: OK
+    "spruce_stairs[f=w,h=b]",          -- 114: OK
+    "cobweb",                          -- 115: FIXED (was: web)
+    "stone_brick_stairs[f=n,h=t]",     -- 116: OK
+    "stone_brick_stairs[f=s,h=t]",     -- 117: OK
+    "fire",                            -- 118: SKIP
+    "white_stained_glass_pane",        -- 119: OK
+    "sandstone_stairs[f=e,h=b]",       -- 120: OK
+    "sandstone_stairs[f=w,h=b]",       -- 121: OK
+    "sandstone_stairs[f=n,h=b]",       -- 122: OK
+    "ladder",                          -- 123: SKIP
+    "smooth_sandstone",                -- 124: OK
+    "sandstone",                       -- 125: OK
+    "cobblestone",                     -- 126: OK
+    "brick_stairs[f=n,h=b]",           -- 127: OK
+    "spruce_stairs[f=s,h=b]",          -- 128: OK
+    "stone_brick_slab",                -- 129: OK
+    "spruce_stairs[f=e,h=b]",          -- 130: OK
+    "flower_pot",                      -- 131: SKIP
+    "red_carpet",                      -- 132: SKIP
+    "oak_fence_gate",                  -- 133: FIXED (was: fence_gate)
+    "iron_bars",                       -- 134: OK
+    "brick_stairs[f=s,h=b]",           -- 135: OK
+    "birch_planks",                    -- 136: OK
+    "bed",                             -- 137: SKIP
+    "oak_stairs[f=e,h=b]",             -- 138: OK
+    "oak_stairs[f=s,h=b]",             -- 139: OK
+    "oak_stairs[f=w,h=b]",             -- 140: OK
+    "oak_stairs[f=n,h=b]",             -- 141: OK
+    "tripwire_hook",                   -- 142: SKIP
+    "spruce_log[a=z]",                 -- 143: OK
+    "brick_stairs[f=w,h=t]",           -- 144: OK
+    "brick_stairs[f=e,h=t]",           -- 145: OK
+    "cake",                            -- 146: SKIP
+    "brick_stairs[f=e,h=b]",           -- 147: OK
+    "brick_stairs[f=s,h=t]",           -- 148: OK
+    "brick_stairs[f=w,h=b]",           -- 149: OK
+    "heavy_weighted_pressure_plate",   -- 150: SKIP
+    "brown_stained_glass_pane",        -- 151: OK
+    "spruce_stairs[f=e,h=t]",          -- 152: OK
+    "birch_stairs[f=w,h=t]",           -- 153: OK
+    "birch_stairs[f=e,h=t]",           -- 154: OK
+    "birch_stairs[f=s,h=t]",           -- 155: OK
+    "birch_stairs[f=n,h=t]",           -- 156: OK
+    "spruce_stairs[f=w,h=t]",          -- 157: OK
+    "oak_log[a=z]",                    -- 158: OK
+    "oak_stairs[f=s,h=t]",             -- 159: OK
+    "birch_slab[t=t]",                 -- 160: OK
+    "oak_stairs[f=e,h=t]",             -- 161: OK
+    "oak_stairs[f=w,h=t]",             -- 162: OK
+    "oak_stairs[f=n,h=t]",             -- 163: OK
+    "barrier",                         -- 164: SKIP
+    "crafting_table",                  -- 165: OK
+    "red_concrete",                    -- 166: OK
+    "jungle_planks",                   -- 167: OK
+    "jungle_slab[t=b]",                -- 168: OK
+    "jungle_stairs[f=n,h=b]",          -- 169: OK
+    "jungle_stairs[f=s,h=b]",          -- 170: OK
+    "wall_banner",                     -- 171: SKIP
+    "white_carpet",                    -- 172: SKIP
+    "enchanting_table",                -- 173: SKIP
+    "acacia_slab[t=t]",                -- 174: OK
+    "jungle_stairs[f=w,h=b]",          -- 175: OK
+    "jungle_stairs[f=e,h=b]",          -- 176: OK
+    "jungle_slab",                     -- 177: OK
+    "oak_pressure_plate",              -- 178: FIXED (was: wooden_pressure_plate)
+    "redstone_lamp",                   -- 179: FIXED (was: lit_redstone_lamp)
+    "redstone_block",                  -- 180: SKIP
+    "sandstone_stairs[f=n,h=t]",       -- 181: OK
+    "sandstone_stairs[f=e,h=t]",       -- 182: OK
+    "sandstone_stairs[f=s,h=t]",       -- 183: OK
+    "daylight_detector",               -- 184: SKIP
+    "black_concrete",                  -- 185: OK
+    "jungle_fence",                    -- 186: SKIP
+    "sandstone_stairs[f=w,h=t]",       -- 187: OK
+    "piston_head",                     -- 188: SKIP
   },
   encoding = "rle",
   chunks = {

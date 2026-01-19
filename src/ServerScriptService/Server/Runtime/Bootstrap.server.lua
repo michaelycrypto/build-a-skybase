@@ -75,6 +75,12 @@ Injector:Bind("BowService", script.Parent.Parent.Services.BowService, {
 	mixins = {}
 })
 
+-- Loading protection (both places) - keeps players safe during loading screen
+Injector:Bind("LoadingProtectionService", script.Parent.Parent.Services.LoadingProtectionService, {
+	dependencies = {},
+	mixins = {}
+})
+
 -- Cross-place helper (both places)
 Injector:Bind("CrossPlaceTeleportService", script.Parent.Parent.Services.CrossPlaceTeleportService, {
 	dependencies = {},
@@ -176,6 +182,7 @@ local activeWorldRegistryService = not IS_LOBBY and Injector:Resolve("ActiveWorl
 local lobbyWorldTeleportService = IS_LOBBY and Injector:Resolve("LobbyWorldTeleportService") or nil
 local worldsListService = Injector:Resolve("WorldsListService") or nil  -- Available in both lobby and player-owned worlds
 local crossPlaceTeleportService = Injector:Resolve("CrossPlaceTeleportService")
+local loadingProtectionService = Injector:Resolve("LoadingProtectionService")
 
 -- Manually inject ChestStorageService into VoxelWorldService (to avoid circular dependency during init)
 if voxelWorldService and chestStorageService then
@@ -219,6 +226,7 @@ local servicesTable = {
 	LobbyWorldTeleportService = lobbyWorldTeleportService,
 	WorldsListService = worldsListService,
 	CrossPlaceTeleportService = crossPlaceTeleportService,
+	LoadingProtectionService = loadingProtectionService,
 }
 
 -- Register all events first (defines RemoteEvents with proper parameter signatures)
@@ -421,10 +429,10 @@ if IS_LOBBY then
 	local HUB_RENDER_DISTANCE = 6 -- Larger render distance for schematic hub
 	voxelWorldService:InitializeWorld(HUB_WORLD_SEED, HUB_RENDER_DISTANCE, "hub_world")
 	logger.Info("✅ Hub voxel world initialized (schematic-based)")
-	
+
 	-- Schematic is now loaded via SchematicWorldGenerator in WorldTypes
 	-- No manual import needed - chunks are generated on-demand from schematic data
-	
+
 	dispatchWorldState("ready", "hub_initialized")
 
 	local function addHubPlayer(player)

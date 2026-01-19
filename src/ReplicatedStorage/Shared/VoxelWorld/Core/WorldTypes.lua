@@ -30,7 +30,7 @@ WorldTypes.registry = {
 		name = "Lobby Hub",
 		generatorModule = SchematicWorldGenerator,
 		generatorOptions = {
-			-- Path to schematic in ServerStorage
+			-- Path to schematic in ServerStorage/Schematics folder
 			schematicPath = "Schematics.LittleIsland",
 
 			-- Offset to position schematic in world

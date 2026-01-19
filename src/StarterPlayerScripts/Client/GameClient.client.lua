@@ -1088,11 +1088,25 @@ local function initialize()
 
 	-- Register network event handlers
     EventManager:RegisterEvent("ChunkDataStreamed", function(data)
-        if not voxelWorldHandle or not voxelWorldHandle.GetWorldManager then return end
+        if not voxelWorldHandle or not voxelWorldHandle.GetWorldManager then
+            warn("[ChunkDataStreamed] No voxelWorldHandle yet, dropping chunk data")
+            return
+        end
         local wm = voxelWorldHandle:GetWorldManager()
-        if not wm then return end
+        if not wm then
+            warn("[ChunkDataStreamed] No world manager, dropping chunk data")
+            return
+        end
         local chunk = wm:GetChunk(data.chunk.x, data.chunk.z)
-        if not chunk then return end
+        if not chunk then
+            warn(string.format("[ChunkDataStreamed] Failed to create chunk (%d,%d)", data.chunk.x, data.chunk.z))
+            return
+        end
+
+        -- Debug: Log first few chunks received
+        local key = data.key or (tostring(data.chunk.x) .. "," .. tostring(data.chunk.z))
+        print(string.format("[ChunkDataStreamed] Received chunk %s, has palette: %s, has runs: %s",
+            key, tostring(data.chunk.palette ~= nil), tostring(data.chunk.runs ~= nil)))
         -- Prefer compressed payloads (palette + RLE) when present
         if data.chunk.palette and data.chunk.runs and data.chunk.dims then
             local lin = ChunkCompressor.DecompressToLinear(data.chunk)

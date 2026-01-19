@@ -178,9 +178,14 @@ local function onArmorSlotResult(data)
 end
 
 local function onCharacterAdded(character)
-	character:WaitForChild("Humanoid")
-	character:WaitForChild("Head")
+	local humanoid = character:WaitForChild("Humanoid", 5)
+	local head = character:WaitForChild("Head", 5)
 	local _ = character:WaitForChild("Torso", 2) or character:WaitForChild("UpperTorso", 2)
+
+	if not humanoid or not head then
+		warn("[ArmorVisualController] Character missing required parts, aborting setup")
+		return
+	end
 
 	-- Remove accessories
 	for _, child in ipairs(character:GetChildren()) do
