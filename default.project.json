@@ -15,10 +15,6 @@
       "RBX_CustomFont": {
         "$path": "src/ReplicatedStorage/RBX_CustomFont.lua"
       },
-      "Tools": {
-        "$path": "src/ReplicatedStorage/Tools",
-        "$ignoreUnknownInstances": true
-      },
       "Configs": {
         "$path": "src/ReplicatedStorage/Configs"
       },
@@ -47,23 +43,8 @@
       },
       "Schematics": {
         "$className": "Folder",
-        "Medieval_Skyblock_Spawn": {
-          "$path": "src/ServerStorage/Medieval_Skyblock_Spawn.lua"
-        },
-        "Winchester_Skyblock": {
-          "$path": "src/ServerStorage/Winchester-Skyblock.lua"
-        },
-        "InsaneCraft_Lobby": {
-          "$path": "src/ServerStorage/InsaneCraft_Lobby.lua"
-        },
-        "SimpleHub": {
-          "$path": "src/ServerStorage/SimpleHub.lua"
-        },
-        "SmallTowerHub": {
-          "$path": "src/ServerStorage/SmallTowerHub.lua"
-        },
-        "LittleIsland": {
-          "$path": "src/ServerStorage/LittleIsland.lua"
+        "LittleIsland1_20": {
+          "$path": "src/ServerStorage/LittleIsland1_20.lua"
         }
       }
     },

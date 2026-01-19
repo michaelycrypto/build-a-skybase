@@ -24,28 +24,34 @@ WorldTypes.registry = {
 		},
 	},
 
-	-- Hub world using imported Minecraft schematic (LittleIsland)
+	-- Hub world using imported Minecraft schematic (LittleIsland1_20)
 	hub_world = {
 		id = "hub_world",
 		name = "Lobby Hub",
 		generatorModule = SchematicWorldGenerator,
 		generatorOptions = {
-			-- Path to schematic in ServerStorage/Schematics folder
-			schematicPath = "Schematics.LittleIsland",
+			-- Path to schematic in ServerStorage.Schematics folder
+			schematicPath = "Schematics.LittleIsland1_20",
 
 			-- Offset to position schematic in world
-			-- Schematic is 202x136x166, centering around origin
-			offsetX = -101,
+			-- Schematic is 219x130x197, centering around origin
+			offsetX = -110,
 			offsetY = 0,
-			offsetZ = -83,
+			offsetZ = -99,
+
+			-- Explicit spawn position (block coordinates, center of island)
+			-- Will be overridden by schematic's surface detection if successful
+			spawnX = 0,
+			spawnY = 55,  -- Approximate surface level + buffer
+			spawnZ = 0,
 
 			-- Chunk bounds for streaming optimization
-			-- Calculated from schematic size: 202/16 ≈ 13 chunks, 166/16 ≈ 11 chunks
-			-- With offset, chunks span roughly -7 to 7 on X, -6 to 6 on Z
+			-- Calculated from schematic size: 219/16 = 13.7 chunks, 197/16 = 12.3 chunks
+			-- With offset, chunks span roughly -7 to 6 on X, -7 to 5 on Z
 			chunkBounds = {
-				minChunkX = -7,
+				minChunkX = -8,
 				maxChunkX = 7,
-				minChunkZ = -6,
+				minChunkZ = -7,
 				maxChunkZ = 6,
 			},
 		},

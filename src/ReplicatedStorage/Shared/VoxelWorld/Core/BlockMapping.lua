@@ -1,12 +1,12 @@
 --[[
 	BlockMapping.lua
-	
+
 	SINGLE SOURCE OF TRUTH for Minecraft → Roblox block type mappings.
-	
+
 	Used by:
 	- SchematicWorldGenerator (hub world generation)
 	- SchematicImporter (direct schematic imports)
-	
+
 	Maps Minecraft block names (1.13+ naming convention) to Constants.BlockType IDs.
 	Only maps to BlockTypes that exist in Constants.lua!
 ]]
@@ -51,6 +51,8 @@ BlockMapping.Map = {
 	["podzol"] = BLOCK.PODZOL,
 	["mycelium"] = BLOCK.MYCELIUM,
 	["rooted_dirt"] = BLOCK.DIRT,
+	["dirt_path"] = BLOCK.COARSE_DIRT,
+	["grass_path"] = BLOCK.COARSE_DIRT,
 
 	-- Snow & Ice
 	["snow"] = BLOCK.SNOW_BLOCK,
@@ -141,6 +143,7 @@ BlockMapping.Map = {
 	["respawn_anchor"] = BLOCK.RESPAWN_ANCHOR,
 	["crimson_nylium"] = BLOCK.CRIMSON_NYLIUM,
 	["warped_nylium"] = BLOCK.WARPED_NYLIUM,
+	["nether_portal"] = BLOCK.PURPLE_STAINED_GLASS,
 
 	-- Nether bricks
 	["nether_bricks"] = BLOCK.NETHER_BRICKS,
@@ -571,6 +574,9 @@ BlockMapping.Map = {
 	["twisting_vines_plant"] = BLOCK.TALL_GRASS,
 	["dead_bush"] = BLOCK.DEAD_BUSH,
 
+	-- Underwater plants
+	["sea_pickle"] = BLOCK.LIME_STAINED_GLASS,
+
 	-- Flowers
 	["allium"] = BLOCK.FLOWER,
 	["azure_bluet"] = BLOCK.FLOWER,
@@ -611,13 +617,19 @@ BlockMapping.Map = {
 	["mushroom_stem"] = BLOCK.MUSHROOM_STEM,
 
 	-- ═══════════════════════════════════════════════════════════════════════
-	-- CROPS
+	-- CROPS (Cross-shaped plants)
 	-- ═══════════════════════════════════════════════════════════════════════
 	["farmland"] = BLOCK.FARMLAND,
 	["wheat"] = BLOCK.WHEAT_CROP_7,
 	["potatoes"] = BLOCK.POTATO_CROP_3,
 	["carrots"] = BLOCK.CARROT_CROP_3,
 	["beetroots"] = BLOCK.BEETROOT_CROP_3,
+
+	-- Nether Wart (cross-shaped, red plant)
+	["nether_wart"] = BLOCK.RED_MUSHROOM,
+
+	-- Cocoa (cross-shaped, brown pods)
+	["cocoa"] = BLOCK.BROWN_WOOL,
 
 	-- ═══════════════════════════════════════════════════════════════════════
 	-- MELON & PUMPKIN
@@ -626,6 +638,12 @@ BlockMapping.Map = {
 	["pumpkin"] = BLOCK.PUMPKIN,
 	["carved_pumpkin"] = BLOCK.CARVED_PUMPKIN,
 	["jack_o_lantern"] = BLOCK.JACK_O_LANTERN,
+
+	-- Melon & Pumpkin stems (cross-shaped vines)
+	["melon_stem"] = BLOCK.TALL_GRASS,
+	["attached_melon_stem"] = BLOCK.TALL_GRASS,
+	["pumpkin_stem"] = BLOCK.TALL_GRASS,
+	["attached_pumpkin_stem"] = BLOCK.TALL_GRASS,
 
 	-- ═══════════════════════════════════════════════════════════════════════
 	-- SPECIAL BLOCKS

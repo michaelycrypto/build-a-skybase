@@ -26,35 +26,54 @@ local BLOCK_MAPPING = BlockMapping.Map
 -- METADATA PARSING
 -- ═══════════════════════════════════════════════════════════════════════════
 
+-- Supports both abbreviated (f=n) and full (facing=north) property names
 local FACING_TO_ROTATION = {
+	-- Abbreviated
 	["n"] = Constants.BlockMetadata.ROTATION_NORTH,
 	["e"] = Constants.BlockMetadata.ROTATION_EAST,
 	["s"] = Constants.BlockMetadata.ROTATION_SOUTH,
 	["w"] = Constants.BlockMetadata.ROTATION_WEST,
+	-- Full
 	["north"] = Constants.BlockMetadata.ROTATION_NORTH,
 	["east"] = Constants.BlockMetadata.ROTATION_EAST,
 	["south"] = Constants.BlockMetadata.ROTATION_SOUTH,
 	["west"] = Constants.BlockMetadata.ROTATION_WEST,
 }
 
+-- Supports both abbreviated (h=t) and full (half=top) property names
 local HALF_TO_VERTICAL = {
+	-- Abbreviated
 	["t"] = Constants.BlockMetadata.VERTICAL_TOP,
 	["b"] = Constants.BlockMetadata.VERTICAL_BOTTOM,
+	-- Full
 	["top"] = Constants.BlockMetadata.VERTICAL_TOP,
 	["bottom"] = Constants.BlockMetadata.VERTICAL_BOTTOM,
 }
 
+-- Supports both abbreviated (s=st) and full (shape=straight) property names
 local SHAPE_TO_STAIR = {
+	-- Abbreviated
 	["st"] = Constants.BlockMetadata.STAIR_SHAPE_STRAIGHT,
 	["il"] = Constants.BlockMetadata.STAIR_SHAPE_INNER_LEFT,
 	["ir"] = Constants.BlockMetadata.STAIR_SHAPE_INNER_RIGHT,
 	["ol"] = Constants.BlockMetadata.STAIR_SHAPE_OUTER_LEFT,
 	["or"] = Constants.BlockMetadata.STAIR_SHAPE_OUTER_RIGHT,
+	-- Full
 	["straight"] = Constants.BlockMetadata.STAIR_SHAPE_STRAIGHT,
 	["inner_left"] = Constants.BlockMetadata.STAIR_SHAPE_INNER_LEFT,
 	["inner_right"] = Constants.BlockMetadata.STAIR_SHAPE_INNER_RIGHT,
 	["outer_left"] = Constants.BlockMetadata.STAIR_SHAPE_OUTER_LEFT,
 	["outer_right"] = Constants.BlockMetadata.STAIR_SHAPE_OUTER_RIGHT,
+}
+
+-- Supports both abbreviated (t=t) and full (type=top) property names for slabs
+local SLAB_TYPE_TO_VERTICAL = {
+	-- Abbreviated
+	["t"] = Constants.BlockMetadata.VERTICAL_TOP,
+	["b"] = Constants.BlockMetadata.VERTICAL_BOTTOM,
+	-- Full
+	["top"] = Constants.BlockMetadata.VERTICAL_TOP,
+	["bottom"] = Constants.BlockMetadata.VERTICAL_BOTTOM,
 }
 
 --- Parse a palette entry like "minecraft:oak_stairs[f=n,h=b,s=st]" into baseName and properties
@@ -82,6 +101,7 @@ local function parseBlockEntry(paletteEntry)
 end
 
 --- Convert Minecraft block properties to our metadata byte format
+--- Handles both abbreviated (f=n, h=b, s=st) and full (facing=north, half=bottom, shape=straight) property names
 local function convertMetadata(baseName, properties)
 	if not properties then
 		return 0
@@ -89,20 +109,33 @@ local function convertMetadata(baseName, properties)
 
 	local metadata = 0
 
-	if properties.f and FACING_TO_ROTATION[properties.f] then
-		metadata = Constants.SetRotation(metadata, FACING_TO_ROTATION[properties.f])
+	-- Handle facing (f or facing)
+	local facing = properties.f or properties.facing
+	if facing and FACING_TO_ROTATION[facing] then
+		metadata = Constants.SetRotation(metadata, FACING_TO_ROTATION[facing])
 	end
 
-	if properties.h and HALF_TO_VERTICAL[properties.h] then
-		metadata = Constants.SetVerticalOrientation(metadata, HALF_TO_VERTICAL[properties.h])
+	-- Handle half (h or half) for stairs/slabs
+	local half = properties.h or properties.half
+	if half and HALF_TO_VERTICAL[half] then
+		metadata = Constants.SetVerticalOrientation(metadata, HALF_TO_VERTICAL[half])
 	end
 
-	if properties.s and SHAPE_TO_STAIR[properties.s] then
-		metadata = Constants.SetStairShape(metadata, SHAPE_TO_STAIR[properties.s])
+	-- Handle stair shape (s or shape)
+	local shape = properties.s or properties.shape
+	if shape and SHAPE_TO_STAIR[shape] then
+		metadata = Constants.SetStairShape(metadata, SHAPE_TO_STAIR[shape])
 	end
 
-	if properties.t == "d" or properties.type == "double" then
-		metadata = Constants.SetDoubleSlabFlag(metadata, true)
+	-- Handle slab type (t or type)
+	local slabType = properties.t or properties.type
+	if slabType then
+		if slabType == "d" or slabType == "db" or slabType == "double" then
+			-- Double slab: set the double flag
+			metadata = Constants.SetDoubleSlabFlag(metadata, true)
+		elseif SLAB_TYPE_TO_VERTICAL[slabType] then
+			metadata = Constants.SetVerticalOrientation(metadata, SLAB_TYPE_TO_VERTICAL[slabType])
+		end
 	end
 
 	return metadata
@@ -320,8 +353,32 @@ end
 function SchematicWorldGenerator:_computeSpawnPosition()
 	local config = self._config
 
-	-- Use explicit spawn position if provided
+	-- If schematic loaded successfully, use auto-detected spawn from schematic data
+	if self._schematicData and self._schematicSize.width > 0 then
+		-- Default: center of schematic at top Y + 2
+		local centerX = config.offsetX + self._schematicSize.width / 2
+		local centerZ = config.offsetZ + self._schematicSize.length / 2
+		local spawnY = self._maxY + 2
+
+		-- Try to find a solid block near center to spawn on
+		local testY = self:_findSurfaceY(math.floor(centerX), math.floor(centerZ))
+		if testY then
+			spawnY = testY + 2
+		end
+
+		print(string.format("[SchematicWorldGenerator] Auto-detected spawn: (%d, %d, %d)",
+			math.floor(centerX), spawnY, math.floor(centerZ)))
+
+		return Vector3.new(
+			math.floor(centerX) * Constants.BLOCK_SIZE,
+			spawnY * Constants.BLOCK_SIZE,
+			math.floor(centerZ) * Constants.BLOCK_SIZE
+		)
+	end
+
+	-- Fallback: use explicit spawn position if schematic failed to load
 	if config.spawnX and config.spawnY and config.spawnZ then
+		warn("[SchematicWorldGenerator] Schematic not loaded, using fallback spawn position")
 		return Vector3.new(
 			config.spawnX * Constants.BLOCK_SIZE,
 			config.spawnY * Constants.BLOCK_SIZE,
@@ -329,22 +386,9 @@ function SchematicWorldGenerator:_computeSpawnPosition()
 		)
 	end
 
-	-- Default: center of schematic at top Y + 2
-	local centerX = config.offsetX + self._schematicSize.width / 2
-	local centerZ = config.offsetZ + self._schematicSize.length / 2
-	local spawnY = self._maxY + 2
-
-	-- Try to find a solid block near center to spawn on
-	local testY = self:_findSurfaceY(math.floor(centerX), math.floor(centerZ))
-	if testY then
-		spawnY = testY + 2
-	end
-
-	return Vector3.new(
-		math.floor(centerX) * Constants.BLOCK_SIZE,
-		spawnY * Constants.BLOCK_SIZE,
-		math.floor(centerZ) * Constants.BLOCK_SIZE
-	)
+	-- Last resort fallback
+	warn("[SchematicWorldGenerator] No spawn position available, using origin")
+	return Vector3.new(0, 100 * Constants.BLOCK_SIZE, 0)
 end
 
 function SchematicWorldGenerator:_findSurfaceY(wx, wz)

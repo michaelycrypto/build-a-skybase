@@ -3,6 +3,12 @@
 
 	Imports Minecraft schematics (converted to Lua RLE format) into the voxel world.
 
+	SUPPORTED FORMATS:
+	- Legacy format: Block names without namespace, abbreviated properties (f=n, h=b, t=t)
+	  Example: "stone_brick_stairs[f=w,h=b]"
+	- 1.20+ format: Full Minecraft namespace and property names
+	  Example: "minecraft:stone_brick_stairs[facing=west,half=bottom,shape=straight,waterlogged=false]"
+
 	BLOCK MAPPING: Uses shared BlockMapping module as single source of truth.
 
 	Usage:
@@ -33,11 +39,14 @@ local BLOCK_MAPPING = BlockMapping.Map
 -- ═══════════════════════════════════════════════════════════════════════════
 
 -- Direction mapping: Minecraft cardinal → our rotation constants
+-- Supports both abbreviated (f=n) and full (facing=north) formats
 local FACING_TO_ROTATION = {
+	-- Abbreviated
 	["n"] = Constants.BlockMetadata.ROTATION_NORTH,
 	["e"] = Constants.BlockMetadata.ROTATION_EAST,
 	["s"] = Constants.BlockMetadata.ROTATION_SOUTH,
 	["w"] = Constants.BlockMetadata.ROTATION_WEST,
+	-- Full
 	["north"] = Constants.BlockMetadata.ROTATION_NORTH,
 	["east"] = Constants.BlockMetadata.ROTATION_EAST,
 	["south"] = Constants.BlockMetadata.ROTATION_SOUTH,
@@ -45,33 +54,77 @@ local FACING_TO_ROTATION = {
 }
 
 -- Half mapping: Minecraft half → our vertical constants
+-- Supports both abbreviated (h=t) and full (half=top) formats
 local HALF_TO_VERTICAL = {
+	-- Abbreviated
 	["t"] = Constants.BlockMetadata.VERTICAL_TOP,
 	["b"] = Constants.BlockMetadata.VERTICAL_BOTTOM,
+	-- Full
 	["top"] = Constants.BlockMetadata.VERTICAL_TOP,
 	["bottom"] = Constants.BlockMetadata.VERTICAL_BOTTOM,
 }
 
 -- Stair shape mapping
+-- Supports both abbreviated (s=st) and full (shape=straight) formats
 local SHAPE_TO_STAIR = {
+	-- Abbreviated
 	["st"] = Constants.BlockMetadata.STAIR_SHAPE_STRAIGHT,
-	["straight"] = Constants.BlockMetadata.STAIR_SHAPE_STRAIGHT,
 	["ol"] = Constants.BlockMetadata.STAIR_SHAPE_OUTER_LEFT,
-	["outer_left"] = Constants.BlockMetadata.STAIR_SHAPE_OUTER_LEFT,
 	["or"] = Constants.BlockMetadata.STAIR_SHAPE_OUTER_RIGHT,
-	["outer_right"] = Constants.BlockMetadata.STAIR_SHAPE_OUTER_RIGHT,
 	["il"] = Constants.BlockMetadata.STAIR_SHAPE_INNER_LEFT,
-	["inner_left"] = Constants.BlockMetadata.STAIR_SHAPE_INNER_LEFT,
 	["ir"] = Constants.BlockMetadata.STAIR_SHAPE_INNER_RIGHT,
+	-- Full
+	["straight"] = Constants.BlockMetadata.STAIR_SHAPE_STRAIGHT,
+	["outer_left"] = Constants.BlockMetadata.STAIR_SHAPE_OUTER_LEFT,
+	["outer_right"] = Constants.BlockMetadata.STAIR_SHAPE_OUTER_RIGHT,
+	["inner_left"] = Constants.BlockMetadata.STAIR_SHAPE_INNER_LEFT,
 	["inner_right"] = Constants.BlockMetadata.STAIR_SHAPE_INNER_RIGHT,
 }
 
 -- Slab type mapping
+-- Supports both abbreviated (t=t) and full (type=top) formats
 local SLAB_TYPE_TO_VERTICAL = {
+	-- Abbreviated
 	["t"] = Constants.BlockMetadata.VERTICAL_TOP,
-	["top"] = Constants.BlockMetadata.VERTICAL_TOP,
 	["b"] = Constants.BlockMetadata.VERTICAL_BOTTOM,
+	-- Full
+	["top"] = Constants.BlockMetadata.VERTICAL_TOP,
 	["bottom"] = Constants.BlockMetadata.VERTICAL_BOTTOM,
+}
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- CROP AGE MAPPING
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Maps base crop name + age → specific block ID
+local CROP_STAGES = {
+	["wheat"] = {
+		[0] = Constants.BlockType.WHEAT_CROP_0,
+		[1] = Constants.BlockType.WHEAT_CROP_1,
+		[2] = Constants.BlockType.WHEAT_CROP_2,
+		[3] = Constants.BlockType.WHEAT_CROP_3,
+		[4] = Constants.BlockType.WHEAT_CROP_4,
+		[5] = Constants.BlockType.WHEAT_CROP_5,
+		[6] = Constants.BlockType.WHEAT_CROP_6,
+		[7] = Constants.BlockType.WHEAT_CROP_7,
+	},
+	["potatoes"] = {
+		[0] = Constants.BlockType.POTATO_CROP_0,
+		[1] = Constants.BlockType.POTATO_CROP_1,
+		[2] = Constants.BlockType.POTATO_CROP_2,
+		[3] = Constants.BlockType.POTATO_CROP_3,
+	},
+	["carrots"] = {
+		[0] = Constants.BlockType.CARROT_CROP_0,
+		[1] = Constants.BlockType.CARROT_CROP_1,
+		[2] = Constants.BlockType.CARROT_CROP_2,
+		[3] = Constants.BlockType.CARROT_CROP_3,
+	},
+	["beetroots"] = {
+		[0] = Constants.BlockType.BEETROOT_CROP_0,
+		[1] = Constants.BlockType.BEETROOT_CROP_1,
+		[2] = Constants.BlockType.BEETROOT_CROP_2,
+		[3] = Constants.BlockType.BEETROOT_CROP_3,
+	},
 }
 
 -- ═══════════════════════════════════════════════════════════════════════════
@@ -105,6 +158,8 @@ local function parseBlockEntry(paletteEntry)
 end
 
 --- Convert Minecraft metadata to our BlockMetadata byte
+--- Handles both abbreviated (f=n, h=b, s=st, t=t) and full (facing=north, half=bottom, shape=straight, type=top) property names
+--- Note: axis property (a=y or axis=y) for logs/pillars is parsed but not stored in metadata (no rotation storage)
 --- @param baseName string The base block name (for context)
 --- @param properties table|nil Parsed properties from block name
 --- @return number metadata Our BlockMetadata format (0-255)
@@ -115,38 +170,66 @@ local function convertMetadata(baseName, properties)
 
 	local metadata = 0
 
-	-- Handle facing (f)
-	if properties.f and FACING_TO_ROTATION[properties.f] then
-		metadata = Constants.SetRotation(metadata, FACING_TO_ROTATION[properties.f])
+	-- Handle facing (f or facing)
+	local facing = properties.f or properties.facing
+	if facing and FACING_TO_ROTATION[facing] then
+		metadata = Constants.SetRotation(metadata, FACING_TO_ROTATION[facing])
 	end
 
-	-- Handle half (h) for stairs/slabs
-	if properties.h and HALF_TO_VERTICAL[properties.h] then
-		metadata = Constants.SetVerticalOrientation(metadata, HALF_TO_VERTICAL[properties.h])
+	-- Handle half (h or half) for stairs/slabs
+	local half = properties.h or properties.half
+	if half and HALF_TO_VERTICAL[half] then
+		metadata = Constants.SetVerticalOrientation(metadata, HALF_TO_VERTICAL[half])
 	end
 
-	-- Handle stair shape (s)
-	if properties.s and SHAPE_TO_STAIR[properties.s] then
-		metadata = Constants.SetStairShape(metadata, SHAPE_TO_STAIR[properties.s])
+	-- Handle stair shape (s or shape)
+	local shape = properties.s or properties.shape
+	if shape and SHAPE_TO_STAIR[shape] then
+		metadata = Constants.SetStairShape(metadata, SHAPE_TO_STAIR[shape])
 	end
 
-	-- Handle slab type (t) for slabs
-	if properties.t then
-		if properties.t == "db" or properties.t == "double" then
+	-- Handle slab type (t or type) for slabs
+	local slabType = properties.t or properties.type
+	if slabType then
+		if slabType == "db" or slabType == "double" then
 			-- Double slab: set the double flag
 			metadata = Constants.SetDoubleSlabFlag(metadata, true)
-		elseif SLAB_TYPE_TO_VERTICAL[properties.t] then
-			metadata = Constants.SetVerticalOrientation(metadata, SLAB_TYPE_TO_VERTICAL[properties.t])
+		elseif SLAB_TYPE_TO_VERTICAL[slabType] then
+			metadata = Constants.SetVerticalOrientation(metadata, SLAB_TYPE_TO_VERTICAL[slabType])
 		end
 	end
+
+	-- Note: axis property (a or axis) for logs/pillars is acknowledged but not stored
+	-- Logs/pillars will be placed in default (vertical) orientation
+	-- This is a known limitation - axis rotation would need additional metadata bits
 
 	return metadata
 end
 
---- Get block ID from Minecraft block name
+--- Get block ID from Minecraft block name, considering properties like crop age
+--- Handles both abbreviated (ag=7) and full (age=7) property names
 --- @param baseName string The base block name (without metadata)
+--- @param properties table|nil Parsed properties from block name
 --- @return number|nil blockId Our BlockType ID, or nil if unmapped
-local function getBlockId(baseName)
+local function getBlockId(baseName, properties)
+	-- Handle crop stages based on age property (ag or age)
+	if properties then
+		local ageValue = properties.ag or properties.age
+		if ageValue then
+			local cropStages = CROP_STAGES[baseName]
+			if cropStages then
+				local age = tonumber(ageValue) or 0
+				-- Clamp age to valid range for this crop
+				local maxAge = 0
+				for ageKey, _ in pairs(cropStages) do
+					if ageKey > maxAge then maxAge = ageKey end
+				end
+				age = math.min(age, maxAge)
+				return cropStages[age]
+			end
+		end
+	end
+
 	return BLOCK_MAPPING[baseName]
 end
 
@@ -192,7 +275,7 @@ function SchematicImporter.import(options)
 
 	for i, entry in ipairs(palette) do
 		local baseName, properties = parseBlockEntry(entry)
-		local blockId = (blockMapping and blockMapping[baseName]) or getBlockId(baseName)
+		local blockId = (blockMapping and blockMapping[baseName]) or getBlockId(baseName, properties)
 		local metadata = convertMetadata(baseName, properties)
 
 		if blockId then
@@ -336,7 +419,7 @@ function SchematicImporter.previewMapping(schematicModule)
 
 	for i, entry in ipairs(palette) do
 		local baseName, properties = parseBlockEntry(entry)
-		local blockId = getBlockId(baseName)
+		local blockId = getBlockId(baseName, properties)
 
 		if blockId then
 			table.insert(mapped, {
