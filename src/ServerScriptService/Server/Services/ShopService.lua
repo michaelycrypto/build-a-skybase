@@ -58,7 +58,7 @@ function ShopService:Init()
 	self:SetupEventHandlers()
 
 	BaseService.Init(self)
-	self._logger.Info("ShopService initialized")
+	self._logger.Debug("ShopService initialized")
 end
 
 function ShopService:Start()
@@ -75,7 +75,7 @@ function ShopService:Start()
 	-- Start stock replenishment loop
 	self:StartStockReplenishment()
 
-	self._logger.Info("ShopService started with stock management")
+	self._logger.Debug("ShopService started with stock management")
 end
 
 function ShopService:Destroy()
@@ -94,7 +94,7 @@ function ShopService:InitializeShopData()
 	self._shopData.items = {}
 	-- ItemConfig was removed - shop is now empty
 	-- If shop functionality is needed, items should be configured in GameConfig or another config file
-	self._logger.Info("Initialized shop with 0 items (ItemConfig removed)")
+	self._logger.Debug("Initialized shop with 0 items (ItemConfig removed)")
 end
 
 --[[
@@ -103,7 +103,7 @@ end
 function ShopService:SetupEventHandlers()
 	-- Event handlers are now set up in EventManager:CreateServerEventConfig
 	-- This method is kept for compatibility but handlers are registered elsewhere
-	self._logger.Info("Event handlers will be registered by EventManager")
+	self._logger.Debug("Event handlers will be registered by EventManager")
 end
 
 --[[
@@ -532,7 +532,12 @@ function ShopService:ReplenishStock()
 		end
 	end
 
-	self._logger.Info("Replenishment cycle complete. Items replenished: " .. replenishedCount)
+	-- Only log when items were actually replenished
+	if replenishedCount > 0 then
+		self._logger.Info("Replenishment cycle complete. Items replenished: " .. replenishedCount)
+	else
+		self._logger.Debug("Replenishment cycle complete. No items needed restocking.")
+	end
 
 	self._stockData.lastReplenishment = currentTime
 

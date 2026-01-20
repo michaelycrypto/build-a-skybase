@@ -47,7 +47,7 @@ function WorldOwnershipService:Init()
 	end
 
 	BaseService.Init(self)
-	self._logger.Info("WorldOwnershipService initialized")
+	self._logger.Debug("WorldOwnershipService initialized")
 end
 
 function WorldOwnershipService:Start()
@@ -55,7 +55,7 @@ function WorldOwnershipService:Start()
 		return
 	end
 
-	self._logger.Info("WorldOwnershipService started")
+	self._logger.Debug("WorldOwnershipService started")
 	BaseService.Start(self)
 end
 

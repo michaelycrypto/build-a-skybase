@@ -156,7 +156,7 @@ function PlayerDataStoreService:Init()
 	end
 
 	BaseService.Init(self)
-	self._logger.Info("PlayerDataStoreService initialized")
+	self._logger.Debug("PlayerDataStoreService initialized")
 end
 
 function PlayerDataStoreService:Start()
@@ -210,9 +210,9 @@ function PlayerDataStoreService:LoadPlayerData(player: Player)
 					data = data,
 					lastSave = os.time(),
 					dirty = false -- Track if data needs saving
-				}
+			}
 
-				self._logger.Info("Loaded player data", {
+			self._logger.Debug("Loaded player data", {
 					player = player.Name,
 					level = data.profile.level,
 					coins = data.profile.coins
@@ -284,9 +284,9 @@ function PlayerDataStoreService:SavePlayerData(player: Player)
 
 		if success then
 			session.lastSave = os.time()
-			session.dirty = false
+		session.dirty = false
 
-			self._logger.Info("Saved player data", {
+		self._logger.Debug("Saved player data", {
 				player = player.Name,
 				dataSize = #game:GetService("HttpService"):JSONEncode(session.data)
 			})
@@ -426,7 +426,7 @@ function PlayerDataStoreService:OnPlayerRemoving(player: Player)
 	-- Remove session
 	self._playerSessions[player.UserId] = nil
 
-	self._logger.Info("Removed player session", {player = player.Name})
+	self._logger.Debug("Removed player session", {player = player.Name})
 end
 
 --[[

@@ -30,7 +30,7 @@ function FoodService:Init()
 	end
 
 	BaseService.Init(self)
-	self._logger.Info("FoodService initialized")
+	self._logger.Debug("FoodService initialized")
 end
 
 function FoodService:Start()
@@ -59,7 +59,7 @@ function FoodService:Start()
 	end)
 
 	BaseService.Start(self)
-	self._logger.Info("FoodService started")
+	self._logger.Debug("FoodService started")
 end
 
 function FoodService:Destroy()

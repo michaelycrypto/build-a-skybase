@@ -48,7 +48,7 @@ function SmeltingService:Init()
 	end
 
 	BaseService.Init(self)
-	self._logger.Info("SmeltingService initialized")
+	self._logger.Debug("SmeltingService initialized")
 end
 
 function SmeltingService:Start()
@@ -57,7 +57,7 @@ function SmeltingService:Start()
 	end
 
 	BaseService.Start(self)
-	self._logger.Info("SmeltingService started")
+	self._logger.Debug("SmeltingService started")
 end
 
 --[[

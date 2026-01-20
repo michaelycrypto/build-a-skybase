@@ -37,7 +37,6 @@ local function startSprint()
 
 	isSprinting = true
 	humanoid.WalkSpeed = SPRINT_WALKSPEED
-	print("🏃 Sprint ON - WalkSpeed:", SPRINT_WALKSPEED)
 end
 
 local function stopSprint()
@@ -45,7 +44,6 @@ local function stopSprint()
 
 	isSprinting = false
 	humanoid.WalkSpeed = NORMAL_WALKSPEED
-	print("🚶 Sprint OFF - WalkSpeed:", NORMAL_WALKSPEED)
 end
 
 --[[

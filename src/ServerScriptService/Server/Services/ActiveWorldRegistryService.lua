@@ -57,7 +57,7 @@ function ActiveWorldRegistryService:Init()
 	end)
 
 	BaseService.Init(self)
-	self._logger.Info("ActiveWorldRegistryService initialized")
+	self._logger.Debug("ActiveWorldRegistryService initialized")
 end
 
 -- Configure world identity and reserved access (first-player join from teleport data)

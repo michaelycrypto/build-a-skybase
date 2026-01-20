@@ -37,12 +37,13 @@ function LoadingProtectionService:Init()
 	if self._initialized then return end
 	BaseService.Init(self)
 
-	self._logger.Info("LoadingProtectionService initialized")
+	self._logger.Debug("LoadingProtectionService initialized")
 end
 
 function LoadingProtectionService:Start()
 	if self._started then return end
 	BaseService.Start(self)
+	self._logger.Debug("LoadingProtectionService started")
 
 	-- Handle existing players
 	for _, player in ipairs(Players:GetPlayers()) do
@@ -240,7 +241,7 @@ function LoadingProtectionService:_removeProtection(player)
 	self._loadingPlayers[player] = nil
 
 	local loadTime = os.clock() - state.startTime
-	self._logger.Info("Protection removed - client ready", {
+	self._logger.Debug("Protection removed - client ready", {
 		player = player.Name,
 		loadTime = string.format("%.2fs", loadTime)
 	})

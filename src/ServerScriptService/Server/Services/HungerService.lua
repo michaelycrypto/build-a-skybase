@@ -83,7 +83,7 @@ function HungerService:Init()
 		}
 	end
 
-	self._logger.Info("HungerService initialized")
+	self._logger.Debug("HungerService initialized")
 end
 
 function HungerService:Start()
@@ -116,7 +116,7 @@ function HungerService:Start()
 	end)
 
 	BaseService.Start(self)
-	self._logger.Info("HungerService started", {
+	self._logger.Debug("HungerService started", {
 		updateLoopConnected = self._updateConnection ~= nil,
 		initialPlayers = #Players:GetPlayers(),
 		walkingRate = FoodConfig.HungerDepletion.walking,
@@ -167,7 +167,7 @@ end
 	Handle player joining
 --]]
 function HungerService:OnPlayerAdded(player)
-	self._logger.Info("OnPlayerAdded called for", player.Name)
+	self._logger.Debug("OnPlayerAdded called for", player.Name)
 
 	if not self.Deps.PlayerService then
 		self._logger.Warn("PlayerService not available, cannot initialize hunger for", player.Name)
@@ -274,7 +274,7 @@ function HungerService:OnPlayerAdded(player)
 		end)
 	end)
 
-	self._logger.Info("Initialized hunger for player", {playerName = player.Name, hunger = hunger, saturation = saturation})
+	self._logger.Debug("Initialized hunger for player", {playerName = player.Name, hunger = hunger, saturation = saturation})
 end
 
 --[[

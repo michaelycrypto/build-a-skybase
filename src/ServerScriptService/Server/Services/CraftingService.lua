@@ -41,7 +41,7 @@ function CraftingService:Init()
 	end
 
 	BaseService.Init(self)
-	self._logger.Info("CraftingService initialized")
+	self._logger.Debug("CraftingService initialized")
 end
 
 function CraftingService:Start()
@@ -50,7 +50,7 @@ function CraftingService:Start()
 	end
 
 	BaseService.Start(self)
-	self._logger.Info("CraftingService started")
+	self._logger.Debug("CraftingService started")
 end
 
 --[[

@@ -39,13 +39,13 @@ function LobbyWorldTeleportService:Init()
 	-- Use SortedMap for registry (simple key-value; TTL supported)
 	self._map = MemoryStoreService:GetSortedMap(REGISTRY_NAME)
 	BaseService.Init(self)
-	self._logger.Info("LobbyWorldTeleportService initialized")
+	self._logger.Debug("LobbyWorldTeleportService initialized")
 end
 
 function LobbyWorldTeleportService:Start()
 	if self._started then return end
 	BaseService.Start(self)
-	self._logger.Info("LobbyWorldTeleportService started")
+	self._logger.Debug("LobbyWorldTeleportService started")
 end
 
 -- Resolve worldId from payload; default to ownerUserId string

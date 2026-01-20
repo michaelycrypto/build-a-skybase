@@ -39,7 +39,7 @@ function PlayerInventoryService:Init()
 	end
 
 	BaseService.Init(self)
-	self._logger.Info("PlayerInventoryService initialized")
+	self._logger.Debug("PlayerInventoryService initialized")
 end
 
 function PlayerInventoryService:Start()

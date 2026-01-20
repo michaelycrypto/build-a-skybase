@@ -163,7 +163,7 @@ function WorldsListService:Init()
 
 	self._initialized = true
 	BaseService.Init(self)
-	self._logger.Info("WorldsListService initialized")
+	self._logger.Debug("WorldsListService initialized")
 end
 
 function WorldsListService:Start()
@@ -171,7 +171,7 @@ function WorldsListService:Start()
 		return
 	end
 
-	self._logger.Info("WorldsListService started")
+	self._logger.Debug("WorldsListService started")
 	BaseService.Start(self)
 end
 
@@ -417,7 +417,7 @@ function WorldsListService:GetFriendsWorlds(userId, options)
 		return (a.slot or 0) < (b.slot or 0)
 	end)
 
-	self._logger.Info("Compiled friends world list", {
+	self._logger.Debug("Compiled friends world list", {
 		userId = userId,
 		friendsProcessed = processedFriends,
 		worldCount = #friendsWorlds
@@ -540,7 +540,7 @@ function WorldsListService:SendWorldsList(player, requestOptions)
 		friendsLastUpdated = friendsCacheMeta and friendsCacheMeta.fetchedAt or nil
 	})
 
-	self._logger.Info("Sent initial worlds list to player", {
+	self._logger.Debug("Sent initial worlds list to player", {
 		player = player.Name,
 		myWorldsCount = #myWorlds,
 		friendsWorldsCount = #friendsWorlds,
@@ -600,7 +600,7 @@ function WorldsListService:_refreshFriendsWorldsAsync(player, eventManager, opti
 			friendsLastUpdated = (self:_getFriendsCacheMeta(userId) or {}).fetchedAt or os.time()
 		})
 
-		self._logger.Info("Sent friends worlds refresh", {
+		self._logger.Debug("Sent friends worlds refresh", {
 			player = currentPlayer.Name,
 			myWorldsCount = #refreshedWorlds,
 			friendsWorldsCount = #friendsWorlds,

@@ -30,12 +30,12 @@ function QuestService:Init()
 	self._eventManager = require(game.ReplicatedStorage.Shared.EventManager)
 
 	BaseService.Init(self)
-	self._logger.Info("QuestService initialized")
+	self._logger.Debug("QuestService initialized")
 end
 
 function QuestService:Start()
 	if self._started then return end
-	self._logger.Info("QuestService started")
+	self._logger.Debug("QuestService started")
 end
 
 function QuestService:Destroy()

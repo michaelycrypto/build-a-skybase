@@ -42,7 +42,7 @@ function ArmorEquipService:Init()
 	end
 
 	BaseService.Init(self)
-	self._logger.Info("ArmorEquipService initialized")
+	self._logger.Debug("ArmorEquipService initialized")
 end
 
 function ArmorEquipService:Start()
@@ -102,7 +102,7 @@ function ArmorEquipService:LoadArmor(player: Player, armorData: {helmet: number?
 	self.equippedArmor[player].leggings = type(armorData.leggings) == "number" and armorData.leggings or nil
 	self.equippedArmor[player].boots = type(armorData.boots) == "number" and armorData.boots or nil
 
-	self._logger.Info("Loaded armor data", {
+	self._logger.Debug("Loaded armor data", {
 		player = player.Name,
 		helmet = self.equippedArmor[player].helmet,
 		chestplate = self.equippedArmor[player].chestplate,

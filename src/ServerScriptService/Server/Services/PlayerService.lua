@@ -43,7 +43,7 @@ function PlayerService:Init()
 	end
 
 	BaseService.Init(self)
-	self._logger.Info("PlayerService initialized")
+	self._logger.Debug("PlayerService initialized")
 end
 
 function PlayerService:Start()
@@ -51,7 +51,7 @@ function PlayerService:Start()
 		return
 	end
 
-	self._logger.Info("PlayerService started")
+	self._logger.Debug("PlayerService started")
 end
 
 function PlayerService:Destroy()
@@ -171,7 +171,7 @@ function PlayerService:OnPlayerAdded(player)
 
 		-- NOW load saved data into the inventory (if exists)
 		if playerData.inventory and playerData.inventory.hotbar and #playerData.inventory.hotbar > 0 then
-			self._logger.Info("Loading saved inventory data for", player.Name)
+			self._logger.Debug("Loading saved inventory data for", player.Name)
 			self.Deps.PlayerInventoryService:LoadInventory(player, playerData.inventory)
 		else
 			self._logger.Info("No saved inventory found, using starter items for", player.Name)
@@ -189,7 +189,7 @@ function PlayerService:OnPlayerAdded(player)
 
 		-- Load saved armor data if exists
 		if playerData.equippedArmor then
-			self._logger.Info("Loading saved armor data for", player.Name)
+			self._logger.Debug("Loading saved armor data for", player.Name)
 			self.Deps.ArmorEquipService:LoadArmor(player, playerData.equippedArmor)
 		else
 			self._logger.Info("No saved armor found for", player.Name)
@@ -217,7 +217,7 @@ end
 	Handle player leaving
 --]]
 function PlayerService:OnPlayerRemoving(player)
-	self._logger.Info("Player leaving", {playerName = player.Name})
+	self._logger.Debug("Player leaving", {playerName = player.Name})
 
 	-- Save player data (including armor)
 	self:SavePlayerData(player)
@@ -250,7 +250,7 @@ end
 	Handle client ready event
 --]]
 function PlayerService:OnClientReady(player)
-	self._logger.Info("Client ready", {playerName = player.Name})
+	self._logger.Debug("Client ready", {playerName = player.Name})
 
 	-- Send complete player data
 	self:SendPlayerData(player)

@@ -123,6 +123,15 @@ local function setupCharacter(character)
 	_camera.CameraType = Enum.CameraType.Custom
 	_camera.CameraSubject = humanoid
 
+	-- Apply AutoRotate setting based on current state (for respawn scenarios)
+	if _currentState then
+		if _currentState.characterRotation == "camera-forward" or _currentState.characterRotation == "mouse-raycast" then
+			humanoid.AutoRotate = false
+		else
+			humanoid.AutoRotate = true
+		end
+	end
+
 	return humanoid
 end
 
@@ -131,6 +140,7 @@ local function applyState(state)
 		_player.CameraMode = Enum.CameraMode.Classic
 		if _humanoid then
 			_humanoid.CameraOffset = Vector3.new(0, 0, 0)
+			_humanoid.AutoRotate = true
 		end
 		_inputService:SetGameplayCursorMode("gameplay-free", { showIcon = true })
 		return
@@ -144,6 +154,15 @@ local function applyState(state)
 
 	if _humanoid then
 		_humanoid.CameraOffset = state.cameraOffset
+
+		-- Disable AutoRotate for camera-locked modes to prevent rotation conflict
+		-- When characterRotation is "camera-forward" or "mouse-raycast", we manually control facing
+		-- AutoRotate would fight our rotation by trying to face MoveDirection
+		if state.characterRotation == "camera-forward" or state.characterRotation == "mouse-raycast" then
+			_humanoid.AutoRotate = false
+		else
+			_humanoid.AutoRotate = true
+		end
 	end
 
 	_camera.FieldOfView = state.baseFov

@@ -50,7 +50,7 @@ function EmoteService:Init()
 	-- Setup player connections
 	self:_setupPlayerConnections()
 
-	self._logger.Info("EmoteService initialized")
+	self._logger.Debug("EmoteService initialized")
 end
 
 --[[
@@ -58,12 +58,12 @@ end
 --]]
 function EmoteService:Start()
 
-	self._logger.Info("Starting EmoteService")
+	self._logger.Debug("Starting EmoteService")
 
 	-- Start cleanup task
 	self:_startCleanupTask()
 
-	self._logger.Info("EmoteService started successfully")
+	self._logger.Debug("EmoteService started successfully")
 end
 
 --[[

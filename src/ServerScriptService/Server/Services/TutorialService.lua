@@ -39,16 +39,16 @@ function TutorialService:Init()
 	BaseService.Init(self)
 
 	if IS_LOBBY then
-		self._logger.Info("TutorialService initialized (DISABLED - Hub world)")
+		self._logger.Debug("TutorialService initialized (DISABLED - Hub world)")
 	else
-		self._logger.Info("TutorialService initialized (Player realms)")
+		self._logger.Debug("TutorialService initialized (Player realms)")
 	end
 end
 
 function TutorialService:Start()
 	if self._started then return end
 	BaseService.Start(self)
-	self._logger.Info("TutorialService started")
+	self._logger.Debug("TutorialService started")
 end
 
 function TutorialService:Destroy()

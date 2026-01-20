@@ -49,7 +49,7 @@ function DamageService:Init()
 	end
 
 	BaseService.Init(self)
-	self._logger.Info("DamageService initialized")
+	self._logger.Debug("DamageService initialized")
 end
 
 function DamageService:Start()
