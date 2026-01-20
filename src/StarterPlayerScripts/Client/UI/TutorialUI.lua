@@ -593,8 +593,6 @@ function TutorialUI:UpdateProgress(step, progressData)
 		local target = step.objective.count
 		local percent = math.clamp(current / target, 0, 1)
 
-		print(string.format("[TutorialUI] UpdateProgress: %d/%d (%.1f%%)", current, target, percent * 100))
-
 		-- Update progress bar
 		TweenService:Create(progressFill, TweenInfo.new(0.3), {
 			Size = UDim2.new(percent, 0, 1, 0)

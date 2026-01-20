@@ -20,7 +20,9 @@ local LOBBY_PLACE_ID = 139848475014328
 local WORLDS_PLACE_ID = 111115817294342
 
 local REGISTRY_NAME = "ActiveWorlds_v1"
-local REGISTRY_TTL = 90
+-- S5: Reduced TTL from 90s to 30s - world servers send heartbeats every 15s to keep entries alive
+-- This reduces stale entries from crashed servers that could cause failed teleports
+local REGISTRY_TTL = 30
 
 local LobbyWorldTeleportService = setmetatable({}, BaseService)
 LobbyWorldTeleportService.__index = LobbyWorldTeleportService

@@ -861,15 +861,43 @@ function VoxelWorldService:_streamSpawnChunksForPlayer(player, chunkX, chunkZ)
 
 	print(string.format("[VoxelWorldService] Streaming spawn chunks around (%d,%d) for %s", chunkX, chunkZ, player.Name))
 	local streamed = 0
-	for dx = -1, 1 do
-		for dz = -1, 1 do
-			local ok = self:StreamChunkToPlayer(player, chunkX + dx, chunkZ + dz)
-			if ok then
-				streamed = streamed + 1
-			end
+	local chunkKeys = {}
+
+	-- S3-FIX: Stream a 7x7 area (radius 3) to match client's loadingChunkRadius
+	-- Build stream order prioritized by distance from center
+	local SPAWN_CHUNK_RADIUS = 3
+	local streamOrder = {}
+	for dx = -SPAWN_CHUNK_RADIUS, SPAWN_CHUNK_RADIUS do
+		for dz = -SPAWN_CHUNK_RADIUS, SPAWN_CHUNK_RADIUS do
+			local dist = dx * dx + dz * dz
+			table.insert(streamOrder, {dx, dz, dist})
 		end
 	end
-	print(string.format("[VoxelWorldService] Streamed %d/9 spawn chunks to %s", streamed, player.Name))
+	-- Sort by distance (center first, then expanding outward)
+	table.sort(streamOrder, function(a, b) return a[3] < b[3] end)
+
+	for _, entry in ipairs(streamOrder) do
+		local dx, dz = entry[1], entry[2]
+		local cx, cz = chunkX + dx, chunkZ + dz
+		local ok = self:StreamChunkToPlayer(player, cx, cz)
+		if ok then
+			streamed = streamed + 1
+			table.insert(chunkKeys, string.format("%d,%d", cx, cz))
+		end
+	end
+
+	local totalAttempted = (SPAWN_CHUNK_RADIUS * 2 + 1) * (SPAWN_CHUNK_RADIUS * 2 + 1)
+	print(string.format("[VoxelWorldService] Streamed %d/%d spawn chunks to %s (empty chunks skipped)",
+		streamed, totalAttempted, player.Name))
+
+	-- S3: Fire event to notify client that spawn chunks have been sent
+	-- Client uses this to know which chunks to expect (only non-empty ones)
+	EventManager:FireEvent("SpawnChunksStreamed", player, {
+		spawnChunkX = chunkX,
+		spawnChunkZ = chunkZ,
+		chunkKeys = chunkKeys,
+		totalStreamed = streamed
+	})
 end
 
 -- Update world seed (called when owner joins)

@@ -67,7 +67,6 @@ function EmoteManager:Initialize(dependencies)
     self:CreateEmotePanel()
 
     isInitialized = true
-    print("✅ EmoteManager: Initialized successfully (assets preloaded: " .. tostring(self:AreAssetsPreloaded()) .. ")")
     return true
 end
 
@@ -77,7 +76,6 @@ end
 function EmoteManager:RegisterNetworkEvents()
     -- Events are handled automatically by EventManager configuration
     -- No manual registration needed - EventManager will call the appropriate methods
-    print("EmoteManager: Event handlers will be registered by EventManager")
 end
 
 --[[

@@ -85,7 +85,6 @@ function TutorialManager:Initialize(deps)
 	self:_setupCameraModeTracking()
 
 	isInitialized = true
-	print("TutorialManager: Initialized")
 
 	-- Request tutorial data from server
 	task.delay(1, function()
@@ -298,9 +297,6 @@ function TutorialManager:_setupCameraModeTracking()
 					visitedCount = visitedCount + 1
 				end
 
-				print(string.format("[TutorialManager] Camera mode visited: %s (visited %d/%d modes)",
-					newState, visitedCount, objective.count or 3))
-
 				-- Report progress
 				self:_reportProgress("camera_cycle", {
 					mode = newState,
@@ -365,9 +361,6 @@ function TutorialManager:_showCurrentStep()
 					for _ in pairs(visitedCameraModes) do
 						visitedCount = visitedCount + 1
 					end
-
-					print(string.format("[TutorialManager] Initial camera mode tracked: %s (visited %d/%d modes)",
-						currentMode, visitedCount, currentStep.objective.count or 3))
 
 					-- Report initial progress
 					self:_reportProgress("camera_cycle", {
@@ -484,13 +477,9 @@ end
 	Handle progress update (for UI updates)
 ]]
 function TutorialManager:_onProgressUpdated(data)
-	print(string.format("[TutorialManager] _onProgressUpdated received: stepId=%s, progressType=%s, progressData=%s",
-		tostring(data.stepId), tostring(data.progressType), tostring(data.progressData)))
-
 	if TutorialUI and currentStep then
 		-- Extract progressData from the event data structure
 		local progressData = data.progressData or data
-		print(string.format("[TutorialManager] Calling UpdateProgress with count=%d", progressData.count or 0))
 		TutorialUI:UpdateProgress(currentStep, progressData)
 	else
 		if not TutorialUI then
@@ -553,9 +542,6 @@ function TutorialManager:OnItemCollected(itemId, count)
 
 	-- Update last reported count
 	lastReportedCounts[stepKey] = totalCount
-
-	print(string.format("[TutorialManager] OnItemCollected: itemId=%d, slotCount=%d, totalCount=%d (was %d), required=%d",
-		itemId, count, totalCount, lastCount, objective.count or 1))
 
 	self:_reportProgress("collect_item", {
 		itemId = itemId,

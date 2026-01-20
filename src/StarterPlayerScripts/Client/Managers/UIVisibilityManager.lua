@@ -134,8 +134,6 @@ local UI_MODES = {
 	Initialize the UI Visibility Manager
 ]]
 function UIVisibilityManager:Initialize()
-	print("UIVisibilityManager: Initializing UI coordination system")
-
 	-- Initialize with gameplay mode
 	currentMode = "gameplay"
 	GameState:Set("ui.mode", currentMode)
@@ -147,8 +145,6 @@ function UIVisibilityManager:Initialize()
 			self:SetMode(newMode)
 		end
 	end)
-
-	print("UIVisibilityManager: Initialized with mode:", currentMode)
 end
 
 --[[
@@ -169,8 +165,6 @@ function UIVisibilityManager:RegisterComponent(componentId, componentInstance, c
 		priority = componentConfig.priority or 0,
 		config = componentConfig
 	}
-
-	print(string.format("UIVisibilityManager: Registered component '%s'", componentId))
 end
 
 --[[
@@ -180,7 +174,6 @@ end
 function UIVisibilityManager:UnregisterComponent(componentId)
 	if registeredComponents[componentId] then
 		registeredComponents[componentId] = nil
-		print(string.format("UIVisibilityManager: Unregistered component '%s'", componentId))
 	end
 end
 
@@ -205,10 +198,7 @@ function UIVisibilityManager:SetMode(mode)
 	end
 
 	isTransitioning = true
-	local oldMode = currentMode
 	currentMode = mode
-
-	print(string.format("UIVisibilityManager: Transitioning from '%s' to '%s'", oldMode, mode))
 
 	local modeConfig = UI_MODES[mode]
 
@@ -242,8 +232,6 @@ function UIVisibilityManager:SetMode(mode)
 	GameState:Set("ui.visibleComponents", modeConfig.visibleComponents or {})
 
 	isTransitioning = false
-
-	print(string.format("UIVisibilityManager: Mode set to '%s'", mode))
 end
 
 --[[

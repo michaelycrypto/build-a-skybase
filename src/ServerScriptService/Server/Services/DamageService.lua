@@ -48,7 +48,6 @@ function DamageService:Init()
 		return
 	end
 
-	self._logger.Info("Initializing DamageService...")
 	BaseService.Init(self)
 	self._logger.Info("DamageService initialized")
 end

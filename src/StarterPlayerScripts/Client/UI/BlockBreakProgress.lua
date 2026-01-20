@@ -200,8 +200,6 @@ function BlockBreakProgress:Create(parentHudGui)
 	fillGlow.Thickness = 1
 	fillGlow.Transparency = 0.5
 	fillGlow.Parent = progressBar
-
-	print("✅ BlockBreakProgress: UI Created")
 end
 
 -- Update the progress bar (called from BlockBreakProgress event)

@@ -298,7 +298,6 @@ function FurnaceUI.new(inventoryManager)
 end
 
 function FurnaceUI:Initialize()
-	print("[FurnaceUI] Initializing...")
 	FontBinder.preload(CUSTOM_FONT_NAME)
 
 	-- Create ScreenGui
@@ -351,7 +350,6 @@ function FurnaceUI:Initialize()
 		warn("[FurnaceUI] Failed to register with UIVisibilityManager:", registerError)
 	end
 
-	print("[FurnaceUI] Initialized successfully")
 	return self
 end
 
@@ -2332,8 +2330,6 @@ function FurnaceUI:RegisterEvents()
 	EventManager:RegisterEvent("SmeltCancelled", function(data)
 		-- Cancelled - just reset state (already handled in OnCancelSmelt)
 	end)
-
-	print("[FurnaceUI] Events registered")
 end
 
 -- === Lifecycle ===

@@ -225,8 +225,6 @@ function controller.Init()
 			onCharacterAdded(player.Character)
 		end)
 	end
-
-	print("🛡️ ArmorVisualController initialized (body colors + boots)")
 end
 
 function controller.Destroy()

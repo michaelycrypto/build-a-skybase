@@ -327,7 +327,6 @@ function MainHUD:Create()
 	uiScale:SetAttribute("base_resolution", Vector2.new(1920, 1080)) -- 1920x1080 for 100% original size
 	uiScale.Parent = hudGui
 	CollectionService:AddTag(uiScale, "scale_component")
-	print("📐 MainHUD: Added UIScale with base resolution 1920x1080 (100% original size)")
 
 	-- Create components
 	self:CreateBottomLeftCurrency()
@@ -349,8 +348,6 @@ function MainHUD:Create()
 	})
 
 	-- Badge and quest/daily tracking removed for simplified mobile UI
-
-	print("MainHUD: Created simplified HUD with Vector Icons")
 end
 
 

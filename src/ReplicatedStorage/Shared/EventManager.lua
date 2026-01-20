@@ -598,7 +598,6 @@ function EventManager:CreateServerEventConfig(services)
 		{
 			name = "RequestJoinWorld",
 			handler = function(player, data)
-				print("[EventManager] Server received RequestJoinWorld from", player and player.Name)
 				if services.LobbyWorldTeleportService and services.LobbyWorldTeleportService.RequestJoinWorld then
 					services.LobbyWorldTeleportService:RequestJoinWorld(player, data)
 				end
@@ -607,7 +606,6 @@ function EventManager:CreateServerEventConfig(services)
 		{
 			name = "RequestCreateWorld",
 			handler = function(player, data)
-				print("[EventManager] Server received RequestCreateWorld from", player and player.Name)
 				if services.LobbyWorldTeleportService and services.LobbyWorldTeleportService.RequestCreateWorld then
 					services.LobbyWorldTeleportService:RequestCreateWorld(player, data)
 				end
@@ -624,7 +622,6 @@ function EventManager:CreateServerEventConfig(services)
 		{
 			name = "RequestTeleportToHub",
 			handler = function(player)
-				print("[EventManager] Server received RequestTeleportToHub from", player and player.Name)
 				if services.CrossPlaceTeleportService and services.CrossPlaceTeleportService.TeleportToHub then
 					services.CrossPlaceTeleportService:TeleportToHub(player)
 				end
@@ -634,7 +631,6 @@ function EventManager:CreateServerEventConfig(services)
 		{
 			name = "RequestWorldsList",
 			handler = function(player, data)
-				print("[EventManager] Server received RequestWorldsList from", player and player.Name)
 				if services.WorldsListService and services.WorldsListService.SendWorldsList then
 					services.WorldsListService:SendWorldsList(player, data)
 				end
@@ -643,7 +639,6 @@ function EventManager:CreateServerEventConfig(services)
 		{
 			name = "DeleteWorld",
 			handler = function(player, data)
-				print("[EventManager] Server received DeleteWorld from", player and player.Name)
 				if services.WorldsListService and services.WorldsListService.DeleteWorld then
 					services.WorldsListService:DeleteWorld(player, data.worldId)
 				end
@@ -652,7 +647,6 @@ function EventManager:CreateServerEventConfig(services)
 		{
 			name = "UpdateWorldMetadata",
 			handler = function(player, data)
-				print("[EventManager] Server received UpdateWorldMetadata from", player and player.Name)
 				if services.WorldsListService and services.WorldsListService.UpdateWorldMetadata then
 					services.WorldsListService:UpdateWorldMetadata(player, data.worldId, data.metadata)
 				end

@@ -413,7 +413,6 @@ function LoadingScreen:LoadBlockTexturesSync(onProgress, blockIds)
 				totalAssets = totalAssets + 1
 			end
 		end
-		print(string.format("[LoadingScreen] Loading %d textures for schematic palette blocks", totalAssets))
 	else
 		-- Fallback: load all textures (for non-schematic worlds)
 		setStatusText("Loading all textures...")
@@ -647,7 +646,7 @@ function LoadingScreen:LoadAllAssets(onProgress, onComplete, onBeforeFadeOut)
 	worldProgress = 0
 	updateCombinedProgress()
 
-	-- Determine if we should load only schematic palette textures
+	-- Determine if we should load only palette textures (optimized loading)
 	local Workspace = game:GetService("Workspace")
 	local isHubWorld = Workspace:GetAttribute("IsHubWorld") == true
 	local blockIds = nil
@@ -666,9 +665,45 @@ function LoadingScreen:LoadAllAssets(onProgress, onComplete, onBeforeFadeOut)
 				print(string.format("[LoadingScreen] Will load %d textures for %d schematic blocks", #textureAssetIds, #blockIds))
 			end
 		end
+	else
+		-- Player world - use optimized palette (SkyblockGenerator blocks + essentials)
+		-- This reduces texture loading from 100+ to ~20 textures (60-80% reduction)
+		setStatusText("Loading world palette...")
+		local playerPaletteOk, playerPalette = pcall(function()
+			return require(ReplicatedStorage.Configs.Schematics.PlayerWorldPalette)
+		end)
+
+		if playerPaletteOk and playerPalette and #playerPalette > 0 then
+			-- Parse palette entries to block IDs (same as schematic palette)
+			local BLOCK_MAPPING = BlockMapping.Map
+			local BlockType = Constants.BlockType
+			local seen = {}
+			blockIds = {}
+
+			for _, entry in ipairs(playerPalette) do
+				-- Parse block entry (strip properties in brackets)
+				local baseName = entry
+				local bracketStart = string.find(entry, "%[")
+				if bracketStart then
+					baseName = string.sub(entry, 1, bracketStart - 1)
+				end
+				baseName = string.gsub(baseName, "^minecraft:", "")
+
+				local blockId = BLOCK_MAPPING[baseName] or BlockType.STONE
+				if blockId ~= BlockType.AIR and not seen[blockId] then
+					seen[blockId] = true
+					table.insert(blockIds, blockId)
+				end
+			end
+
+			if #blockIds > 0 then
+				local textureAssetIds = TextureManager:GetTextureAssetIdsForBlocks(blockIds)
+				totalTextures = #textureAssetIds + #(BlockBreakFeedbackConfig.DestroyStages or {})
+			end
+		end
 	end
 
-	-- Fallback: count all textures if no schematic or extraction failed
+	-- Fallback: count all textures if no palette or extraction failed
 	if totalTextures == 0 then
 		local seenTextures = {}
 		-- 1) From TextureManager registry (named textures)
@@ -753,7 +788,6 @@ function LoadingScreen:LoadAllAssets(onProgress, onComplete, onBeforeFadeOut)
 			end,
 			blockIds  -- Pass block IDs if we extracted them from schematic
 		)
-		print(string.format("[LoadingScreen] Textures loaded: %d loaded, %d failed", texturesLoadedCount, texturesFailedCount))
 	end
 
 	-- Start mesh loading in background
@@ -769,7 +803,6 @@ function LoadingScreen:LoadAllAssets(onProgress, onComplete, onBeforeFadeOut)
 				function(loaded, failed)
 					meshesLoadedCount = loaded
 					meshesFailedCount = failed
-					print(string.format("[LoadingScreen] Background mesh loading complete: %d loaded, %d failed", loaded, failed))
 				end
 			)
 		end)
@@ -791,7 +824,6 @@ function LoadingScreen:LoadAllAssets(onProgress, onComplete, onBeforeFadeOut)
 				function(loaded, failed)
 					soundsLoadedCount = loaded
 					soundsFailedCount = failed
-					print(string.format("[LoadingScreen] Background sound loading complete: %d loaded, %d failed", loaded, failed))
 				end
 			)
 		end)

@@ -379,7 +379,6 @@ function VoxelInventoryPanel:Initialize()
 	uiScale:SetAttribute("min_scale", 0.6) -- Allow additional shrink on phones/tablets
 	uiScale.Parent = self.gui
 	CollectionService:AddTag(uiScale, "scale_component")
-	print("📐 VoxelInventoryPanel: Added UIScale with base resolution 1920x1080 (100% original size)")
 
 	-- Create hover item name label (top left of screen)
 	self:CreateHoverItemLabel()
@@ -408,13 +407,7 @@ end
 function VoxelInventoryPanel:SetupArmorEventListeners()
 	-- Listen for full armor sync (on join/reconnect)
 	local armorSyncConn = EventManager:RegisterEvent("ArmorSync", function(data)
-		print("[ArmorSync] Received armor sync event")
 		if data and data.equippedArmor then
-			print(string.format("[ArmorSync] helmet=%s, chestplate=%s, leggings=%s, boots=%s",
-				tostring(data.equippedArmor.helmet),
-				tostring(data.equippedArmor.chestplate),
-				tostring(data.equippedArmor.leggings),
-				tostring(data.equippedArmor.boots)))
 			self.equippedArmor = {
 				helmet = data.equippedArmor.helmet,
 				chestplate = data.equippedArmor.chestplate,
@@ -422,8 +415,6 @@ function VoxelInventoryPanel:SetupArmorEventListeners()
 				boots = data.equippedArmor.boots
 			}
 			self:UpdateAllEquipmentSlots()
-		else
-			print("[ArmorSync] No valid armor data in sync event")
 		end
 	end)
 	if armorSyncConn then

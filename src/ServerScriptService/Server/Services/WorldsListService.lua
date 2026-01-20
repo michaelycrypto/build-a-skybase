@@ -151,8 +151,6 @@ function WorldsListService:Init()
 		return
 	end
 
-	self._logger.Info("Initializing WorldsListService...")
-
 	-- Initialize DataStores
 	local success, err = pcall(function()
 		self._worldDataStore = DataStoreService:GetDataStore(WORLD_DATA_STORE_NAME)

@@ -40,8 +40,6 @@ function CraftingService:Init()
 		return
 	end
 
-	self._logger.Info("Initializing CraftingService...")
-
 	BaseService.Init(self)
 	self._logger.Info("CraftingService initialized")
 end

@@ -91,8 +91,6 @@ local function initialize()
 	overlayFrame.Active = true  -- Required for Modal to work
 	overlayFrame.Modal = true   -- KEY: Tells Roblox to release mouse lock when mouse is over this element
 	overlayFrame.Parent = backdropGui
-
-	print("UIBackdrop: Initialized singleton backdrop system")
 end
 
 --[[
@@ -167,8 +165,6 @@ function UIBackdrop:Show(config)
 		UserInputService.MouseBehavior = Enum.MouseBehavior.Default
 		UserInputService.MouseIconEnabled = true
 	end)
-
-	print("UIBackdrop: Shown with overlay=" .. tostring(currentConfig.overlay))
 end
 
 --[[
@@ -225,8 +221,6 @@ function UIBackdrop:Hide(callback)
 		if callback then
 			callback()
 		end
-
-		print("UIBackdrop: Hidden")
 	end
 
 	overlayTween.Completed:Connect(function()
@@ -314,8 +308,6 @@ function UIBackdrop:Cleanup()
 
 	overlayFrame = nil
 	currentConfig = nil
-
-	print("UIBackdrop: Cleaned up")
 end
 
 return UIBackdrop

@@ -77,8 +77,6 @@ local function initialize()
 
 	-- Start update processing
 	RunService.Heartbeat:Connect(processUpdateQueue)
-
-	print("GameState: Enhanced system initialized with precision state management")
 end
 
 --[[
@@ -388,8 +386,6 @@ function GameState:UpdateCurrencies(currencies)
 	if currencies.gems ~= nil then
 		self:SetPlayerData("gems", currencies.gems)
 	end
-
-	print("GameState: Currencies updated")
 end
 
 --[[

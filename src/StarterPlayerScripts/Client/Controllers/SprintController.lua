@@ -94,8 +94,6 @@ function SprintController:Initialize()
 			stopSprint()
 		end
 	end)
-
-	print("✅ SprintController: Initialized (Hold Left Shift to sprint)")
 end
 
 return SprintController

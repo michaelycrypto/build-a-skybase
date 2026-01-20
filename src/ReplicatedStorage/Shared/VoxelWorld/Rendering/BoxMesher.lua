@@ -68,7 +68,7 @@ local function DefaultSampleBlock(worldManager, chunk, x, y, z)
 	-- Only peek existing chunks (don't generate)
 	local neighbor
 	if worldManager and worldManager.chunks then
-		local key = tostring(cx) .. "," .. tostring(cz)
+		local key = Constants.ToChunkKey(cx, cz)
 		neighbor = worldManager.chunks[key]
 	end
 	if not neighbor then
@@ -106,7 +106,7 @@ local function DefaultSampleMetadata(worldManager, chunk, x, y, z)
 
     local neighbor
     if worldManager and worldManager.chunks then
-        local key = tostring(cx) .. "," .. tostring(cz)
+        local key = Constants.ToChunkKey(cx, cz)
         neighbor = worldManager.chunks[key]
     end
     if not neighbor then
@@ -363,46 +363,83 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 						-- Get metadata for rotation (if applicable)
 						local metadata = chunk:GetMetadata(x, y, z)
 
-					-- Optimized per-face visibility: sample corners only for large boxes
-					-- For small boxes (<=2 blocks), just check single neighbor
-					-- This is O(1) instead of O(n²) for most cases
-					local visibleFaces = {}
+				-- Per-face visibility: check ALL positions along each face
+				-- A face is visible if ANY neighbor position is not occluded
+				-- This properly handles merged boxes where middle positions may have air holes
+				local visibleFaces = {
+					[Enum.NormalId.Left] = false,
+					[Enum.NormalId.Right] = false,
+					[Enum.NormalId.Bottom] = false,
+					[Enum.NormalId.Top] = false,
+					[Enum.NormalId.Front] = false,
+					[Enum.NormalId.Back] = false,
+				}
 
-					if dx <= 2 and dy <= 2 and dz <= 2 then
-						-- Small box: single sample per face (fast path)
-						visibleFaces[Enum.NormalId.Left] = not isOccluding(x - 1, y, z)
-						visibleFaces[Enum.NormalId.Right] = not isOccluding(x + dx, y, z)
-						visibleFaces[Enum.NormalId.Bottom] = not isOccluding(x, y - 1, z)
-						visibleFaces[Enum.NormalId.Top] = not isOccluding(x, y + dy, z)
-						visibleFaces[Enum.NormalId.Front] = not isOccluding(x, y, z - 1)
-						visibleFaces[Enum.NormalId.Back] = not isOccluding(x, y, z + dz)
-					else
-						-- Large box: sample corners only (4 samples per face max)
-						local function checkFaceCorners(nx, ny, nz, spanA, spanB, dirA, dirB)
-							-- Check 4 corners of the face
-							if not isOccluding(nx, ny, nz) then return true end
-							if not isOccluding(nx + dirA * (spanA - 1), ny, nz + dirB * (spanB - 1)) then return true end
-							if spanA > 1 and not isOccluding(nx + dirA * (spanA - 1), ny, nz) then return true end
-							if spanB > 1 and not isOccluding(nx, ny, nz + dirB * (spanB - 1)) then return true end
-							return false
+				-- Left face (at x-1): spans Y and Z
+				for iy = 0, dy - 1 do
+					for iz = 0, dz - 1 do
+						if not isOccluding(x - 1, y + iy, z + iz) then
+							visibleFaces[Enum.NormalId.Left] = true
+							break
 						end
-
-						-- Left/Right faces span Y and Z
-						visibleFaces[Enum.NormalId.Left] = checkFaceCorners(x - 1, y, z, dy, dz, 0, 0)
-							or not isOccluding(x - 1, y + dy - 1, z) or not isOccluding(x - 1, y, z + dz - 1)
-						visibleFaces[Enum.NormalId.Right] = checkFaceCorners(x + dx, y, z, dy, dz, 0, 0)
-							or not isOccluding(x + dx, y + dy - 1, z) or not isOccluding(x + dx, y, z + dz - 1)
-						-- Top/Bottom faces span X and Z
-						visibleFaces[Enum.NormalId.Bottom] = checkFaceCorners(x, y - 1, z, dx, dz, 0, 0)
-							or not isOccluding(x + dx - 1, y - 1, z) or not isOccluding(x, y - 1, z + dz - 1)
-						visibleFaces[Enum.NormalId.Top] = checkFaceCorners(x, y + dy, z, dx, dz, 0, 0)
-							or not isOccluding(x + dx - 1, y + dy, z) or not isOccluding(x, y + dy, z + dz - 1)
-						-- Front/Back faces span X and Y
-						visibleFaces[Enum.NormalId.Front] = checkFaceCorners(x, y, z - 1, dx, dy, 0, 0)
-							or not isOccluding(x + dx - 1, y, z - 1) or not isOccluding(x, y + dy - 1, z - 1)
-						visibleFaces[Enum.NormalId.Back] = checkFaceCorners(x, y, z + dz, dx, dy, 0, 0)
-							or not isOccluding(x + dx - 1, y, z + dz) or not isOccluding(x, y + dy - 1, z + dz)
 					end
+					if visibleFaces[Enum.NormalId.Left] then break end
+				end
+
+				-- Right face (at x+dx): spans Y and Z
+				for iy = 0, dy - 1 do
+					for iz = 0, dz - 1 do
+						if not isOccluding(x + dx, y + iy, z + iz) then
+							visibleFaces[Enum.NormalId.Right] = true
+							break
+						end
+					end
+					if visibleFaces[Enum.NormalId.Right] then break end
+				end
+
+				-- Bottom face (at y-1): spans X and Z
+				for ix = 0, dx - 1 do
+					for iz = 0, dz - 1 do
+						if not isOccluding(x + ix, y - 1, z + iz) then
+							visibleFaces[Enum.NormalId.Bottom] = true
+							break
+						end
+					end
+					if visibleFaces[Enum.NormalId.Bottom] then break end
+				end
+
+				-- Top face (at y+dy): spans X and Z
+				for ix = 0, dx - 1 do
+					for iz = 0, dz - 1 do
+						if not isOccluding(x + ix, y + dy, z + iz) then
+							visibleFaces[Enum.NormalId.Top] = true
+							break
+						end
+					end
+					if visibleFaces[Enum.NormalId.Top] then break end
+				end
+
+				-- Front face (at z-1): spans X and Y
+				for ix = 0, dx - 1 do
+					for iy = 0, dy - 1 do
+						if not isOccluding(x + ix, y + iy, z - 1) then
+							visibleFaces[Enum.NormalId.Front] = true
+							break
+						end
+					end
+					if visibleFaces[Enum.NormalId.Front] then break end
+				end
+
+				-- Back face (at z+dz): spans X and Y
+				for ix = 0, dx - 1 do
+					for iy = 0, dy - 1 do
+						if not isOccluding(x + ix, y + iy, z + dz) then
+							visibleFaces[Enum.NormalId.Back] = true
+							break
+						end
+					end
+					if visibleFaces[Enum.NormalId.Back] then break end
+				end
 
 					-- Apply textures only to faces marked visible
 					TextureApplicator:ApplyBoxTextures(p, id, dx, dy, dz, metadata, visibleFaces)
@@ -542,7 +579,7 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 							local textureId = TextureManager:GetTextureId(def.textures.all)
 							if textureId then
 								for _, face in ipairs({Enum.NormalId.Top, Enum.NormalId.Bottom, Enum.NormalId.Front, Enum.NormalId.Back, Enum.NormalId.Left, Enum.NormalId.Right}) do
-									local texture = Instance.new("Texture")
+									local texture = PartPool.AcquireTexture()
 									texture.Face = face
 									texture.Texture = textureId
 									-- Tile per block (not stretched across merged stairs)
@@ -739,7 +776,7 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 							local textureId = TextureManager:GetTextureId(def.textures.all)
 							if textureId then
 								for _, face in ipairs({Enum.NormalId.Top, Enum.NormalId.Bottom, Enum.NormalId.Front, Enum.NormalId.Back, Enum.NormalId.Left, Enum.NormalId.Right}) do
-									local texture = Instance.new("Texture")
+									local texture = PartPool.AcquireTexture()
 									texture.Face = face
 									texture.Texture = textureId
 
@@ -817,7 +854,7 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 								local textureId = TextureManager:GetTextureId(def.textures.all)
 								if textureId then
 									for _, face in ipairs({Enum.NormalId.Top, Enum.NormalId.Bottom, Enum.NormalId.Front, Enum.NormalId.Back, Enum.NormalId.Left, Enum.NormalId.Right}) do
-										local texture = Instance.new("Texture")
+										local texture = PartPool.AcquireTexture()
 										texture.Face = face
 										texture.Texture = textureId
 										if face == Enum.NormalId.Top or face == Enum.NormalId.Bottom then
@@ -950,7 +987,7 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 							local textureId = TextureManager:GetTextureId(def.textures.all)
 							if textureId then
 								for _, face in ipairs({Enum.NormalId.Top, Enum.NormalId.Bottom, Enum.NormalId.Front, Enum.NormalId.Back, Enum.NormalId.Left, Enum.NormalId.Right}) do
-									local texture = Instance.new("Texture")
+									local texture = PartPool.AcquireTexture()
 									texture.Face = face
 									texture.Texture = textureId
 									-- Tile per block (not stretched across merged slabs)
@@ -1104,7 +1141,7 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 							local textureId = TextureManager:GetTextureId(def.textures.all)
 							if textureId then
 								for _, face in ipairs({Enum.NormalId.Top, Enum.NormalId.Bottom, Enum.NormalId.Front, Enum.NormalId.Back, Enum.NormalId.Left, Enum.NormalId.Right}) do
-										local tex = Instance.new("Texture")
+										local tex = PartPool.AcquireTexture()
 										tex.Face = face
 										tex.Texture = textureId
 										tex.StudsPerTileU = bs
@@ -1131,7 +1168,7 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 								local textureId = TextureManager:GetTextureId(def.textures.all)
 								if textureId then
 								for _, face in ipairs({Enum.NormalId.Top, Enum.NormalId.Bottom, Enum.NormalId.Front, Enum.NormalId.Back, Enum.NormalId.Left, Enum.NormalId.Right}) do
-										local tex = Instance.new("Texture")
+										local tex = PartPool.AcquireTexture()
 										tex.Face = face
 										tex.Texture = textureId
 										tex.StudsPerTileU = bs
@@ -1243,14 +1280,14 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 							local textureId = TextureManager:GetTextureId(def.textures.all)
 							if textureId then
 								-- First plane - both sides
-								local t1f = Instance.new("Texture")
+								local t1f = PartPool.AcquireTexture()
 								t1f.Face = Enum.NormalId.Front
 								t1f.Texture = textureId
 								t1f.StudsPerTileU = bs
 								t1f.StudsPerTileV = bs
 								t1f.Parent = p1
 
-								local t1b = Instance.new("Texture")
+								local t1b = PartPool.AcquireTexture()
 								t1b.Face = Enum.NormalId.Back
 								t1b.Texture = textureId
 								t1b.StudsPerTileU = bs
@@ -1258,14 +1295,14 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 								t1b.Parent = p1
 
 								-- Second plane - both sides
-								local t2f = Instance.new("Texture")
+								local t2f = PartPool.AcquireTexture()
 								t2f.Face = Enum.NormalId.Front
 								t2f.Texture = textureId
 								t2f.StudsPerTileU = bs
 								t2f.StudsPerTileV = bs
 								t2f.Parent = p2
 
-								local t2b = Instance.new("Texture")
+								local t2b = PartPool.AcquireTexture()
 								t2b.Face = Enum.NormalId.Back
 								t2b.Texture = textureId
 								t2b.StudsPerTileU = bs

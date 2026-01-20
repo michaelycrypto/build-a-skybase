@@ -393,7 +393,6 @@ function WorldsPanel:EnsureResponsiveScale(contentFrame)
 	uiScale.Parent = target
 	CollectionService:AddTag(uiScale, "scale_component")
 	self.uiScale = uiScale
-	print("📐 WorldsPanel: Added UIScale with base resolution 1920x1080 (100% original size)")
 
 	return uiScale
 end
@@ -703,8 +702,6 @@ function WorldsPanel:CreateContent(contentFrame)
 	self:CreateBody(contentFrame)
 	self:UpdateTabAppearance()
 	self:RefreshAll()
-
-	print("WorldsPanel: Created voxel-styled worlds UI")
 end
 
 function WorldsPanel:CreateHeader(parent)
@@ -2853,7 +2850,6 @@ function WorldsPanel:JoinWorld(worldData)
 	if not worldData then
 		return
 	end
-	print("[WorldsPanel] Joining world:", worldData.worldId)
 
 	-- Show loading spinner when joining world
 	self.isJoiningWorld = true
@@ -2892,8 +2888,6 @@ function WorldsPanel:TeleportToHub()
 	if self.isTeleportingToHub then
 		return
 	end
-
-	print("[WorldsPanel] Teleporting to hub world")
 
 	self.isTeleportingToHub = true
 	self:UpdateHubTeleportButtonState()
@@ -3085,7 +3079,6 @@ function WorldsPanel:Initialize()
 		self:UpdateOverviewSpinnerVisibility()
 
 		self:RefreshAll()
-		print(string.format("[WorldsPanel] Worlds list updated (%d my / %d friends)", #self.myWorlds, #self.friendsWorlds))
 	end)
 
 	EventManager:RegisterEvent("WorldDeleted", function(data)
@@ -3120,7 +3113,6 @@ function WorldsPanel:Initialize()
 		if self.hubSpinner then
 			self.hubSpinner.Visible = false
 		end
-		print("[WorldsPanel] World join error:", data.message or "Unknown error")
 	end)
 
 	EventManager:RegisterEvent("HubTeleportError", function(data)
@@ -3130,10 +3122,7 @@ function WorldsPanel:Initialize()
 		if self.hubSpinner then
 			self.hubSpinner.Visible = false
 		end
-		print("[WorldsPanel] Hub teleport error:", data.message or "Unknown error")
 	end)
-
-	print("WorldsPanel: Initialized (responsive voxel style)")
 end
 
 function WorldsPanel:Cleanup()

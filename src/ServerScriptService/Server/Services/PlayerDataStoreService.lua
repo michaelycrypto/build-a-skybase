@@ -145,8 +145,6 @@ function PlayerDataStoreService:Init()
 		return
 	end
 
-	self._logger.Info("Initializing PlayerDataStoreService...")
-
 	-- Initialize DataStore
 	local success, err = pcall(function()
 		self._dataStore = DataStoreService:GetDataStore(DATA_STORE_NAME)
@@ -155,8 +153,6 @@ function PlayerDataStoreService:Init()
 	if not success then
 		self._logger.Error("Failed to initialize DataStore", {error = tostring(err)})
 		self._logger.Warn("Running in local mode - data will not persist!")
-	else
-		self._logger.Info("DataStore initialized successfully")
 	end
 
 	BaseService.Init(self)

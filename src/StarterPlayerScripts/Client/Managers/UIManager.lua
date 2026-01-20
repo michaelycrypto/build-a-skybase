@@ -100,8 +100,6 @@ end
 	Initialize the UI Manager for responsive design
 --]]
 function UIManager:Initialize()
-	print("UIManager: Initializing responsive UI system")
-
 	-- Connect to mobile/console input changes
 	InputService.LastInputTypeChanged:Connect(function(lastInputType)
 		self:HandleInputTypeChange(lastInputType)
@@ -133,8 +131,6 @@ function UIManager:Initialize()
 	if not GameState:IsPlaying() then
 		self:_applyWorldStatus(GameState:GetWorldStatus())
 	end
-
-	print("UIManager: Responsive system ready")
 end
 
 --[[
@@ -145,15 +141,12 @@ function UIManager:HandleInputTypeChange(inputType)
 	if inputType == Enum.UserInputType.Touch then
 		-- Mobile optimizations
 		currentDeviceType = "Mobile"
-		print("UIManager: Switched to touch input mode")
 	elseif inputType == Enum.UserInputType.MouseButton1 then
 		-- Desktop optimizations
 		currentDeviceType = "Desktop"
-		print("UIManager: Switched to mouse input mode")
 	elseif inputType == Enum.UserInputType.Gamepad1 then
 		-- Console optimizations
 		currentDeviceType = "Console"
-		print("UIManager: Switched to gamepad input mode")
 	end
 
 	-- Update GameState with device type
@@ -188,8 +181,6 @@ function UIManager:HandleViewportChange()
 		aspectRatio = aspectRatio,
 		deviceType = deviceType
 	})
-
-	print("UIManager: Viewport updated -", deviceType, viewportSize.X .. "x" .. viewportSize.Y)
 end
 
 --[[

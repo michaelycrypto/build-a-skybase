@@ -48,8 +48,6 @@ function ShopService:Init()
 		return
 	end
 
-	self._logger.Info("Initializing ShopService...")
-
 	-- Get EventManager instance
 	self._eventManager = require(game.ReplicatedStorage.Shared.EventManager)
 

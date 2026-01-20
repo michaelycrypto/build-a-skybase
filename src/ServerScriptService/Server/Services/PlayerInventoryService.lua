@@ -38,8 +38,6 @@ function PlayerInventoryService:Init()
 		return
 	end
 
-	self._logger.Info("Initializing PlayerInventoryService...")
-
 	BaseService.Init(self)
 	self._logger.Info("PlayerInventoryService initialized")
 end

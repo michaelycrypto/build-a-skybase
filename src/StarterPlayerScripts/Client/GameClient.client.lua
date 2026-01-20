@@ -3,8 +3,6 @@
 	Handles initialization of all client-side systems with Vector Icons integration
 --]]
 
-print("AuraSystem Game Client Starting...")
-
 -- Services
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
@@ -23,11 +21,10 @@ local ChunkCompressor = require(ReplicatedStorage.Shared.VoxelWorld.Memory.Chunk
 local Constants = require(ReplicatedStorage.Shared.VoxelWorld.Core.Constants)
 local CameraFrustum = require(ReplicatedStorage.Shared.VoxelWorld.Rendering.Culling.Camera)
 
--- Texture system (verify it loads)
+-- Texture system
 local TextureManager = require(ReplicatedStorage.Shared.VoxelWorld.Rendering.TextureManager)
 local BlockBreakOverlayController = require(script.Parent.Controllers.BlockBreakOverlayController)
 local CloudController = require(script.Parent.Controllers.CloudController)
-print("[VoxelTextures] Texture system loaded. Enabled:", TextureManager:IsEnabled())
 local voxelWorldHandle = nil
 local boxMesher = BoxMesher.new()
 local voxelWorldContainer = nil
@@ -39,6 +36,10 @@ local meshStagingContainer = Instance.new("Folder")
 meshStagingContainer.Name = "_ChunkMeshStaging"
 meshStagingContainer.Parent = ReplicatedStorage
 local _lastFogEnd
+-- S7: Fog calculation caching - only recalculate when camera moves significantly
+local _lastFogCameraPos = nil
+local FOG_UPDATE_DISTANCE_THRESHOLD = 16  -- Studs - only recalc if camera moved this far
+
 local isHubWorld = Workspace:GetAttribute("IsHubWorld") == true
 local hubRenderDistance = Workspace:GetAttribute("HubRenderDistance")
 local hubInitialMeshPending = isHubWorld
@@ -47,6 +48,8 @@ Workspace:GetAttributeChangedSignal("IsHubWorld"):Connect(function()
 	if isHubWorld then
 		hubInitialMeshPending = true
 	end
+	-- Update minimum chunks required based on world type
+	minimumChunksRequired = isHubWorld and HUB_WORLD_CHUNK_COUNT or PLAYER_WORLD_CHUNK_COUNT
 end)
 Workspace:GetAttributeChangedSignal("HubRenderDistance"):Connect(function()
 	hubRenderDistance = Workspace:GetAttribute("HubRenderDistance")
@@ -64,8 +67,13 @@ local onSpawnChunkReadyCallbacks = {}  -- Callbacks to fire when spawn chunk loa
 
 -- Multi-chunk loading tracking
 local requiredChunkKeys = {}  -- All chunk keys we want loaded before completing
-local minimumChunksRequired = 44  -- Minimum chunks to load (schematic has 44 chunks, not 49)
 local loadingChunkRadius = 3  -- Radius around spawn chunk to require (1 = 3x3, 2 = 5x5, 3 = 7x7, 4 = 9x9)
+-- Hub world: 44 chunks (based on schematic size). Player world: based on loading radius (7×7 = 49)
+local HUB_WORLD_CHUNK_COUNT = 44
+local PLAYER_WORLD_CHUNK_COUNT = (loadingChunkRadius * 2 + 1) * (loadingChunkRadius * 2 + 1)  -- 49 for radius 3
+local minimumChunksRequired = isHubWorld and HUB_WORLD_CHUNK_COUNT or PLAYER_WORLD_CHUNK_COUNT
+-- S3-FIX: Track if server already provided the required chunk list (don't overwrite)
+local serverProvidedChunkList = false
 
 -- Check if a specific chunk is ready (meshed and parented)
 local function isChunkReady(chunkKey)
@@ -104,9 +112,6 @@ end
 local function fireSpawnChunkReady()
 	if spawnChunkReady then return end
 	spawnChunkReady = true
-	local loaded = countLoadedRequiredChunks()
-	local total = #requiredChunkKeys
-	print(string.format("[VoxelWorld] Spawn chunks ready (%d/%d) - firing callbacks", loaded, total))
 	for _, callback in ipairs(onSpawnChunkReadyCallbacks) do
 		task.defer(callback)
 	end
@@ -128,8 +133,18 @@ local function setSpawnPosition(worldX, worldZ)
 	local bs = Constants.BLOCK_SIZE
 	local cx = math.floor(worldX / (CHUNK_SX * bs))
 	local cz = math.floor(worldZ / (CHUNK_SZ * bs))
-	spawnChunkKey = tostring(cx) .. "," .. tostring(cz)
+	spawnChunkKey = Constants.ToChunkKey(cx, cz)
 	spawnChunkReady = false
+
+	-- S3-FIX: If server already provided the chunk list via SpawnChunksStreamed,
+	-- don't overwrite it. Server knows which chunks actually exist (non-empty).
+	if serverProvidedChunkList and #requiredChunkKeys > 0 then
+		-- Just check if already loaded
+		if areMinimumChunksLoaded() then
+			fireSpawnChunkReady()
+		end
+		return
+	end
 
 	-- Generate list of required chunk keys (square around spawn)
 	-- Filter out empty chunks to avoid waiting for chunks that don't exist
@@ -140,7 +155,7 @@ local function setSpawnPosition(worldX, worldZ)
 		for dz = -loadingChunkRadius, loadingChunkRadius do
 			local chunkX = cx + dx
 			local chunkZ = cz + dz
-			local key = tostring(chunkX) .. "," .. tostring(chunkZ)
+			local key = Constants.ToChunkKey(chunkX, chunkZ)
 
 			-- Only include chunks that actually exist (not empty)
 			-- If we can't check (world manager not ready), include it to be safe
@@ -151,13 +166,11 @@ local function setSpawnPosition(worldX, worldZ)
 	end
 
 	local total = #requiredChunkKeys
-	local filtered = (loadingChunkRadius * 2 + 1) * (loadingChunkRadius * 2 + 1) - total
-	print(string.format("[VoxelWorld] Spawn position set to chunk (%d,%d), requiring %d chunks (radius %d, filtered %d empty)",
-		cx, cz, total, loadingChunkRadius, filtered))
 
-	-- Update minimum chunks required to match actual available chunks (schematic has 44 chunks)
-	minimumChunksRequired = math.min(minimumChunksRequired, total)
-	print(string.format("[VoxelWorld] Minimum chunks required set to %d (was %d)", minimumChunksRequired, 44))
+	-- Update minimum chunks required to match actual available chunks
+	-- Hub world: limited to schematic chunks (44). Player world: full radius (49)
+	local baseMinimum = isHubWorld and HUB_WORLD_CHUNK_COUNT or PLAYER_WORLD_CHUNK_COUNT
+	minimumChunksRequired = math.min(baseMinimum, total)
 
 	-- Check if already loaded
 	if areMinimumChunksLoaded() then
@@ -205,7 +218,7 @@ local function startMeshWorker()
 			local pcz = math.floor(bz / CHUNK_SZ)
 
 			-- Build prioritized list of chunks to mesh
-			local candidates = {}
+			local candidates = table.create(64)  -- Pre-allocate for typical queue size
 
 			for key, chunk in pairs(cm.meshUpdateQueue) do
 				-- Skip if already being built
@@ -217,8 +230,10 @@ local function startMeshWorker()
 				end
 			end
 
-			-- Sort by distance (closest first)
-			table.sort(candidates, function(a, b) return a.dist < b.dist end)
+			-- Sort by distance (closest first) - skip for small lists (minor optimization)
+			if #candidates > 4 then
+				table.sort(candidates, function(a, b) return a.dist < b.dist end)
+			end
 
 			-- FAST MODE: Process multiple chunks per cycle
 			-- During loading screen, be very aggressive (visual stutters invisible)
@@ -227,11 +242,39 @@ local function startMeshWorker()
 			local maxChunksPerCycle = isLoadingActive and 32 or (isHubWorld and 6 or 2)
 			local chunksBuiltThisCycle = 0
 
+			-- S4: Frame budget limiting to prevent frame drops during loading→gameplay transition
+			-- Target 60fps = 16.67ms per frame, budget 8ms for mesh work to leave headroom
+			local MESH_FRAME_BUDGET_MS = isLoadingActive and 50 or 8  -- More aggressive during loading
+			local cycleStartTime = os.clock()
+
+			local function shouldYieldForFrameBudget()
+				if isLoadingActive then return false end  -- No budget limit during loading screen
+				return (os.clock() - cycleStartTime) * 1000 > MESH_FRAME_BUDGET_MS
+			end
+
+			-- Cache camera look direction for frustum culling (updated each cycle)
+			local camLook = camera and camera.CFrame.LookVector or Vector3.new(0, 0, -1)
+
 			for _, item in ipairs(candidates) do
+				-- Check both chunk limit AND frame budget
 				if chunksBuiltThisCycle >= maxChunksPerCycle then break end
+				if shouldYieldForFrameBudget() then break end
 
 				local key = item.key
 				local chunk = item.chunk
+
+				-- Frustum culling: skip chunks clearly behind camera during gameplay
+				-- (Don't cull during loading - build everything)
+				if not isLoadingActive and item.dist > 4 then  -- Only cull distant chunks
+					local chunkCenterX = (chunk.x + 0.5) * CHUNK_SX * bs
+					local chunkCenterZ = (chunk.z + 0.5) * CHUNK_SZ * bs
+					local toChunk = Vector3.new(chunkCenterX - camPos.X, 0, chunkCenterZ - camPos.Z)
+					local dotProduct = toChunk.X * camLook.X + toChunk.Z * camLook.Z
+					-- Skip if chunk is behind camera (negative dot) and far away
+					if dotProduct < -CHUNK_SX * bs then
+						continue  -- Skip this chunk, will be processed when player turns
+					end
+				end
 
 				-- Mark as building
 				meshBuildingSet[key] = true
@@ -241,7 +284,7 @@ local function startMeshWorker()
 				if wm and wm.chunks then
 					for dx = -1, 1 do
 						for dz = -1, 1 do
-							local nkey = tostring(chunk.x + dx) .. "," .. tostring(chunk.z + dz)
+							local nkey = Constants.ToChunkKey(chunk.x + dx, chunk.z + dz)
 							neighborCache[nkey] = wm.chunks[nkey]
 						end
 					end
@@ -258,7 +301,7 @@ local function startMeshWorker()
 					elseif nx >= CHUNK_SX then cx += 1; nx -= CHUNK_SX end
 					if nz < 0 then cz -= 1; nz += CHUNK_SZ
 					elseif nz >= CHUNK_SZ then cz += 1; nz -= CHUNK_SZ end
-					local nkey = tostring(cx) .. "," .. tostring(cz)
+					local nkey = Constants.ToChunkKey(cx, cz)
 					local neighbor = neighborCache[nkey]
 					if not neighbor then return AIR end
 					return neighbor:GetBlock(nx, ly, nz)
@@ -338,7 +381,15 @@ local function updateVoxelWorld()
 	-- Update frustum (lightweight)
 	frustum:UpdateFromCamera(camera)
 
-	-- Dynamic fog (lightweight, only updates when needed)
+	-- S7: Dynamic fog with position-based caching (skip recalculation if camera hasn't moved much)
+	local camPos = camera.CFrame.Position
+	local shouldRecalcFog = not _lastFogCameraPos or
+		(camPos - _lastFogCameraPos).Magnitude > FOG_UPDATE_DISTANCE_THRESHOLD
+
+	if shouldRecalcFog then
+		_lastFogCameraPos = camPos
+	end
+
 	local clientVisualRadius = math.min(
 		(cm and cm.renderDistance) or 8,
 		(vwConfig.PERFORMANCE.MAX_RENDER_DISTANCE or 8)
@@ -349,7 +400,9 @@ local function updateVoxelWorld()
 	local horizonStuds = clientVisualRadius * Constants.CHUNK_SIZE_X * Constants.BLOCK_SIZE
 	local fogStart = math.max(0, horizonStuds * 0.58)
 	local fogEnd = math.max(fogStart + 15, horizonStuds * 0.92)
-	if not _lastFogEnd or math.abs((_lastFogEnd or 0) - fogEnd) > 4 then
+
+	-- Only apply fog changes if camera moved significantly OR fog values changed
+	if shouldRecalcFog and (not _lastFogEnd or math.abs((_lastFogEnd or 0) - fogEnd) > 4) then
 		local atm = Lighting:FindFirstChildOfClass("Atmosphere")
 		if not atm then
 			atm = Instance.new("Atmosphere")
@@ -588,7 +641,6 @@ local function handleWorldStateChanged(worldState)
 	GameState:ApplyWorldState(worldState)
 
 	local status = worldState.status or (worldState.isReady and "ready" or "loading")
-	print(string.format("🌍 WorldStateChanged received (%s, ready=%s)", status, tostring(worldState.isReady)))
 
 	if worldState.isReady then
 		Client.worldReady = true
@@ -625,7 +677,6 @@ local function completeInitialization(EmoteManager)
 			warn("ToastManager initialization failed:", error)
 		else
 			Client.managers.ToastManager = ToastManager
-			print("ToastManager: Initialized after loading")
 		end
 	end
 
@@ -684,8 +735,6 @@ local function completeInitialization(EmoteManager)
 	-- Set inventory reference in hotbar for inventory button
 	hotbar:SetInventoryReference(inventory)
 
-	print("🎮 Voxel Hotbar, Inventory Manager, and Inventory Panel initialized")
-
 	-- Initialize TutorialManager (after InventoryManager so we can count items)
 	local TutorialManager = require(script.Parent.Managers.TutorialManager)
 	local tutorialSuccess, tutorialError = pcall(function()
@@ -699,7 +748,6 @@ local function completeInitialization(EmoteManager)
 	end)
 	if tutorialSuccess then
 		Client.managers.TutorialManager = TutorialManager
-		print("📚 TutorialManager: Initialized for onboarding")
 	else
 		warn("TutorialManager initialization failed:", tutorialError)
 	end
@@ -740,13 +788,11 @@ local function completeInitialization(EmoteManager)
 			end
 		end
 	end)
-	print("📦 Inventory change listeners registered")
 
 	-- Initialize World Ownership Display
 	local WorldOwnershipDisplay = require(script.Parent.UI.WorldOwnershipDisplay)
 	WorldOwnershipDisplay:Initialize()
 	Client.worldOwnershipDisplay = WorldOwnershipDisplay
-	print("🏠 World Ownership Display initialized")
 
 	-- Initialize Block Interaction (breaking/placing blocks)
 	local BlockInteraction = require(script.Parent.Controllers.BlockInteraction)
@@ -761,7 +807,6 @@ local function completeInitialization(EmoteManager)
 	local BlockBreakProgress = require(script.Parent.UI.BlockBreakProgress)
 	BlockBreakProgress:Create()
 	Client.blockBreakProgress = BlockBreakProgress
-	print("💥 Block Break Progress UI initialized")
 
 	-- Initialize Status Bars HUD (Minecraft-style health/armor/hunger)
 	local statusBarsSuccess, statusBarsError = pcall(function()
@@ -770,27 +815,22 @@ local function completeInitialization(EmoteManager)
 		statusBars:Initialize()
 		Client.statusBarsHUD = statusBars
 	end)
-	if statusBarsSuccess then
-		print("❤️ Status Bars HUD (health/armor/hunger) initialized")
-	else
+	if not statusBarsSuccess then
 		warn("⚠️ Status Bars HUD failed to initialize:", statusBarsError)
 	end
 
 	-- Initialize Block Break Overlay (crack stages)
 	BlockBreakOverlayController:Initialize()
 	Client.blockBreakOverlayController = BlockBreakOverlayController
-	print("🧱 Block Break Overlay controller initialized")
 
 	-- Initialize Dropped Item Controller (rendering dropped items)
 	local DroppedItemController = require(script.Parent.Controllers.DroppedItemController)
 	DroppedItemController:Initialize(voxelWorldHandle)
 	Client.droppedItemController = DroppedItemController
-	print("💎 Dropped Item Controller initialized")
 
 	-- Initialize Mob Replication Controller (renders passive/hostile mobs)
 	local MobReplicationController = require(script.Parent.Controllers.MobReplicationController)
 	Client.mobReplicationController = MobReplicationController
-	print("👾 Mob Replication Controller initialized")
 
 	-- Note: MinionUI is initialized after ChestUI due to dependency
 
@@ -798,39 +838,33 @@ local function completeInitialization(EmoteManager)
 	local ToolVisualController = require(script.Parent.Controllers.ToolVisualController)
 	ToolVisualController:Initialize()
 	Client.toolVisualController = ToolVisualController
-	print("🛠️ Tool Visual Controller initialized")
 
 	-- Initialize Tool Animation Controller (play R15 swing when sword equipped)
 	local ToolAnimationController = require(script.Parent.Controllers.ToolAnimationController)
 	ToolAnimationController:Initialize()
 	Client.toolAnimationController = ToolAnimationController
 	Client.managers.ToolAnimationController = ToolAnimationController
-	print("🎬 Tool Animation Controller initialized")
 
 	-- Initialize Viewmodel Controller (first-person hand/held item)
 	local ViewmodelController = require(script.Parent.Controllers.ViewmodelController)
 	ViewmodelController:Initialize()
 	Client.viewmodelController = ViewmodelController
 	Client.managers.ViewmodelController = ViewmodelController
-	print("🖐️ Viewmodel Controller initialized")
 
 	-- Initialize Combat Controller (PvP)
 	local CombatController = require(script.Parent.Controllers.CombatController)
 	CombatController:Initialize()
 	Client.combatController = CombatController
-	print("⚔️ Combat Controller initialized")
 
 	-- Initialize Bow Controller (ranged hold-to-draw)
 	local BowController = require(script.Parent.Controllers.BowController)
 	BowController:Initialize(inventoryManager)
 	Client.bowController = BowController
-	print("🏹 Bow Controller initialized")
 
 	-- Initialize Armor Visual Controller (render armor on character)
 	local ArmorVisualController = require(script.Parent.Controllers.ArmorVisualController)
 	ArmorVisualController.Init()
 	Client.armorVisualController = ArmorVisualController
-	print("🛡️ Armor Visual Controller initialized")
 
 	-- Initialize Camera Controller (3rd person camera locked 2 studs above head)
 	local CameraController = require(script.Parent.Controllers.CameraController)
@@ -845,14 +879,12 @@ local function completeInitialization(EmoteManager)
 	-- Initialize Cloud Controller (Minecraft-style layered clouds)
 	CloudController:Initialize()
 	Client.cloudController = CloudController
-	print("☁️ Cloud Controller initialized")
 
 	-- Initialize Mobile UI (action bar, thumbstick) after loading screen
 	-- This follows the same pattern as other UI components
 	local mobileController = InputService._mobileController
 	if mobileController and mobileController.InitializeUI then
 		mobileController:InitializeUI()
-		print("📱 Mobile Action Bar initialized")
 	end
 
 	local worldsPanel = nil
@@ -874,22 +906,17 @@ local function completeInitialization(EmoteManager)
 	chestUI:Initialize()
 	Client.chestUI = chestUI
 
-	print("📦 Chest UI initialized")
-
 	-- Initialize Furnace UI (smelting mini-game)
 	local FurnaceUI = require(script.Parent.UI.FurnaceUI)
 	local furnaceUI = FurnaceUI.new(inventoryManager)
 	furnaceUI:Initialize()
 	Client.furnaceUI = furnaceUI
 
-	print("🔥 Furnace UI initialized")
-
 	-- Initialize Minion UI (after ChestUI due to dependency)
 	local MinionUI = require(script.Parent.UI.MinionUI)
 	local minionUI = MinionUI.new(inventoryManager, inventory, chestUI)
 	minionUI:Initialize()
 	Client.minionUI = minionUI
-	print("🧱 Minion UI initialized")
 
 	-- Centralize inventory/chest key handling to avoid duplicate listeners
 	InputService.InputBegan:Connect(function(input, gameProcessed)
@@ -1018,7 +1045,6 @@ local function completeInitialization(EmoteManager)
 	-- Re-register event handlers with complete managers (including ToastManager and ToolAnimationController)
 	local completeEventConfig = EventManager:CreateClientEventConfig(Client.managers)
 	EventManager:RegisterEvents(completeEventConfig)
-	print("🔌 Complete event handlers registered (with ToastManager and ToolAnimationController)")
 
 	-- Initialize UI panels BEFORE MainHUD (so they're registered with PanelManager)
 	local DailyRewardsPanel = require(script.Parent.UI.DailyRewardsPanel)
@@ -1046,13 +1072,8 @@ local function completeInitialization(EmoteManager)
 	Client.managers.WorldsPanel = worldsPanelInstance
 	worldsPanel = worldsPanelInstance
 	if hotbar then
-		print("🌍 Setting worldsPanel reference on hotbar...")
 		hotbar:SetWorldsPanel(worldsPanelInstance)
-		print("🌍 WorldsPanel reference set successfully")
-	else
-		warn("🌍 hotbar is nil! Cannot set worldsPanel reference")
 	end
-	print("🌍 Worlds Panel initialized")
 
 	-- Create main HUD (after panels are registered)
 	local MainHUD = require(script.Parent.UI.MainHUD)
@@ -1079,9 +1100,7 @@ local function completeInitialization(EmoteManager)
 	end
 
 	-- Signal server that client is ready (AFTER event handlers are registered)
-	print("🔄 Sending ClientReady event to server...")
 	EventManager:SendToServer("ClientReady")
-	print("🔄 Sending RequestDataRefresh event to server...")
 	EventManager:SendToServer("RequestDataRefresh")
 
 	bootstrapComplete = true
@@ -1100,11 +1119,8 @@ end
 --]]
 local function initialize()
 	if Client.isInitialized then
-		print("Client already initialized")
 		return
 	end
-
-	print("🚀 Starting client initialization with loading screen...")
 
 	-- Initialize core systems first
 	Logger:Initialize(Config.LOGGING, Network)
@@ -1117,7 +1133,6 @@ local function initialize()
 	InputService:Initialize()
 
 	-- Initialize voxel world in SERVER-AUTHORITATIVE mode
-	print("🌍 Initializing voxel world (server-authoritative mode)...")
 	local clientRenderDistance = hubRenderDistance or 3
     voxelWorldHandle = VoxelWorld.CreateClientView(clientRenderDistance)
 	if hubRenderDistance and voxelWorldHandle and voxelWorldHandle.chunkManager then
@@ -1149,10 +1164,7 @@ local function initialize()
             return
         end
 
-        -- Debug: Log first few chunks received
-        local key = data.key or (tostring(data.chunk.x) .. "," .. tostring(data.chunk.z))
-        print(string.format("[ChunkDataStreamed] Received chunk %s, has palette: %s, has runs: %s",
-            key, tostring(data.chunk.palette ~= nil), tostring(data.chunk.runs ~= nil)))
+        local key = data.key or Constants.ToChunkKey(data.chunk.x, data.chunk.z)
         -- Prefer compressed payloads (palette + RLE) when present
         if data.chunk.palette and data.chunk.runs and data.chunk.dims then
             local lin = ChunkCompressor.DecompressToLinear(data.chunk)
@@ -1171,7 +1183,6 @@ local function initialize()
             -- Legacy nested blocks table
             chunk:Deserialize(data.chunk)
         end
-        local key = data.key or (tostring(data.chunk.x) .. "," .. tostring(data.chunk.z))
         voxelWorldHandle.chunkManager.meshUpdateQueue = voxelWorldHandle.chunkManager.meshUpdateQueue or {}
 
         local isNewChunk = not chunkFolders[key]
@@ -1189,7 +1200,7 @@ local function initialize()
             local neighborOffsets = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}}
             for _, offset in ipairs(neighborOffsets) do
                 local nx, nz = cx + offset[1], cz + offset[2]
-                local neighborKey = tostring(nx) .. "," .. tostring(nz)
+                local neighborKey = Constants.ToChunkKey(nx, nz)
                 -- Only remesh if neighbor already has a rendered mesh
                 if chunkFolders[neighborKey] then
                     local neighborChunk = wm and wm.chunks and wm.chunks[neighborKey]
@@ -1221,6 +1232,34 @@ local function initialize()
 		end
 	end)
 
+	-- S3: Handle spawn chunks pre-streaming notification from server
+	-- This tells us which chunks are needed before the loading screen should fade
+	EventManager:RegisterEvent("SpawnChunksStreamed", function(data)
+		if not data then return end
+
+		-- Update required chunk keys to include the spawn chunks
+		-- This ensures the loading screen waits for these specific chunks
+		if data.chunkKeys and #data.chunkKeys > 0 then
+			-- Clear and repopulate required keys with spawn chunks
+			requiredChunkKeys = {}
+			for _, key in ipairs(data.chunkKeys) do
+				table.insert(requiredChunkKeys, key)
+			end
+			-- S3-FIX: Mark that server provided the chunk list - setSpawnPosition should not overwrite
+			serverProvidedChunkList = true
+			-- Update minimum required to match the actual chunks server will send
+			minimumChunksRequired = #requiredChunkKeys
+		end
+
+		-- If spawn chunk is already meshed, trigger ready check
+		if data.spawnChunkX and data.spawnChunkZ then
+			local centerKey = string.format("%d,%d", data.spawnChunkX, data.spawnChunkZ)
+			if chunkFolders[centerKey] and areMinimumChunksLoaded() then
+				fireSpawnChunkReady()
+			end
+		end
+	end)
+
 	EventManager:RegisterEvent(WORLD_READY_EVENT, handleWorldStateChanged)
 
 	-- Batched chunk remeshing system
@@ -1231,7 +1270,7 @@ local function initialize()
 
 	-- Queue a chunk for batched remesh
 	local function queueChunkRemesh(cx, cz)
-		local k = tostring(cx) .. "," .. tostring(cz)
+		local k = Constants.ToChunkKey(cx, cz)
 		pendingRemeshChunks[k] = {cx = cx, cz = cz}
 	end
 
@@ -1374,9 +1413,7 @@ local function initialize()
     -- Request initial chunks after our custom entity spawns
     local initializedFromEntity = false
     local playerSpawnPosition = nil
-    print("🎯 Waiting for PlayerEntitySpawned event from server...")
     EventManager:RegisterEvent("PlayerEntitySpawned", function(data)
-        print("🎉 Received PlayerEntitySpawned event!", data)
         if initializedFromEntity then return end
         initializedFromEntity = true
 
@@ -1403,7 +1440,6 @@ local function initialize()
         -- Get current position from character (server already spawned it at correct location)
         local pos = rootPart.Position
         playerSpawnPosition = pos
-        print("📍 Character spawned at:", pos)
 
         -- Set spawn chunk for loading tracking (all worlds)
         setSpawnPosition(pos.X, pos.Z)
@@ -1416,7 +1452,6 @@ local function initialize()
         -- Send initial position to server and request chunks
         EventManager:SendToServer("VoxelPlayerPositionUpdate", { x = pos.X, z = pos.Z })
         EventManager:SendToServer("VoxelRequestInitialChunks")
-        print("📦 Requested initial chunks for voxel world (entity spawn)")
 
         -- Hold loading screen until minimum chunks are loaded
         local LoadingScreen = require(script.Parent.UI.LoadingScreen)
@@ -1447,7 +1482,6 @@ local function initialize()
                     progressUpdateConnection:Disconnect()
                     progressUpdateConnection = nil
                 end
-                print("✅ Spawn area chunks ready - releasing loading screen")
                 if LoadingScreen.ReleaseWorldHold then
                     LoadingScreen:ReleaseWorldHold()
                 end
@@ -1502,8 +1536,6 @@ local function initialize()
         end
     end)
 
-	print("✅ Voxel world client view initialized successfully!")
-
 	-- Load and initialize managers (except UI)
 	local GameState = require(script.Parent.Managers.GameState)
 	Client.managers.GameState = GameState
@@ -1525,7 +1557,6 @@ local function initialize()
 	}
 	local eventConfig = EventManager:CreateClientEventConfig(earlyManagers)
 	EventManager:RegisterEvents(eventConfig)
-	print("🔌 Early event handlers registered (without ToastManager)")
 
 	-- Start the asynchronous loading and initialization process
 	task.spawn(function()
@@ -1536,7 +1567,6 @@ local function initialize()
 				-- Initialize IconManager and UIComponents
 		IconManager:Initialize()
 		UIComponents:Initialize()
-		print("📦 IconManager: Registering MainHUD icons...")
 
 		-- Register icons that MainHUD will use
 		IconManager:RegisterIcon("Currency", "Cash", {context = "MainHUD_CoinsDisplay"})
@@ -1590,16 +1620,12 @@ local function initialize()
 			})
 		end
 
-		print("📦 IconManager: Registered 21 icons for preloading (10 MainHUD + 11 ToastManager)")
-
 		-- Initialize EmoteManager for later use (not for preloading)
 		local success, EmoteManager = pcall(require, script.Parent.Managers.EmoteManager)
 		if not success then
 			warn("Failed to load EmoteManager:", EmoteManager)
 			EmoteManager = nil
 		end
-
-		print("🔄 Starting LoadAllAssets (block textures & icons)...")
 
 		-- Load block textures and Vector Icons
 		LoadingScreen:LoadAllAssets(
@@ -1609,7 +1635,6 @@ local function initialize()
 			end,
 			function(loadedCount, failedCount)
 				-- Completion callback (called after fade-out)
-				print("Asset loading complete:", loadedCount, "loaded,", failedCount, "failed")
 				EventManager:SendToServer("ClientLoadingComplete")
 			end,
 			function()
@@ -1669,8 +1694,6 @@ local function safeInitialize()
 		errorLabel.Font = BOLD_FONT
 		errorLabel.TextWrapped = true
 		errorLabel.Parent = errorFrame
-	else
-		print("✅ Client initialized successfully!")
 	end
 end
 

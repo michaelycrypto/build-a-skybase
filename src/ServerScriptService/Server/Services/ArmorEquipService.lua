@@ -41,8 +41,6 @@ function ArmorEquipService:Init()
 		return
 	end
 
-	self._logger.Info("Initializing ArmorEquipService...")
-
 	BaseService.Init(self)
 	self._logger.Info("ArmorEquipService initialized")
 end

@@ -31,8 +31,6 @@ function PlayerService:Init()
 		return
 	end
 
-	self._logger.Info("Initializing PlayerService...")
-
 	-- Get EventManager instance
 	self._eventManager = require(game.ReplicatedStorage.Shared.EventManager)
 

@@ -503,8 +503,33 @@ if IS_LOBBY then
 end
 
 -- Worlds place:
--- NOTE: Voxel world will be initialized when first player joins (using teleport data if provided)
-logger.Info("VoxelWorldService ready - waiting for first player...")
+-- S2: Pre-initialize world with placeholder to eliminate first-player delay
+-- The actual seed/data will be applied when owner arrives, but having the
+-- VoxelWorld framework and spawn chunks ready reduces perceived load time
+-- Using 12345 as it's the default seed for new worlds (see WorldOwnershipService:GetWorldSeed)
+local PREINIT_SEED = 12345  -- Match default seed for new worlds
+local PREINIT_RENDER_DISTANCE = 3
+
+logger.Info("🌍 S2: Pre-initializing voxel world framework...")
+local preInitStart = os.clock()
+voxelWorldService:InitializeWorld(PREINIT_SEED, PREINIT_RENDER_DISTANCE, "player_world")
+
+-- Pre-generate spawn chunks so they're ready when player arrives
+-- SkyblockGenerator spawn is around chunk (3,3) based on originX=48, originZ=48
+local spawnChunkX, spawnChunkZ = 3, 3
+if voxelWorldService.worldManager then
+	for dx = -1, 1 do
+		for dz = -1, 1 do
+			local cx, cz = spawnChunkX + dx, spawnChunkZ + dz
+			local chunk = voxelWorldService.worldManager:GetChunk(cx, cz)
+			if chunk then
+				-- Chunk is now generated and cached
+			end
+		end
+	end
+end
+local preInitTime = (os.clock() - preInitStart) * 1000
+logger.Info(string.format("✅ S2: World pre-initialized in %.1fms (spawn chunks ready)", preInitTime))
 
 -- Start chunk streaming loop with rate limiting
 local vwCoreConfig = require(game.ReplicatedStorage.Shared.VoxelWorld.Core.Config)
@@ -775,8 +800,20 @@ end
 local function initializeVoxelWorld()
 	local seed = worldOwnershipService:GetWorldSeed()
 	local worldData = worldOwnershipService:GetWorldData()
-	voxelWorldService:InitializeWorld(seed, 3, "player_world")
-	logger.Info("🌍 World initialized with owner's seed:", seed)
+
+	-- S2: Check if we need to reinitialize or can use pre-initialized world
+	-- Pre-init uses PREINIT_SEED (0), so if owner's seed differs, we need to update
+	local needsReinit = seed and seed ~= PREINIT_SEED
+
+	if needsReinit then
+		-- Owner has a different seed (existing world with saved seed)
+		logger.Info("🔄 S2: Reinitializing with owner's seed:", seed)
+		voxelWorldService:UpdateWorldSeed(seed)
+	else
+		-- New world or seed matches pre-init - can use pre-generated chunks
+		logger.Info("✅ S2: Using pre-initialized world (seed matches or new world)")
+	end
+
 	if worldData and worldData.chunks and #worldData.chunks > 0 then
 		voxelWorldService:LoadWorldData()
 		logger.Info("📦 Loaded owner's saved world data (" .. #worldData.chunks .. " chunks)")

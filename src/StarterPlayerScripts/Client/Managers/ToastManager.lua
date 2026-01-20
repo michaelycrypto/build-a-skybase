@@ -199,7 +199,6 @@ function ToastManager:Initialize()
 	self:SetupEventListeners()
 
 	isInitialized = true
-	print("ToastManager: Initialized with advanced toast system")
 end
 
 --[[
@@ -493,8 +492,6 @@ function ToastManager:ShowToast(toast)
 			self:DismissToast(toast.id)
 		end)
 	end
-
-	print("ToastManager: Showing toast -", toast.message)
 end
 
 --[[

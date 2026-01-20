@@ -109,8 +109,6 @@ function SettingsPanel:CreateContent(contentFrame, data)
 		end
 	})
 	self.sfxSlider.container.Visible = soundEnabled
-
-	print("SettingsPanel: Created with UIComponents form controls")
 end
 
 function SettingsPanel:Initialize()
@@ -140,8 +138,6 @@ function SettingsPanel:Initialize()
 			self.sfxSlider.setValue(newValue, true) -- Silent update to prevent callback loop
 		end
 	end)
-
-	print("SettingsPanel: Initialized with GameState listeners")
 end
 
 return SettingsPanel

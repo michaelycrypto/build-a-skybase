@@ -55,7 +55,6 @@ end
 function CropService:Init()
 	if self._initialized then return end
 	BaseService.Init(self)
-	print("CropService: Initialized")
 end
 
 function CropService:Start()
@@ -113,7 +112,6 @@ function CropService:Start()
 		end
 	end)
 
-	print("CropService: Started")
 end
 
 function CropService:Destroy()
@@ -121,7 +119,6 @@ function CropService:Destroy()
 	self._crops = {}
 	self._iterKeys = {}
 	BaseService.Destroy(self)
-	print("CropService: Destroyed")
 end
 
 local function keyOf(x, y, z)

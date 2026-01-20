@@ -20,6 +20,7 @@ local VoxelNetworkEvents = {
 		-- Server -> Client (see EventManifest.lua for actual implementation)
 		-- ChunkDataStreamed = {chunk, key}
 		-- ChunkUnload = {key}
+		-- SpawnChunksStreamed = {spawnChunkX, spawnChunkZ, chunkKeys, totalStreamed} -- S3: spawn chunks pre-streaming
 		-- BlockChanged = {x,y,z,blockId}
 		-- BlockChangeRejected = {x,y,z,reason}
 		-- BlockBreakProgress = {x,y,z,progress,playerUserId}

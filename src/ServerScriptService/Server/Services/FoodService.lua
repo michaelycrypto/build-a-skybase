@@ -29,7 +29,6 @@ function FoodService:Init()
 		return
 	end
 
-	self._logger.Info("Initializing FoodService...")
 	BaseService.Init(self)
 	self._logger.Info("FoodService initialized")
 end

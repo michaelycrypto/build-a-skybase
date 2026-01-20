@@ -75,7 +75,7 @@ local function DefaultSampleBlock(worldManager, chunk, x, y, z)
 	-- Important: do NOT generate missing chunks on the client; only peek existing
     local neighbor
     if worldManager and worldManager.chunks then
-        local key = tostring(cx) .. "," .. tostring(cz)
+        local key = Constants.ToChunkKey(cx, cz)
         neighbor = worldManager.chunks[key]
     end
 	if not neighbor then
@@ -684,14 +684,14 @@ function GreedyMesher:GenerateMesh(chunk, worldManager, options)
 							if textureId then
 								local bs = Constants.BLOCK_SIZE
 								-- First plane - both sides
-								local t1f = Instance.new("Texture")
+								local t1f = PartPool.AcquireTexture()
 								t1f.Face = Enum.NormalId.Front
 								t1f.Texture = textureId
 								t1f.StudsPerTileU = bs
 								t1f.StudsPerTileV = bs
 								t1f.Parent = p1
 
-								local t1b = Instance.new("Texture")
+								local t1b = PartPool.AcquireTexture()
 								t1b.Face = Enum.NormalId.Back
 								t1b.Texture = textureId
 								t1b.StudsPerTileU = bs
@@ -699,14 +699,14 @@ function GreedyMesher:GenerateMesh(chunk, worldManager, options)
 								t1b.Parent = p1
 
 								-- Second plane - both sides
-								local t2f = Instance.new("Texture")
+								local t2f = PartPool.AcquireTexture()
 								t2f.Face = Enum.NormalId.Front
 								t2f.Texture = textureId
 								t2f.StudsPerTileU = bs
 								t2f.StudsPerTileV = bs
 								t2f.Parent = p2
 
-								local t2b = Instance.new("Texture")
+								local t2b = PartPool.AcquireTexture()
 								t2b.Face = Enum.NormalId.Back
 								t2b.Texture = textureId
 								t2b.StudsPerTileU = bs

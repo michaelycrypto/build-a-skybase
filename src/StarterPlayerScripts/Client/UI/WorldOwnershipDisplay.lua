@@ -17,8 +17,6 @@ local screenGui = nil
 local ownerLabel = nil
 
 function WorldOwnershipDisplay:Initialize()
-	print("WorldOwnershipDisplay: Initializing...")
-
 	-- Create UI
 	self:CreateUI()
 
@@ -26,8 +24,6 @@ function WorldOwnershipDisplay:Initialize()
 	EventManager:RegisterEvent("WorldOwnershipInfo", function(data)
 		self:UpdateDisplay(data)
 	end)
-
-	print("WorldOwnershipDisplay: Initialized")
 end
 
 function WorldOwnershipDisplay:CreateUI()
@@ -48,7 +44,6 @@ function WorldOwnershipDisplay:CreateUI()
 	uiScale:SetAttribute("base_resolution", Vector2.new(1920, 1080)) -- 1920x1080 for 100% original size
 	uiScale.Parent = screenGui
 	CollectionService:AddTag(uiScale, "scale_component")
-	print("📐 WorldOwnershipDisplay: Added UIScale with base resolution 1920x1080 (100% original size)")
 
 	-- Minimal, unobtrusive owner label aligned with the top bar
 	ownerLabel = Instance.new("TextLabel")
@@ -82,8 +77,6 @@ function WorldOwnershipDisplay:UpdateDisplay(data)
 		ownerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 		ownerLabel.Text = displayText
 	end
-
-	print(string.format("WorldOwnershipDisplay: %s owned by %s", worldName, ownerName))
 end
 
 function WorldOwnershipDisplay:Cleanup()

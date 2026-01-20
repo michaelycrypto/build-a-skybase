@@ -147,6 +147,7 @@ local Manifest = {
 		-- Voxel events used by client HUD/EventManager layer
 		ChunkDataStreamed = {"any"},
 		ChunkUnload = {"any"},
+		SpawnChunksStreamed = {"any"},  -- S3: Server notifies client when spawn chunks are sent
 		BlockChanged = {"any"},
 		BlockChangeRejected = {"any"},
 		BlockBroken = {"any"},

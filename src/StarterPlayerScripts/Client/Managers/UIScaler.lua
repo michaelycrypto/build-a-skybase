@@ -33,7 +33,6 @@ local has_initialized = false
 ]]
 local function rescale(scale_component, base_resolution)
 	if not actual_viewport_size then
-		warn("❌ UIScaler: actual_viewport_size is nil!")
 		return
 	end
 
@@ -55,16 +54,6 @@ local function rescale(scale_component, base_resolution)
 	local finalScale = math.clamp(rawScale, minScale, maxScale)
 
 	scale_component.Scale = finalScale
-
-	local clamped = (rawScale ~= finalScale) and " [CLAMPED]" or ""
-	print(string.format("📐 UIScaler: Rescaled %s → Scale=%.3f%s (raw=%.3f, base=%dx%d, viewport=%dx%d)",
-		scale_component:GetFullName(),
-		finalScale,
-		clamped,
-		rawScale,
-		base_resolution.X, base_resolution.Y,
-		actual_viewport_size.X, actual_viewport_size.Y
-	))
 end
 
 --[[
@@ -85,14 +74,9 @@ local function rescale_all()
 	local top_inset, bottom_inset = GuiService:GetGuiInset()
 	actual_viewport_size = camera.ViewportSize - top_inset - bottom_inset
 
-	local count = 0
 	for scale_component, base_resolution in scale_component_to_base_resolution do
 		rescale(scale_component, base_resolution)
-		count = count + 1
 	end
-
-	print(string.format("📐 UIScaler: Rescaled %d components for viewport %dx%d",
-		count, math.floor(actual_viewport_size.X), math.floor(actual_viewport_size.Y)))
 
 	notify_scale_listeners()
 end
@@ -103,18 +87,9 @@ end
 local function register_scale(component)
 	local base_resolution = component:GetAttribute("base_resolution")
 	if typeof(base_resolution) ~= "Vector2" then
-		warn(string.format("❌ UIScaler: Component %s has invalid base_resolution: %s (type: %s)",
-			component:GetFullName(),
-			tostring(base_resolution),
-			typeof(base_resolution)
-		))
 		return
 	end
 	scale_component_to_base_resolution[component] = base_resolution
-	print(string.format("✅ UIScaler: Registered %s (parent: %s, base: %dx%d)",
-		component:GetFullName(),
-		component.Parent and component.Parent.Name or "nil",
-		base_resolution.X, base_resolution.Y))
 end
 
 --[[
@@ -162,11 +137,9 @@ end
 ]]
 function UIScaler:Initialize()
 	if has_initialized then
-		warn("UIScaler: Already initialized")
 		return
 	end
 
-	print("🚀 UIScaler: Starting initialization...")
 	has_initialized = true
 
 	-- Get camera reference
@@ -174,18 +147,11 @@ function UIScaler:Initialize()
 
 	-- Listen for new scale components
 	CollectionService:GetInstanceAddedSignal("scale_component"):Connect(function(object)
-		print(string.format("🔔 UIScaler: New scale_component detected: %s (type: %s)",
-			object:GetFullName(),
-			object.ClassName))
 		if object:IsA("UIScale") then
 			register_scale(object)
 			if scale_component_to_base_resolution[object] then
 				rescale(object, scale_component_to_base_resolution[object])
 			end
-		else
-			warn(string.format("⚠️ UIScaler: Tagged object is not UIScale: %s (type: %s)",
-				object:GetFullName(),
-				object.ClassName))
 		end
 	end)
 
@@ -197,15 +163,9 @@ function UIScaler:Initialize()
 
 	-- Register existing scale components
 	local existingComponents = CollectionService:GetTagged("scale_component")
-	print(string.format("🔍 UIScaler: Found %d existing scale_component tagged objects", #existingComponents))
 	for _, object in existingComponents do
-		print(string.format("   → %s (type: %s)", object:GetFullName(), object.ClassName))
 		if object:IsA("UIScale") then
 			register_scale(object)
-		else
-			warn(string.format("⚠️ UIScaler: Tagged object is not UIScale: %s (type: %s)",
-				object:GetFullName(),
-				object.ClassName))
 		end
 	end
 
@@ -235,32 +195,15 @@ function UIScaler:Initialize()
 
 	-- Watch for viewport changes (handles orientation changes landscape/portrait)
 	camera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
-		print(string.format("🔄 UIScaler: Viewport size changed to %dx%d - Rescaling all components...",
-			camera.ViewportSize.X,
-			camera.ViewportSize.Y))
 		rescale_all()
 	end)
 
-	print(string.format("📐 UIScaler: Current viewport size: %dx%d",
-		camera.ViewportSize.X,
-		camera.ViewportSize.Y))
-
 	-- Initial rescale
-	print("📐 UIScaler: Performing initial rescale...")
 	rescale_all()
 
 	-- Delayed rescales to catch any late-loading UI
-	task.delay(2, function()
-		print("📐 UIScaler: Delayed rescale check (2s)...")
-		rescale_all()
-	end)
-
-	task.delay(5, function()
-		print("📐 UIScaler: Delayed rescale check (5s)...")
-		rescale_all()
-	end)
-
-	print("✅ UIScaler: Initialization complete")
+	task.delay(2, rescale_all)
+	task.delay(5, rescale_all)
 end
 
 --[[
@@ -277,7 +220,6 @@ function UIScaler:Cleanup()
 	has_initialized = false
 	scale_listeners = {}
 	next_scale_listener_id = 0
-	print("UIScaler: Cleanup complete")
 end
 
 function UIScaler:RegisterScaleListener(callback)

@@ -12,8 +12,11 @@ local Logger = require(game.ReplicatedStorage.Shared.Logger)
 local Players = game:GetService("Players")
 local MemoryStoreService = game:GetService("MemoryStoreService")
 local REGISTRY_NAME = "ActiveWorlds_v1"
-local HEARTBEAT_INTERVAL = 30 -- seconds
-local ENTRY_TTL = 90 -- seconds
+-- S5: Reduced TTL from 90s to 30s with more frequent heartbeats (every 15s)
+-- This reduces stale entries from crashed servers, improving teleport reliability
+-- Heartbeat frequency ensures entry is refreshed 2x before expiry for redundancy
+local HEARTBEAT_INTERVAL = 15 -- seconds (was 30)
+local ENTRY_TTL = 30 -- seconds (was 90)
 
 local ActiveWorldRegistryService = setmetatable({}, BaseService)
 ActiveWorldRegistryService.__index = ActiveWorldRegistryService

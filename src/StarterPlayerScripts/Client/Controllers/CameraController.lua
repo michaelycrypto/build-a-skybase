@@ -281,7 +281,6 @@ function CameraController:TransitionTo(stateName)
 
 	if previousStateName ~= stateName then
 		CameraController.StateChanged:Fire(stateName, previousStateName)
-		print("📷 Camera:", stateName)
 	end
 end
 
@@ -405,12 +404,6 @@ function CameraController:Initialize()
 	end
 
 	_initialized = true
-
-	if MOUSE_LOCK_ENABLED then
-		print("✅ CameraController: Initialized (Press F5 to cycle camera)")
-	else
-		print("✅ CameraController: Initialized (MouseLock disabled)")
-	end
 end
 
 return CameraController

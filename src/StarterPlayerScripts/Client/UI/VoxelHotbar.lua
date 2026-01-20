@@ -134,7 +134,6 @@ function VoxelHotbar:Initialize()
 	uiScale:SetAttribute("base_resolution", Vector2.new(1920, 1080)) -- 1920x1080 for 100% original size
 	uiScale.Parent = self.gui
 	CollectionService:AddTag(uiScale, "scale_component")
-	print("📐 VoxelHotbar: Added UIScale with base resolution 1920x1080 (100% original size)")
 
 	-- Create main hotbar container
 	self:CreateHotbar()
@@ -909,9 +908,7 @@ function VoxelHotbar:SetInventoryReference(inventory)
 end
 
 function VoxelHotbar:SetWorldsPanel(worldsPanel)
-	print("[VoxelHotbar] SetWorldsPanel called, worldsPanel:", worldsPanel)
 	self.worldsPanel = worldsPanel
-	print("[VoxelHotbar] self.worldsPanel set to:", self.worldsPanel)
 end
 
 function VoxelHotbar:Cleanup()

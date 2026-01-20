@@ -116,12 +116,8 @@ local PANEL_TYPES = {
 	Initialize the Panel Manager
 --]]
 function PanelManager:Initialize()
-	print("PanelManager: Initializing unified panel system")
-
 	-- Register built-in panels
 	self:RegisterBuiltInPanels()
-
-	print("PanelManager: System ready")
 end
 
 --[[
@@ -156,7 +152,6 @@ function PanelManager:RegisterPanel(panelId, config)
 	}
 
 	registeredPanels[panelId] = finalConfig
-	print("PanelManager: Registered panel -", panelId)
 	return true
 end
 

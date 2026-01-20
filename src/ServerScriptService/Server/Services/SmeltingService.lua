@@ -47,7 +47,6 @@ function SmeltingService:Init()
 		return
 	end
 
-	self._logger.Info("Initializing SmeltingService...")
 	BaseService.Init(self)
 	self._logger.Info("SmeltingService initialized")
 end

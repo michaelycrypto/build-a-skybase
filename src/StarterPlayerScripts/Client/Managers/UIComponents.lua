@@ -2158,8 +2158,6 @@ end
 	Initialize the UIComponents system
 --]]
 function UIComponents:Initialize()
-	print("UIComponents: Initialized reusable UI component library")
-
 	-- Initialize tooltip container
 	self:InitializeTooltips()
 end

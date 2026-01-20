@@ -41,8 +41,6 @@ end
 function EmoteService:Init()
 	BaseService.Init(self)
 
-	self._logger.Info("Initializing EmoteService")
-
 	-- Load valid emotes from IconMapping
 	self:_loadValidEmotes()
 
@@ -52,7 +50,7 @@ function EmoteService:Init()
 	-- Setup player connections
 	self:_setupPlayerConnections()
 
-	self._logger.Info("EmoteService initialized successfully")
+	self._logger.Info("EmoteService initialized")
 end
 
 --[[

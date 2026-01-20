@@ -902,7 +902,6 @@ function BlockInteraction:Initialize(voxelWorldHandle)
 	-- Create BlockAPI instance
 	local worldManager = voxelWorldHandle:GetWorldManager()
 	blockAPI = BlockAPI.new(worldManager)
-	print("✅ BlockInteraction: Created BlockAPI")
 
 	-- Wait for character to load
 	task.spawn(function()
@@ -916,8 +915,6 @@ function BlockInteraction:Initialize(voxelWorldHandle)
 
 		-- Mark as ready
 		BlockInteraction.isReady = true
-		print("✅ BlockInteraction: Ready (character loaded)")
-		print("💡 Block interaction enabled - Left click: Break | Right click: Place")
 	end)
 
 	-- Handle character respawn
@@ -1155,7 +1152,6 @@ function BlockInteraction:Initialize(voxelWorldHandle)
 	-- Note: Crosshair is managed by Crosshair.lua (in MainHUD)
 	-- It automatically shows only in first person mode
 
-	print("✅ BlockInteraction: Initialized")
 	return true
 end
 

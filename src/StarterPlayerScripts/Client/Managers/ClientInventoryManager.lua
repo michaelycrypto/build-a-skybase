@@ -327,8 +327,6 @@ function ClientInventoryManager:RegisterServerEvents()
 			playInventoryPop()
 		end
 	end)
-
-	print("ClientInventoryManager: Registered server events")
 end
 
 -- === CRAFTING HELPER METHODS ===

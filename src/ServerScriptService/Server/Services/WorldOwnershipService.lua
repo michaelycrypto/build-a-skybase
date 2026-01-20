@@ -37,8 +37,6 @@ function WorldOwnershipService:Init()
 		return
 	end
 
-	self._logger.Info("Initializing WorldOwnershipService...")
-
 	-- Initialize DataStore
 	pcall(function()
 		self._worldDataStore = DataStoreService:GetDataStore(WORLD_DATA_STORE_NAME)

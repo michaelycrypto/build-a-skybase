@@ -45,7 +45,6 @@ function HungerService:Init()
 		return
 	end
 
-	self._logger.Info("Initializing HungerService...")
 	BaseService.Init(self)
 
 	-- Cache FoodConfig values for performance
@@ -96,7 +95,6 @@ function HungerService:Start()
 	-- This ensures we catch players who join during initialization
 	-- Store connections for cleanup
 	self._playerAddedConnection = Players.PlayerAdded:Connect(function(player)
-		self._logger.Info("PlayerAdded event received for", player.Name)
 		self:OnPlayerAdded(player)
 	end)
 
@@ -106,7 +104,6 @@ function HungerService:Start()
 
 	-- Initialize existing players (after connections are set up)
 	for _, player in ipairs(Players:GetPlayers()) do
-		self._logger.Info("Initializing existing player", player.Name)
 		self:OnPlayerAdded(player)
 	end
 

@@ -647,6 +647,7 @@ local Constants = {
 	NetworkEvent = {
 		CHUNK_DATA = "ChunkDataStreamed",
 		CHUNK_UNLOAD = "ChunkUnload",
+		SPAWN_CHUNKS_STREAMED = "SpawnChunksStreamed",  -- S3: Server notifies client when spawn chunks are sent
 		BLOCK_CHANGED = "BlockChanged",
 		BLOCK_CHANGE_REJECTED = "BlockChangeRejected",
 		REQUEST_CHUNKS = "VoxelRequestInitialChunks",
@@ -781,6 +782,59 @@ end
 -- Get the drop item ID for a block that transforms when broken
 function Constants.GetBlockDrop(blockId)
 	return Constants.BlockToDrop[blockId]
+end
+
+-- ============================================================================
+-- Chunk Key Caching (reduces GC pressure from string concatenation)
+-- ============================================================================
+local chunkKeyCache = {}
+
+-- Get cached chunk key string for coordinates
+-- Avoids repeated string allocations in hot paths (meshing, neighbor lookups)
+function Constants.ToChunkKey(cx: number, cz: number): string
+	cx = math.floor(cx)
+	cz = math.floor(cz)
+	local row = chunkKeyCache[cx]
+	if not row then
+		row = {}
+		chunkKeyCache[cx] = row
+	end
+	local key = row[cz]
+	if not key then
+		key = string.format("%d,%d", cx, cz)
+		row[cz] = key
+	end
+	return key
+end
+
+-- Parse chunk key back to coordinates (for rare cases where needed)
+function Constants.FromChunkKey(key: string): (number, number)
+	local x, z = string.match(key, "^(-?%d+),(-?%d+)$")
+	return tonumber(x) or 0, tonumber(z) or 0
+end
+
+-- Check if position is inside chunk bounds
+function Constants.IsInsideChunk(lx: number, ly: number, lz: number): boolean
+	return lx >= 0 and lx < Constants.CHUNK_SIZE_X
+		and ly >= 0 and ly < Constants.CHUNK_SIZE_Y
+		and lz >= 0 and lz < Constants.CHUNK_SIZE_Z
+end
+
+-- Convert world studs to chunk coordinates and local block position
+function Constants.WorldStudsToChunkAndLocal(worldX: number, worldY: number, worldZ: number)
+	local bs = Constants.BLOCK_SIZE
+	local bx = math.floor(worldX / bs)
+	local by = math.floor(worldY / bs)
+	local bz = math.floor(worldZ / bs)
+
+	local cx = math.floor(bx / Constants.CHUNK_SIZE_X)
+	local cz = math.floor(bz / Constants.CHUNK_SIZE_Z)
+
+	local lx = bx - cx * Constants.CHUNK_SIZE_X
+	local ly = by
+	local lz = bz - cz * Constants.CHUNK_SIZE_Z
+
+	return cx, cz, lx, ly, lz
 end
 
 return Constants
