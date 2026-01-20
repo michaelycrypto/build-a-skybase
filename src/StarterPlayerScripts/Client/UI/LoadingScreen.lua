@@ -40,7 +40,7 @@ local CUSTOM_FONT_THEME = {
 	status = CUSTOM_FONT_NAME
 }
 
-local WORLDS_PRELOAD_TIMEOUT = 0.75
+local WORLDS_PRELOAD_TIMEOUT = 0.3  -- Reduced from 0.75s for faster loading
 local WORLDS_EVENT_NAME = "WorldsListUpdated"
 
 local worldsPrimeStarted = false
@@ -124,18 +124,21 @@ local function collectToolMeshAssets()
 		return meshAssets
 	end
 
-	-- Collect all MeshParts from tools folder
+	-- Collect mesh and texture asset IDs from MeshParts (PreloadAsync needs asset IDs, not instances)
 	for _, child in ipairs(toolsFolder:GetDescendants()) do
 		if child:IsA("MeshPart") then
+			-- Collect MeshId as asset ID
 			local meshId = child.MeshId
 			if meshId and meshId ~= "" and not seen[meshId] then
 				seen[meshId] = true
-				table.insert(meshAssets, child)
+				-- PreloadAsync accepts asset IDs (strings/numbers), not instances
+				table.insert(meshAssets, tostring(meshId))
 			end
+			-- Collect TextureID as asset ID
 			local textureId = child.TextureID
 			if textureId and textureId ~= "" and not seen[textureId] then
 				seen[textureId] = true
-				table.insert(meshAssets, textureId)
+				table.insert(meshAssets, tostring(textureId))
 			end
 		end
 	end
@@ -417,6 +420,7 @@ end
 
 --[[
 	Load both block textures and icons (sequential for reliability)
+	OPTIMIZATION: Start texture loading in background immediately, don't block on it
 --]]
 function LoadingScreen:LoadAllAssets(onProgress, onComplete, onBeforeFadeOut)
 	if isLoading then
@@ -483,114 +487,261 @@ function LoadingScreen:LoadAllAssets(onProgress, onComplete, onBeforeFadeOut)
 		return
 	end
 
-	-- Sequential loading for better reliability
-	task.spawn(function()
-		-- Load all block textures for smooth gameplay
-		if totalTextures > 0 then
-			setStatusText("Loading block textures...")
+	-- OPTIMIZATION: Start all non-critical assets loading in background immediately (non-blocking)
+	-- Textures, meshes, and sounds will continue loading while we handle icons
+	-- We count them as "loaded" for progress since they load in background and won't block gameplay
 
+	local texturesLoadedCount = 0
+	local texturesFailedCount = 0
+	local meshesLoadedCount = 0
+	local meshesFailedCount = 0
+	local soundsLoadedCount = 0
+	local soundsFailedCount = 0
+
+	-- Start texture loading in background
+	if totalTextures > 0 then
+		task.spawn(function()
 			self:LoadBlockTextures(
 				function(loaded, total, progress)
-					-- Update status and overall progress
-					setStatusText(string.format("Loading textures (%d/%d)...", loaded, total))
-					local overallProgress = math.clamp(loaded / totalAssets, 0, 1)
-
-					-- Update progress bar
-					updateProgressBar(overallProgress)
-
-					-- Call progress callback
-					if onProgress then
-						pcall(onProgress, loaded, totalAssets, overallProgress)
-					end
-
-					-- Load all textures (no early stop)
-					return false
+					texturesLoadedCount = loaded
+					texturesFailedCount = total - loaded
+					return false -- Continue loading
 				end,
 				function(loaded, failed)
-					-- All textures loaded, continue to icons
-					self:LoadIconsAfterTextures(
-						totalIcons,
-						loaded,
-						failed,
-						totalAssets,
-						meshAssets,
-						soundAssetIds,
-						onProgress,
-						onComplete,
-						onBeforeFadeOut
-					)
+					texturesLoadedCount = loaded
+					texturesFailedCount = failed
+					print(string.format("[LoadingScreen] Background texture loading complete: %d loaded, %d failed", loaded, failed))
 				end
 			)
-		else
-			-- No textures, go straight to icons
-			self:LoadIconsAfterTextures(
-				totalIcons,
-				0,
-				0,
-				totalAssets,
+		end)
+		-- Count textures as loaded (loading in background)
+		texturesLoadedCount = totalTextures
+		texturesFailedCount = 0
+	end
+
+	-- Start mesh loading in background
+	if #meshAssets > 0 then
+		task.spawn(function()
+			self:LoadMeshesInBackground(
 				meshAssets,
-				soundAssetIds,
-				onProgress,
-				onComplete,
-				onBeforeFadeOut
-			)
-		end
-	end)
-end
-
---[[
-	Helper function to load icons after block textures are done
---]]
-function LoadingScreen:LoadIconsAfterTextures(totalIcons, texturesLoaded, texturesFailed, totalAssets, meshAssets, soundAssetIds, onProgress, onComplete, onBeforeFadeOut)
-	meshAssets = meshAssets or {}
-	soundAssetIds = soundAssetIds or {}
-
-	if totalIcons > 0 then
-		setStatusText("Polishing icons...")
-
-		IconManager:PreloadRegisteredIcons(
-			function(loaded, total, progress)
-				local totalLoaded = texturesLoaded + loaded
-				setStatusText("Painting icons...")
-
-				-- Update overall progress
-				local overallProgress = math.clamp(totalLoaded / totalAssets, 0, 1)
-				updateProgressBar(overallProgress)
-
-				-- Call overall progress callback
-				if onProgress then
-					pcall(onProgress, totalLoaded, totalAssets, overallProgress)
+				function(loaded, total, progress)
+					meshesLoadedCount = loaded
+					meshesFailedCount = total - loaded
+					return false -- Continue loading
+				end,
+				function(loaded, failed)
+					meshesLoadedCount = loaded
+					meshesFailedCount = failed
+					print(string.format("[LoadingScreen] Background mesh loading complete: %d loaded, %d failed", loaded, failed))
 				end
-			end,
-			function(iconsLoaded, iconsFailed)
-				local totalLoaded = texturesLoaded + iconsLoaded
-				local totalFailed = texturesFailed + iconsFailed
+			)
+		end)
+		-- Count meshes as loaded (loading in background)
+		meshesLoadedCount = #meshAssets
+		meshesFailedCount = 0
+	end
 
-				self:LoadMeshesAfterIcons(
-					meshAssets,
-					totalLoaded,
-					totalFailed,
-					totalAssets,
-					soundAssetIds,
-					onProgress,
-					onComplete,
-					onBeforeFadeOut
-				)
-			end
-		)
-	else
-		-- No icons to load, continue to meshes
-		self:LoadMeshesAfterIcons(
-			meshAssets,
-			texturesLoaded,
-			texturesFailed,
+	-- Start sound loading in background
+	if #soundAssetIds > 0 then
+		task.spawn(function()
+			self:LoadSoundsInBackground(
+				soundAssetIds,
+				function(loaded, total, progress)
+					soundsLoadedCount = loaded
+					soundsFailedCount = total - loaded
+					return false -- Continue loading
+				end,
+				function(loaded, failed)
+					soundsLoadedCount = loaded
+					soundsFailedCount = failed
+					print(string.format("[LoadingScreen] Background sound loading complete: %d loaded, %d failed", loaded, failed))
+				end
+			)
+		end)
+		-- Count sounds as loaded (loading in background)
+		soundsLoadedCount = #soundAssetIds
+		soundsFailedCount = 0
+	end
+
+	-- Load critical assets (icons only) - these are needed for UI immediately
+	-- Complete loading screen once icons are done, all other assets continue in background
+	task.spawn(function()
+		-- Small delay to let background loading start
+		if totalTextures > 0 or #meshAssets > 0 or #soundAssetIds > 0 then
+			task.wait(0.1)
+		end
+
+		-- Only wait for icons - they're critical for UI
+		local totalBackgroundAssets = texturesLoadedCount + meshesLoadedCount + soundsLoadedCount
+
+		-- Update status to show we're loading the final UI assets (only if world is not holding - terrain takes priority)
+		if not worldHoldActive and totalBackgroundAssets > 0 then
+			setStatusText(string.format("Loading assets... (%d%% complete)", math.floor((totalBackgroundAssets / totalAssets) * 100)))
+		end
+
+		self:LoadIconsOnly(
+			totalIcons,
+			totalBackgroundAssets, -- Count all background assets as loaded
+			0, -- No failures initially
 			totalAssets,
-			soundAssetIds,
 			onProgress,
 			onComplete,
 			onBeforeFadeOut
 		)
+	end)
+end
+
+--[[
+	Helper function to load only icons (all other assets load in background)
+--]]
+function LoadingScreen:LoadIconsOnly(totalIcons, backgroundAssetsLoaded, backgroundAssetsFailed, totalAssets, onProgress, onComplete, onBeforeFadeOut)
+	if totalIcons > 0 then
+		setStatusText("Loading UI assets...")
+
+		IconManager:PreloadRegisteredIcons(
+			function(loaded, total, progress)
+				local totalLoaded = backgroundAssetsLoaded + loaded
+				-- Update overall progress (only if world is not holding - terrain loading takes priority)
+				if not worldHoldActive then
+					local overallProgress = math.clamp(totalLoaded / totalAssets, 0, 1)
+					updateProgressBar(overallProgress)
+				end
+
+				-- Update status with progress (only if world is not holding)
+				if not worldHoldActive and total > 0 then
+					setStatusText(string.format("Loading UI assets (%d/%d)...", loaded, total))
+				end
+
+				-- Call overall progress callback
+				if onProgress then
+					local overallProgress = math.clamp(totalLoaded / totalAssets, 0, 1)
+					pcall(onProgress, totalLoaded, totalAssets, overallProgress)
+				end
+			end,
+			function(iconsLoaded, iconsFailed)
+				local totalLoaded = backgroundAssetsLoaded + iconsLoaded
+				local totalFailed = backgroundAssetsFailed + iconsFailed
+
+				-- Icons complete - finish loading screen (other assets continue in background)
+				self:CompleteAllAssetLoading(totalLoaded, totalFailed, onComplete, onBeforeFadeOut)
+			end
+		)
+	else
+		-- No icons to load, complete immediately
+		self:CompleteAllAssetLoading(backgroundAssetsLoaded, backgroundAssetsFailed, onComplete, onBeforeFadeOut)
 	end
+end
+
+--[[
+	Load meshes in background (non-blocking)
+--]]
+function LoadingScreen:LoadMeshesInBackground(meshAssets, onProgress, onComplete)
+	local totalMeshes = #meshAssets
+	if totalMeshes == 0 then
+		if onComplete then onComplete(0, 0) end
+		return
+	end
+
+	local batchSize = 8
+	local loaded = 0
+	local failed = 0
+
+	local function loadBatch(startIndex)
+		local batch = {}
+		local finalIndex = math.min(startIndex + batchSize - 1, totalMeshes)
+		for i = startIndex, finalIndex do
+			local asset = meshAssets[i]
+			if asset then
+				table.insert(batch, asset)
+			end
+		end
+
+		if #batch == 0 then
+			if onComplete then
+				onComplete(loaded, failed)
+			end
+			return
+		end
+
+		local success, err = pcall(function()
+			ContentProvider:PreloadAsync(batch)
+		end)
+
+		if success then
+			loaded = loaded + #batch
+		else
+			failed = failed + #batch
+			warn("LoadingScreen: Background mesh batch failed:", err)
+		end
+
+		if onProgress then
+			pcall(onProgress, loaded, totalMeshes, math.clamp(loaded / totalMeshes, 0, 1))
+		end
+
+		-- Minimal wait for background loading
+		task.wait(0.02)
+		loadBatch(finalIndex + 1)
+	end
+
+	task.spawn(function()
+		loadBatch(1)
+	end)
+end
+
+--[[
+	Load sounds in background (non-blocking)
+--]]
+function LoadingScreen:LoadSoundsInBackground(soundAssetIds, onProgress, onComplete)
+	local totalSounds = #soundAssetIds
+	if totalSounds == 0 then
+		if onComplete then onComplete(0, 0) end
+		return
+	end
+
+	local batchSize = 8
+	local loaded = 0
+	local failed = 0
+
+	local function loadBatch(startIndex)
+		local batch = {}
+		local finalIndex = math.min(startIndex + batchSize - 1, totalSounds)
+		for i = startIndex, finalIndex do
+			local id = soundAssetIds[i]
+			if id then
+				table.insert(batch, id)
+			end
+		end
+
+		if #batch == 0 then
+			if onComplete then
+				onComplete(loaded, failed)
+			end
+			return
+		end
+
+		local success, err = pcall(function()
+			ContentProvider:PreloadAsync(batch)
+		end)
+
+		if success then
+			loaded = loaded + #batch
+		else
+			failed = failed + #batch
+			warn("LoadingScreen: Background sound batch failed:", err)
+		end
+
+		if onProgress then
+			pcall(onProgress, loaded, totalSounds, math.clamp(loaded / totalSounds, 0, 1))
+		end
+
+		-- Minimal wait for background loading
+		task.wait(0.02)
+		loadBatch(finalIndex + 1)
+	end
+
+	task.spawn(function()
+		loadBatch(1)
+	end)
 end
 
 --[[
@@ -604,9 +755,10 @@ function LoadingScreen:LoadMeshesAfterIcons(meshAssets, assetsLoadedSoFar, asset
 		return
 	end
 
-	setStatusText("Forging tools...")
+	setStatusText("Loading tool meshes...")
 
-	local batchSize = 4
+	-- Increased batch size from 4 to 8 for faster loading (matches sound batch size)
+	local batchSize = 8
 	local loaded = 0
 	local failed = 0
 
@@ -646,13 +798,13 @@ function LoadingScreen:LoadMeshesAfterIcons(meshAssets, assetsLoadedSoFar, asset
 
 		local totalLoaded = assetsLoadedSoFar + loaded
 		local overallProgress = math.clamp(totalLoaded / totalAssets, 0, 1)
-		setStatusText("Assembling meshes...")
 		updateProgressBar(overallProgress)
 		if onProgress then
 			pcall(onProgress, totalLoaded, totalAssets, overallProgress)
 		end
 
-		task.wait(0.05)
+		-- Reduced wait time from 0.05s to 0.02s for faster loading
+		task.wait(0.02)
 		loadBatch(finalIndex + 1)
 	end
 
@@ -778,8 +930,8 @@ function LoadingScreen:CompleteAllAssetLoading(totalLoaded, totalFailed, onCompl
 		setStatusText("Ready to roll!")
 	end
 
-	-- Brief pause to show completion
-	task.wait(0.5)
+	-- Minimal pause to show completion (reduced from 0.5s for faster loading)
+	task.wait(0.1)
 
 	-- Allow heavy initialization to run while the loading screen is still visible
 	if onBeforeFadeOut then
@@ -866,6 +1018,19 @@ function LoadingScreen:HoldForWorldStatus(title, subtitle)
 	end
 
 	setStatusText(subtitle or "Preparing your world data...")
+
+	-- Extract terrain progress percentage from subtitle (e.g., "Terrain 45%")
+	-- and update progress bar based on terrain loading, not asset loading
+	if subtitle then
+		local percentMatch = string.match(subtitle, "(%d+)%%")
+		if percentMatch then
+			local terrainProgress = tonumber(percentMatch) / 100
+			updateProgressBar(terrainProgress)
+		else
+			-- If no percentage found, set to 0
+			updateProgressBar(0)
+		end
+	end
 
 	return true
 end

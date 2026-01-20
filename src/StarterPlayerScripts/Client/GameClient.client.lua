@@ -64,7 +64,7 @@ local onSpawnChunkReadyCallbacks = {}  -- Callbacks to fire when spawn chunk loa
 
 -- Multi-chunk loading tracking
 local requiredChunkKeys = {}  -- All chunk keys we want loaded before completing
-local minimumChunksRequired = 49  -- Minimum chunks to load (7x7 around spawn = 49)
+local minimumChunksRequired = 44  -- Minimum chunks to load (schematic has 44 chunks, not 49)
 local loadingChunkRadius = 3  -- Radius around spawn chunk to require (1 = 3x3, 2 = 5x5, 3 = 7x7, 4 = 9x9)
 
 -- Check if a specific chunk is ready (meshed and parented)
@@ -132,17 +132,32 @@ local function setSpawnPosition(worldX, worldZ)
 	spawnChunkReady = false
 
 	-- Generate list of required chunk keys (square around spawn)
+	-- Filter out empty chunks to avoid waiting for chunks that don't exist
 	requiredChunkKeys = {}
+	local wm = voxelWorldHandle and voxelWorldHandle.GetWorldManager and voxelWorldHandle:GetWorldManager()
+
 	for dx = -loadingChunkRadius, loadingChunkRadius do
 		for dz = -loadingChunkRadius, loadingChunkRadius do
-			local key = tostring(cx + dx) .. "," .. tostring(cz + dz)
-			table.insert(requiredChunkKeys, key)
+			local chunkX = cx + dx
+			local chunkZ = cz + dz
+			local key = tostring(chunkX) .. "," .. tostring(chunkZ)
+
+			-- Only include chunks that actually exist (not empty)
+			-- If we can't check (world manager not ready), include it to be safe
+			if not wm or not wm.IsChunkEmpty or not wm:IsChunkEmpty(chunkX, chunkZ) then
+				table.insert(requiredChunkKeys, key)
+			end
 		end
 	end
 
 	local total = #requiredChunkKeys
-	print(string.format("[VoxelWorld] Spawn position set to chunk (%d,%d), requiring %d chunks (radius %d)",
-		cx, cz, total, loadingChunkRadius))
+	local filtered = (loadingChunkRadius * 2 + 1) * (loadingChunkRadius * 2 + 1) - total
+	print(string.format("[VoxelWorld] Spawn position set to chunk (%d,%d), requiring %d chunks (radius %d, filtered %d empty)",
+		cx, cz, total, loadingChunkRadius, filtered))
+
+	-- Update minimum chunks required to match actual available chunks (schematic has 44 chunks)
+	minimumChunksRequired = math.min(minimumChunksRequired, total)
+	print(string.format("[VoxelWorld] Minimum chunks required set to %d (was %d)", minimumChunksRequired, 44))
 
 	-- Check if already loaded
 	if areMinimumChunksLoaded() then
@@ -1415,7 +1430,8 @@ local function initialize()
                         progressUpdateConnection = nil
                     end
                     local loaded = countLoadedRequiredChunks()
-                    warn(string.format("⚠️ Spawn chunk load timeout (%d/%d loaded) - forcing loading screen release", loaded, totalRequired))
+                    local required = math.min(minimumChunksRequired, #requiredChunkKeys)
+                    warn(string.format("⚠️ Spawn chunk load timeout (%d/%d loaded) - forcing loading screen release", loaded, required))
                     spawnChunkReady = true
                     if LoadingScreen.ReleaseWorldHold then
                         LoadingScreen:ReleaseWorldHold()
