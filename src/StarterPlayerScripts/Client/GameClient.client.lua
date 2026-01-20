@@ -347,19 +347,50 @@ local function updateVoxelWorld()
 		clientVisualRadius = math.max(clientVisualRadius, hubRenderDistance)
 	end
 	local horizonStuds = clientVisualRadius * Constants.CHUNK_SIZE_X * Constants.BLOCK_SIZE
-	local fogStart = math.max(0, horizonStuds * 0.6)
-	local fogEnd = math.max(fogStart + 10, horizonStuds * 0.9)
+	local fogStart = math.max(0, horizonStuds * 0.58)
+	local fogEnd = math.max(fogStart + 15, horizonStuds * 0.92)
 	if not _lastFogEnd or math.abs((_lastFogEnd or 0) - fogEnd) > 4 then
 		local atm = Lighting:FindFirstChildOfClass("Atmosphere")
 		if not atm then
 			atm = Instance.new("Atmosphere")
 			atm.Parent = Lighting
 		end
-		atm.Density = 0.35
-		atm.Haze = 1
-		Lighting.FogColor = Color3.fromRGB(200, 220, 255)
+		-- Refined natural atmosphere - balanced density and realistic sky gradient
+		atm.Density = 0.42
+		atm.Haze = 0.82
+		atm.Offset = 0.11
+		atm.Color = Color3.fromRGB(185, 205, 240)
+		atm.Decay = Color3.fromRGB(150, 180, 230)
+
+		-- Natural fog with smooth, realistic sky tones
+		Lighting.FogColor = Color3.fromRGB(200, 218, 238)
 		Lighting.FogStart = fogStart
 		Lighting.FogEnd = fogEnd
+
+		-- Balanced natural ambient lighting
+		Lighting.Ambient = Color3.fromRGB(128, 148, 180)
+		Lighting.OutdoorAmbient = Color3.fromRGB(188, 202, 228)
+
+		-- Refined brightness and exposure for natural, comfortable viewing
+		Lighting.Brightness = 0.88
+		Lighting.ExposureCompensation = 0.42
+
+		-- Enhanced shadows for better depth perception
+		Lighting.GlobalShadows = true
+		Lighting.ShadowSoftness = 0.28
+		Lighting.ShadowColor = Color3.fromRGB(100, 100, 100)
+
+		-- Final color correction - natural look with balanced contrast and subtle desaturation
+		local colorCorrection = Lighting:FindFirstChildOfClass("ColorCorrectionEffect")
+		if not colorCorrection then
+			colorCorrection = Instance.new("ColorCorrectionEffect")
+			colorCorrection.Parent = Lighting
+		end
+		colorCorrection.Brightness = -0.06
+		colorCorrection.Contrast = 0.08
+		colorCorrection.Saturation = -0.03
+		colorCorrection.TintColor = Color3.fromRGB(255, 255, 255)
+
 		_lastFogEnd = fogEnd
 	end
 

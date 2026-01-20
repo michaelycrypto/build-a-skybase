@@ -17,6 +17,9 @@ local IconManager = require(script.Parent.Parent.Managers.IconManager)
 local TextureManager = require(ReplicatedStorage.Shared.VoxelWorld.Rendering.TextureManager)
 local FontBinder = require(ReplicatedStorage.Shared.UI.FontBinder)
 local BlockBreakFeedbackConfig = require(ReplicatedStorage.Configs.BlockBreakFeedbackConfig)
+local WorldTypes = require(ReplicatedStorage.Shared.VoxelWorld.Core.WorldTypes)
+local BlockMapping = require(ReplicatedStorage.Shared.VoxelWorld.Core.BlockMapping)
+local Constants = require(ReplicatedStorage.Shared.VoxelWorld.Core.Constants)
 
 -- Services
 local player = Players.LocalPlayer
@@ -32,6 +35,8 @@ local isLoading = false
 local loadingComplete = false
 local worldHoldActive = false
 local pendingFadeHandler = nil
+local assetProgress = 0  -- 0-0.5 (50% of total progress for assets)
+local worldProgress = 0  -- 0-0.5 (50% of total progress for world)
 
 local CUSTOM_FONT_NAME = "Upheaval BRK"
 
@@ -106,6 +111,15 @@ local function updateProgressBar(progress)
 		TweenInfo.new(PROGRESS_DURATION, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
 		{Size = UDim2.new(clamped, 0, 1, 0)}
 	):Play()
+end
+
+--[[
+	Update combined progress bar (assets + world)
+	Assets take up 0-50%, World takes up 50-100%
+--]]
+local function updateCombinedProgress()
+	local combinedProgress = assetProgress + worldProgress
+	updateProgressBar(combinedProgress)
 end
 
 local function collectToolMeshAssets()
@@ -296,7 +310,203 @@ end
 	Start animated dots for loading text
 --]]
 --[[
-	Load block texture assets with progress tracking
+	Extract block IDs from a schematic palette
+	@param schematicPath: Path to schematic (e.g., "Schematics.LittleIsland1_20")
+	@return: Array of unique block IDs used in the schematic
+--]]
+local function getBlockIdsFromSchematic(schematicPath)
+	local blockIds = {}
+	local seen = {}
+
+	-- Map schematic paths to their palette files in ReplicatedStorage
+	-- Since schematics are in ServerStorage (not accessible to client), we use pre-extracted palette files
+	local palettePathMap = {
+		["Schematics.LittleIsland1_20"] = "Configs.Schematics.LittleIsland1_20Palette",
+	}
+
+	-- Get the palette path for this schematic
+	local palettePath = palettePathMap[schematicPath]
+	if not palettePath then
+		warn("[LoadingScreen] No palette file found for schematic:", schematicPath)
+		return {}
+	end
+
+	-- Parse path like "Configs.Schematics.LittleIsland1_20Palette"
+	local parts = string.split(palettePath, ".")
+	local current = ReplicatedStorage
+
+	for _, part in ipairs(parts) do
+		current = current:FindFirstChild(part)
+		if not current then
+			warn("[LoadingScreen] Could not find palette at path:", palettePath)
+			return {}
+		end
+	end
+
+	-- Load palette data
+	local ok, palette = pcall(require, current)
+	if not ok then
+		warn("[LoadingScreen] Failed to load palette:", palette)
+		return {}
+	end
+
+	-- Ensure palette is an array
+	if type(palette) ~= "table" or not palette[1] then
+		warn("[LoadingScreen] Invalid palette format (expected array)")
+		return {}
+	end
+
+	local BLOCK_MAPPING = BlockMapping.Map
+	local BlockType = Constants.BlockType
+
+	-- Helper to parse block entry (same logic as SchematicWorldGenerator)
+	local function parseBlockEntry(entry)
+		local baseName = entry
+		local metadataStr = nil
+
+		-- Check if entry has properties: "block_name[property=value]"
+		local bracketStart, bracketEnd = string.find(entry, "%[")
+		if bracketStart then
+			baseName = string.sub(entry, 1, bracketStart - 1)
+			metadataStr = string.sub(entry, bracketStart + 1, -2) -- Remove [ and ]
+		end
+
+		-- Strip "minecraft:" namespace prefix if present
+		baseName = string.gsub(baseName, "^minecraft:", "")
+
+		return baseName
+	end
+
+	-- Extract block IDs from palette
+	for _, entry in ipairs(palette) do
+		local baseName = parseBlockEntry(entry)
+		local blockId = BLOCK_MAPPING[baseName] or BlockType.STONE
+
+		if blockId ~= BlockType.AIR and not seen[blockId] then
+			seen[blockId] = true
+			table.insert(blockIds, blockId)
+		end
+	end
+
+	print(string.format("[LoadingScreen] Extracted %d unique block IDs from schematic palette", #blockIds))
+	return blockIds
+end
+
+--[[
+	Load block texture assets synchronously (blocks until complete)
+	@param blockIds: Optional array of block IDs to load textures for (if nil, loads all)
+	Returns: loadedCount, failedCount
+--]]
+function LoadingScreen:LoadBlockTexturesSync(onProgress, blockIds)
+	local assetsToLoad = {}
+	local totalAssets = 0
+	local seen = {}
+
+	if blockIds and #blockIds > 0 then
+		-- Only load textures for specified block IDs (schematic palette optimization)
+		setStatusText("Loading world textures...")
+		local textureAssetIds = TextureManager:GetTextureAssetIdsForBlocks(blockIds)
+		for _, assetUrl in ipairs(textureAssetIds) do
+			if assetUrl and not seen[assetUrl] then
+				seen[assetUrl] = true
+				table.insert(assetsToLoad, {name = assetUrl, url = assetUrl})
+				totalAssets = totalAssets + 1
+			end
+		end
+		print(string.format("[LoadingScreen] Loading %d textures for schematic palette blocks", totalAssets))
+	else
+		-- Fallback: load all textures (for non-schematic worlds)
+		setStatusText("Loading all textures...")
+
+		-- 1) From TextureManager registry (named textures)
+		local textureNames = TextureManager:GetAllTextureNames()
+		for _, textureName in ipairs(textureNames) do
+			if TextureManager:IsTextureConfigured(textureName) then
+				local assetUrl = TextureManager:GetTextureId(textureName)
+				if assetUrl and not seen[assetUrl] then
+					seen[assetUrl] = true
+					table.insert(assetsToLoad, {name = textureName, url = assetUrl})
+					totalAssets = totalAssets + 1
+				end
+			end
+		end
+
+		-- 2) From BlockRegistry (raw IDs and names on each block's textures)
+		local registryAssets = TextureManager:GetAllBlockTextureAssetIds()
+		for _, assetUrl in ipairs(registryAssets) do
+			if assetUrl and not seen[assetUrl] then
+				seen[assetUrl] = true
+				table.insert(assetsToLoad, {name = assetUrl, url = assetUrl})
+				totalAssets = totalAssets + 1
+			end
+		end
+	end
+
+	-- 3) Block break destroy stage overlays (always needed)
+	for index, assetUrl in ipairs(BlockBreakFeedbackConfig.DestroyStages or {}) do
+		if assetUrl and not seen[assetUrl] then
+			seen[assetUrl] = true
+			table.insert(assetsToLoad, {name = "DestroyStage" .. tostring(index - 1), url = assetUrl})
+			totalAssets = totalAssets + 1
+		end
+	end
+
+	if totalAssets == 0 then
+		-- No textures to load
+		return 0, 0
+	end
+
+	-- Load assets synchronously in batches
+	local batchSize = 10
+	local loadedCount = 0
+	local failedCount = 0
+
+	for startIndex = 1, totalAssets, batchSize do
+		local batch = {}
+		local endIndex = math.min(startIndex + batchSize - 1, totalAssets)
+
+		-- Prepare batch
+		for i = startIndex, endIndex do
+			if assetsToLoad[i] then
+				table.insert(batch, assetsToLoad[i].url)
+			end
+		end
+
+		if #batch == 0 then
+			break
+		end
+
+		-- Update status for current batch
+		if assetsToLoad[startIndex] then
+			if onProgress then
+				onProgress(loadedCount, totalAssets, math.min(loadedCount / totalAssets, 1))
+			end
+		end
+
+		-- Load current batch (synchronous - blocks until complete)
+		local success, errorMessage = pcall(function()
+			ContentProvider:PreloadAsync(batch)
+		end)
+
+		-- Update progress
+		if success then
+			loadedCount = loadedCount + #batch
+		else
+			failedCount = failedCount + #batch
+			warn("LoadingScreen: Texture batch load failed:", errorMessage)
+		end
+
+		-- Update progress callback
+		if onProgress then
+			onProgress(loadedCount, totalAssets, math.min(loadedCount / totalAssets, 1))
+		end
+	end
+
+	return loadedCount, failedCount
+end
+
+--[[
+	Load block texture assets with progress tracking (async version)
 --]]
 function LoadingScreen:LoadBlockTextures(onProgress, onComplete)
 	local assetsToLoad = {}
@@ -420,7 +630,7 @@ end
 
 --[[
 	Load both block textures and icons (sequential for reliability)
-	OPTIMIZATION: Start texture loading in background immediately, don't block on it
+	OPTIMIZATION: Load only textures for schematic palette blocks to reduce load time
 --]]
 function LoadingScreen:LoadAllAssets(onProgress, onComplete, onBeforeFadeOut)
 	if isLoading then
@@ -432,36 +642,62 @@ function LoadingScreen:LoadAllAssets(onProgress, onComplete, onBeforeFadeOut)
 	FontBinder.preload(CUSTOM_FONT_THEME)
 	isLoading = true
 
-	-- Count total assets (matching LoadBlockTextures collection logic)
-	local totalTextures = 0
-	local seenTextures = {}
+	-- Initialize combined progress tracking
+	assetProgress = 0
+	worldProgress = 0
+	updateCombinedProgress()
 
-	-- 1) From TextureManager registry (named textures)
-	local textureNames = TextureManager:GetAllTextureNames()
-	for _, textureName in ipairs(textureNames) do
-		if TextureManager:IsTextureConfigured(textureName) then
-			local assetUrl = TextureManager:GetTextureId(textureName)
+	-- Determine if we should load only schematic palette textures
+	local Workspace = game:GetService("Workspace")
+	local isHubWorld = Workspace:GetAttribute("IsHubWorld") == true
+	local blockIds = nil
+	local totalTextures = 0
+
+	if isHubWorld then
+		-- Hub world uses schematic - load only palette textures
+		local hubWorldType = WorldTypes:Get("hub_world")
+		if hubWorldType and hubWorldType.generatorOptions and hubWorldType.generatorOptions.schematicPath then
+			setStatusText("Analyzing world schematic...")
+			blockIds = getBlockIdsFromSchematic(hubWorldType.generatorOptions.schematicPath)
+			if #blockIds > 0 then
+				-- Count textures for these block IDs
+				local textureAssetIds = TextureManager:GetTextureAssetIdsForBlocks(blockIds)
+				totalTextures = #textureAssetIds + #(BlockBreakFeedbackConfig.DestroyStages or {})
+				print(string.format("[LoadingScreen] Will load %d textures for %d schematic blocks", #textureAssetIds, #blockIds))
+			end
+		end
+	end
+
+	-- Fallback: count all textures if no schematic or extraction failed
+	if totalTextures == 0 then
+		local seenTextures = {}
+		-- 1) From TextureManager registry (named textures)
+		local textureNames = TextureManager:GetAllTextureNames()
+		for _, textureName in ipairs(textureNames) do
+			if TextureManager:IsTextureConfigured(textureName) then
+				local assetUrl = TextureManager:GetTextureId(textureName)
+				if assetUrl and not seenTextures[assetUrl] then
+					seenTextures[assetUrl] = true
+					totalTextures = totalTextures + 1
+				end
+			end
+		end
+
+		-- 2) From BlockRegistry (raw IDs and names on each block's textures)
+		local registryAssets = TextureManager:GetAllBlockTextureAssetIds()
+		for _, assetUrl in ipairs(registryAssets) do
 			if assetUrl and not seenTextures[assetUrl] then
 				seenTextures[assetUrl] = true
 				totalTextures = totalTextures + 1
 			end
 		end
-	end
 
-	-- 2) From BlockRegistry (raw IDs and names on each block's textures)
-	local registryAssets = TextureManager:GetAllBlockTextureAssetIds()
-	for _, assetUrl in ipairs(registryAssets) do
-		if assetUrl and not seenTextures[assetUrl] then
-			seenTextures[assetUrl] = true
-			totalTextures = totalTextures + 1
-		end
-	end
-
-	-- 3) Block break destroy stage overlays
-	for _, assetUrl in ipairs(BlockBreakFeedbackConfig.DestroyStages or {}) do
-		if assetUrl and not seenTextures[assetUrl] then
-			seenTextures[assetUrl] = true
-			totalTextures = totalTextures + 1
+		-- 3) Block break destroy stage overlays
+		for _, assetUrl in ipairs(BlockBreakFeedbackConfig.DestroyStages or {}) do
+			if assetUrl and not seenTextures[assetUrl] then
+				seenTextures[assetUrl] = true
+				totalTextures = totalTextures + 1
+			end
 		end
 	end
 
@@ -487,10 +723,8 @@ function LoadingScreen:LoadAllAssets(onProgress, onComplete, onBeforeFadeOut)
 		return
 	end
 
-	-- OPTIMIZATION: Start all non-critical assets loading in background immediately (non-blocking)
-	-- Textures, meshes, and sounds will continue loading while we handle icons
-	-- We count them as "loaded" for progress since they load in background and won't block gameplay
-
+	-- Load textures FIRST (synchronously) before other assets
+	-- This ensures textures are ready when world starts rendering
 	local texturesLoadedCount = 0
 	local texturesFailedCount = 0
 	local meshesLoadedCount = 0
@@ -498,25 +732,28 @@ function LoadingScreen:LoadAllAssets(onProgress, onComplete, onBeforeFadeOut)
 	local soundsLoadedCount = 0
 	local soundsFailedCount = 0
 
-	-- Start texture loading in background
+	-- Load textures synchronously (blocks until complete)
 	if totalTextures > 0 then
-		task.spawn(function()
-			self:LoadBlockTextures(
-				function(loaded, total, progress)
-					texturesLoadedCount = loaded
-					texturesFailedCount = total - loaded
-					return false -- Continue loading
-				end,
-				function(loaded, failed)
-					texturesLoadedCount = loaded
-					texturesFailedCount = failed
-					print(string.format("[LoadingScreen] Background texture loading complete: %d loaded, %d failed", loaded, failed))
+		setStatusText("Loading world textures...")
+		texturesLoadedCount, texturesFailedCount = self:LoadBlockTexturesSync(
+			function(loaded, total, progress)
+				-- Update asset progress (textures are part of assets, which take 0-50% of total)
+				local totalAssets = totalTextures + totalIcons + totalMeshes + totalSounds
+				if totalAssets > 0 then
+					assetProgress = math.clamp((loaded / totalAssets) * 0.5, 0, 0.5)
+					updateCombinedProgress()
 				end
-			)
-		end)
-		-- Count textures as loaded (loading in background)
-		texturesLoadedCount = totalTextures
-		texturesFailedCount = 0
+
+				if onProgress then
+					-- Also call the original progress callback
+					local totalLoaded = loaded
+					local overallProgress = math.clamp(totalLoaded / totalAssets, 0, 1)
+					pcall(onProgress, totalLoaded, totalAssets, overallProgress)
+				end
+			end,
+			blockIds  -- Pass block IDs if we extracted them from schematic
+		)
+		print(string.format("[LoadingScreen] Textures loaded: %d loaded, %d failed", texturesLoadedCount, texturesFailedCount))
 	end
 
 	-- Start mesh loading in background
@@ -572,6 +809,7 @@ function LoadingScreen:LoadAllAssets(onProgress, onComplete, onBeforeFadeOut)
 		end
 
 		-- Only wait for icons - they're critical for UI
+		-- Textures are already loaded synchronously, meshes and sounds load in background
 		local totalBackgroundAssets = texturesLoadedCount + meshesLoadedCount + soundsLoadedCount
 
 		-- Update status to show we're loading the final UI assets (only if world is not holding - terrain takes priority)
@@ -581,8 +819,8 @@ function LoadingScreen:LoadAllAssets(onProgress, onComplete, onBeforeFadeOut)
 
 		self:LoadIconsOnly(
 			totalIcons,
-			totalBackgroundAssets, -- Count all background assets as loaded
-			0, -- No failures initially
+			totalBackgroundAssets, -- Textures already loaded, meshes/sounds in background
+			texturesFailedCount, -- Include texture failures
 			totalAssets,
 			onProgress,
 			onComplete,
@@ -601,10 +839,10 @@ function LoadingScreen:LoadIconsOnly(totalIcons, backgroundAssetsLoaded, backgro
 		IconManager:PreloadRegisteredIcons(
 			function(loaded, total, progress)
 				local totalLoaded = backgroundAssetsLoaded + loaded
-				-- Update overall progress (only if world is not holding - terrain loading takes priority)
-				if not worldHoldActive then
-					local overallProgress = math.clamp(totalLoaded / totalAssets, 0, 1)
-					updateProgressBar(overallProgress)
+				-- Update asset progress (assets take 0-50% of total, icons are part of assets)
+				if totalAssets > 0 then
+					assetProgress = math.clamp((totalLoaded / totalAssets) * 0.5, 0, 0.5)
+					updateCombinedProgress()
 				end
 
 				-- Update status with progress (only if world is not holding)
@@ -797,9 +1035,13 @@ function LoadingScreen:LoadMeshesAfterIcons(meshAssets, assetsLoadedSoFar, asset
 		end
 
 		local totalLoaded = assetsLoadedSoFar + loaded
-		local overallProgress = math.clamp(totalLoaded / totalAssets, 0, 1)
-		updateProgressBar(overallProgress)
+		-- Update asset progress (assets take 0-50% of total)
+		if totalAssets > 0 then
+			assetProgress = math.clamp((totalLoaded / totalAssets) * 0.5, 0, 0.5)
+			updateCombinedProgress()
+		end
 		if onProgress then
+			local overallProgress = math.clamp(totalLoaded / totalAssets, 0, 1)
 			pcall(onProgress, totalLoaded, totalAssets, overallProgress)
 		end
 
@@ -859,9 +1101,13 @@ function LoadingScreen:LoadSoundsAfterIcons(soundAssetIds, assetsLoadedSoFar, as
 		end
 
 		local totalLoaded = assetsLoadedSoFar + loaded
-		local overallProgress = math.clamp(totalLoaded / totalAssets, 0, 1)
-		updateProgressBar(overallProgress)
+		-- Update asset progress (assets take 0-50% of total)
+		if totalAssets > 0 then
+			assetProgress = math.clamp((totalLoaded / totalAssets) * 0.5, 0, 0.5)
+			updateCombinedProgress()
+		end
 		if onProgress then
+			local overallProgress = math.clamp(totalLoaded / totalAssets, 0, 1)
 			pcall(onProgress, totalLoaded, totalAssets, overallProgress)
 		end
 
@@ -922,6 +1168,10 @@ end
 function LoadingScreen:CompleteAllAssetLoading(totalLoaded, totalFailed, onComplete, onBeforeFadeOut)
 	loadingComplete = true
 	isLoading = false
+
+	-- Assets are complete - set asset progress to 0.5 (50% of total)
+	assetProgress = 0.5
+	updateCombinedProgress()
 
 	-- Update final status
 	if totalFailed > 0 then
@@ -1020,15 +1270,18 @@ function LoadingScreen:HoldForWorldStatus(title, subtitle)
 	setStatusText(subtitle or "Preparing your world data...")
 
 	-- Extract terrain progress percentage from subtitle (e.g., "Terrain 45%")
-	-- and update progress bar based on terrain loading, not asset loading
+	-- World loading takes 50-100% of total progress (assets are 0-50%)
 	if subtitle then
 		local percentMatch = string.match(subtitle, "(%d+)%%")
 		if percentMatch then
-			local terrainProgress = tonumber(percentMatch) / 100
-			updateProgressBar(terrainProgress)
+			local terrainPercent = tonumber(percentMatch) / 100
+			-- Map terrain progress to 50-100% range (0.5 + terrainPercent * 0.5)
+			worldProgress = 0.5 + (terrainPercent * 0.5)
+			updateCombinedProgress()
 		else
-			-- If no percentage found, set to 0
-			updateProgressBar(0)
+			-- If no percentage found, keep world progress at 0.5 (50%)
+			worldProgress = 0.5
+			updateCombinedProgress()
 		end
 	end
 
@@ -1041,6 +1294,11 @@ function LoadingScreen:ReleaseWorldHold()
 	end
 
 	worldHoldActive = false
+
+	-- World loading complete - set world progress to 0.5 (making combined progress = assetProgress + 0.5)
+	-- This ensures the bar reaches 100% when both assets and world are done
+	worldProgress = 0.5  -- World is fully loaded (50% of total progress)
+	updateCombinedProgress()
 
 	if loadingComplete and pendingFadeHandler then
 		local handler = pendingFadeHandler

@@ -214,5 +214,47 @@ function TextureManager:GetAllBlockTextureAssetIds(): {string}
 	return results
 end
 
+--[[
+	Get texture asset IDs for specific block IDs (optimized for schematic palettes)
+	@param blockIds: Array of block type IDs (from Constants.BlockType)
+	@return: Array of unique asset ID strings (rbxassetid://...)
+]]
+function TextureManager:GetTextureAssetIdsForBlocks(blockIds: {number}): {string}
+	local results = {}
+	local seen = {}
+	local blockIdSet = {}
+
+	-- Create lookup set for faster checking
+	for _, blockId in ipairs(blockIds) do
+		blockIdSet[blockId] = true
+	end
+
+	-- Only get textures for blocks in the provided list
+	for blockId, _ in pairs(blockIdSet) do
+		local def = BlockRegistry:GetBlock(blockId)
+		if def and def.textures then
+			-- Handle both "all" and face-specific textures
+			local textureNames = {}
+			if def.textures.all then
+				table.insert(textureNames, def.textures.all)
+			else
+				if def.textures.top then table.insert(textureNames, def.textures.top) end
+				if def.textures.bottom then table.insert(textureNames, def.textures.bottom) end
+				if def.textures.side then table.insert(textureNames, def.textures.side) end
+			end
+
+			for _, textureName in ipairs(textureNames) do
+				local assetId = self:GetTextureId(textureName)
+				if assetId and not seen[assetId] then
+					seen[assetId] = true
+					table.insert(results, assetId)
+				end
+			end
+		end
+	end
+
+	return results
+end
+
 return TextureManager
 

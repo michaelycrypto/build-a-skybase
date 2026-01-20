@@ -196,10 +196,8 @@ function TutorialUI:ShowPopup(step)
 	self:Initialize()
 	self:HidePopup()
 
-	-- Use UIBackdrop for proper modal behavior (blur, overlay, cursor release)
+	-- Use UIBackdrop for proper modal behavior (overlay, cursor release)
 	UIBackdrop:Show({
-		blur = true,
-		blurSize = 24,
 		overlay = true,
 		overlayColor = Color3.fromRGB(4, 4, 6),
 		overlayTransparency = 0.5,

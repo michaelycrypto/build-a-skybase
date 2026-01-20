@@ -537,9 +537,7 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 							wy + bottomYOffset,
 							wz + bottomSizeZ / 2
 						)
-						table.insert(meshParts, bottomPart)
-
-						-- Apply texture to bottom slab
+						-- Apply texture to bottom slab BEFORE adding to meshParts
 						if def.textures and def.textures.all then
 							local textureId = TextureManager:GetTextureId(def.textures.all)
 							if textureId then
@@ -566,6 +564,8 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 								end
 							end
 						end
+
+						table.insert(meshParts, bottomPart)
 
 						-- Top step (half width/depth based on rotation, half height)
 						local topPart = Instance.new("Part")
@@ -733,6 +733,37 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 							wy + topYOffset,
 							wz + bottomSizeZ / 2
 						) + stepOffset
+
+						-- Apply texture to top step BEFORE adding to meshParts
+						if def.textures and def.textures.all then
+							local textureId = TextureManager:GetTextureId(def.textures.all)
+							if textureId then
+								for _, face in ipairs({Enum.NormalId.Top, Enum.NormalId.Bottom, Enum.NormalId.Front, Enum.NormalId.Back, Enum.NormalId.Left, Enum.NormalId.Right}) do
+									local texture = Instance.new("Texture")
+									texture.Face = face
+									texture.Texture = textureId
+
+									-- Tile per block (not stretched across merged stairs)
+									-- Vertical faces use full block height so texture cuts off naturally at half
+									if face == Enum.NormalId.Top or face == Enum.NormalId.Bottom then
+										-- Horizontal faces tile per block
+										texture.StudsPerTileU = Constants.BLOCK_SIZE
+										texture.StudsPerTileV = Constants.BLOCK_SIZE
+									elseif face == Enum.NormalId.Front or face == Enum.NormalId.Back then
+										-- Vertical faces: tile per block width, use full block height
+										texture.StudsPerTileU = Constants.BLOCK_SIZE
+										texture.StudsPerTileV = Constants.BLOCK_SIZE  -- Full block height (cuts off at half)
+									else -- Left or Right
+										-- Vertical faces: tile per block depth, use full block height
+										texture.StudsPerTileU = Constants.BLOCK_SIZE
+										texture.StudsPerTileV = Constants.BLOCK_SIZE  -- Full block height (cuts off at half)
+									end
+
+									texture.Parent = topPart
+								end
+							end
+						end
+
 						table.insert(meshParts, topPart)
 
                         -- No double-outer: Minecraft does not render a single stair as two outer quarters
@@ -780,9 +811,8 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 								wy + topYOffset,
 								wz + bottomSizeZ / 2
 							) + extraOffset
-							table.insert(meshParts, topPart2)
 
-							-- Apply texture to second top quarter
+							-- Apply texture to second top quarter BEFORE adding to meshParts
 							if def.textures and def.textures.all then
 								local textureId = TextureManager:GetTextureId(def.textures.all)
 								if textureId then
@@ -801,6 +831,8 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 									end
 								end
 							end
+
+							table.insert(meshParts, topPart2)
 						end
 
 						-- Update parts budget
@@ -808,39 +840,6 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 							partsBudget += 3 -- bottom + two top quarters
 						else
 							partsBudget += 2 -- bottom + one top
-						end
-
-
-						-- Apply texture to top step
-						-- topPart.Size = (topSizeX, BLOCK_SIZE/2, topSizeZ)
-						-- Tile per block (not stretched), with full block height on vertical faces
-						if def.textures and def.textures.all then
-							local textureId = TextureManager:GetTextureId(def.textures.all)
-							if textureId then
-								for _, face in ipairs({Enum.NormalId.Top, Enum.NormalId.Bottom, Enum.NormalId.Front, Enum.NormalId.Back, Enum.NormalId.Left, Enum.NormalId.Right}) do
-									local texture = Instance.new("Texture")
-									texture.Face = face
-									texture.Texture = textureId
-
-									-- Tile per block (not stretched across merged stairs)
-									-- Vertical faces use full block height so texture cuts off naturally at half
-									if face == Enum.NormalId.Top or face == Enum.NormalId.Bottom then
-										-- Horizontal faces tile per block
-										texture.StudsPerTileU = Constants.BLOCK_SIZE
-										texture.StudsPerTileV = Constants.BLOCK_SIZE
-									elseif face == Enum.NormalId.Front or face == Enum.NormalId.Back then
-										-- Vertical faces: tile per block width, use full block height
-										texture.StudsPerTileU = Constants.BLOCK_SIZE
-										texture.StudsPerTileV = Constants.BLOCK_SIZE  -- Full block height (cuts off at half)
-									else -- Left or Right
-										-- Vertical faces: tile per block depth, use full block height
-										texture.StudsPerTileU = Constants.BLOCK_SIZE
-										texture.StudsPerTileV = Constants.BLOCK_SIZE  -- Full block height (cuts off at half)
-									end
-
-									texture.Parent = topPart
-								end
-							end
 						end
 					end
 				end
@@ -935,7 +934,7 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 						slabPart.Anchored = true
 						slabPart.CanCollide = true
 						slabPart.CastShadow = true
-					slabPart.Material = Enum.Material.Plastic
+						slabPart.Material = Enum.Material.Plastic
 						slabPart.Color = def.color or Color3.fromRGB(255, 255, 255)
 						slabPart.TopSurface = Enum.SurfaceType.Smooth
 						slabPart.BottomSurface = Enum.SurfaceType.Smooth
@@ -945,13 +944,8 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 							wy + slabYOffset,
 							wz + slabSizeZ / 2
 						)
-						table.insert(meshParts, slabPart)
 
-						-- Update parts budget
-						partsBudget += 1
-
-
-						-- Apply texture to slab
+						-- Apply texture to slab BEFORE adding to meshParts
 						if def.textures and def.textures.all then
 							local textureId = TextureManager:GetTextureId(def.textures.all)
 							if textureId then
@@ -978,6 +972,11 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 								end
 							end
 						end
+
+						table.insert(meshParts, slabPart)
+
+						-- Update parts budget
+						partsBudget += 1
 					end
 				end
 			end

@@ -1,6 +1,6 @@
 --[[
 	UIBackdrop.lua - Reusable Backdrop System
-	Provides blur effect + dark overlay for any UI component
+	Provides dark overlay for any UI component
 	Singleton pattern - only one backdrop active at a time
 
 	Mouse Lock Fix:
@@ -12,9 +12,9 @@ local UIBackdrop = {}
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
-local Lighting = game:GetService("Lighting")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
+local Lighting = game:GetService("Lighting")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -22,11 +22,9 @@ local playerGui = player:WaitForChild("PlayerGui")
 -- Singleton state
 local backdropGui = nil
 local overlayFrame = nil
-local blurEffect = nil
 local isVisible = false
 local currentConfig = nil
 local overlayTween = nil
-local blurTween = nil
 local mouseEnforceConnection = nil
 
 local function stopTween(tween)
@@ -50,8 +48,6 @@ end
 
 -- Default configuration
 local DEFAULT_CONFIG = {
-	blur = true,
-	blurSize = 24,
 	overlay = true,
 	overlayColor = Color3.fromRGB(4, 4, 6),
 	overlayTransparency = 0.35,
@@ -65,6 +61,12 @@ local DEFAULT_CONFIG = {
 ]]
 local function initialize()
 	if backdropGui then return end
+
+	-- Cleanup any existing UIBackdropBlur instances from Lighting
+	local existingBlur = Lighting:FindFirstChild("UIBackdropBlur")
+	if existingBlur then
+		existingBlur:Destroy()
+	end
 
 	-- Create ScreenGui with IgnoreGuiInset for fullscreen coverage
 	backdropGui = Instance.new("ScreenGui")
@@ -90,13 +92,6 @@ local function initialize()
 	overlayFrame.Modal = true   -- KEY: Tells Roblox to release mouse lock when mouse is over this element
 	overlayFrame.Parent = backdropGui
 
-	-- Create blur effect in Lighting
-	blurEffect = Instance.new("BlurEffect")
-	blurEffect.Name = "UIBackdropBlur"
-	blurEffect.Size = 0  -- Start at 0
-	blurEffect.Enabled = false
-	blurEffect.Parent = Lighting
-
 	print("UIBackdrop: Initialized singleton backdrop system")
 end
 
@@ -114,9 +109,7 @@ function UIBackdrop:Show(config)
 	end
 
 	stopTween(overlayTween)
-	stopTween(blurTween)
 	overlayTween = nil
-	blurTween = nil
 
 	isVisible = true
 	backdropGui.Enabled = true
@@ -147,24 +140,6 @@ function UIBackdrop:Show(config)
 		overlayFrame.BackgroundTransparency = 1
 	end
 
-	-- Show blur with animation
-	if currentConfig.blur and blurEffect then
-		blurEffect.Enabled = true
-		blurTween = TweenService:Create(
-			blurEffect,
-			TweenInfo.new(currentConfig.animationDuration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-			{ Size = currentConfig.blurSize }
-		)
-		blurTween.Completed:Connect(function()
-			blurTween = nil
-		end)
-		blurTween:Play()
-	else
-		if blurEffect then
-			blurEffect.Enabled = false
-		end
-	end
-
 	-- Setup tap callback if provided
 	-- The overlay is now a TextButton, so we connect directly to it
 	if currentConfig.onTap then
@@ -193,7 +168,7 @@ function UIBackdrop:Show(config)
 		UserInputService.MouseIconEnabled = true
 	end)
 
-	print("UIBackdrop: Shown with blur=" .. tostring(currentConfig.blur) .. " overlay=" .. tostring(currentConfig.overlay))
+	print("UIBackdrop: Shown with overlay=" .. tostring(currentConfig.overlay))
 end
 
 --[[
@@ -203,7 +178,7 @@ end
 function UIBackdrop:Hide(callback)
 	if not backdropGui then return end
 
-	if not isVisible and (not overlayTween and not blurTween) then
+	if not isVisible and not overlayTween then
 		-- Already hidden
 		return
 	end
@@ -224,7 +199,6 @@ function UIBackdrop:Hide(callback)
 	end
 
 	stopTween(overlayTween)
-	stopTween(blurTween)
 
 	local duration = currentConfig and currentConfig.animationDuration or DEFAULT_CONFIG.animationDuration
 
@@ -235,27 +209,15 @@ function UIBackdrop:Hide(callback)
 		{ BackgroundTransparency = 1 }
 	)
 
-	-- Hide blur with animation
-	if blurEffect then
-		blurTween = TweenService:Create(
-			blurEffect,
-			TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
-			{ Size = 0 }
-		)
-	end
-
 	local function finalizeHide()
 		if isVisible then
 			return
 		end
-		if overlayTween or blurTween then
+		if overlayTween then
 			return
 		end
 
 		backdropGui.Enabled = false
-		if blurEffect then
-			blurEffect.Enabled = false
-		end
 
 		-- Remove tap detector
 		removeTapDetector()
@@ -272,16 +234,6 @@ function UIBackdrop:Hide(callback)
 		finalizeHide()
 	end)
 	overlayTween:Play()
-
-	if blurTween then
-		blurTween.Completed:Connect(function()
-			blurTween = nil
-			finalizeHide()
-		end)
-		blurTween:Play()
-	else
-		blurTween = nil
-	end
 end
 
 --[[
@@ -322,22 +274,6 @@ function UIBackdrop:UpdateConfig(config)
 		overlayFrame.BackgroundColor3 = config.overlayColor
 	end
 
-	if config.blurSize and blurEffect then
-		stopTween(blurTween)
-		if not blurEffect.Enabled then
-			blurEffect.Enabled = true
-		end
-		blurTween = TweenService:Create(
-			blurEffect,
-			TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-			{ Size = config.blurSize }
-		)
-		blurTween.Completed:Connect(function()
-			blurTween = nil
-		end)
-		blurTween:Play()
-	end
-
 	if config.displayOrder and backdropGui then
 		backdropGui.DisplayOrder = config.displayOrder
 	end
@@ -374,11 +310,6 @@ function UIBackdrop:Cleanup()
 	if backdropGui then
 		backdropGui:Destroy()
 		backdropGui = nil
-	end
-
-	if blurEffect then
-		blurEffect:Destroy()
-		blurEffect = nil
 	end
 
 	overlayFrame = nil
