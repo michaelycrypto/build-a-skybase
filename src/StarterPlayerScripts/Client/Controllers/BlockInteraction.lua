@@ -1187,5 +1187,49 @@ function BlockInteraction:TryPlace()
 	tryPlaceBlock()
 end
 
+--[[
+	Get the currently targeted block (for F3 debug overlay)
+	Returns: blockPos (Vector3), blockId (number), faceNormal (Vector3)
+]]
+function BlockInteraction:GetTargetedBlock()
+	if not BlockInteraction.isReady or not blockAPI then
+		return nil, nil, nil
+	end
+
+	local blockPos, faceNormal = getTargetedBlock()
+	if not blockPos then
+		return nil, nil, nil
+	end
+
+	local worldManager = blockAPI.worldManager
+	if not worldManager then
+		return nil, nil, nil
+	end
+
+	local blockId = worldManager:GetBlock(blockPos.X, blockPos.Y, blockPos.Z)
+	return blockPos, blockId, faceNormal
+end
+
+--[[
+	Get loaded chunk count (for F3 debug overlay)
+	Returns: number of loaded chunks
+]]
+function BlockInteraction:GetLoadedChunkCount()
+	if not BlockInteraction.isReady or not blockAPI then
+		return 0
+	end
+
+	local worldManager = blockAPI.worldManager
+	if not worldManager or not worldManager.chunks then
+		return 0
+	end
+
+	local count = 0
+	for _ in pairs(worldManager.chunks) do
+		count = count + 1
+	end
+	return count
+end
+
 return BlockInteraction
 

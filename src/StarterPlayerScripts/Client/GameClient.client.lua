@@ -1081,6 +1081,11 @@ local function completeInitialization(EmoteManager)
 		MainHUD:Create()
 	end
 
+	-- Create F3 Debug Overlay (Minecraft-style debug info)
+	local F3DebugOverlay = require(script.Parent.UI.F3DebugOverlay)
+	F3DebugOverlay:Create()
+	Client.f3DebugOverlay = F3DebugOverlay
+
 	-- Setup character handling
 	player.CharacterAdded:Connect(function(character)
 		task.wait(2) -- Wait for character to load
