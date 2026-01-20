@@ -17,7 +17,6 @@ local GameConfig = require(game:GetService("ReplicatedStorage").Configs.GameConf
 local UIComponents = require(script.Parent.Parent.Managers.UIComponents)
 local IconManager = require(script.Parent.Parent.Managers.IconManager)
 local SoundManager = require(script.Parent.Parent.Managers.SoundManager)
-local ItemConfig = require(game:GetService("ReplicatedStorage").Configs.ItemConfig)
 local EventManager = require(game:GetService("ReplicatedStorage").Shared.EventManager)
 local ShopApi = require(game:GetService("ReplicatedStorage").Shared.Api.ShopApi)
 local GameState = require(script.Parent.Parent.Managers.GameState)
@@ -306,49 +305,14 @@ function ShopPanel:UpdateRestockTimer()
 end
 
 --[[
-	Initialize shop data from ItemConfig - only spawners
+	Initialize shop data (ItemConfig removed - shop is now empty)
+	Items should be fetched from ShopService API instead
 --]]
 function ShopPanel:InitializeShopData()
 	shopData.items = {}
-
-	-- Get all purchasable items from ItemConfig
-	local allItems = ItemConfig.Items
-
-	-- Only show featured mob heads from GameConfig
-	local featuredItems = GameConfig.Shop.featuredItems
-
-	for _, featuredItem in ipairs(featuredItems) do
-		local itemId = featuredItem.itemId
-		local itemData = allItems[itemId]
-		-- Only add if the item exists and has a price
-		if itemData and itemData.price and itemData.price > 0 and itemData.type == "MOB_HEAD" then
-			local rarityData = ItemConfig.GetItemRarity(itemData.rarity)
-
-			local itemEntry = {
-				id = itemId,
-				name = itemData.name,
-				price = itemData.price,
-				currency = "coins",
-				description = itemData.description,
-				rarity = itemData.rarity,
-				rarityColor = rarityData and rarityData.color or Color3.fromRGB(150, 150, 150),
-				type = itemData.type,
-				stats = itemData.stats,
-				effects = itemData.effects,
-				lootPool = itemData.lootPool
-			}
-			table.insert(shopData.items, itemEntry)
-			print("ShopPanel: Added mob head", itemId, "with id", itemEntry.id)
-		end
-	end
-
-	print("ShopPanel: Initialized with " .. #shopData.items .. " mob heads (limited to featured items from GameConfig)")
-
-	-- Debug: List the first few featured items
-	for i = 1, math.min(3, #shopData.items) do
-		local item = shopData.items[i]
-		print("ShopPanel: Mob Head " .. i .. ":", item.id, item.name, item.price)
-	end
+	-- ItemConfig was removed - shop items should be fetched from ShopService API
+	-- For now, shop is empty. Items can be loaded via ShopApi:GetShopData() if needed
+	print("ShopPanel: Initialized with 0 items (ItemConfig removed)")
 end
 
 --[[

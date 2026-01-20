@@ -11,7 +11,7 @@ local BaseService = require(script.Parent.BaseService)
 local Logger = require(ReplicatedStorage.Shared.Logger)
 local EventManager = require(ReplicatedStorage.Shared.EventManager)
 local Constants = require(ReplicatedStorage.Shared.VoxelWorld.Core.Constants)
-local ItemConfig = require(ReplicatedStorage.Configs.ItemConfig)
+local ItemRegistry = require(ReplicatedStorage.Configs.ItemRegistry)
 local GameConfig = require(ReplicatedStorage.Configs.GameConfig)
 
 local DroppedItemService = setmetatable({}, BaseService)
@@ -205,13 +205,11 @@ function DroppedItemService:SpawnItem(itemId, count, position, velocity, isBlock
 		velocity = {initialVel.X, initialVel.Y, initialVel.Z}
 	})
 
-    local blockInfo = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockRegistry):GetBlock(typeof(itemId) == "number" and itemId or nil)
-    local itemName
-    if _isBlockItemId(itemId) then
-        itemName = blockInfo and blockInfo.name or tostring(itemId)
-    else
-        local def = ItemConfig and ItemConfig.GetItemDefinition and ItemConfig.GetItemDefinition(itemId)
-        itemName = (def and def.name) or tostring(itemId)
+    local itemName = ItemRegistry.GetItemName(itemId)
+    if itemName == "Unknown" then
+        -- Fallback to block info or itemId string
+        local blockInfo = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockRegistry):GetBlock(typeof(itemId) == "number" and itemId or nil)
+        itemName = (blockInfo and blockInfo.name) or tostring(itemId)
     end
 	print(string.format("📦 Item #%d spawned: %s at (%.1f, %.1f, %.1f)",
 		id, itemName, startPos.X, startPos.Y, startPos.Z))

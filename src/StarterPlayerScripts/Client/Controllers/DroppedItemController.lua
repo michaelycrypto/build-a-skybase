@@ -14,7 +14,7 @@ local EventManager = require(ReplicatedStorage.Shared.EventManager)
 local BlockRegistry = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockRegistry)
 local TextureManager = require(ReplicatedStorage.Shared.VoxelWorld.Rendering.TextureManager)
 local GameConfig = require(ReplicatedStorage.Configs.GameConfig)
-local ItemConfig = require(ReplicatedStorage.Configs.ItemConfig)
+local ItemRegistry = require(ReplicatedStorage.Configs.ItemRegistry)
 local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
 local ItemModelLoader = require(ReplicatedStorage.Shared.ItemModelLoader)
 local SoundManager = require(script.Parent.Parent.Managers.SoundManager)
@@ -614,8 +614,8 @@ function DroppedItemController:CreateModel(itemId, count)
 			label.BackgroundTransparency = 1
 			label.Size = UDim2.fromScale(1, 1)
 			label.TextScaled = true
-			local def = ItemConfig and ItemConfig.GetItemDefinition and ItemConfig.GetItemDefinition(itemId)
-			label.Text = (def and def.name) or tostring(itemId)
+			local itemName = ItemRegistry.GetItemName(itemId)
+			label.Text = (itemName ~= "Unknown") and itemName or tostring(itemId)
 			label.TextColor3 = Color3.new(1, 1, 1)
 			label.TextStrokeTransparency = 0.5
 			label.Parent = bb

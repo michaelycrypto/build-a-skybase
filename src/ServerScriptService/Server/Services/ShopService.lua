@@ -2,14 +2,14 @@
 	ShopService
 
 	Handles shop transactions, item purchases, and shop data management.
-	Integrates with PlayerService for currency management and ItemConfig for item data.
+	Integrates with PlayerService for currency management.
 	Features stock replenishment every 1 minute similar to Grow a Garden.
+	Note: ItemConfig was removed - shop items should be configured elsewhere if needed.
 --]]
 
 local BaseService = require(script.Parent.BaseService)
 local Logger = require(game.ReplicatedStorage.Shared.Logger)
 local Config = require(game.ReplicatedStorage.Shared.Config)
-local ItemConfig = require(game.ReplicatedStorage.Configs.ItemConfig)
 local GameConfig = require(game.ReplicatedStorage.Configs.GameConfig)
 
 local ShopService = setmetatable({}, BaseService)
@@ -53,7 +53,7 @@ function ShopService:Init()
 	-- Get EventManager instance
 	self._eventManager = require(game.ReplicatedStorage.Shared.EventManager)
 
-	-- Initialize shop data from ItemConfig
+	-- Initialize shop data (ItemConfig removed - shop is empty)
 	self:InitializeShopData()
 
 	-- Set up event handlers
@@ -90,49 +90,13 @@ function ShopService:Destroy()
 end
 
 --[[
-	Initialize shop data from ItemConfig
+	Initialize shop data (ItemConfig removed - shop is now empty)
 --]]
 function ShopService:InitializeShopData()
 	self._shopData.items = {}
-
-	-- Get all purchasable items from ItemConfig
-	local allItems = ItemConfig.Items
-
-	for itemId, itemData in pairs(allItems) do
-		-- Only add items that have a price and are purchasable
-		if itemData.price and itemData.price > 0 then
-			local rarityData = ItemConfig.GetItemRarity(itemData.rarity)
-
-			-- Determine category based on item type
-			local category = "Misc"
-			if itemData.type == "MOB_SPAWNER" then
-				category = "Spawners"
-			elseif itemData.type == "DUNGEON_UPGRADE" or itemData.type == "SPAWNER_ENHANCEMENT" then
-				category = "Upgrades"
-			elseif itemData.type == "RESOURCE" then
-				category = "Resources"
-			elseif itemData.type == "CRATE" then
-				category = "Crates"
-			end
-
-			table.insert(self._shopData.items, {
-				id = itemId, -- Use the actual item ID from ItemConfig
-				name = itemData.name,
-				category = category,
-				price = itemData.price,
-				currency = "coins", -- All items use coins for now
-				description = itemData.description,
-				rarity = itemData.rarity,
-				rarityColor = rarityData and rarityData.color or Color3.fromRGB(150, 150, 150),
-				type = itemData.type,
-				stats = itemData.stats,
-				effects = itemData.effects,
-				lootPool = itemData.lootPool
-			})
-		end
-	end
-
-	self._logger.Info("Initialized shop with " .. #self._shopData.items .. " items from ItemConfig")
+	-- ItemConfig was removed - shop is now empty
+	-- If shop functionality is needed, items should be configured in GameConfig or another config file
+	self._logger.Info("Initialized shop with 0 items (ItemConfig removed)")
 end
 
 --[[
@@ -179,10 +143,17 @@ function ShopService:ProcessPurchase(player, itemId, quantity)
 		return false
 	end
 
-	-- Find the item in ItemConfig first
-	local itemConfig = ItemConfig.GetItemDefinition(itemId)
-	if not itemConfig then
-		self._logger.Error("Item not found in ItemConfig", {itemId = itemId})
+	-- Find the item in shop data
+	local shopItem = nil
+	for _, item in ipairs(self._shopData.items) do
+		if item.id == itemId then
+			shopItem = item
+			break
+		end
+	end
+
+	if not shopItem then
+		self._logger.Error("Item not found in shop", {itemId = itemId})
 		if self._eventManager then
 			self._eventManager:FireEvent("ShowError", player, {
 				message = "Item not found: " .. itemId
@@ -192,7 +163,7 @@ function ShopService:ProcessPurchase(player, itemId, quantity)
 	end
 
 	-- Check if item is purchasable
-	if not itemConfig.price or itemConfig.price <= 0 then
+	if not shopItem.price or shopItem.price <= 0 then
 		self._logger.Error("Item is not purchasable", {itemId = itemId})
 		if self._eventManager then
 			self._eventManager:FireEvent("ShowError", player, {
@@ -203,7 +174,7 @@ function ShopService:ProcessPurchase(player, itemId, quantity)
 	end
 
 	-- Calculate total cost
-	local totalCost = itemConfig.price * quantity
+	local totalCost = shopItem.price * quantity
 
 	-- Check if PlayerService is available
 	if not self.Deps.PlayerService then
@@ -293,47 +264,16 @@ function ShopService:ProcessPurchase(player, itemId, quantity)
 end
 
 --[[
-	Get item by ID from ItemConfig
+	Get item by ID from shop data
 --]]
 function ShopService:GetItem(itemId)
-	-- First check ItemConfig
-	local itemConfig = ItemConfig.GetItemDefinition(itemId)
-	if not itemConfig then
-		return nil
+	-- Find item in shop data
+	for _, item in ipairs(self._shopData.items) do
+		if item.id == itemId then
+			return item
+		end
 	end
-
-	-- Only return if item is purchasable
-	if not itemConfig.price or itemConfig.price <= 0 then
-		return nil
-	end
-
-	-- Return shop item format
-	local rarityData = ItemConfig.GetItemRarity(itemConfig.rarity)
-	local category = "Misc"
-	if itemConfig.type == "MOB_SPAWNER" then
-		category = "Spawners"
-	elseif itemConfig.type == "DUNGEON_UPGRADE" or itemConfig.type == "SPAWNER_ENHANCEMENT" then
-		category = "Upgrades"
-	elseif itemConfig.type == "RESOURCE" then
-		category = "Resources"
-	elseif itemConfig.type == "CRATE" then
-		category = "Crates"
-	end
-
-	return {
-		id = itemId,
-		name = itemConfig.name,
-		category = category,
-		price = itemConfig.price,
-		currency = "coins",
-		description = itemConfig.description,
-		rarity = itemConfig.rarity,
-		rarityColor = rarityData and rarityData.color or Color3.fromRGB(150, 150, 150),
-		type = itemConfig.type,
-		stats = itemConfig.stats,
-		effects = itemConfig.effects,
-		lootPool = itemConfig.lootPool
-	}
+	return nil
 end
 
 --[[
@@ -364,26 +304,41 @@ function ShopService:GetShopData()
 end
 
 --[[
-	Add new item to shop (deprecated - use ItemConfig instead)
+	Add new item to shop
 --]]
 function ShopService:AddItem(item)
-	self._logger.Warn("AddItem is deprecated - add items to ItemConfig instead")
-	return false
+	if not item or not item.id then
+		return false
+	end
+	table.insert(self._shopData.items, item)
+	return true
 end
 
 --[[
-	Update item in shop (deprecated - update ItemConfig instead)
+	Update item in shop
 --]]
 function ShopService:UpdateItem(itemId, updates)
-	self._logger.Warn("UpdateItem is deprecated - update items in ItemConfig instead")
+	for i, item in ipairs(self._shopData.items) do
+		if item.id == itemId then
+			for key, value in pairs(updates) do
+				item[key] = value
+			end
+			return true
+		end
+	end
 	return false
 end
 
 --[[
-	Remove item from shop (deprecated - update ItemConfig instead)
+	Remove item from shop
 --]]
 function ShopService:RemoveItem(itemId)
-	self._logger.Warn("RemoveItem is deprecated - update items in ItemConfig instead")
+	for i, item in ipairs(self._shopData.items) do
+		if item.id == itemId then
+			table.remove(self._shopData.items, i)
+			return true
+		end
+	end
 	return false
 end
 
@@ -405,24 +360,24 @@ end
 	Check if item is available for purchase
 --]]
 function ShopService:IsItemAvailable(itemId)
-	local itemConfig = ItemConfig.GetItemDefinition(itemId)
-	if not itemConfig then
+	local shopItem = self:GetItem(itemId)
+	if not shopItem then
 		return false
 	end
 
-	return itemConfig.price and itemConfig.price > 0
+	return shopItem.price and shopItem.price > 0
 end
 
 --[[
 	Get item price
 --]]
 function ShopService:GetItemPrice(itemId)
-	local itemConfig = ItemConfig.GetItemDefinition(itemId)
-	if not itemConfig then
+	local shopItem = self:GetItem(itemId)
+	if not shopItem then
 		return 0
 	end
 
-	return itemConfig.price or 0
+	return shopItem.price or 0
 end
 
 --[[
@@ -612,12 +567,12 @@ end
 	Get replenish amount for a specific item based on its rarity
 --]]
 function ShopService:GetReplenishAmountForItem(itemId)
-	local itemConfig = ItemConfig.GetItemDefinition(itemId)
-	if not itemConfig then
+	local shopItem = self:GetItem(itemId)
+	if not shopItem then
 		return 1
 	end
 
-	local rarity = itemConfig.rarity
+	local rarity = shopItem.rarity
 	if rarity == "LEGENDARY" or rarity == "MYTHICAL" then
 		return math.random(1, 1) -- Very rare, only 1 at a time
 	elseif rarity == "ELITE" then
