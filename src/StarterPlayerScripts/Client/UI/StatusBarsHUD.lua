@@ -128,11 +128,19 @@ function StatusBarsHUD:Initialize()
 	-- Initial sync
 	task.spawn(function()
 		self:_syncFromHumanoid()
+		-- Initialize hunger bar with default value
+		self:_updateHunger()
 	end)
 
-	-- Request armor sync from server
-	task.delay(2, function()
+	-- Request armor and hunger sync from server (with retry logic)
+	task.delay(1, function()
 		EventManager:SendToServer("RequestArmorSync")
+		EventManager:SendToServer("RequestHungerSync")
+	end)
+
+	-- Retry sync after a longer delay in case first attempt fails
+	task.delay(3, function()
+		EventManager:SendToServer("RequestHungerSync")
 	end)
 
 	-- Start pulse effect
@@ -348,6 +356,9 @@ function StatusBarsHUD:_createHungerBar()
 		icon.Name = "Hunger_" .. i
 		self.hungerIcons[i] = icon
 	end
+
+	-- Initialize hunger bar with default value
+	self:_updateHunger()
 end
 
 --------------------------------------------------------------------------------
@@ -401,9 +412,26 @@ function StatusBarsHUD:_updateArmor()
 end
 
 function StatusBarsHUD:_updateHunger()
-	local hungerPoints = self.currentHunger / CONFIG.HUNGER_PER_ICON
+	-- Ensure hunger icons exist
+	if not self.hungerIcons or #self.hungerIcons == 0 then
+		return
+	end
 
+	-- Clamp hunger to valid range (0-20) for safety
+	local clampedHunger = math.clamp(self.currentHunger or 20, 0, 20)
+	local hungerPoints = clampedHunger / CONFIG.HUNGER_PER_ICON
+
+	-- Update each hunger icon (10 icons, each represents 2 hunger points)
 	for i = 1, CONFIG.MAX_HUNGER_ICONS do
+		if not self.hungerIcons[i] then
+			continue
+		end
+
+		-- Each icon represents 2 hunger points
+		-- Icon 1 = hunger 0-2, Icon 2 = hunger 2-4, etc.
+		-- Full icon: hungerPoints >= i (e.g., icon 1 full when hunger >= 2)
+		-- Half icon: hungerPoints >= i - 0.5 (e.g., icon 1 half when hunger >= 1)
+		-- Empty icon: hungerPoints < i - 0.5
 		if hungerPoints >= i then
 			self:_setIconState(self.hungerIcons[i], "full")
 		elseif hungerPoints >= i - 0.5 then
@@ -496,11 +524,35 @@ function StatusBarsHUD:_connectEvents()
 	if armorConn then table.insert(self.connections, armorConn) end
 
 	local hungerConn = EventManager:ConnectToServer("PlayerHungerChanged", function(data)
-		if not data then return end
-		self.currentHunger = data.hunger or self.currentHunger
-		self:_updateHunger()
+		if not data then
+			warn("StatusBarsHUD: PlayerHungerChanged event received with no data")
+			return
+		end
+
+		-- Clamp hunger to valid range (0-20) for safety
+		local hunger = data.hunger
+		local saturation = data.saturation
+
+		if hunger ~= nil then
+			local oldHunger = self.currentHunger
+			hunger = math.clamp(hunger, 0, 20)
+			self.currentHunger = hunger
+
+			-- Only update if hunger actually changed (avoid unnecessary redraws)
+			if oldHunger ~= hunger then
+				self:_updateHunger()
+			end
+		else
+			warn("StatusBarsHUD: PlayerHungerChanged event received with nil hunger value")
+		end
+
+		-- Note: saturation is not displayed in the UI, but we receive it for potential future use
 	end)
-	if hungerConn then table.insert(self.connections, hungerConn) end
+	if hungerConn then
+		table.insert(self.connections, hungerConn)
+	else
+		warn("StatusBarsHUD: Failed to connect to PlayerHungerChanged event")
+	end
 
 	local damageConn = EventManager:ConnectToServer("PlayerDamageTaken", function(data)
 		if data then

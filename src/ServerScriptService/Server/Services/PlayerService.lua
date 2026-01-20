@@ -156,7 +156,10 @@ function PlayerService:OnPlayerAdded(player)
 		dungeonData = playerData.dungeonData,
 		dailyRewards = playerData.dailyRewards,
 		settings = playerData.settings,
-		lastSave = playerData.lastSave
+		lastSave = playerData.lastSave,
+		-- Hunger/Saturation system (Minecraft-style)
+		hunger = playerData.profile.hunger or 20,
+		saturation = playerData.profile.saturation or 20
 	}
 
 	-- IMPORTANT: Create inventory structure FIRST (before loading data)
@@ -736,6 +739,62 @@ function PlayerService:GiveStarterItems(player)
 		playerName = player.Name,
 		items = starterItems
 	})
+end
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- HUNGER & SATURATION SYSTEM (Minecraft-style)
+-- ═══════════════════════════════════════════════════════════════════════════
+
+--[[
+	Get player's current hunger level
+	@param player: Player - The player
+	@return: number - Hunger value (0-20)
+]]
+function PlayerService:GetHunger(player)
+	local data = self._playerData[player.UserId]
+	if not data then
+		return 20 -- Default to full hunger
+	end
+	return data.hunger or 20
+end
+
+--[[
+	Set player's hunger level
+	@param player: Player - The player
+	@param hunger: number - New hunger value (clamped to 0-20)
+]]
+function PlayerService:SetHunger(player, hunger)
+	local data = self._playerData[player.UserId]
+	if not data then
+		return
+	end
+	data.hunger = math.clamp(hunger, 0, 20)
+end
+
+--[[
+	Get player's current saturation level
+	@param player: Player - The player
+	@return: number - Saturation value (0-20)
+]]
+function PlayerService:GetSaturation(player)
+	local data = self._playerData[player.UserId]
+	if not data then
+		return 20 -- Default to full saturation
+	end
+	return data.saturation or 20
+end
+
+--[[
+	Set player's saturation level
+	@param player: Player - The player
+	@param saturation: number - New saturation value (clamped to 0-20)
+]]
+function PlayerService:SetSaturation(player, saturation)
+	local data = self._playerData[player.UserId]
+	if not data then
+		return
+	end
+	data.saturation = math.clamp(saturation, 0, 20)
 end
 
 return PlayerService

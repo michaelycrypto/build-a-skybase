@@ -18,6 +18,7 @@ local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
 local BlockProperties = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockProperties)
 local BlockRegistry = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockRegistry)
 local TextureManager = require(ReplicatedStorage.Shared.VoxelWorld.Rendering.TextureManager)
+local ItemModelLoader = require(ReplicatedStorage.Shared.ItemModelLoader)
 
 local HeldItemRenderer = {}
 
@@ -192,6 +193,34 @@ end
 
 local function createBlockHandle(blockId, blockInfo)
 	blockInfo = blockInfo or BlockRegistry.Blocks[blockId]
+
+	-- Try to use 3D model from Tools folder first (for food items, etc.)
+	if blockInfo and blockInfo.name then
+		local modelTemplate = ItemModelLoader.GetModelTemplate(blockInfo.name, blockId)
+		if modelTemplate then
+			local part = modelTemplate:Clone()
+			part.Name = "HeldItemHandle"
+			part.Massless = true
+			part.CanCollide = false
+			part.CastShadow = false
+			part.Anchored = false
+
+			-- Always apply texture from BlockRegistry to ensure consistency
+			if part:IsA("MeshPart") and blockInfo.textures then
+				local textureName = blockInfo.textures.all or blockInfo.textures.side or blockInfo.textures.top
+				if textureName then
+					local textureId = TextureManager:GetTextureId(textureName)
+					if textureId then
+						pcall(function()
+							part.TextureID = textureId
+						end)
+					end
+				end
+			end
+
+			return part, BLOCK_GRIP
+		end
+	end
 
 	-- Check if it's a cross-shaped plant (flowers, grass, etc.)
 	local isCrossShape = blockInfo and blockInfo.crossShape

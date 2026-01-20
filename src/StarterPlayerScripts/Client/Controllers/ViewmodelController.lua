@@ -18,6 +18,7 @@ local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
 local TextureManager = require(ReplicatedStorage.Shared.VoxelWorld.Rendering.TextureManager)
 local BlockProperties = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockProperties)
 local GameConfig = require(ReplicatedStorage.Configs.GameConfig)
+local ItemModelLoader = require(ReplicatedStorage.Shared.ItemModelLoader)
 
 local player = Players.LocalPlayer
 
@@ -82,6 +83,35 @@ end
 local function buildBlockModel(itemId)
 	local def = BlockRegistry.Blocks[itemId]
 	if not def then return nil end
+
+	-- Try to use 3D model from Tools folder first (default behavior)
+	if def.name then
+		local modelTemplate = ItemModelLoader.GetModelTemplate(def.name, itemId)
+		if modelTemplate then
+			local part = modelTemplate:Clone()
+			part.Name = "Block3DModel"
+			part.Anchored = true
+			part.CanCollide = false
+			part.Massless = true
+			part.CastShadow = false
+
+			-- Always apply texture from BlockRegistry to ensure consistency
+			if part:IsA("MeshPart") and def.textures then
+				local textureName = def.textures.all or def.textures.side or def.textures.top
+				if textureName then
+					local textureId = TextureManager:GetTextureId(textureName)
+					if textureId then
+						pcall(function()
+							part.TextureID = textureId
+						end)
+					end
+				end
+			end
+
+			return part
+		end
+	end
+
     -- Specialized shapes for more accurate preview
     if def.stairShape then
         -- Create simple two-piece stair (bottom slab + top step)
@@ -434,7 +464,38 @@ end
 
 local function buildFlatBlockItem(itemId)
     local def = BlockRegistry.Blocks[itemId]
-    if not def or not def.textures then return nil end
+    if not def then return nil end
+
+    -- Try to use 3D model from Tools folder first
+    if def.name then
+        local modelTemplate = ItemModelLoader.GetModelTemplate(def.name, itemId)
+        if modelTemplate then
+            local part = modelTemplate:Clone()
+            part.Name = "Item3DModel"
+            part.Anchored = true
+            part.CanCollide = false
+            part.Massless = true
+            part.CastShadow = false
+
+            -- Always apply texture from BlockRegistry to ensure consistency
+            if part:IsA("MeshPart") and def.textures then
+                local textureName = def.textures.all or def.textures.side or def.textures.top
+                if textureName then
+                    local textureId = TextureManager:GetTextureId(textureName)
+                    if textureId then
+                        pcall(function()
+                            part.TextureID = textureId
+                        end)
+                    end
+                end
+            end
+
+            return part
+        end
+    end
+
+    -- Fallback: use flat sprite with texture
+    if not def.textures then return nil end
     local textureName = def.textures.all or def.textures.side or def.textures.top
     if not textureName then return nil end
     local textureId = TextureManager:GetTextureId(textureName)

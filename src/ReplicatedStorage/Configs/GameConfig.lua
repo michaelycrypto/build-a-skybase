@@ -138,7 +138,7 @@ local GameConfig = {
 	-- Data Store settings
 	DataStore = {
 		PlayerData = {
-			DataStoreVersion = "PlayerData_v64", -- Keep in sync with PlayerDataStoreService (updated for 6-tier system)
+			DataStoreVersion = "PlayerData_v69", -- Keep in sync with PlayerDataStoreService (updated for 6-tier system)
 			SchemaVersion = 5, -- Increment to force migrations/default resets
 			AutoSaveInterval = 300 -- 5 minutes in seconds
 		},
@@ -166,15 +166,59 @@ local GameConfig = {
 			{itemId = 115, count = 64}, -- Bluesteel Dust (for Bluesteel smelting)
 
 			-- ═══════════════════════════════════════════════════════════════
-			-- FULL BLOCKS (9x ingots each)
+			-- FOOD ITEMS (Minecraft-style consumables)
 			-- ═══════════════════════════════════════════════════════════════
-			{itemId = 116, count = 64}, -- Copper Blocks
-			{itemId = 117, count = 64}, -- Coal Blocks
-			{itemId = 118, count = 64}, -- Iron Blocks
-			{itemId = 119, count = 64}, -- Steel Blocks
-			{itemId = 120, count = 64}, -- Bluesteel Blocks
-			{itemId = 121, count = 64}, -- Tungsten Blocks
-			{itemId = 122, count = 64}, -- Titanium Blocks
+			-- Basic Foods
+			{itemId = 37, count = 32},  -- Apple
+			{itemId = 73, count = 32},  -- Carrot
+			{itemId = 72, count = 32},  -- Potato
+			{itemId = 75, count = 32},  -- Beetroot
+
+			-- Cooked Foods
+			{itemId = 348, count = 16}, -- Bread
+			{itemId = 349, count = 16}, -- Baked Potato
+			{itemId = 350, count = 16}, -- Cooked Beef
+			{itemId = 351, count = 16}, -- Cooked Porkchop
+			{itemId = 352, count = 16}, -- Cooked Chicken
+			{itemId = 353, count = 16}, -- Cooked Mutton
+			{itemId = 354, count = 16}, -- Cooked Rabbit
+			{itemId = 355, count = 16}, -- Cooked Cod
+			{itemId = 356, count = 16}, -- Cooked Salmon
+
+			-- Special Foods
+			{itemId = 366, count = 8},  -- Golden Apple
+			{itemId = 367, count = 4},  -- Enchanted Golden Apple
+			{itemId = 368, count = 16}, -- Golden Carrot
+
+			-- Soups & Stews
+			{itemId = 369, count = 4},  -- Beetroot Soup
+			{itemId = 370, count = 4},  -- Mushroom Stew
+			{itemId = 371, count = 4},  -- Rabbit Stew
+
+			-- Other Foods
+			{itemId = 372, count = 32}, -- Cookie
+			{itemId = 373, count = 32}, -- Melon Slice
+			{itemId = 374, count = 32}, -- Dried Kelp
+			{itemId = 375, count = 8},  -- Pumpkin Pie
+
+			-- Raw Meats (for cooking)
+			{itemId = 357, count = 16}, -- Beef
+			{itemId = 358, count = 16}, -- Porkchop
+			{itemId = 359, count = 16}, -- Chicken
+			{itemId = 360, count = 16}, -- Mutton
+			{itemId = 361, count = 16}, -- Rabbit
+
+			-- Raw Fish (for cooking)
+			{itemId = 362, count = 16}, -- Cod
+			{itemId = 363, count = 16}, -- Salmon
+			{itemId = 364, count = 16}, -- Tropical Fish
+			{itemId = 365, count = 8},  -- Pufferfish (dangerous!)
+
+			-- Hazardous Foods (for testing effects)
+			{itemId = 376, count = 8},  -- Rotten Flesh
+			{itemId = 377, count = 4},  -- Spider Eye
+			{itemId = 378, count = 8},  -- Poisonous Potato
+			{itemId = 379, count = 4},  -- Chorus Fruit
 
 			-- ═══════════════════════════════════════════════════════════════
 			-- CRAFTING MATERIALS

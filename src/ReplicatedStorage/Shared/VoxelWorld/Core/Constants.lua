@@ -513,8 +513,58 @@ local Constants = {
 		BEACON = 344,
 		REDSTONE_LAMP = 345,
 		LANTERN = 346,
-		SOUL_LANTERN = 347
-		-- Note: Block IDs continue from 348+
+		SOUL_LANTERN = 347,
+
+		-- ═══════════════════════════════════════════════════════════════════════
+		-- FOOD ITEMS (Minecraft-style consumables)
+		-- ═══════════════════════════════════════════════════════════════════════
+		-- Cooked Foods
+		BREAD = 348,
+		BAKED_POTATO = 349,
+		COOKED_BEEF = 350,
+		COOKED_PORKCHOP = 351,
+		COOKED_CHICKEN = 352,
+		COOKED_MUTTON = 353,
+		COOKED_RABBIT = 354,
+		COOKED_COD = 355,
+		COOKED_SALMON = 356,
+
+		-- Raw Meats
+		BEEF = 357,
+		PORKCHOP = 358,
+		CHICKEN = 359,
+		MUTTON = 360,
+		RABBIT = 361,
+
+		-- Raw Fish
+		COD = 362,
+		SALMON = 363,
+		TROPICAL_FISH = 364,
+		PUFFERFISH = 365,
+
+		-- Special Foods
+		GOLDEN_APPLE = 366,
+		ENCHANTED_GOLDEN_APPLE = 367,
+		GOLDEN_CARROT = 368,
+
+		-- Soups & Stews
+		BEETROOT_SOUP = 369,
+		MUSHROOM_STEW = 370,
+		RABBIT_STEW = 371,
+
+		-- Other Foods
+		COOKIE = 372,
+		MELON_SLICE = 373,
+		DRIED_KELP = 374,
+		PUMPKIN_PIE = 375,
+
+		-- Hazardous Foods
+		ROTTEN_FLESH = 376,
+		SPIDER_EYE = 377,
+		POISONOUS_POTATO = 378,
+		CHORUS_FRUIT = 379
+
+		-- Note: Block IDs continue from 380+
 	},
 
 	-- Mapping: Slab block ID → Full block ID (when two slabs combine)

@@ -16,6 +16,7 @@ local TextureManager = require(ReplicatedStorage.Shared.VoxelWorld.Rendering.Tex
 local GameConfig = require(ReplicatedStorage.Configs.GameConfig)
 local ItemConfig = require(ReplicatedStorage.Configs.ItemConfig)
 local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
+local ItemModelLoader = require(ReplicatedStorage.Shared.ItemModelLoader)
 local SoundManager = require(script.Parent.Parent.Managers.SoundManager)
 
 local player = Players.LocalPlayer
@@ -498,8 +499,74 @@ function DroppedItemController:CreateModel(itemId, count)
 			{x = 0, y = LAYER_OFFSET_Y * 3, z = LAYER_OFFSET_XZ},
 		}
 
-		if typeof(itemId) == "number" and ToolConfig and ToolConfig.IsTool and ToolConfig.IsTool(itemId) then
-			-- Tool: render as cross-shaped sprite like saplings, using tool image
+		-- Try to use 3D model from Tools folder first (for ALL items: tools, blocks, food, etc.)
+		local modelTemplate = nil
+		if typeof(itemId) == "number" then
+			-- Try by item name first (from BlockRegistry or ToolConfig)
+			local itemName = nil
+			if blockInfo and blockInfo.name then
+				itemName = blockInfo.name
+			elseif ToolConfig and ToolConfig.IsTool and ToolConfig.IsTool(itemId) then
+				local toolInfo = ToolConfig.GetToolInfo(itemId)
+				itemName = toolInfo and toolInfo.name
+			end
+
+			if itemName then
+				modelTemplate = ItemModelLoader.GetModelTemplate(itemName, itemId)
+			end
+
+			-- If not found by name, try by ID
+			if not modelTemplate then
+				modelTemplate = ItemModelLoader.GetModelTemplate(nil, itemId)
+			end
+		end
+
+		if modelTemplate then
+			-- Use 3D model for any item type
+			local base = modelTemplate:Clone()
+			base.Name = "Visual3DModel"
+			base.Anchored = false
+			base.CanCollide = false
+			base.CanQuery = false
+			base.CanTouch = false
+			base.Massless = true
+			base.CastShadow = true
+			base.Parent = visualFolder
+
+			-- Always apply texture from BlockRegistry/ToolConfig to ensure consistency
+			if base:IsA("MeshPart") then
+				local textureId = nil
+				if blockInfo and blockInfo.textures then
+					if blockInfo.textures.all then
+						textureId = TextureManager:GetTextureId(blockInfo.textures.all)
+					else
+						textureId = TextureManager:GetTextureForBlockFace(itemId, "side")
+					end
+				elseif ToolConfig and ToolConfig.IsTool and ToolConfig.IsTool(itemId) then
+					local toolInfo = ToolConfig.GetToolInfo(itemId)
+					textureId = toolInfo and toolInfo.image
+				end
+
+				if textureId then
+					pcall(function()
+						base.TextureID = textureId
+					end)
+				end
+			end
+
+			base.CFrame = hitbox.CFrame * CFrame.new(0, hitbox.Size.Y * 0.5, 0)
+			table.insert(visualParts, base)
+			if layerCount > 1 then
+				for i = 2, layerCount do
+					local off = layerOffsets[i]
+					local clone = base:Clone()
+					clone.CFrame = base.CFrame * CFrame.new(off.x, off.y, off.z)
+					clone.Parent = visualFolder
+					table.insert(visualParts, clone)
+				end
+			end
+		elseif typeof(itemId) == "number" and ToolConfig and ToolConfig.IsTool and ToolConfig.IsTool(itemId) then
+			-- Fallback: Tool without 3D model - render as cross-shaped sprite using tool image
 			local info = ToolConfig.GetToolInfo(itemId)
 			local base = makeSprite(info and info.image or nil)
 			base.CFrame = hitbox.CFrame * CFrame.new(0, hitbox.Size.Y * 0.5 + 0.025, 0)
@@ -514,7 +581,7 @@ function DroppedItemController:CreateModel(itemId, count)
 				end
 			end
 		elseif typeof(itemId) == "number" and blockInfo then
-			-- Numeric non-blocks: always render as a flat sprite using BlockRegistry texture
+			-- FALLBACK: Block item without 3D model - render as a flat sprite using BlockRegistry texture
 			local textureId
 			if blockInfo.textures and blockInfo.textures.all then
 				textureId = TextureManager:GetTextureId(blockInfo.textures.all)
@@ -581,6 +648,88 @@ function DroppedItemController:CreateModel(itemId, count)
 		{x = LAYER_OFFSET_XZ, y = LAYER_OFFSET_Y * 2, z = -LAYER_OFFSET_XZ},
 		{x = 0, y = LAYER_OFFSET_Y * 3, z = LAYER_OFFSET_XZ},
 	}
+
+	-- Try to use 3D model from Tools folder first (for block items, just like Viewmodel)
+	if blockInfo and blockInfo.name then
+		local modelTemplate = ItemModelLoader.GetModelTemplate(blockInfo.name, itemId)
+		if modelTemplate then
+			-- Use 3D model for block item
+			local hitbox = Instance.new("Part")
+			hitbox.Name = "Hitbox"
+			hitbox.Size = hitboxSize
+			hitbox.Transparency = 1
+			hitbox.Anchored = false
+			hitbox.CanCollide = true
+			hitbox.CanQuery = true
+			hitbox.CanTouch = true
+			pcall(function() hitbox.CollisionGroup = "DroppedItem" end)
+			hitbox.CustomPhysicalProperties = PhysicalProperties.new(0.5, 0.5, 0.3, 1, 1)
+			hitbox.Parent = model
+
+			local visualFolder = Instance.new("Folder")
+			visualFolder.Name = "Visual"
+			visualFolder.Parent = model
+
+			local visualParts = {}
+			local base = modelTemplate:Clone()
+			base.Name = "Visual3DModel"
+			base.Anchored = false
+			base.CanCollide = false
+			base.CanQuery = false
+			base.CanTouch = false
+			base.Massless = true
+			base.CastShadow = true
+			base.Parent = visualFolder
+
+			-- Apply texture from BlockRegistry to ensure consistency
+			if base:IsA("MeshPart") and blockInfo.textures then
+				local textureId = nil
+				if blockInfo.textures.all then
+					textureId = TextureManager:GetTextureId(blockInfo.textures.all)
+				else
+					textureId = TextureManager:GetTextureForBlockFace(itemId, "side")
+				end
+
+				if textureId then
+					pcall(function()
+						base.TextureID = textureId
+					end)
+				end
+			end
+
+			base.CFrame = hitbox.CFrame * CFrame.new(0, hitbox.Size.Y * 0.5, 0)
+			table.insert(visualParts, base)
+
+			-- Add additional layers for stack sizes
+			if layerCount > 1 then
+				for i = 2, layerCount do
+					local off = layerOffsets[i]
+					local clone = base:Clone()
+					clone.CFrame = base.CFrame * CFrame.new(off.x, off.y, off.z)
+					clone.Parent = visualFolder
+					table.insert(visualParts, clone)
+				end
+			end
+
+			-- Weld visual parts to hitbox
+			for _, p in ipairs(visualParts) do
+				local weld = Instance.new("WeldConstraint")
+				weld.Part0 = hitbox
+				weld.Part1 = p
+				weld.Parent = p
+			end
+
+			-- Add highlight for late-despawn flashing
+			local highlight = Instance.new("Highlight")
+			highlight.Enabled = false
+			highlight.Parent = hitbox
+
+			model.PrimaryPart = hitbox
+			model:SetAttribute("FlatVisualOnly", true)
+			model.Parent = workspace
+			return model
+		end
+	end
 
 	-- Special model for fence-type items: two posts with connecting rails
 	if blockInfo and blockInfo.fenceShape then

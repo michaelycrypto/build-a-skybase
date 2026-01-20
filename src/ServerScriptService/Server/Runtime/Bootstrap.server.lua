@@ -70,6 +70,14 @@ Injector:Bind("DamageService", script.Parent.Parent.Services.DamageService, {
 	dependencies = {"ArmorEquipService", "PlayerInventoryService", "DroppedItemService"},
 	mixins = {}
 })
+Injector:Bind("HungerService", script.Parent.Parent.Services.HungerService, {
+	dependencies = {"PlayerService", "DamageService"},
+	mixins = {}
+})
+Injector:Bind("FoodService", script.Parent.Parent.Services.FoodService, {
+	dependencies = {"PlayerInventoryService", "PlayerService", "HungerService"},
+	mixins = {}
+})
 Injector:Bind("BowService", script.Parent.Parent.Services.BowService, {
 	dependencies = {"PlayerInventoryService", "VoxelWorldService", "DamageService"},
 	mixins = {}
@@ -183,6 +191,8 @@ local lobbyWorldTeleportService = IS_LOBBY and Injector:Resolve("LobbyWorldTelep
 local worldsListService = Injector:Resolve("WorldsListService") or nil  -- Available in both lobby and player-owned worlds
 local crossPlaceTeleportService = Injector:Resolve("CrossPlaceTeleportService")
 local loadingProtectionService = Injector:Resolve("LoadingProtectionService")
+local hungerService = Injector:Resolve("HungerService")
+local foodService = Injector:Resolve("FoodService")
 
 -- Manually inject ChestStorageService into VoxelWorldService (to avoid circular dependency during init)
 if voxelWorldService and chestStorageService then
@@ -227,6 +237,8 @@ local servicesTable = {
 	WorldsListService = worldsListService,
 	CrossPlaceTeleportService = crossPlaceTeleportService,
 	LoadingProtectionService = loadingProtectionService,
+	HungerService = hungerService,
+	FoodService = foodService,
 }
 
 -- Register all events first (defines RemoteEvents with proper parameter signatures)
@@ -302,7 +314,16 @@ local clientEvents = {
 	"PlayerToolUnequipped",
 	"ToolSync",
 	-- Unified held item events (tools + blocks)
-	"PlayerHeldItemChanged"
+	"PlayerHeldItemChanged",
+	-- Hunger/Food system events
+	"PlayerHungerChanged",
+	"PlayerHealthChanged",
+	"PlayerArmorChanged",
+	"PlayerDamageTaken",
+	"PlayerDealtDamage",
+	"EatingStarted",
+	"EatingCompleted",
+	"EatingCancelled"
 }
 
 -- Register each client-bound event (this will define them in the Network module)

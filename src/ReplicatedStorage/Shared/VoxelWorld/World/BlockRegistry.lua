@@ -1664,10 +1664,11 @@ BlockRegistry.Blocks = {
 		transparent = true,
 		color = Color3.fromRGB(255, 0, 0),
 		textures = {
-			all = "rbxassetid://107743228743622"
+			all = "rbxassetid://107743228743622" -- Note: 3D model may not have texture, this is fallback
 		},
 		crossShape = true,
-		craftingMaterial = true
+		craftingMaterial = true,
+		isFood = true
 	},
 
 	-- Spruce wood set
@@ -2056,7 +2057,7 @@ BlockRegistry.Blocks = {
 		solid = false,
 		transparent = true,
 		color = Color3.fromRGB(200, 200, 200),
-		textures = { all = "rbxassetid://87026885464531" },
+		textures = { all = "rbxassetid://117288971547153" },
 		crossShape = true
 	},
 	[Constants.BlockType.WHEAT] = {
@@ -2064,7 +2065,7 @@ BlockRegistry.Blocks = {
 		solid = false,
 		transparent = true,
 		color = Color3.fromRGB(230, 210, 140),
-		textures = { all = "rbxassetid://129655035000946" },
+		textures = { all = "rbxassetid://121084143590632" },
 		crossShape = true
 	},
 	[Constants.BlockType.POTATO] = {
@@ -2072,23 +2073,25 @@ BlockRegistry.Blocks = {
 		solid = false,
 		transparent = true,
 		color = Color3.fromRGB(200, 170, 120),
-		textures = { all = "rbxassetid://102603334676051" },
-		crossShape = true
+		textures = { all = "rbxassetid://85531142626814" },
+		crossShape = true,
+		isFood = true
 	},
 	[Constants.BlockType.CARROT] = {
 		name = "Carrot",
 		solid = false,
 		transparent = true,
 		color = Color3.fromRGB(240, 150, 80),
-		textures = { all = "rbxassetid://111539451283086" },
-		crossShape = true
+		textures = { all = "rbxassetid://98545720533447" },
+		crossShape = true,
+		isFood = true
 	},
 	[Constants.BlockType.BEETROOT_SEEDS] = {
 		name = "Beetroot Seeds",
 		solid = false,
 		transparent = true,
 		color = Color3.fromRGB(200, 200, 200),
-		textures = { all = "rbxassetid://84894596040373" },
+		textures = { all = "rbxassetid://110414583156032" },
 		crossShape = true
 	},
 	[Constants.BlockType.BEETROOT] = {
@@ -2096,8 +2099,9 @@ BlockRegistry.Blocks = {
 		solid = false,
 		transparent = true,
 		color = Color3.fromRGB(200, 50, 80),
-		textures = { all = "rbxassetid://98898799067872" },
-		crossShape = true
+		textures = { all = "rbxassetid://94002656186960" },
+		crossShape = true,
+		isFood = true
 	},
 
 	-- Wheat crop stages (cross-shaped)
@@ -3502,6 +3506,312 @@ BlockRegistry.Blocks = {
 		color = Color3.fromRGB(70, 185, 186),
 		textures = { all = "rbxassetid://91918732182012" },
 		crossShape = true
+	},
+
+	-- ═══════════════════════════════════════════════════════════════════════
+	-- FOOD ITEMS (Consumables)
+	-- ═══════════════════════════════════════════════════════════════════════
+
+	-- Cooked Foods
+	[Constants.BlockType.BREAD] = {
+		name = "Bread",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(184, 135, 70),
+		textures = { all = "rbxassetid://131410059829657" },
+		crossShape = true,
+		isFood = true
+	},
+	[Constants.BlockType.BAKED_POTATO] = {
+		name = "Baked Potato",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(200, 170, 100),
+		textures = { all = "rbxassetid://103980797376124" },
+		crossShape = true,
+		isFood = true
+	},
+	[Constants.BlockType.COOKED_BEEF] = {
+		name = "Cooked Beef",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(139, 69, 19),
+		textures = { all = "rbxassetid://79908571442121" },
+		crossShape = true,
+		isFood = true
+	},
+	[Constants.BlockType.COOKED_PORKCHOP] = {
+		name = "Cooked Porkchop",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(205, 133, 63),
+		textures = { all = "rbxassetid://115315254549034" },
+		crossShape = true,
+		isFood = true
+	},
+	[Constants.BlockType.COOKED_CHICKEN] = {
+		name = "Cooked Chicken",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(210, 160, 120),
+		textures = { all = "rbxassetid://77712459701601" },
+		crossShape = true,
+		isFood = true
+	},
+	[Constants.BlockType.COOKED_MUTTON] = {
+		name = "Cooked Mutton",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(160, 82, 45),
+		textures = { all = "rbxassetid://81818298886774" },
+		crossShape = true,
+		isFood = true
+	},
+	[Constants.BlockType.COOKED_RABBIT] = {
+		name = "Cooked Rabbit",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(139, 90, 43),
+		textures = { all = "rbxassetid://79254327247389" },
+		crossShape = true,
+		isFood = true
+	},
+	[Constants.BlockType.COOKED_COD] = {
+		name = "Cooked Cod",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(210, 180, 140),
+		textures = { all = "rbxassetid://87086493517889" },
+		crossShape = true,
+		isFood = true
+	},
+	[Constants.BlockType.COOKED_SALMON] = {
+		name = "Cooked Salmon",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(233, 150, 122),
+		textures = { all = "rbxassetid://91129262883588" },
+		crossShape = true,
+		isFood = true
+	},
+
+	-- Raw Meats
+	[Constants.BlockType.BEEF] = {
+		name = "Raw Beef",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(178, 34, 34),
+		textures = { all = "rbxassetid://116785591355645" }, -- Note: 3D model may not have texture, this is fallback
+		crossShape = true,
+		isFood = true
+	},
+	[Constants.BlockType.PORKCHOP] = {
+		name = "Raw Porkchop",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(255, 182, 193),
+		textures = { all = "rbxassetid://111259766103163" },
+		crossShape = true,
+		isFood = true
+	},
+	[Constants.BlockType.CHICKEN] = {
+		name = "Raw Chicken",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(255, 218, 185),
+		textures = { all = "rbxassetid://81854557076270" },
+		crossShape = true,
+		isFood = true
+	},
+	[Constants.BlockType.MUTTON] = {
+		name = "Raw Mutton",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(205, 92, 92),
+		textures = { all = "rbxassetid://72210947514718" },
+		crossShape = true,
+		isFood = true
+	},
+	[Constants.BlockType.RABBIT] = {
+		name = "Raw Rabbit",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(210, 105, 30),
+		textures = { all = "rbxassetid://119792692352396" },
+		crossShape = true,
+		isFood = true
+	},
+
+	-- Raw Fish
+	[Constants.BlockType.COD] = {
+		name = "Raw Cod",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(159, 182, 205),
+		textures = { all = "rbxassetid://107632079015450" },
+		crossShape = true,
+		isFood = true
+	},
+	[Constants.BlockType.SALMON] = {
+		name = "Raw Salmon",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(250, 128, 114),
+		textures = { all = "rbxassetid://123844273363430" },
+		crossShape = true,
+		isFood = true
+	},
+	[Constants.BlockType.TROPICAL_FISH] = {
+		name = "Tropical Fish",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(255, 215, 0),
+		textures = { all = "rbxassetid://119955336595901" },
+		crossShape = true,
+		isFood = true
+	},
+	[Constants.BlockType.PUFFERFISH] = {
+		name = "Pufferfish",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(255, 223, 0),
+		textures = { all = "rbxassetid://92689876748346" },
+		crossShape = true,
+		isFood = true
+	},
+
+	-- Special Foods
+	[Constants.BlockType.GOLDEN_APPLE] = {
+		name = "Golden Apple",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(255, 215, 0),
+		textures = { all = "rbxassetid://135539741184385" },
+		crossShape = true,
+		isFood = true
+	},
+	[Constants.BlockType.ENCHANTED_GOLDEN_APPLE] = {
+		name = "Enchanted Golden Apple",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(255, 215, 0),
+		textures = { all = "rbxassetid://135539741184385" }, -- Same as Golden Apple
+		crossShape = true,
+		isFood = true
+	},
+	[Constants.BlockType.GOLDEN_CARROT] = {
+		name = "Golden Carrot",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(255, 215, 0),
+		textures = { all = "rbxassetid://75127823784496" },
+		crossShape = true,
+		isFood = true
+	},
+
+	-- Soups & Stews
+	[Constants.BlockType.BEETROOT_SOUP] = {
+		name = "Beetroot Soup",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(139, 0, 0),
+		textures = { all = "rbxassetid://113501364634330" },
+		crossShape = true,
+		isFood = true
+	},
+	[Constants.BlockType.MUSHROOM_STEW] = {
+		name = "Mushroom Stew",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(139, 90, 43),
+		textures = { all = "rbxassetid://124557852315892" },
+		crossShape = true,
+		isFood = true
+	},
+	[Constants.BlockType.RABBIT_STEW] = {
+		name = "Rabbit Stew",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(160, 82, 45),
+		textures = { all = "rbxassetid://74588806705549" },
+		crossShape = true,
+		isFood = true
+	},
+
+	-- Other Foods
+	[Constants.BlockType.COOKIE] = {
+		name = "Cookie",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(210, 180, 140),
+		textures = { all = "rbxassetid://91659608407481" },
+		crossShape = true,
+		isFood = true
+	},
+	[Constants.BlockType.MELON_SLICE] = {
+		name = "Melon Slice",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(255, 99, 71),
+		textures = { all = "rbxassetid://70849803699595" },
+		crossShape = true,
+		isFood = true
+	},
+	[Constants.BlockType.DRIED_KELP] = {
+		name = "Dried Kelp",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(34, 139, 34),
+		textures = { all = "rbxassetid://95948620428069" },
+		crossShape = true,
+		isFood = true
+	},
+	[Constants.BlockType.PUMPKIN_PIE] = {
+		name = "Pumpkin Pie",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(210, 105, 30),
+		textures = { all = "rbxassetid://71957804042480" },
+		crossShape = true,
+		isFood = true
+	},
+
+	-- Hazardous Foods
+	[Constants.BlockType.ROTTEN_FLESH] = {
+		name = "Rotten Flesh",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(139, 69, 19),
+		textures = { all = "rbxassetid://109761141356633" },
+		crossShape = true,
+		isFood = true
+	},
+	[Constants.BlockType.SPIDER_EYE] = {
+		name = "Spider Eye",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(139, 0, 0),
+		textures = { all = "rbxassetid://91726041904711" },
+		crossShape = true,
+		isFood = true
+	},
+	[Constants.BlockType.POISONOUS_POTATO] = {
+		name = "Poisonous Potato",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(154, 205, 50),
+		textures = { all = "rbxassetid://82437405960125" },
+		crossShape = true,
+		isFood = true
+	},
+	[Constants.BlockType.CHORUS_FRUIT] = {
+		name = "Chorus Fruit",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(186, 85, 211),
+		textures = { all = "rbxassetid://76192554744450" },
+		crossShape = true,
+		isFood = true
 	}
 }
 

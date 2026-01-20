@@ -99,6 +99,12 @@ local Manifest = {
 		UnequipArmor = {"any"}, -- {slot: string} - Unequip armor from slot
 		ArmorSlotClick = {"any"}, -- {slot: string, cursorItemId: number?} - Click on armor slot with optional cursor item
 		RequestArmorSync = {}, -- Request server to resend current armor state
+
+		-- Food/Eating system
+		RequestStartEating = {"any"}, -- {foodId: number, slotIndex: number?} - Request to start eating food
+		RequestCompleteEating = {"any"}, -- {foodId: number} - Request to complete eating
+		RequestCancelEating = {}, -- Cancel eating
+		RequestHungerSync = {}, -- Request server to resend current hunger/saturation state
 	},
 
 	-- Server -> Client events and their parameter type signatures
@@ -203,7 +209,12 @@ local Manifest = {
 		FurnaceOpened = {"any"}, -- {x, y, z, recipes} - Furnace opened with available smelting recipes
 		SmeltStarted = {"any"}, -- {smeltConfig} or {error} - Smelting started with config
 		SmeltCompleted = {"any"}, -- {success, output, coalUsed, stats} - Smelting completed
-		SmeltCancelled = {"any"} -- {refunded} - Smelting cancelled, materials refunded
+		SmeltCancelled = {"any"}, -- {refunded} - Smelting cancelled, materials refunded
+
+		-- Food/Eating events
+		EatingStarted = {"any"}, -- {foodId: number, duration: number} or {error: string} - Eating started
+		EatingCompleted = {"any"}, -- {hunger: number, saturation: number, effects: table} or {error: string} - Eating completed
+		EatingCancelled = {"any"} -- {} - Eating was cancelled
 	}
 }
 

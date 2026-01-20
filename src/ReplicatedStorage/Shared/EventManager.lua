@@ -1284,6 +1284,16 @@ function EventManager:CreateServerEventConfig(services)
 				end
 			end
 		},
+		{
+			name = "RequestHungerSync",
+			handler = function(player)
+				if services.HungerService then
+					if services.HungerService.SyncHungerToClient then
+						services.HungerService:SyncHungerToClient(player)
+					end
+				end
+			end
+		},
 	}
 
 	return config
