@@ -30,21 +30,55 @@ local ChestUI = {}
 local BOLD_FONT = GameConfig.UI_SETTINGS.typography.fonts.bold
 ChestUI.__index = ChestUI
 
--- Configuration (matching VoxelInventoryPanel's compact design)
+-- Load Upheaval font (matching WorldsPanel)
+local FontBinder = require(ReplicatedStorage.Shared.UI.FontBinder)
+local UpheavalFont = require(ReplicatedStorage.Fonts["Upheaval BRK"])
+local _ = UpheavalFont -- Ensure font module loads
+local CUSTOM_FONT_NAME = "Upheaval BRK"
+
+-- Configuration (matching WorldsPanel styling exactly)
 local CHEST_CONFIG = {
+	-- Grid dimensions
 	COLUMNS = 9,
 	CHEST_ROWS = 3, -- 27 chest slots
 	INVENTORY_ROWS = 3, -- 27 inventory slots
-	SLOT_SIZE = 44,        -- Matching inventory
-	SLOT_SPACING = 3,      -- Matching inventory
-	PADDING = 6,           -- Ultra-minimal padding
-	SECTION_SPACING = 8,   -- Minimal section spacing
+	SLOT_SIZE = 56,        -- Matching inventory slot size
+	SLOT_SPACING = 5,      -- Matching inventory slot spacing
+	PADDING = 12,          -- Matching inventory padding
+	SECTION_SPACING = 8,   -- Section spacing
+	LABEL_HEIGHT = 22,
+	LABEL_SPACING = 8,
+	
+	-- Panel structure (matching WorldsPanel)
+	HEADER_HEIGHT = 54,
+	SHADOW_HEIGHT = 18,
 
-	-- Colors (matching inventory)
-	BG_COLOR = Color3.fromRGB(35, 35, 35),
-	SLOT_COLOR = Color3.fromRGB(45, 45, 45),
-	BORDER_COLOR = Color3.fromRGB(60, 60, 60),
+	-- Colors (matching WorldsPanel exactly)
+	PANEL_BG_COLOR = Color3.fromRGB(58, 58, 58),  -- Panel background
+	SLOT_BG_COLOR = Color3.fromRGB(31, 31, 31),   -- Slot background
+	SLOT_BG_TRANSPARENCY = 0.4,  -- 60% opacity
+	SHADOW_COLOR = Color3.fromRGB(43, 43, 43),
+	
+	-- Border colors (matching WorldsPanel)
+	COLUMN_BORDER_COLOR = Color3.fromRGB(77, 77, 77),  -- Column/panel border
+	COLUMN_BORDER_THICKNESS = 3,
+	SLOT_BORDER_COLOR = Color3.fromRGB(35, 35, 35),   -- Slot border
+	SLOT_BORDER_THICKNESS = 2,
+	
+	-- Hover state
 	HOVER_COLOR = Color3.fromRGB(80, 80, 80),
+	
+	-- Corner radius
+	CORNER_RADIUS = 8,
+	SLOT_CORNER_RADIUS = 4,
+	
+	-- Background image (matching inventory slots)
+	BACKGROUND_IMAGE = "rbxassetid://82824299358542",
+	BACKGROUND_IMAGE_TRANSPARENCY = 0.6,
+	
+	-- Text colors
+	TEXT_PRIMARY = Color3.fromRGB(255, 255, 255),
+	TEXT_MUTED = Color3.fromRGB(140, 140, 140),
 }
 
 -- Helper function to get display name for any item type
@@ -115,12 +149,12 @@ function ChestUI.new(inventoryManager)
 end
 
 function ChestUI:Initialize()
-	-- Create ScreenGui for chest UI
+	-- Create ScreenGui for chest UI (matching WorldsPanel pattern)
 	self.gui = Instance.new("ScreenGui")
 	self.gui.Name = "ChestUI"
 	self.gui.ResetOnSpawn = false
-	self.gui.DisplayOrder = 150  -- Above inventory (100), below tooltips (1000)
-	self.gui.IgnoreGuiInset = true
+	self.gui.DisplayOrder = 150
+	self.gui.IgnoreGuiInset = false  -- Matching WorldsPanel
 	self.gui.Enabled = false
 	self.gui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
 
@@ -129,15 +163,11 @@ function ChestUI:Initialize()
 	self.cursorGui.Name = "ChestUICursor"
 	self.cursorGui.ResetOnSpawn = false
 	self.cursorGui.DisplayOrder = 2000  -- Always on top (shared with inventory cursor)
-	self.cursorGui.IgnoreGuiInset = true
+	self.cursorGui.IgnoreGuiInset = true  -- Cursor needs to ignore inset for proper positioning
 	self.cursorGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
 
-	-- Add responsive scaling (100% = original size)
-	local uiScale = Instance.new("UIScale")
-	uiScale.Name = "ResponsiveScale"
-	uiScale:SetAttribute("base_resolution", Vector2.new(1920, 1080)) -- 1920x1080 for 100% original size
-	uiScale.Parent = self.gui
-	CollectionService:AddTag(uiScale, "scale_component")
+	-- Apply responsive scaling (matching WorldsPanel pattern)
+	self:EnsureResponsiveScale(self.gui)
 
 	-- Create hover item name label (top left of screen)
 	self:CreateHoverItemLabel()
@@ -161,6 +191,68 @@ function ChestUI:Initialize()
 	})
 
 	return self
+end
+
+function ChestUI:EnsureResponsiveScale(contentFrame)
+	if self.uiScale and self.uiScale.Parent then
+		return self.uiScale
+	end
+	
+	if not contentFrame then
+		return nil
+	end
+	
+	local target = contentFrame.Parent
+	if not (target and target:IsA("GuiBase2d")) then
+		target = contentFrame
+	end
+	
+	self.scaleTarget = target
+	
+	local existing = target:FindFirstChild("ResponsiveScale")
+	if existing and existing:IsA("UIScale") then
+		self.uiScale = existing
+		if not CollectionService:HasTag(existing, "scale_component") then
+			CollectionService:AddTag(existing, "scale_component")
+		end
+		return existing
+	end
+	
+	local uiScale = Instance.new("UIScale")
+	uiScale.Name = "ResponsiveScale"
+	uiScale:SetAttribute("base_resolution", Vector2.new(1920, 1080))
+	uiScale:SetAttribute("min_scale", 0.6)
+	uiScale.Parent = target
+	CollectionService:AddTag(uiScale, "scale_component")
+	self.uiScale = uiScale
+	
+	return uiScale
+end
+
+function ChestUI:RegisterScrollingLayout(layout)
+	if not layout or not layout:IsA("UIListLayout") then
+		return
+	end
+	
+	if not (self.uiScale and self.uiScale.Parent) then
+		self:EnsureResponsiveScale(self.scaleTarget or self.gui or layout.Parent)
+	end
+	
+	if not (self.uiScale and self.uiScale.Parent) then
+		return
+	end
+	
+	if not CollectionService:HasTag(layout, "scrolling_frame_layout_component") then
+		CollectionService:AddTag(layout, "scrolling_frame_layout_component")
+	end
+	
+	local referral = layout:FindFirstChild("scale_component_referral")
+	if not referral then
+		referral = Instance.new("ObjectValue")
+		referral.Name = "scale_component_referral"
+		referral.Parent = layout
+	end
+	referral.Value = self.uiScale
 end
 
 function ChestUI:CreateHoverItemLabel()
@@ -223,6 +315,8 @@ function ChestUI:HideHoverItemName()
 end
 
 function ChestUI:CreatePanel()
+	-- Calculate dimensions based on slot size
+	local borderThickness = CHEST_CONFIG.SLOT_BORDER_THICKNESS
 	local slotWidth = CHEST_CONFIG.SLOT_SIZE * CHEST_CONFIG.COLUMNS +
 	                  CHEST_CONFIG.SLOT_SPACING * (CHEST_CONFIG.COLUMNS - 1)
 	local chestHeight = CHEST_CONFIG.SLOT_SIZE * CHEST_CONFIG.CHEST_ROWS +
@@ -230,164 +324,94 @@ function ChestUI:CreatePanel()
 	local invHeight = CHEST_CONFIG.SLOT_SIZE * CHEST_CONFIG.INVENTORY_ROWS +
 	                  CHEST_CONFIG.SLOT_SPACING * (CHEST_CONFIG.INVENTORY_ROWS - 1)
 	local hotbarHeight = CHEST_CONFIG.SLOT_SIZE
-
-	-- Calculate proper height accounting for all elements (ultra-compact layout):
-	-- Top Padding (30) + Chest Label (16) + Chest + Spacing + Inv Label (16) + Inventory + Spacing + Hotbar Label (16) + Hotbar + Bottom Padding (10)
-	-- Note: Title is positioned above the panel with -0.5 offset, so not included in panel height
-	local totalHeight = 30 + 16 + chestHeight + CHEST_CONFIG.SECTION_SPACING + 16 + invHeight + CHEST_CONFIG.SECTION_SPACING + 16 + hotbarHeight + 10
-
-	-- Background overlay
-	local overlay = Instance.new("Frame")
-	overlay.Name = "Overlay"
-	overlay.Size = UDim2.new(1, 0, 1, 0)
-	overlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-	overlay.BackgroundTransparency = 0.5
-	overlay.BorderSizePixel = 0
-	overlay.Parent = self.gui
-
-	-- Main panel
+	
+	-- Calculate body height (panel content area)
+	local labelHeight = CHEST_CONFIG.LABEL_HEIGHT
+	local labelSpacing = CHEST_CONFIG.LABEL_SPACING
+	local bodyHeight = CHEST_CONFIG.PADDING + labelHeight + labelSpacing + chestHeight + CHEST_CONFIG.SECTION_SPACING + labelHeight + labelSpacing + invHeight + CHEST_CONFIG.SECTION_SPACING + labelHeight + labelSpacing + hotbarHeight + CHEST_CONFIG.PADDING
+	local panelWidth = slotWidth + CHEST_CONFIG.PADDING * 2
+	
+	-- Total container height (header + body - matching WorldsPanel)
+	local totalHeight = CHEST_CONFIG.HEADER_HEIGHT + bodyHeight
+	
+	-- Container frame (centers everything, transparent - matching WorldsPanel)
+	local container = Instance.new("Frame")
+	container.Name = "ChestContainer"
+	container.Size = UDim2.new(0, panelWidth, 0, totalHeight)
+	container.Position = UDim2.new(0.5, 0, 0.5, -CHEST_CONFIG.HEADER_HEIGHT)  -- Vertical offset matching WorldsPanel
+	container.AnchorPoint = Vector2.new(0.5, 0.5)
+	container.BackgroundTransparency = 1
+	container.BorderSizePixel = 0
+	container.Parent = self.gui
+	self.container = container
+	
+	-- Header (OUTSIDE panel, matching WorldsPanel)
+	self:CreateHeader(container, panelWidth)
+	
+	-- Body frame (transparent container for panel + shadow - matching WorldsPanel)
+	local bodyFrame = Instance.new("Frame")
+	bodyFrame.Name = "Body"
+	bodyFrame.Size = UDim2.new(0, panelWidth, 0, bodyHeight)
+	bodyFrame.Position = UDim2.new(0, 0, 0, CHEST_CONFIG.HEADER_HEIGHT)
+	bodyFrame.BackgroundTransparency = 1
+	bodyFrame.Parent = container
+	
+	-- Main panel (with background color - matching WorldsPanel ContentPanel)
 	self.panel = Instance.new("Frame")
 	self.panel.Name = "ChestPanel"
-	self.panel.Size = UDim2.new(0, slotWidth + CHEST_CONFIG.PADDING * 2, 0, totalHeight)
-	self.panel.Position = UDim2.new(0.5, 0, 0.5, 0)
-	self.panel.AnchorPoint = Vector2.new(0.5, 0.5)
-	self.panel.BackgroundColor3 = CHEST_CONFIG.BG_COLOR
+	self.panel.Size = UDim2.new(0, panelWidth, 0, bodyHeight)
+	self.panel.Position = UDim2.new(0, 0, 0, 0)
+	self.panel.BackgroundColor3 = CHEST_CONFIG.PANEL_BG_COLOR
 	self.panel.BorderSizePixel = 0
-	self.panel.Parent = self.gui
+	self.panel.ZIndex = 1
+	self.panel.Parent = bodyFrame
 
 	-- Rounded corners
 	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 8)
+	corner.CornerRadius = UDim.new(0, CHEST_CONFIG.CORNER_RADIUS)
 	corner.Parent = self.panel
 
-	-- Border
+	-- Shadow below panel (matching WorldsPanel)
+	local shadow = Instance.new("Frame")
+	shadow.Name = "Shadow"
+	shadow.Size = UDim2.new(0, panelWidth, 0, CHEST_CONFIG.SHADOW_HEIGHT)
+	shadow.AnchorPoint = Vector2.new(0, 0.5)
+	shadow.Position = UDim2.new(0, 0, 0, bodyHeight)
+	shadow.BackgroundColor3 = CHEST_CONFIG.SHADOW_COLOR
+	shadow.BorderSizePixel = 0
+	shadow.ZIndex = 0
+	shadow.Parent = bodyFrame
+	
+	local shadowCorner = Instance.new("UICorner")
+	shadowCorner.CornerRadius = UDim.new(0, CHEST_CONFIG.CORNER_RADIUS)
+	shadowCorner.Parent = shadow
+
+	-- Border (matching WorldsPanel column border)
 	local stroke = Instance.new("UIStroke")
-	stroke.Color = CHEST_CONFIG.BORDER_COLOR
-	stroke.Thickness = 3
+	stroke.Color = CHEST_CONFIG.COLUMN_BORDER_COLOR
+	stroke.Thickness = CHEST_CONFIG.COLUMN_BORDER_THICKNESS
+	stroke.Transparency = 0
+	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	stroke.Parent = self.panel
 
-	-- Header frame (transparent, for title positioning)
-	local headerFrame = Instance.new("Frame")
-	headerFrame.Name = "Header"
-	headerFrame.Size = UDim2.new(1, 0, 0, 1)
-	headerFrame.BackgroundTransparency = 1
-	headerFrame.BorderSizePixel = 0
-	headerFrame.Parent = self.panel
-
-	-- Title container (positioned above the panel like SettingsPanel)
-	local titleContainer = Instance.new("Frame")
-	titleContainer.Name = "TitleContainer"
-	titleContainer.Size = UDim2.new(1, -64 - 16, 1, 0) -- Reserve space for close button
-	titleContainer.Position = UDim2.new(0, 0, -0.5, 0) -- 50% offset above the panel
-	titleContainer.BackgroundTransparency = 1
-	titleContainer.Parent = headerFrame
-
-	-- Title container padding
-	local titlePadding = Instance.new("UIPadding")
-	titlePadding.PaddingLeft = UDim.new(0, 6)
-	titlePadding.PaddingRight = UDim.new(0, 16)
-	titlePadding.Parent = titleContainer
-
-	-- Horizontal layout for title
-	local titleLayout = Instance.new("UIListLayout")
-	titleLayout.FillDirection = Enum.FillDirection.Horizontal
-	titleLayout.SortOrder = Enum.SortOrder.LayoutOrder
-	titleLayout.VerticalAlignment = Enum.VerticalAlignment.Center
-	titleLayout.Padding = UDim.new(0, 12)
-	titleLayout.Parent = titleContainer
-
-	-- Chest icon
-	local titleIcon = IconManager:CreateIcon(titleContainer, "Chest", "Chest1", {
-		size = 36,
-		position = UDim2.new(0, 0, 0.5, 0),
-		anchorPoint = Vector2.new(0, 0.5)
-	})
-	titleIcon.LayoutOrder = 1
-
-	-- Title text (styled like SettingsPanel, but smaller)
-	local title = Instance.new("TextLabel")
-	title.Name = "Title"
-	title.Size = UDim2.new(0, 200, 1, 0)
-	title.BackgroundTransparency = 1
-	title.RichText = true
-	title.Text = "<b><i>Chest</i></b>"
-	title.TextColor3 = Color3.fromRGB(255, 255, 255)
-	title.TextSize = 36
-	title.Font = BOLD_FONT -- Italic bold
-	title.TextXAlignment = Enum.TextXAlignment.Left
-	title.LayoutOrder = 2
-	title.Parent = titleContainer
-
-	-- Title stroke
-	local titleStroke = Instance.new("UIStroke")
-	titleStroke.Color = Color3.fromRGB(0, 0, 0)
-	titleStroke.Thickness = 2
-	titleStroke.Parent = title
-
-	-- Close button (same style as SettingsPanel) - positioned to stick out of top right corner
-	local closeIcon = IconManager:CreateIcon(headerFrame, "UI", "X", {
-		size = UDim2.new(0, 40, 0, 40),
-		position = UDim2.new(1, 2, 0, -2),  -- Reduced offset to account for 3px border
-		anchorPoint = Vector2.new(0.5, 0.5)
-	})
-
-	-- Convert to ImageButton for interaction
-	local closeBtn = Instance.new("ImageButton")
-	closeBtn.Name = "CloseButton"
-	closeBtn.Size = closeIcon.Size
-	closeBtn.Position = closeIcon.Position
-	closeBtn.AnchorPoint = closeIcon.AnchorPoint
-	closeBtn.BackgroundTransparency = 1
-	closeBtn.Image = closeIcon.Image
-	closeBtn.ScaleType = closeIcon.ScaleType
-	closeBtn.Parent = headerFrame
-
-	-- Add rounded corners
-	local closeButtonCorner = Instance.new("UICorner")
-	closeButtonCorner.CornerRadius = UDim.new(0, 4)
-	closeButtonCorner.Parent = closeBtn
-
-	-- Add rotation animation on mouse enter/leave
-	local rotationTweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-
-	closeBtn.MouseEnter:Connect(function()
-		local rotationTween = TweenService:Create(closeBtn, rotationTweenInfo, {
-			Rotation = 90
-		})
-		rotationTween:Play()
-	end)
-
-	closeBtn.MouseLeave:Connect(function()
-		local rotationTween = TweenService:Create(closeBtn, rotationTweenInfo, {
-			Rotation = 0
-		})
-		rotationTween:Play()
-	end)
-
-	closeBtn.MouseButton1Click:Connect(function()
-		self:Close()
-	end)
-
-	-- Remove original icon
-	closeIcon:Destroy()
-
-	local yOffset = 30  -- Top padding for whitespace below header
+	-- Content starts inside panel
+	local yOffset = CHEST_CONFIG.PADDING
 
 	-- === CHEST SECTION ===
-	-- Chest label (grey, caps, no icon)
+	-- Chest label (matching WorldsPanel label style)
 	local chestLabel = Instance.new("TextLabel")
 	chestLabel.Name = "ChestLabel"
-	chestLabel.Size = UDim2.new(1, -12, 0, 14)
+	chestLabel.Size = UDim2.new(1, -CHEST_CONFIG.PADDING * 2, 0, CHEST_CONFIG.LABEL_HEIGHT)
 	chestLabel.Position = UDim2.new(0, CHEST_CONFIG.PADDING, 0, yOffset)
 	chestLabel.BackgroundTransparency = 1
-	chestLabel.Font = Enum.Font.BuilderSansBold
-	chestLabel.TextSize = 11
-	chestLabel.TextColor3 = Color3.fromRGB(140, 140, 140)
+	chestLabel.Font = BOLD_FONT
+	chestLabel.TextSize = 14
+	chestLabel.TextColor3 = CHEST_CONFIG.TEXT_MUTED
 	chestLabel.Text = "CHEST"
 	chestLabel.TextXAlignment = Enum.TextXAlignment.Left
 	chestLabel.Parent = self.panel
 
-	yOffset = yOffset + 16
+	yOffset = yOffset + CHEST_CONFIG.LABEL_HEIGHT + CHEST_CONFIG.LABEL_SPACING
 
 	-- Create chest slots (3 rows of 9)
 	for row = 0, CHEST_CONFIG.CHEST_ROWS - 1 do
@@ -402,20 +426,20 @@ function ChestUI:CreatePanel()
 	yOffset = yOffset + chestHeight + CHEST_CONFIG.SECTION_SPACING
 
 	-- === INVENTORY SECTION ===
-	-- Inventory label (grey, caps, no icon)
+	-- Inventory label (matching WorldsPanel label style)
 	local invLabel = Instance.new("TextLabel")
 	invLabel.Name = "InvLabel"
-	invLabel.Size = UDim2.new(1, -12, 0, 14)
+	invLabel.Size = UDim2.new(1, -CHEST_CONFIG.PADDING * 2, 0, CHEST_CONFIG.LABEL_HEIGHT)
 	invLabel.Position = UDim2.new(0, CHEST_CONFIG.PADDING, 0, yOffset)
 	invLabel.BackgroundTransparency = 1
-	invLabel.Font = Enum.Font.BuilderSansBold
-	invLabel.TextSize = 11
-	invLabel.TextColor3 = Color3.fromRGB(140, 140, 140)
+	invLabel.Font = BOLD_FONT
+	invLabel.TextSize = 14
+	invLabel.TextColor3 = CHEST_CONFIG.TEXT_MUTED
 	invLabel.Text = "INVENTORY"
 	invLabel.TextXAlignment = Enum.TextXAlignment.Left
 	invLabel.Parent = self.panel
 
-	yOffset = yOffset + 16
+	yOffset = yOffset + CHEST_CONFIG.LABEL_HEIGHT + CHEST_CONFIG.LABEL_SPACING
 
 	-- Create inventory slots (3 rows of 9)
 	for row = 0, CHEST_CONFIG.INVENTORY_ROWS - 1 do
@@ -430,20 +454,20 @@ function ChestUI:CreatePanel()
 	yOffset = yOffset + invHeight + CHEST_CONFIG.SECTION_SPACING
 
 	-- === HOTBAR SECTION ===
-	-- Hotbar label (grey, caps, no icon)
+	-- Hotbar label (matching WorldsPanel label style)
 	local hotbarLabel = Instance.new("TextLabel")
 	hotbarLabel.Name = "HotbarLabel"
-	hotbarLabel.Size = UDim2.new(1, -12, 0, 14)
+	hotbarLabel.Size = UDim2.new(1, -CHEST_CONFIG.PADDING * 2, 0, CHEST_CONFIG.LABEL_HEIGHT)
 	hotbarLabel.Position = UDim2.new(0, CHEST_CONFIG.PADDING, 0, yOffset)
 	hotbarLabel.BackgroundTransparency = 1
-	hotbarLabel.Font = Enum.Font.BuilderSansBold
-	hotbarLabel.TextSize = 11
-	hotbarLabel.TextColor3 = Color3.fromRGB(140, 140, 140)
+	hotbarLabel.Font = BOLD_FONT
+	hotbarLabel.TextSize = 14
+	hotbarLabel.TextColor3 = CHEST_CONFIG.TEXT_MUTED
 	hotbarLabel.Text = "HOTBAR"
 	hotbarLabel.TextXAlignment = Enum.TextXAlignment.Left
 	hotbarLabel.Parent = self.panel
 
-	yOffset = yOffset + 16
+	yOffset = yOffset + CHEST_CONFIG.LABEL_HEIGHT + CHEST_CONFIG.LABEL_SPACING
 
 	-- Create hotbar slots (1 row of 9) - visual reference only, data managed by inventoryManager
 	for col = 0, CHEST_CONFIG.COLUMNS - 1 do
@@ -453,26 +477,103 @@ function ChestUI:CreatePanel()
 	end
 end
 
+function ChestUI:CreateHeader(parent, panelWidth)
+	-- Header frame (transparent, floats above panel - matching WorldsPanel)
+	local headerFrame = Instance.new("Frame")
+	headerFrame.Name = "Header"
+	headerFrame.Size = UDim2.new(0, panelWidth, 0, CHEST_CONFIG.HEADER_HEIGHT)
+	headerFrame.BackgroundTransparency = 1
+	headerFrame.Parent = parent
+	
+	-- Title (Upheaval font, size 54 - matching WorldsPanel)
+	local title = Instance.new("TextLabel")
+	title.Name = "Title"
+	title.Size = UDim2.new(1, -50, 1, 0)
+	title.BackgroundTransparency = 1
+	title.Text = "CHEST"
+	title.TextColor3 = CHEST_CONFIG.TEXT_PRIMARY
+	title.Font = Enum.Font.Code
+	title.TextSize = 54
+	title.TextXAlignment = Enum.TextXAlignment.Left
+	title.TextYAlignment = Enum.TextYAlignment.Center
+	title.Parent = headerFrame
+	FontBinder.apply(title, CUSTOM_FONT_NAME)
+	
+	-- Close button (top-right corner - matching WorldsPanel)
+	local closeIcon = IconManager:CreateIcon(headerFrame, "UI", "X", {
+		size = UDim2.new(0, 44, 0, 44),
+		position = UDim2.new(1, 0, 0, 0),
+		anchorPoint = Vector2.new(1, 0)
+	})
+	
+	local closeBtn = Instance.new("ImageButton")
+	closeBtn.Name = "CloseButton"
+	closeBtn.Size = closeIcon.Size
+	closeBtn.Position = closeIcon.Position
+	closeBtn.AnchorPoint = closeIcon.AnchorPoint
+	closeBtn.BackgroundTransparency = 1
+	closeBtn.Image = closeIcon.Image
+	closeBtn.ScaleType = closeIcon.ScaleType
+	closeBtn.Parent = headerFrame
+	closeIcon:Destroy()
+	
+	-- Close button animation (matching WorldsPanel)
+	local rotateInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+	closeBtn.MouseEnter:Connect(function()
+		TweenService:Create(closeBtn, rotateInfo, {Rotation = 90}):Play()
+	end)
+	closeBtn.MouseLeave:Connect(function()
+		TweenService:Create(closeBtn, rotateInfo, {Rotation = 0}):Play()
+	end)
+	closeBtn.MouseButton1Click:Connect(function()
+		self:Close()
+	end)
+end
+
 function ChestUI:CreateChestSlot(index, x, y)
 	local slot = Instance.new("TextButton")
 	slot.Name = "ChestSlot" .. index
 	slot.Size = UDim2.new(0, CHEST_CONFIG.SLOT_SIZE, 0, CHEST_CONFIG.SLOT_SIZE)
 	slot.Position = UDim2.new(0, x, 0, y)
-	slot.BackgroundColor3 = CHEST_CONFIG.SLOT_COLOR
+	slot.BackgroundColor3 = CHEST_CONFIG.SLOT_BG_COLOR
+	slot.BackgroundTransparency = CHEST_CONFIG.SLOT_BG_TRANSPARENCY
 	slot.BorderSizePixel = 0
 	slot.Text = ""
 	slot.AutoButtonColor = false
 	slot.Parent = self.panel
 
 	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 4)
+	corner.CornerRadius = UDim.new(0, CHEST_CONFIG.SLOT_CORNER_RADIUS)
 	corner.Parent = slot
 
+	-- Background image (matching inventory slots)
+	local bgImage = Instance.new("ImageLabel")
+	bgImage.Name = "BackgroundImage"
+	bgImage.Size = UDim2.new(1, 0, 1, 0)
+	bgImage.Position = UDim2.new(0, 0, 0, 0)
+	bgImage.BackgroundTransparency = 1
+	bgImage.Image = CHEST_CONFIG.BACKGROUND_IMAGE
+	bgImage.ImageTransparency = CHEST_CONFIG.BACKGROUND_IMAGE_TRANSPARENCY
+	bgImage.ScaleType = Enum.ScaleType.Fit
+	bgImage.ZIndex = 1
+	bgImage.Parent = slot
+
+	-- Border (matching inventory slot border)
+	local border = Instance.new("UIStroke")
+	border.Name = "Border"
+	border.Color = CHEST_CONFIG.SLOT_BORDER_COLOR
+	border.Thickness = CHEST_CONFIG.SLOT_BORDER_THICKNESS
+	border.Transparency = 0
+	border.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	border.Parent = slot
+
+	-- Hover border
 	local hoverBorder = Instance.new("UIStroke")
 	hoverBorder.Name = "HoverBorder"
 	hoverBorder.Color = Color3.fromRGB(255, 255, 255)
 	hoverBorder.Thickness = 2
 	hoverBorder.Transparency = 1
+	hoverBorder.ZIndex = 2
 	hoverBorder.Parent = slot
 
 	local iconContainer = Instance.new("Frame")
@@ -480,7 +581,7 @@ function ChestUI:CreateChestSlot(index, x, y)
 	iconContainer.Size = UDim2.new(1, 0, 1, 0)
 	iconContainer.Position = UDim2.new(0, 0, 0, 0)
 	iconContainer.BackgroundTransparency = 1
-	iconContainer.ZIndex = 2
+	iconContainer.ZIndex = 3
 	iconContainer.Parent = slot
 
 	local countLabel = Instance.new("TextLabel")
@@ -490,12 +591,12 @@ function ChestUI:CreateChestSlot(index, x, y)
 	countLabel.AnchorPoint = Vector2.new(1, 1)
 	countLabel.BackgroundTransparency = 1
 	countLabel.Font = BOLD_FONT
-	countLabel.TextSize = 12
+	countLabel.TextSize = 14
 	countLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	countLabel.TextStrokeTransparency = 0.3
 	countLabel.Text = ""
 	countLabel.TextXAlignment = Enum.TextXAlignment.Right
-	countLabel.ZIndex = 4
+	countLabel.ZIndex = 5
 	countLabel.Parent = slot
 
 	self.chestSlotFrames[index] = {
@@ -518,7 +619,7 @@ function ChestUI:CreateChestSlot(index, x, y)
 
 	slot.MouseLeave:Connect(function()
 		hoverBorder.Transparency = 1
-		slot.BackgroundColor3 = CHEST_CONFIG.SLOT_COLOR
+		slot.BackgroundColor3 = CHEST_CONFIG.SLOT_BG_COLOR
 		-- Hide item name
 		self:HideHoverItemName()
 	end)
@@ -540,21 +641,45 @@ function ChestUI:CreateInventorySlot(index, x, y)
 	slot.Name = "InventorySlot" .. index
 	slot.Size = UDim2.new(0, CHEST_CONFIG.SLOT_SIZE, 0, CHEST_CONFIG.SLOT_SIZE)
 	slot.Position = UDim2.new(0, x, 0, y)
-	slot.BackgroundColor3 = CHEST_CONFIG.SLOT_COLOR
+	slot.BackgroundColor3 = CHEST_CONFIG.SLOT_BG_COLOR
+	slot.BackgroundTransparency = CHEST_CONFIG.SLOT_BG_TRANSPARENCY
 	slot.BorderSizePixel = 0
 	slot.Text = ""
 	slot.AutoButtonColor = false
 	slot.Parent = self.panel
 
 	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 4)
+	corner.CornerRadius = UDim.new(0, CHEST_CONFIG.SLOT_CORNER_RADIUS)
 	corner.Parent = slot
 
+	-- Background image (matching inventory slots)
+	local bgImage = Instance.new("ImageLabel")
+	bgImage.Name = "BackgroundImage"
+	bgImage.Size = UDim2.new(1, 0, 1, 0)
+	bgImage.Position = UDim2.new(0, 0, 0, 0)
+	bgImage.BackgroundTransparency = 1
+	bgImage.Image = CHEST_CONFIG.BACKGROUND_IMAGE
+	bgImage.ImageTransparency = CHEST_CONFIG.BACKGROUND_IMAGE_TRANSPARENCY
+	bgImage.ScaleType = Enum.ScaleType.Fit
+	bgImage.ZIndex = 1
+	bgImage.Parent = slot
+
+	-- Border (matching inventory slot border)
+	local border = Instance.new("UIStroke")
+	border.Name = "Border"
+	border.Color = CHEST_CONFIG.SLOT_BORDER_COLOR
+	border.Thickness = CHEST_CONFIG.SLOT_BORDER_THICKNESS
+	border.Transparency = 0
+	border.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	border.Parent = slot
+
+	-- Hover border
 	local hoverBorder = Instance.new("UIStroke")
 	hoverBorder.Name = "HoverBorder"
 	hoverBorder.Color = Color3.fromRGB(255, 255, 255)
 	hoverBorder.Thickness = 2
 	hoverBorder.Transparency = 1
+	hoverBorder.ZIndex = 2
 	hoverBorder.Parent = slot
 
 	local iconContainer = Instance.new("Frame")
@@ -562,7 +687,7 @@ function ChestUI:CreateInventorySlot(index, x, y)
 	iconContainer.Size = UDim2.new(1, 0, 1, 0)
 	iconContainer.Position = UDim2.new(0, 0, 0, 0)
 	iconContainer.BackgroundTransparency = 1
-	iconContainer.ZIndex = 2
+	iconContainer.ZIndex = 3
 	iconContainer.Parent = slot
 
 	local countLabel = Instance.new("TextLabel")
@@ -572,12 +697,12 @@ function ChestUI:CreateInventorySlot(index, x, y)
 	countLabel.AnchorPoint = Vector2.new(1, 1)
 	countLabel.BackgroundTransparency = 1
 	countLabel.Font = BOLD_FONT
-	countLabel.TextSize = 12
+	countLabel.TextSize = 14
 	countLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	countLabel.TextStrokeTransparency = 0.3
 	countLabel.Text = ""
 	countLabel.TextXAlignment = Enum.TextXAlignment.Right
-	countLabel.ZIndex = 4
+	countLabel.ZIndex = 5
 	countLabel.Parent = slot
 
 	self.inventorySlotFrames[index] = {
@@ -600,7 +725,7 @@ function ChestUI:CreateInventorySlot(index, x, y)
 
 	slot.MouseLeave:Connect(function()
 		hoverBorder.Transparency = 1
-		slot.BackgroundColor3 = CHEST_CONFIG.SLOT_COLOR
+		slot.BackgroundColor3 = CHEST_CONFIG.SLOT_BG_COLOR
 		-- Hide item name
 		self:HideHoverItemName()
 	end)
@@ -622,15 +747,37 @@ function ChestUI:CreateHotbarSlot(index, x, y)
 	slot.Name = "HotbarSlot" .. index
 	slot.Size = UDim2.new(0, CHEST_CONFIG.SLOT_SIZE, 0, CHEST_CONFIG.SLOT_SIZE)
 	slot.Position = UDim2.new(0, x, 0, y)
-	slot.BackgroundColor3 = CHEST_CONFIG.SLOT_COLOR
+	slot.BackgroundColor3 = CHEST_CONFIG.SLOT_BG_COLOR
+	slot.BackgroundTransparency = CHEST_CONFIG.SLOT_BG_TRANSPARENCY
 	slot.BorderSizePixel = 0
 	slot.Text = ""
 	slot.AutoButtonColor = false
 	slot.Parent = self.panel
 
 	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 4)
+	corner.CornerRadius = UDim.new(0, CHEST_CONFIG.SLOT_CORNER_RADIUS)
 	corner.Parent = slot
+
+	-- Background image (matching inventory slots)
+	local bgImage = Instance.new("ImageLabel")
+	bgImage.Name = "BackgroundImage"
+	bgImage.Size = UDim2.new(1, 0, 1, 0)
+	bgImage.Position = UDim2.new(0, 0, 0, 0)
+	bgImage.BackgroundTransparency = 1
+	bgImage.Image = CHEST_CONFIG.BACKGROUND_IMAGE
+	bgImage.ImageTransparency = CHEST_CONFIG.BACKGROUND_IMAGE_TRANSPARENCY
+	bgImage.ScaleType = Enum.ScaleType.Fit
+	bgImage.ZIndex = 1
+	bgImage.Parent = slot
+
+	-- Border (matching inventory slot border)
+	local border = Instance.new("UIStroke")
+	border.Name = "Border"
+	border.Color = CHEST_CONFIG.SLOT_BORDER_COLOR
+	border.Thickness = CHEST_CONFIG.SLOT_BORDER_THICKNESS
+	border.Transparency = 0
+	border.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	border.Parent = slot
 
 	-- Selection indicator (if this is the active hotbar slot) - bright white, thick
 	local selectionBorder = Instance.new("UIStroke")
@@ -638,6 +785,7 @@ function ChestUI:CreateHotbarSlot(index, x, y)
 	selectionBorder.Color = Color3.fromRGB(220, 220, 220)
 	selectionBorder.Thickness = 3
 	selectionBorder.Transparency = 1
+	selectionBorder.ZIndex = 2
 	selectionBorder.Parent = slot
 
 	-- Hover border (for drag-and-drop feedback)
@@ -646,6 +794,7 @@ function ChestUI:CreateHotbarSlot(index, x, y)
 	hoverBorder.Color = Color3.fromRGB(180, 180, 180)
 	hoverBorder.Thickness = 2
 	hoverBorder.Transparency = 1
+	hoverBorder.ZIndex = 3
 	hoverBorder.Parent = slot
 
 	local iconContainer = Instance.new("Frame")
@@ -653,7 +802,7 @@ function ChestUI:CreateHotbarSlot(index, x, y)
 	iconContainer.Size = UDim2.new(1, 0, 1, 0)
 	iconContainer.Position = UDim2.new(0, 0, 0, 0)
 	iconContainer.BackgroundTransparency = 1
-	iconContainer.ZIndex = 2
+	iconContainer.ZIndex = 4
 	iconContainer.Parent = slot
 
 	local countLabel = Instance.new("TextLabel")
@@ -663,12 +812,12 @@ function ChestUI:CreateHotbarSlot(index, x, y)
 	countLabel.AnchorPoint = Vector2.new(1, 1)
 	countLabel.BackgroundTransparency = 1
 	countLabel.Font = BOLD_FONT
-	countLabel.TextSize = 12
+	countLabel.TextSize = 14
 	countLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	countLabel.TextStrokeTransparency = 0.3
 	countLabel.Text = ""
 	countLabel.TextXAlignment = Enum.TextXAlignment.Right
-	countLabel.ZIndex = 4
+	countLabel.ZIndex = 5
 	countLabel.Parent = slot
 
 	-- Number label in top-left corner
@@ -713,7 +862,7 @@ function ChestUI:CreateHotbarSlot(index, x, y)
 
 	slot.MouseLeave:Connect(function()
 		hoverBorder.Transparency = 1
-		slot.BackgroundColor3 = CHEST_CONFIG.SLOT_COLOR
+		slot.BackgroundColor3 = CHEST_CONFIG.SLOT_BG_COLOR
 		-- Hide item name
 		self:HideHoverItemName()
 	end)

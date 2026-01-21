@@ -155,20 +155,20 @@ local CONFIG = {
     ITEM_SPACING = 4,
     PADDING = 12,
     ICON_SIZE = 44,
-    
+
     -- Colors (match existing panels)
     PANEL_BG = Color3.fromRGB(58, 58, 58),
     ITEM_BG = Color3.fromRGB(31, 31, 31),
     ITEM_HOVER = Color3.fromRGB(80, 80, 80),
     BORDER = Color3.fromRGB(77, 77, 77),
-    
+
     -- Buttons
     BTN_BUY = Color3.fromRGB(80, 180, 80),
     BTN_BUY_HOVER = Color3.fromRGB(90, 200, 90),
     BTN_SELL = Color3.fromRGB(255, 200, 50),
     BTN_SELL_HOVER = Color3.fromRGB(255, 220, 80),
     BTN_DISABLED = Color3.fromRGB(60, 60, 60),
-    
+
     -- Text
     TEXT_PRIMARY = Color3.fromRGB(255, 255, 255),
     TEXT_COINS = Color3.fromRGB(255, 215, 0),
@@ -251,13 +251,13 @@ Farm Resources → Sell to Merchant → Buy Utility/Tools → Farm More Efficien
 NPCTradeConfig.ShopItems = {
     -- Tools (with stock limits)
     { itemId = 1001, price = 50,  stock = 5, category = "Tools" },
-    
+
     -- Seeds (kickstart farming)
     { itemId = 70,  price = 10,  stock = 16, category = "Seeds" },
-    
+
     -- Utility (money sinks)
     { itemId = 13,  price = 100,  stock = 3, category = "Utility" },
-    
+
     -- Decoratives (inflation sinks)
     { itemId = 156, price = 15,  stock = 16, category = "Decoration" },
 }
@@ -266,10 +266,10 @@ NPCTradeConfig.SellPrices = {
     -- Farmables (50% margin - best income)
     [5]  = 4,   -- Oak Log
     [71] = 3,   -- Wheat
-    
+
     -- Processed (40% margin)
     [33] = 20,  -- Iron Ingot (buy 50, sell 20)
-    
+
     -- Decoratives (30-40% margin - money sinks)
     [156] = 5,  -- White Wool (buy 15, sell 5)
 }

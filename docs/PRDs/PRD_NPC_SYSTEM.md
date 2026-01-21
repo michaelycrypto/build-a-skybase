@@ -38,7 +38,7 @@ The NPC System introduces interactive non-player characters in the hub world. Ph
 |-----------|--------------|----------|
 | NPC Config | Define NPC types & attributes | P0 |
 | NPC Service | Spawn & manage NPCs | P0 |
-| NPC Registry | Register NPC types & locations | P0 |
+| NPC Registry | Register NPC types & /*-+ `ons | P0 |
 | NPC Data Structure | Store NPC state & metadata | P0 |
 | Spawn Locations Config | Define hub world positions | P0 |
 
@@ -101,7 +101,7 @@ NPCConfig.Types = {
         -- Future: shopInventory, pricing, etc.
     },
     MERCHANT = {
-        id = "MERCHANT", 
+        id = "MERCHANT",
         displayName = "Merchant",
         description = "Sell your items for coins",
         interactionType = "SELL",
@@ -140,7 +140,7 @@ NPCSpawnConfig.HubSpawns = {
         scale = 1.0, -- Model scale multiplier
     },
     {
-        id = "hub_merchant_1", 
+        id = "hub_merchant_1",
         npcType = "MERCHANT",
         position = Vector3.new(-15, 5, 25),
         rotation = 180,
@@ -148,7 +148,7 @@ NPCSpawnConfig.HubSpawns = {
     },
     {
         id = "hub_warp_master_1",
-        npcType = "WARP_MASTER", 
+        npcType = "WARP_MASTER",
         position = Vector3.new(0, 5, 30),
         rotation = 90,
         scale = 1.2, -- Slightly larger for prominence
@@ -343,7 +343,7 @@ Client (NPCController):
 - Currency system integration
 - Stock management
 
-### Sell Interaction  
+### Sell Interaction
 - Sell UI showing player inventory
 - Item selling logic
 - Price calculation (% of buy price)
