@@ -415,11 +415,27 @@ getBridgePlacementCandidate = function(lockedY, lockedDX, lockedDZ)
     local wm = blockAPI and blockAPI.worldManager
     if not wm then return nil, nil, nil, nil end
 
+    -- Check if chunk at position is loaded (to avoid false AIR at chunk borders)
+    local function _isChunkLoaded(x, z)
+        local chunkX = math.floor(x / (Constants.CHUNK_SIZE_X or 16))
+        local chunkZ = math.floor(z / (Constants.CHUNK_SIZE_Z or 16))
+        local chunk = wm:GetChunk(chunkX, chunkZ)
+        return chunk ~= nil
+    end
+    
     local function _isAirAt(x, y, z)
+        -- If chunk isn't loaded, treat as NOT air (be conservative)
+        if not _isChunkLoaded(x, z) then
+            return false
+        end
         local id = wm:GetBlock(x, y, z)
         return (id == nil) or (id == Constants.BlockType.AIR)
     end
     local function _nonAirAt(x, y, z)
+        -- If chunk isn't loaded, treat as NOT solid (be conservative)
+        if not _isChunkLoaded(x, z) then
+            return false
+        end
         local id = wm:GetBlock(x, y, z)
         return id and id ~= Constants.BlockType.AIR
     end
@@ -476,9 +492,23 @@ getBridgePlacementCandidate = function(lockedY, lockedDX, lockedDZ)
     end
 
     -- Search along the cardinal direction only (no diagonal placement)
+    -- Stop immediately if out of range (don't keep searching further)
+    local maxReach = 4.5 * bs + 2
+    
     for s = 1, maxSteps do
         local cx = playerBlockX + (s + predictiveOffset) * dx
         local cz = playerBlockZ + (s + predictiveOffset) * dz
+        
+        -- Check distance first - if this position is out of range, stop searching
+        local blockCenter = Vector3.new(
+            cx * bs + bs * 0.5,
+            yBlock * bs + bs * 0.5,
+            cz * bs + bs * 0.5
+        )
+        if (blockCenter - head.Position).Magnitude > maxReach then
+            -- Out of range - stop searching, don't try further blocks
+            return nil, nil, nil, nil
+        end
 
         if _isAirAt(cx, yBlock, cz) then
             -- Check for a support block adjacent to this air block (in the direction back toward player)
@@ -487,22 +517,14 @@ getBridgePlacementCandidate = function(lockedY, lockedDX, lockedDZ)
             local faceNormal = Vector3.new(dx, 0, dz)
 
             if _nonAirAt(supportX, yBlock, supportZ) then
-                local blockCenter = Vector3.new(
-                    cx * bs + bs * 0.5,
-                    yBlock * bs + bs * 0.5,
-                    cz * bs + bs * 0.5
+                local placePos = Vector3.new(cx, yBlock, cz)
+                local supportPos = Vector3.new(supportX, yBlock, supportZ)
+                local hitPosition = Vector3.new(
+                    supportX * bs + bs * 0.5,
+                    yBlock * bs + bs * 0.25,
+                    supportZ * bs + bs * 0.5
                 )
-                local maxReach = 4.5 * bs + 2
-                if (blockCenter - head.Position).Magnitude <= maxReach then
-                    local placePos = Vector3.new(cx, yBlock, cz)
-                    local supportPos = Vector3.new(supportX, yBlock, supportZ)
-                    local hitPosition = Vector3.new(
-                        supportX * bs + bs * 0.5,
-                        yBlock * bs + bs * 0.25,
-                        supportZ * bs + bs * 0.5
-                    )
-                    return placePos, supportPos, faceNormal, hitPosition
-                end
+                return placePos, supportPos, faceNormal, hitPosition
             end
         end
     end
@@ -911,6 +933,7 @@ local function startPlacing()
 				end
 				
 				-- Apply bridge assist if needed
+				local bridgeAssistFailed = false
 				if shouldUseBridgeAssist and VoxelConfig and VoxelConfig.PLACEMENT and VoxelConfig.PLACEMENT.BRIDGE_ASSIST_ENABLED then
 					-- Use locked values if in bridge mode, otherwise calculate fresh
 					local placePos, supportPos, bFace, bHit
@@ -942,7 +965,18 @@ local function startPlacing()
 								bridgeLastBlockZ = math.floor(rootPart.Position.Z / bs)
 							end
 						end
+					else
+						-- Bridge assist failed (out of range or no valid placement)
+						bridgeAssistFailed = true
 					end
+				end
+				
+				-- If we're in bridge mode and bridge assist failed, DON'T fall back to normal targeting
+				-- User must release mouse and click again to start a new placement
+				if bridgeModeActive and bridgeAssistFailed then
+					-- Skip this iteration - don't place anything
+					task.wait(0.05)
+					continue
 				end
 				
 				-- Place block if we have valid target
