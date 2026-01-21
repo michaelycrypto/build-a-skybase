@@ -138,112 +138,60 @@ local GameConfig = {
 	-- Data Store settings
 	DataStore = {
 		PlayerData = {
-			DataStoreVersion = "PlayerData_v70", -- Keep in sync with PlayerDataStoreService (updated for 6-tier system)
+			DataStoreVersion = "PlayerData_v71", -- Keep in sync with PlayerDataStoreService (updated for 6-tier system)
 			SchemaVersion = 5, -- Increment to force migrations/default resets
 			AutoSaveInterval = 300 -- 5 minutes in seconds
 		},
 	},
 
-	-- Inventory settings
+	-- ═══════════════════════════════════════════════════════════════════════════
+	-- STARTER INVENTORY (Skyblock-style minimal loadout)
+	--
+	-- Design: Minimal resources to kickstart the farming loop
+	-- - Basic tools to get started
+	-- - Starting currency to buy seeds
+	-- - Small food supply for early survival
+	-- - One sapling to begin tree farming
+	-- ═══════════════════════════════════════════════════════════════════════════
 	Inventory = {
-		-- Starter loadouts (shared between hub + player-owned worlds)
+		-- Hotbar: Essential tools ready to use
 		StarterHotbar = {
-			{slot = 1, itemId = 1051, count = 1}, -- Bow
-			{slot = 2, itemId = 2001, count = 64},
-			{slot = 3, itemId = 2001, count = 64}, -- Arrows
+			{slot = 1, itemId = 1001, count = 1},  -- Copper Pickaxe (mining)
+			{slot = 2, itemId = 1011, count = 1},  -- Copper Axe (woodcutting)
+			{slot = 3, itemId = 1021, count = 1},  -- Copper Shovel (digging)
+			{slot = 4, itemId = 1041, count = 1},  -- Copper Sword (defense)
+			{slot = 5, itemId = 348, count = 16},  -- Bread (food)
 		},
+
+		-- Inventory: Starter resources
 		StarterInventory = {
 			-- ═══════════════════════════════════════════════════════════════
-			-- FURNACE TESTING - Ores & Fuel
+			-- STARTER KIT - Just enough to begin
 			-- ═══════════════════════════════════════════════════════════════
-			{itemId = 98, count = 64},  -- Copper Ore (T1)
-			{itemId = 30, count = 64},  -- Iron Ore (T2, also for Steel/Bluesteel)
-			{itemId = 102, count = 64}, -- Tungsten Ore (T5)
-			{itemId = 103, count = 64}, -- Titanium Ore (T6)
-			{itemId = 32, count = 64},  -- Coal (fuel)
-			{itemId = 32, count = 64},  -- Coal (more fuel)
-			{itemId = 123, count = 1},  -- Coal Golem (minion)
-			{itemId = 115, count = 64}, -- Bluesteel Dust (for Bluesteel smelting)
 
-			-- ═══════════════════════════════════════════════════════════════
-			-- FOOD ITEMS (Minecraft-style consumables)
-			-- ═══════════════════════════════════════════════════════════════
-			-- Basic Foods
-			{itemId = 37, count = 32},  -- Apple
-			{itemId = 73, count = 32},  -- Carrot
-			{itemId = 72, count = 32},  -- Potato
-			{itemId = 75, count = 32},  -- Beetroot
+			-- Saplings (start tree farming immediately)
+			{itemId = 16, count = 4},   -- Oak Saplings
 
-			-- Cooked Foods
-			{itemId = 348, count = 16}, -- Bread
-			{itemId = 349, count = 16}, -- Baked Potato
-			{itemId = 350, count = 16}, -- Cooked Beef
-			{itemId = 351, count = 16}, -- Cooked Porkchop
-			{itemId = 352, count = 16}, -- Cooked Chicken
-			{itemId = 353, count = 16}, -- Cooked Mutton
-			{itemId = 354, count = 16}, -- Cooked Rabbit
-			{itemId = 355, count = 16}, -- Cooked Cod
-			{itemId = 356, count = 16}, -- Cooked Salmon
+			-- Seeds (start crop farming)
+			{itemId = 70, count = 8},   -- Wheat Seeds
+			{itemId = 72, count = 4},   -- Potatoes (plantable)
+			{itemId = 73, count = 4},   -- Carrots (plantable)
 
-			-- Special Foods
-			{itemId = 366, count = 8},  -- Golden Apple
-			{itemId = 367, count = 4},  -- Enchanted Golden Apple
-			{itemId = 368, count = 16}, -- Golden Carrot
+			-- Basic Materials (to get started)
+			{itemId = 2, count = 16},   -- Dirt (for farming)
+			{itemId = 14, count = 16},  -- Cobblestone (basic building)
+			{itemId = 12, count = 8},   -- Oak Planks (crafting)
 
-			-- Soups & Stews
-			{itemId = 369, count = 4},  -- Beetroot Soup
-			{itemId = 370, count = 4},  -- Mushroom Stew
-			{itemId = 371, count = 4},  -- Rabbit Stew
+			-- Food (survive first few minutes)
+			{itemId = 37, count = 8},   -- Apples
 
-			-- Other Foods
-			{itemId = 372, count = 32}, -- Cookie
-			{itemId = 373, count = 32}, -- Melon Slice
-			{itemId = 374, count = 32}, -- Dried Kelp
-			{itemId = 375, count = 8},  -- Pumpkin Pie
-
-			-- Raw Meats (for cooking)
-			{itemId = 357, count = 16}, -- Beef
-			{itemId = 358, count = 16}, -- Porkchop
-			{itemId = 359, count = 16}, -- Chicken
-			{itemId = 360, count = 16}, -- Mutton
-			{itemId = 361, count = 16}, -- Rabbit
-
-			-- Raw Fish (for cooking)
-			{itemId = 362, count = 16}, -- Cod
-			{itemId = 363, count = 16}, -- Salmon
-			{itemId = 364, count = 16}, -- Tropical Fish
-			{itemId = 365, count = 8},  -- Pufferfish (dangerous!)
-
-			-- Hazardous Foods (for testing effects)
-			{itemId = 376, count = 8},  -- Rotten Flesh
-			{itemId = 377, count = 4},  -- Spider Eye
-			{itemId = 378, count = 8},  -- Poisonous Potato
-			{itemId = 379, count = 4},  -- Chorus Fruit
-
-			-- ═══════════════════════════════════════════════════════════════
-			-- CRAFTING MATERIALS
-			-- ═══════════════════════════════════════════════════════════════
-			{itemId = 28, count = 64},  -- Sticks (stack 1)
-			{itemId = 28, count = 64},  -- Sticks (stack 2)
-			{itemId = 12, count = 64},  -- Oak Planks (for more sticks)
-
-			-- ═══════════════════════════════════════════════════════════════
-			-- PRE-MADE INGOTS (for quick crafting)
-			-- ═══════════════════════════════════════════════════════════════
-			{itemId = 105, count = 64}, -- Copper Ingots
-			{itemId = 33, count = 64},  -- Iron Ingots
-			{itemId = 108, count = 64}, -- Steel Ingots
-			{itemId = 109, count = 64}, -- Bluesteel Ingots
-			{itemId = 110, count = 64}, -- Tungsten Ingots
-			{itemId = 111, count = 64}, -- Titanium Ingots
-
-			-- ═══════════════════════════════════════════════════════════════
-			-- UTILITY BLOCKS
-			-- ═══════════════════════════════════════════════════════════════
-			{itemId = 13, count = 4},   -- Crafting Tables
-			{itemId = 35, count = 4},   -- Furnaces
+			-- Utility (one of each to demonstrate crafting goals)
+			{itemId = 13, count = 1},   -- Crafting Table
 		}
 	},
+
+	-- Starting currency (buy more seeds/tools from shop)
+	StarterCoins = 100,
 
 	-- Shop settings
 	Shop = {
@@ -608,7 +556,7 @@ local GameConfig = {
 	-- World system configuration
 	Worlds = {
 		MaxWorldsPerPlayer = 10, -- Maximum worlds a player can create
-		DataStoreVersion = "PlayerOwnedWorlds_v62" -- Updated for multi-world support
+		DataStoreVersion = "PlayerOwnedWorlds_v63" -- Updated for multi-world support
 	}
 }
 

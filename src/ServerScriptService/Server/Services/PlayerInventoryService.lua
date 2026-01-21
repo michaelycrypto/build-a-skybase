@@ -215,6 +215,30 @@ function PlayerInventoryService:GetItemCount(player: Player, itemId: number): nu
 	return total
 end
 
+-- Get all items with their total counts (for selling, etc.)
+function PlayerInventoryService:GetAllItemCounts(player: Player): {[number]: number}
+	local playerInv = self.inventories[player]
+	if not playerInv then return {} end
+
+	local counts = {} -- {[itemId] = count}
+
+	for _, stack in ipairs(playerInv.hotbar) do
+		local itemId = stack:GetItemId()
+		if itemId > 0 and stack:GetCount() > 0 then
+			counts[itemId] = (counts[itemId] or 0) + stack:GetCount()
+		end
+	end
+
+	for _, stack in ipairs(playerInv.inventory) do
+		local itemId = stack:GetItemId()
+		if itemId > 0 and stack:GetCount() > 0 then
+			counts[itemId] = (counts[itemId] or 0) + stack:GetCount()
+		end
+	end
+
+	return counts
+end
+
 -- Consume one item from hotbar slot (used for block placement)
 function PlayerInventoryService:ConsumeFromHotbar(player: Player, slotIndex: number, itemId: number): boolean
 	itemId = tonumber(itemId) or 0

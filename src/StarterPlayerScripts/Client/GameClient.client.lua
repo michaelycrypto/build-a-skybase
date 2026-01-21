@@ -866,6 +866,12 @@ local function completeInitialization(EmoteManager)
 	NPCController:Initialize()
 	Client.npcController = NPCController
 
+	-- Initialize NPC Trade UI (shop/merchant interface)
+	local NPCTradeUI = require(script.Parent.UI.NPCTradeUI)
+	local npcTradeUI = NPCTradeUI.new(inventoryManager)
+	npcTradeUI:Initialize()
+	Client.npcTradeUI = npcTradeUI
+
 	-- Initialize Armor Visual Controller (render armor on character)
 	local ArmorVisualController = require(script.Parent.Controllers.ArmorVisualController)
 	ArmorVisualController.Init()
@@ -944,7 +950,9 @@ local function completeInitialization(EmoteManager)
 			if worldsPanel and worldsPanel.IsClosing and worldsPanel:IsClosing() then
 				worldsPanel:SetPendingCloseMode("inventory")
 			end
-			if minionUI and minionUI.isOpen then
+			if npcTradeUI and npcTradeUI.isOpen then
+				npcTradeUI:Close()
+			elseif minionUI and minionUI.isOpen then
 				minionUI:Close()
 			elseif chestUI and chestUI.isOpen then
 				chestUI:Close()
@@ -970,6 +978,9 @@ local function completeInitialization(EmoteManager)
 			-- Block input during furnace smelting mini-game
 			if furnaceUI and furnaceUI.isSmelting then
 				return
+			end
+			if npcTradeUI and npcTradeUI.isOpen then
+				npcTradeUI:Close()
 			end
 			if minionUI and minionUI.isOpen then
 				minionUI:Close()
@@ -998,7 +1009,9 @@ local function completeInitialization(EmoteManager)
 			end
 			-- Silently skip if worldsPanel not yet initialized
 		elseif input.KeyCode == Enum.KeyCode.Escape then
-			if minionUI and minionUI.isOpen then
+			if npcTradeUI and npcTradeUI.isOpen then
+				npcTradeUI:Close()
+			elseif minionUI and minionUI.isOpen then
 				minionUI:Close()
 			elseif chestUI and chestUI.isOpen then
 				chestUI:Close()

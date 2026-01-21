@@ -108,6 +108,9 @@ local Manifest = {
 
 		-- NPC system
 		RequestNPCInteract = {"any"}, -- {npcId: string} - Request to interact with NPC
+		RequestNPCBuy = {"any"}, -- {npcId: string, itemId: number, quantity: number} - Buy from shop
+		RequestNPCSell = {"any"}, -- {npcId: string, itemId: number, quantity: number} - Sell to merchant
+		RequestNPCClose = {"any"}, -- {npcId: string} - Close NPC UI
 	},
 
 	-- Server -> Client events and their parameter type signatures
@@ -221,7 +224,10 @@ local Manifest = {
 		EatingCancelled = {"any"}, -- {} - Eating was cancelled
 
 		-- NPC events
-		NPCInteraction = {"any"} -- {npcId: string, npcType: string, interactionType: string} - NPC interaction triggered
+		NPCInteraction = {"any"}, -- {npcId: string, npcType: string, interactionType: string} - NPC interaction triggered
+		NPCShopOpened = {"any"}, -- {npcId: string, items: table, playerCoins: number} - Shop opened for buying
+		NPCMerchantOpened = {"any"}, -- {npcId: string, items: table, playerCoins: number} - Merchant opened for selling
+		NPCTradeResult = {"any"}, -- {success: boolean, message: string, newCoins: number, itemId: number} - Trade result
 	}
 }
 

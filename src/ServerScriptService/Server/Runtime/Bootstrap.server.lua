@@ -114,7 +114,7 @@ if IS_LOBBY then
 		mixins = {}
 	})
 	Injector:Bind("NPCService", script.Parent.Parent.Services.NPCService, {
-		dependencies = {},
+		dependencies = {"PlayerService", "PlayerInventoryService"},
 		mixins = {}
 	})
 else

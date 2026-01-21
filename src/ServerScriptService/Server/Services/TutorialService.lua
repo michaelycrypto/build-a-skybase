@@ -481,7 +481,19 @@ function TutorialService:TrackProgress(player, progressType, progressData)
 	elseif progressType == "place_block" then
 		local blockId = progressData.blockId
 		if objective.blockId and blockId == objective.blockId then
-			isComplete = true
+			-- Track cumulative progress
+			data.placeProgressCount = (data.placeProgressCount or 0) + 1
+			isComplete = data.placeProgressCount >= (objective.count or 1)
+			progressData.count = data.placeProgressCount
+		elseif objective.anyOf then
+			for _, targetId in ipairs(objective.anyOf) do
+				if blockId == targetId then
+					data.placeProgressCount = (data.placeProgressCount or 0) + 1
+					isComplete = data.placeProgressCount >= (objective.count or 1)
+					progressData.count = data.placeProgressCount
+					break
+				end
+			end
 		end
 
 	elseif progressType == "break_block" then
@@ -560,6 +572,19 @@ function TutorialService:TrackProgress(player, progressType, progressData)
 		if objective.itemId and itemId == objective.itemId then
 			isComplete = true
 		end
+
+	elseif progressType == "npc_interact" then
+		local npcType = progressData.npcType
+		if objective.npcType and npcType == objective.npcType then
+			isComplete = true
+		end
+
+	elseif progressType == "sell_item" then
+		local count = progressData.count or 1
+		-- Track cumulative sell progress
+		data.sellProgressCount = (data.sellProgressCount or 0) + count
+		isComplete = data.sellProgressCount >= (objective.count or 1)
+		progressData.count = data.sellProgressCount
 	end
 
 	-- Complete step if objective met

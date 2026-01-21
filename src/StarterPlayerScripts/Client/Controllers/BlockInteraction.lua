@@ -57,8 +57,16 @@ local DRAG_MOVEMENT_THRESHOLD = 10 -- Min movement in pixels to be considered a 
 
 -- Constants
 local BREAK_INTERVAL = 0.1 -- How often to send punch events (server allows >=0.1s)
-local PLACE_COOLDOWN = 0.2 -- Prevent spam
+local PLACE_COOLDOWN = 0.15 -- Placement cooldown (~7 per second)
 local HIT_SOUND_COOLDOWN = 0.2 -- Match Minecraft cadence (~5 hits per second)
+
+-- Bridge mode state - once we start bridge building, stay in bridge mode until mouse released
+local bridgeModeActive = false
+local bridgeLockedY = nil        -- Locked Y-level for bridge building
+local bridgeLockedDX = nil       -- Locked X direction (-1, 0, or 1)
+local bridgeLockedDZ = nil       -- Locked Z direction (-1, 0, or 1)
+local bridgeLastBlockX = nil     -- Last block X player was on
+local bridgeLastBlockZ = nil     -- Last block Z player was on
 
 local function _blockKey(vec3)
 	if not vec3 then return nil end
@@ -231,7 +239,27 @@ local function updateSelectionBox()
 	end
 
 	local blockPos, faceNormal, preciseHitPos = getTargetedBlock()
-	if (not blockPos) and VoxelConfig and VoxelConfig.PLACEMENT and VoxelConfig.PLACEMENT.BRIDGE_ASSIST_ENABLED then
+	
+	-- Helper to check if a block position is within interaction range
+	local function isBlockInRange(pos)
+		local character = player.Character
+		if not character then return false end
+		local head = character:FindFirstChild("Head")
+		if not head then return false end
+		local bs = Constants.BLOCK_SIZE
+		local blockCenter = Vector3.new(
+			pos.X * bs + bs * 0.5,
+			pos.Y * bs + bs * 0.5,
+			pos.Z * bs + bs * 0.5
+		)
+		local distance = (blockCenter - head.Position).Magnitude
+		local maxReach = 4.5 * bs + 2 -- Same as server placement/breaking distance
+		return distance <= maxReach
+	end
+	
+	-- Use bridge assist if no block targeted OR target is out of range
+	local useBridgeAssist = (not blockPos) or (blockPos and not isBlockInRange(blockPos))
+	if useBridgeAssist and VoxelConfig and VoxelConfig.PLACEMENT and VoxelConfig.PLACEMENT.BRIDGE_ASSIST_ENABLED then
 		local placePos, _supportPos = getBridgePlacementCandidate()
 		if placePos then
 			-- Highlight the target placement cell (air block)
@@ -252,28 +280,13 @@ local function updateSelectionBox()
 
 	if blockPos then
 		-- Distance check: Only show selection box if within interaction range
-		local character = player.Character
-		if character then
-			local head = character:FindFirstChild("Head")
-			if head then
-				local bs = Constants.BLOCK_SIZE
-				local blockCenter = Vector3.new(
-					blockPos.X * bs + bs * 0.5,
-					blockPos.Y * bs + bs * 0.5,
-					blockPos.Z * bs + bs * 0.5
-				)
-				local distance = (blockCenter - head.Position).Magnitude
-				local maxReach = 4.5 * bs + 2 -- Same as server placement/breaking distance
-
-				if distance > maxReach then
-					-- Block is too far, hide selection box
-					if selectionBox then
-						selectionBox.Adornee = nil
-					end
-					lastTargetedBlock = nil
-					return
-				end
+		if not isBlockInRange(blockPos) then
+			-- Block is too far, hide selection box
+			if selectionBox then
+				selectionBox.Adornee = nil
 			end
+			lastTargetedBlock = nil
+			return
 		end
 		-- Create a temporary part to represent the block
 		if not selectionBox then
@@ -360,7 +373,8 @@ end
 
 -- Bridge-assist: when aiming into the void, propose a placement on the player's ground level
 -- Returns: placePos (Vector3) to place into AIR, supportBlockPos (Vector3), faceNormal (Vector3), hitPosition (Vector3)
-getBridgePlacementCandidate = function()
+-- Optional parameters for locked bridge mode: lockedY, lockedDX, lockedDZ
+getBridgePlacementCandidate = function(lockedY, lockedDX, lockedDZ)
     if not VoxelConfig or not VoxelConfig.PLACEMENT or not VoxelConfig.PLACEMENT.BRIDGE_ASSIST_ENABLED then
         return nil, nil, nil, nil
     end
@@ -374,21 +388,29 @@ getBridgePlacementCandidate = function()
     local rootPart = character:FindFirstChild("HumanoidRootPart")
     if not head or not rootPart then return nil, nil, nil, nil end
 
-    local origin, direction = _computeAimRay()
-    if not origin or not direction then return nil, nil, nil, nil end
-
-    -- Ignore if not generally aiming downward enough (prevents odd forward snaps)
-    if direction.Y > 0.2 then
-        return nil, nil, nil, nil
-    end
-
     local bs = Constants.BLOCK_SIZE
     local worldHeight = Constants.WORLD_HEIGHT or 128
 
-    -- Target bridge plane: one block below the player's center (≈ bottom surface for 5-stud height)
-    local yBlock = math.floor(rootPart.Position.Y / bs) - 1
-    if yBlock < 0 then yBlock = 0 end
-    if yBlock >= worldHeight then yBlock = worldHeight - 1 end
+    -- Determine Y level
+    local yBlock
+    if lockedY then
+        -- Use locked Y level (bridge mode)
+        yBlock = lockedY
+    else
+        -- Calculate from player position
+        local origin, direction = _computeAimRay()
+        if not origin or not direction then return nil, nil, nil, nil end
+
+        -- Only check look direction if NOT in locked bridge mode
+        if direction.Y > 0.2 then
+            return nil, nil, nil, nil
+        end
+
+        local footY = rootPart.Position.Y - 2.5
+        yBlock = math.floor(footY / bs) - 1
+        if yBlock < 0 then yBlock = 0 end
+        if yBlock >= worldHeight then yBlock = worldHeight - 1 end
+    end
 
     local wm = blockAPI and blockAPI.worldManager
     if not wm then return nil, nil, nil, nil end
@@ -405,66 +427,81 @@ getBridgePlacementCandidate = function()
     local maxSteps = (VoxelConfig.PLACEMENT.BRIDGE_ASSIST_MAX_STEPS or 3)
     if maxSteps < 0 then maxSteps = 0 end
 
-    -- Horizontal direction to bias search
-    local dir2 = Vector3.new(direction.X, 0, direction.Z)
-    local mag2 = dir2.Magnitude
-    if mag2 < 1e-3 then
-        return nil, nil, nil, nil
+    -- Determine direction
+    local dx, dz
+    if lockedDX and lockedDZ then
+        -- Use locked direction (bridge mode)
+        dx = lockedDX
+        dz = lockedDZ
+    else
+        -- Calculate from camera look direction
+        local origin, direction = _computeAimRay()
+        if not origin or not direction then return nil, nil, nil, nil end
+        
+        local dir2 = Vector3.new(direction.X, 0, direction.Z)
+        local mag2 = dir2.Magnitude
+        if mag2 < 1e-3 then
+            return nil, nil, nil, nil
+        end
+        local absX, absZ = math.abs(dir2.X), math.abs(dir2.Z)
+        if absX >= absZ then
+            dx = (dir2.X >= 0) and 1 or -1
+            dz = 0
+        else
+            dx = 0
+            dz = (dir2.Z >= 0) and 1 or -1
+        end
     end
-    local absX, absZ = math.abs(dir2.X), math.abs(dir2.Z)
-    local xPrimary = (absX >= absZ)
-    local stepSign = xPrimary and ((dir2.X >= 0) and 1 or -1) or ((dir2.Z >= 0) and 1 or -1)
 
-    local planeY = yBlock * bs + bs * 0.5
-    if math.abs(direction.Y) < 1e-3 then
-        return nil, nil, nil, nil
+    -- Get player's current block position as the starting point
+    local playerBlockX = math.floor(rootPart.Position.X / bs)
+    local playerBlockZ = math.floor(rootPart.Position.Z / bs)
+    
+    -- Calculate how far into the current block the player is (0.0 to 1.0)
+    local posInBlockX = (rootPart.Position.X / bs) - playerBlockX
+    local posInBlockZ = (rootPart.Position.Z / bs) - playerBlockZ
+    
+    -- Predictive placement: if player is >60% across current block in bridge direction, look ahead
+    local predictiveOffset = 0
+    if dx ~= 0 then
+        local progress = dx > 0 and posInBlockX or (1 - posInBlockX)
+        if progress > 0.6 then
+            predictiveOffset = 1
+        end
+    elseif dz ~= 0 then
+        local progress = dz > 0 and posInBlockZ or (1 - posInBlockZ)
+        if progress > 0.6 then
+            predictiveOffset = 1
+        end
     end
-    local t = (planeY - origin.Y) / direction.Y
-    local maxDistance = 100
-    if not (t > 0 and t <= maxDistance) then
-        return nil, nil, nil, nil
-    end
 
-    local hit = origin + direction * t
-    local candidateX = math.floor(hit.X / bs)
-    local candidateZ = math.floor(hit.Z / bs)
-
-    for s = 0, maxSteps do
-        local cx = candidateX - (xPrimary and (s * stepSign) or 0)
-        local cz = candidateZ - (xPrimary and 0 or (s * stepSign))
+    -- Search along the cardinal direction only (no diagonal placement)
+    for s = 1, maxSteps do
+        local cx = playerBlockX + (s + predictiveOffset) * dx
+        local cz = playerBlockZ + (s + predictiveOffset) * dz
 
         if _isAirAt(cx, yBlock, cz) then
-            local neighbors = {}
-            if xPrimary then
-                neighbors[#neighbors+1] = {x = cx - stepSign, y = yBlock, z = cz, face = Vector3.new(stepSign, 0, 0)}
-                neighbors[#neighbors+1] = {x = cx, y = yBlock, z = cz + 1, face = Vector3.new(0, 0, -1)}
-                neighbors[#neighbors+1] = {x = cx, y = yBlock, z = cz - 1, face = Vector3.new(0, 0, 1)}
-            else
-                neighbors[#neighbors+1] = {x = cx, y = yBlock, z = cz - stepSign, face = Vector3.new(0, 0, stepSign)}
-                neighbors[#neighbors+1] = {x = cx + 1, y = yBlock, z = cz, face = Vector3.new(-1, 0, 0)}
-                neighbors[#neighbors+1] = {x = cx - 1, y = yBlock, z = cz, face = Vector3.new(1, 0, 0)}
-            end
+            -- Check for a support block adjacent to this air block (in the direction back toward player)
+            local supportX = cx - dx
+            local supportZ = cz - dz
+            local faceNormal = Vector3.new(dx, 0, dz)
 
-            for i = 1, #neighbors do
-                local n = neighbors[i]
-                if _nonAirAt(n.x, n.y, n.z) then
-                    local blockCenter = Vector3.new(
-                        cx * bs + bs * 0.5,
-                        yBlock * bs + bs * 0.5,
-                        cz * bs + bs * 0.5
+            if _nonAirAt(supportX, yBlock, supportZ) then
+                local blockCenter = Vector3.new(
+                    cx * bs + bs * 0.5,
+                    yBlock * bs + bs * 0.5,
+                    cz * bs + bs * 0.5
+                )
+                local maxReach = 4.5 * bs + 2
+                if (blockCenter - head.Position).Magnitude <= maxReach then
+                    local placePos = Vector3.new(cx, yBlock, cz)
+                    local supportPos = Vector3.new(supportX, yBlock, supportZ)
+                    local hitPosition = Vector3.new(
+                        supportX * bs + bs * 0.5,
+                        yBlock * bs + bs * 0.25,
+                        supportZ * bs + bs * 0.5
                     )
-                    local maxReach = 4.5 * bs + 2
-                    if (blockCenter - head.Position).Magnitude <= maxReach then
-                        local placePos = Vector3.new(cx, yBlock, cz)
-                        local supportPos = Vector3.new(n.x, n.y, n.z)
-                        local faceNormal = n.face
-                        local hitPosition = Vector3.new(
-                            n.x * bs + bs * 0.5,
-                            n.y * bs + bs * 0.25,
-                            n.z * bs + bs * 0.5
-                        )
-                        return placePos, supportPos, faceNormal, hitPosition
-                    end
+                    return placePos, supportPos, faceNormal, hitPosition
                 end
             end
         end
@@ -648,8 +685,28 @@ local function interactOrPlace()
 	lastPlaceTime = now
 
 	local blockPos, faceNormal, preciseHitPos = getTargetedBlock()
-	if not blockPos then
-		-- Bridge assist fallback: synthesize support face when aiming into void
+	
+	-- Helper to check if a block position is within interaction range
+	local function isBlockInRange(pos)
+		local char = player.Character
+		if not char then return false end
+		local head = char:FindFirstChild("Head")
+		if not head then return false end
+		local bs = Constants.BLOCK_SIZE
+		local blockCenter = Vector3.new(
+			pos.X * bs + bs * 0.5,
+			pos.Y * bs + bs * 0.5,
+			pos.Z * bs + bs * 0.5
+		)
+		local distance = (blockCenter - head.Position).Magnitude
+		local maxReach = 4.5 * bs + 2
+		return distance <= maxReach
+	end
+	
+	-- Use bridge assist if no block targeted OR target is out of range
+	local useBridgeAssist = (not blockPos) or (blockPos and not isBlockInRange(blockPos))
+	if useBridgeAssist then
+		-- Bridge assist fallback: synthesize support face when aiming into void or out of range
 		if VoxelConfig and VoxelConfig.PLACEMENT and VoxelConfig.PLACEMENT.BRIDGE_ASSIST_ENABLED then
 			local placePos, supportPos, bFace, bHit = getBridgePlacementCandidate()
 			if placePos and supportPos and bFace then
@@ -790,72 +847,168 @@ local function startPlacing()
     interactOrPlace()
 
     isPlacing = true
+    -- Reset bridge mode state at start
+    bridgeModeActive = false
+    bridgeLockedY = nil
+    bridgeLockedDX = nil
+    bridgeLockedDZ = nil
+    bridgeLastBlockX = nil
+    bridgeLastBlockZ = nil
+    
+    -- Track last placed position to avoid duplicate requests
+    local lastPlacedKey = nil
+    
     task.spawn(function()
         while isPlacing do
             local now = os.clock()
             if (now - lastPlaceTime) >= PLACE_COOLDOWN then
 				local blockPos, faceNormal, preciseHitPos = getTargetedBlock()
-				local usedFallback = false
-				if not (blockPos and faceNormal) then
-					if VoxelConfig and VoxelConfig.PLACEMENT and VoxelConfig.PLACEMENT.BRIDGE_ASSIST_ENABLED then
-						local placePos, supportPos, bFace, bHit = getBridgePlacementCandidate()
-						if placePos and supportPos and bFace then
-							blockPos = supportPos
-							faceNormal = bFace
-							preciseHitPos = bHit
-							usedFallback = true
+				local usedBridgeAssist = false
+				
+				-- Helper to check if a block position is within interaction range
+				local function isBlockInRange(pos)
+					local char = player.Character
+					if not char then return false end
+					local head = char:FindFirstChild("Head")
+					if not head then return false end
+					local bs = Constants.BLOCK_SIZE
+					local blockCenter = Vector3.new(
+						pos.X * bs + bs * 0.5,
+						pos.Y * bs + bs * 0.5,
+						pos.Z * bs + bs * 0.5
+					)
+					local distance = (blockCenter - head.Position).Magnitude
+					local maxReach = 4.5 * bs + 2
+					return distance <= maxReach
+				end
+				
+				-- Determine if we should use bridge assist
+				local shouldUseBridgeAssist = false
+				
+				-- If already in bridge mode, ALWAYS use bridge assist with locked values
+				if bridgeModeActive then
+					shouldUseBridgeAssist = true
+				else
+					-- Check conditions to ENTER bridge mode
+					-- Case 1: No block targeted or out of range
+					if not (blockPos and faceNormal) or (blockPos and not isBlockInRange(blockPos)) then
+						shouldUseBridgeAssist = true
+					end
+					
+					-- Case 2: Targeting TOP of a block at feet level (would stack on bridge)
+					if not shouldUseBridgeAssist and blockPos and faceNormal and faceNormal.Y == 1 then
+						local character = player.Character
+						local rootPart = character and character:FindFirstChild("HumanoidRootPart")
+						if rootPart then
+							local bs = Constants.BLOCK_SIZE
+							local footY = rootPart.Position.Y - 2.5
+							local standingBlockY = math.floor(footY / bs) - 1
+							if blockPos.Y <= standingBlockY then
+								shouldUseBridgeAssist = true
+							end
 						end
 					end
 				end
+				
+				-- Apply bridge assist if needed
+				if shouldUseBridgeAssist and VoxelConfig and VoxelConfig.PLACEMENT and VoxelConfig.PLACEMENT.BRIDGE_ASSIST_ENABLED then
+					-- Use locked values if in bridge mode, otherwise calculate fresh
+					local placePos, supportPos, bFace, bHit
+					if bridgeModeActive and bridgeLockedY and bridgeLockedDX and bridgeLockedDZ then
+						placePos, supportPos, bFace, bHit = getBridgePlacementCandidate(bridgeLockedY, bridgeLockedDX, bridgeLockedDZ)
+					else
+						placePos, supportPos, bFace, bHit = getBridgePlacementCandidate()
+					end
+					
+					if placePos and supportPos and bFace then
+						blockPos = supportPos
+						faceNormal = bFace
+						preciseHitPos = bHit
+						usedBridgeAssist = true
+						
+						-- If this is the first bridge assist placement, lock the values
+						if not bridgeModeActive then
+							local character = player.Character
+							local rootPart = character and character:FindFirstChild("HumanoidRootPart")
+							if rootPart then
+								local bs = Constants.BLOCK_SIZE
+								local footY = rootPart.Position.Y - 2.5
+								bridgeLockedY = math.floor(footY / bs) - 1
+								if bridgeLockedY < 0 then bridgeLockedY = 0 end
+								-- Lock direction from face normal
+								bridgeLockedDX = math.floor(bFace.X + 0.5)
+								bridgeLockedDZ = math.floor(bFace.Z + 0.5)
+								bridgeLastBlockX = math.floor(rootPart.Position.X / bs)
+								bridgeLastBlockZ = math.floor(rootPart.Position.Z / bs)
+							end
+						end
+					end
+				end
+				
+				-- Place block if we have valid target
 				if blockPos and faceNormal then
-                    local selectedBlock = GameState:Get("voxelWorld.selectedBlock")
-                    if selectedBlock and selectedBlock.id then
-						local placeX = blockPos.X + faceNormal.X
-						local placeY = blockPos.Y + faceNormal.Y
-						local placeZ = blockPos.Z + faceNormal.Z
+					local placeX = blockPos.X + faceNormal.X
+					local placeY = blockPos.Y + faceNormal.Y
+					local placeZ = blockPos.Z + faceNormal.Z
+					local placeKey = string.format("%d,%d,%d", placeX, placeY, placeZ)
+					
+					-- Skip if we already sent a request for this exact position
+					if placeKey ~= lastPlacedKey then
+						local selectedBlock = GameState:Get("voxelWorld.selectedBlock")
+						if selectedBlock and selectedBlock.id then
+							-- Skip if already occupied (client check)
+							local worldManager = blockAPI and blockAPI.worldManager
+							local canTryPlace = true
+							if worldManager then
+								local existing = worldManager:GetBlock(placeX, placeY, placeZ)
+								if existing and existing ~= Constants.BlockType.AIR then
+									canTryPlace = false
+									lastPlacedKey = nil -- Reset so we can try new positions
+								end
+							end
 
-                        -- Skip if already occupied (client check to reduce spam)
-                        local worldManager = blockAPI and blockAPI.worldManager
-                        local canTryPlace = true
-                        if worldManager then
-                            local existing = worldManager:GetBlock(placeX, placeY, placeZ)
-                            if existing and existing ~= Constants.BlockType.AIR then
-                                canTryPlace = false
-                            end
-                        end
-
-	                        if canTryPlace then
-                            local selectedSlot = GameState:Get("voxelWorld.selectedSlot") or 1
-	                            -- Client-side guard: allow farm items even if not placeable (server redirects to planting)
-	                            local BLOCK = Constants.BlockType
-	                            local isFarmItem = (
-	                                selectedBlock.id == BLOCK.WHEAT_SEEDS or
-	                                selectedBlock.id == BLOCK.POTATO or
-	                                selectedBlock.id == BLOCK.CARROT or
-	                                selectedBlock.id == BLOCK.BEETROOT_SEEDS
-	                            )
-	                            if not BlockRegistry:IsPlaceable(selectedBlock.id) and not isFarmItem then
-	                                -- Skip sending place request for non-placeable items
-	                                lastPlaceTime = now
-	                                continue
-	                            end
-							EventManager:SendToServer("VoxelRequestBlockPlace", {
-                                x = placeX,
-                                y = placeY,
-                                z = placeZ,
-                                blockId = selectedBlock.id,
-                                hotbarSlot = selectedSlot,
-                                hitPosition = preciseHitPos,
-								targetBlockPos = blockPos,
-                                faceNormal = faceNormal
-                            })
-                            lastPlaceTime = now
-                        else
-                            -- Occupied; wait for aim change
-                        end
-                    end
-                end
-            end
+							if canTryPlace then
+								local selectedSlot = GameState:Get("voxelWorld.selectedSlot") or 1
+								local BLOCK = Constants.BlockType
+								local isFarmItem = (
+									selectedBlock.id == BLOCK.WHEAT_SEEDS or
+									selectedBlock.id == BLOCK.POTATO or
+									selectedBlock.id == BLOCK.CARROT or
+									selectedBlock.id == BLOCK.BEETROOT_SEEDS
+								)
+								if BlockRegistry:IsPlaceable(selectedBlock.id) or isFarmItem then
+									EventManager:SendToServer("VoxelRequestBlockPlace", {
+										x = placeX,
+										y = placeY,
+										z = placeZ,
+										blockId = selectedBlock.id,
+										hotbarSlot = selectedSlot,
+										hitPosition = preciseHitPos,
+										targetBlockPos = blockPos,
+										faceNormal = faceNormal
+									})
+									lastPlacedKey = placeKey
+									lastPlaceTime = now
+									
+									-- If we used bridge assist for this placement, activate bridge mode
+									if usedBridgeAssist then
+										bridgeModeActive = true
+									end
+								end
+							end
+						end
+					else
+						-- Same position - check if block was placed and reset
+						local worldManager = blockAPI and blockAPI.worldManager
+						if worldManager then
+							local existing = worldManager:GetBlock(placeX, placeY, placeZ)
+							if existing and existing ~= Constants.BlockType.AIR then
+								lastPlacedKey = nil -- Block placed, allow new placements
+							end
+						end
+					end
+				end
+			end
             task.wait(0.05)
         end
     end)
@@ -863,6 +1016,13 @@ end
 
 local function stopPlacing()
     isPlacing = false
+    -- Reset all bridge mode state when mouse released
+    bridgeModeActive = false
+    bridgeLockedY = nil
+    bridgeLockedDX = nil
+    bridgeLockedDZ = nil
+    bridgeLastBlockX = nil
+    bridgeLastBlockZ = nil
 end
 
 -- Update selection box and handle mode switching

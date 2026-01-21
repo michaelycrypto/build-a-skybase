@@ -1669,7 +1669,7 @@ function VoxelWorldService:RequestBlockPlace(player, placeData)
 		self.rateLimits[player] = rl
 	end
 
-	if (now - (rl.lastPlace or 0)) < 0.2 then
+	if (now - (rl.lastPlace or 0)) < 0.15 then
 		return
 	end
 	rl.lastPlace = now

@@ -80,32 +80,50 @@ function BlockPlacementRules:CanPlace(worldManager, x: number, y: number, z: num
 		end
 	end
 
-	-- Check if player would collide with placed block (can't place inside player's core)
-	-- Use a smaller collision box to allow Minecraft-style placement around player
-	-- Players can place blocks at their feet, above their head, and close to their body
+	-- Check if player would collide with placed block (can't place inside player's body)
+	-- Allow placement if player is standing ON TOP of the block (for bridge walking)
 	local bodyPos = playerBodyPos or playerPos  -- Use body position if provided, otherwise fall back to playerPos
 	if bodyPos then
 		local bs = Constants.BLOCK_SIZE
-		local blockCenter = Vector3.new(
-			x * bs + bs * 0.5,
-			y * bs + bs * 0.5,
-			z * bs + bs * 0.5
-		)
-
-		-- Only prevent placement if block center is very close to player center
-		-- This allows placing blocks at feet, head level, and adjacent positions
-		-- Use a smaller collision radius (0.4 blocks) to be more lenient
-		local playerHalfWidth = 0.2 * bs  -- Reduced from 0.3 to 0.2
-		local playerHalfHeight = 0.4 * bs  -- Reduced from 0.9 to 0.4 (only core body)
-
-		local distanceXZ = math.sqrt(
-			(blockCenter.X - bodyPos.X)^2 +
-			(blockCenter.Z - bodyPos.Z)^2
-		)
-		local distanceY = math.abs(blockCenter.Y - bodyPos.Y)
-
-		-- Only reject if block is VERY close to player's core (within core cylinder)
-		if distanceXZ < playerHalfWidth and distanceY < playerHalfHeight then
+		
+		-- Block AABB (the block being placed)
+		local blockMinY = y * bs
+		local blockMaxY = (y + 1) * bs
+		
+		-- Player feet position
+		local playerFeetOffset = 2.5  -- distance from rootPart to feet
+		local playerFeetY = bodyPos.Y - playerFeetOffset
+		
+		-- If player's feet are at or above the block top, they're standing on it - allow placement
+		-- Add small tolerance (0.1 studs) to account for slight position variations
+		if playerFeetY >= blockMaxY - 0.1 then
+			-- Player is on top of or above the block, placement is fine
+			return true
+		end
+		
+		-- Player is not above the block, check for horizontal collision
+		local blockMinX = x * bs
+		local blockMaxX = (x + 1) * bs
+		local blockMinZ = z * bs
+		local blockMaxZ = (z + 1) * bs
+		
+		-- Player body AABB (approximation for R15 character)
+		local playerHalfWidth = 0.4  -- studs from center
+		local playerHeadOffset = 2.0  -- distance from rootPart to top of head
+		
+		local playerMinX = bodyPos.X - playerHalfWidth
+		local playerMaxX = bodyPos.X + playerHalfWidth
+		local playerMinY = playerFeetY
+		local playerMaxY = bodyPos.Y + playerHeadOffset
+		local playerMinZ = bodyPos.Z - playerHalfWidth
+		local playerMaxZ = bodyPos.Z + playerHalfWidth
+		
+		-- Check AABB overlap
+		local overlapX = blockMinX < playerMaxX and blockMaxX > playerMinX
+		local overlapY = blockMinY < playerMaxY and blockMaxY > playerMinY
+		local overlapZ = blockMinZ < playerMaxZ and blockMaxZ > playerMinZ
+		
+		if overlapX and overlapY and overlapZ then
 			return false, "would_suffocate"
 		end
 	end

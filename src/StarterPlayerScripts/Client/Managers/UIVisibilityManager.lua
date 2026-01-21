@@ -116,6 +116,20 @@ local UI_MODES = {
 			persist = true
 		},
 		cursorMode = "ui"
+	},
+	-- NPC Trade mode (shop/merchant)
+	npcTrade = {
+		visibleComponents = {"npcTradeUI"},
+		hiddenComponents = {"mainHUD", "voxelHotbar", "statusBarsHUD", "crosshair", "voxelInventory", "worldsPanel"},
+		backdrop = true,
+		backdropConfig = {
+			overlay = true,
+			overlayColor = Color3.fromRGB(58, 58, 58),
+			overlayTransparency = 0.35,
+			displayOrder = 99,
+			persist = true
+		},
+		cursorMode = "ui"
 	}
 }
 

@@ -670,6 +670,33 @@ function TutorialManager:OnItemEquipped(itemId)
 end
 
 --[[
+	Called when player interacts with an NPC
+	@param npcType: string - The NPC type ("shop", "merchant", "warp", etc.)
+]]
+function TutorialManager:OnNPCInteracted(npcType)
+	-- Skip if tutorial disabled (not in own realm)
+	if isDisabled or not currentStep or tutorialData and tutorialData.completed then
+		return
+	end
+
+	self:_reportProgress("npc_interact", {npcType = npcType})
+end
+
+--[[
+	Called when player sells an item to merchant
+	@param itemId: number - The item ID sold
+	@param count: number - Amount sold
+]]
+function TutorialManager:OnItemSold(itemId, count)
+	-- Skip if tutorial disabled (not in own realm)
+	if isDisabled or not currentStep or tutorialData and tutorialData.completed then
+		return
+	end
+
+	self:_reportProgress("sell_item", {itemId = itemId, count = count or 1})
+end
+
+--[[
 	Skip the current step (if allowed)
 ]]
 function TutorialManager:SkipCurrentStep()

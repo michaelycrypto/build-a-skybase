@@ -245,17 +245,8 @@ function UIManager:GetSafeAreaInsets()
 end
 
 function UIManager:ShowWorldStatus(title, subtitle)
-	ensureWorldStatusGui()
-
-	worldStatusGui.Enabled = true
-	worldStatusTitle.Text = title or STATUS_COPY.loading.title
-	worldStatusSubtitle.Text = subtitle or STATUS_COPY.loading.body
-
-	if not worldStatusOverlayRelease then
-		worldStatusOverlayRelease = InputService:BeginOverlay("WorldStatus", {
-			showIcon = true,
-		})
-	end
+	-- World status overlay disabled - no longer showing "Syncing world" loading UI
+	return
 end
 
 function UIManager:HideWorldStatus()
