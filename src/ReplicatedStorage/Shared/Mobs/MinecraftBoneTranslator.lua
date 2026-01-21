@@ -933,5 +933,104 @@ function MinecraftBoneTranslator.BuildChickenModel(scale)
     }
 end
 
+-- Build an NPC model with customizable outfit color and optional props
+-- Used for hub world NPCs (Shop Keeper, Merchant, Warp Master)
+function MinecraftBoneTranslator.BuildNPCModel(scale, outfitColor, npcType)
+    local s = (type(scale) == "number" and scale > 0) and scale or 1
+    local geometry = MinecraftBoneTranslator.BuildZombieGeometry()
+    local processed = MinecraftBoneTranslator.ProcessGeometry(geometry)
+
+    -- Default colors
+    local skinColor = Color3.fromRGB(255, 213, 170)
+    local outfit = outfitColor or Color3.fromRGB(60, 120, 220)
+
+    local parts = {}
+
+    local function scaleCFrame(cf)
+        if not cf then return nil end
+        local pos = cf.Position
+        local rot = cf - cf.Position
+        return CFrame.new(pos.X * s, pos.Y * s, pos.Z * s) * rot
+    end
+
+    local function addFrom(nameKey, tag, motorName, color)
+        local d = processed[nameKey]
+        if not d then return end
+        parts[tag] = {
+            size = d.size * s,
+            cframe = scaleCFrame(d.cframe),
+            c0 = scaleCFrame(d.c0),
+            c1 = scaleCFrame(d.c1),
+            material = Enum.Material.SmoothPlastic,
+            color = color,
+            tag = tag,
+            motorName = motorName
+        }
+    end
+
+    -- Head with skin color
+    addFrom("head_1_skin", "Head", "HeadMotor", skinColor)
+    -- Body and limbs with outfit color
+    addFrom("body_1_skin", "Torso", "TorsoMotor", outfit)
+    addFrom("leftArm_1_skin", "LeftArm", "LeftArmMotor", outfit)
+    addFrom("rightArm_1_skin", "RightArm", "RightArmMotor", outfit)
+    addFrom("leftLeg_1_skin", "LeftLeg", "LeftLegMotor", outfit)
+    addFrom("rightLeg_1_skin", "RightLeg", "RightLegMotor", outfit)
+
+    -- Add NPC-specific props based on type
+    if npcType == "SHOP_KEEPER" then
+        -- Add a chest/box prop
+        parts.Prop = {
+            size = Vector3.new(0.6, 0.5, 0.4) * s,
+            cframe = CFrame.new(0, 0, 0),
+            material = Enum.Material.Wood,
+            color = Color3.fromRGB(139, 90, 43),
+            tag = "Prop",
+            motorName = "PropMotor",
+            parent = "LeftArm",
+            c0 = CFrame.new(0, -0.7 * s, -0.3 * s),
+            jointC1 = CFrame.new()
+        }
+    elseif npcType == "MERCHANT" then
+        -- Add a coin bag prop
+        parts.Prop = {
+            size = Vector3.new(0.4, 0.5, 0.3) * s,
+            cframe = CFrame.new(0, 0, 0),
+            material = Enum.Material.Fabric,
+            color = Color3.fromRGB(139, 119, 42),
+            tag = "Prop",
+            motorName = "PropMotor",
+            parent = "RightArm",
+            c0 = CFrame.new(0, -0.7 * s, -0.3 * s),
+            jointC1 = CFrame.new()
+        }
+    elseif npcType == "WARP_MASTER" then
+        -- Add a staff/wand prop
+        parts.Prop = {
+            size = Vector3.new(0.15, 1.5, 0.15) * s,
+            cframe = CFrame.new(0, 0, 0),
+            material = Enum.Material.Neon,
+            color = Color3.fromRGB(180, 120, 255),
+            tag = "Prop",
+            motorName = "PropMotor",
+            parent = "RightArm",
+            c0 = CFrame.new(0, -0.8 * s, -0.2 * s) * CFrame.Angles(math.rad(15), 0, 0),
+            jointC1 = CFrame.new()
+        }
+    end
+
+    return {
+        rootOffset = Vector3.new(0, 0, 0),
+        parts = parts
+    }
+end
+
+-- NPC outfit colors for different types
+MinecraftBoneTranslator.NPCColors = {
+    SHOP_KEEPER = Color3.fromRGB(50, 180, 80),   -- Green
+    MERCHANT = Color3.fromRGB(220, 170, 50),     -- Gold
+    WARP_MASTER = Color3.fromRGB(140, 80, 220),  -- Purple
+}
+
 return MinecraftBoneTranslator
 

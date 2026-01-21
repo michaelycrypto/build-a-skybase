@@ -105,6 +105,9 @@ local Manifest = {
 		RequestCompleteEating = {"any"}, -- {foodId: number} - Request to complete eating
 		RequestCancelEating = {}, -- Cancel eating
 		RequestHungerSync = {}, -- Request server to resend current hunger/saturation state
+
+		-- NPC system
+		RequestNPCInteract = {"any"}, -- {npcId: string} - Request to interact with NPC
 	},
 
 	-- Server -> Client events and their parameter type signatures
@@ -215,7 +218,10 @@ local Manifest = {
 		-- Food/Eating events
 		EatingStarted = {"any"}, -- {foodId: number, duration: number} or {error: string} - Eating started
 		EatingCompleted = {"any"}, -- {hunger: number, saturation: number, effects: table} or {error: string} - Eating completed
-		EatingCancelled = {"any"} -- {} - Eating was cancelled
+		EatingCancelled = {"any"}, -- {} - Eating was cancelled
+
+		-- NPC events
+		NPCInteraction = {"any"} -- {npcId: string, npcType: string, interactionType: string} - NPC interaction triggered
 	}
 }
 

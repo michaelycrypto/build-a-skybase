@@ -861,6 +861,11 @@ local function completeInitialization(EmoteManager)
 	BowController:Initialize(inventoryManager)
 	Client.bowController = BowController
 
+	-- Initialize NPC Controller (hub world NPC interactions)
+	local NPCController = require(script.Parent.Controllers.NPCController)
+	NPCController:Initialize()
+	Client.npcController = NPCController
+
 	-- Initialize Armor Visual Controller (render armor on character)
 	local ArmorVisualController = require(script.Parent.Controllers.ArmorVisualController)
 	ArmorVisualController.Init()
@@ -1073,6 +1078,9 @@ local function completeInitialization(EmoteManager)
 	worldsPanel = worldsPanelInstance
 	if hotbar then
 		hotbar:SetWorldsPanel(worldsPanelInstance)
+	end
+	if Client.npcController then
+		Client.npcController:SetWorldsPanel(worldsPanelInstance)
 	end
 
 	-- Create main HUD (after panels are registered)

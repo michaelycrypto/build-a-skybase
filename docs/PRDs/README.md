@@ -30,6 +30,9 @@ These PRDs define how to implement items that were exported from Minecraft but a
 #### Farming & Resources
 - `PRD_FARMING_SYSTEM.md` ✅ - Crop growth, farmland, seeds, harvesting
 
+#### Hub & NPCs
+- `PRD_NPC_SYSTEM.md` ✅ - Hub world NPCs, spawning system, shop/sell/warp infrastructure
+
 ### 📋 Planned PRDs (Future)
 
 #### Advanced Systems
@@ -79,4 +82,4 @@ When creating new PRDs:
 ---
 
 *Last Updated: January 2026*
-*Total PRDs: 8 completed*
+*Total PRDs: 9 completed*

@@ -615,6 +615,28 @@ local function interactOrPlace()
 		end
 	end
 
+	-- Try interacting with an NPC model under mouse
+	do
+		local target = mouse and mouse.Target
+		if target then
+			local model = target:FindFirstAncestorOfClass("Model")
+			if model then
+				local npcId = model:GetAttribute("NPCId")
+				if npcId then
+					local now = os.clock()
+					if (now - lastMinionOpenRequestAt) < MINION_OPEN_DEBOUNCE then
+						print("[BlockInteraction] NPC interact request debounced")
+						return true
+					end
+					lastMinionOpenRequestAt = now
+					print("[BlockInteraction] RequestNPCInteract npcId=", tostring(npcId))
+					EventManager:SendToServer("RequestNPCInteract", { npcId = tostring(npcId) })
+					return true
+				end
+			end
+		end
+	end
+
 	-- Verify character still exists
 	local character = player.Character
 	if not character or not character:FindFirstChild("Humanoid") then
@@ -1076,28 +1098,49 @@ function BlockInteraction:Initialize(voxelWorldHandle)
 
 		-- First person: Handle block placement and interaction (Minecraft-style)
 		if inputState == Enum.UserInputState.Begin then
-			-- Try minion mob model interaction in first-person
-			do
-				local target = mouse and mouse.Target
-				if target then
-					local model = target:FindFirstAncestorOfClass("Model")
-					if model then
-						local entityId = model:GetAttribute("MobEntityId")
-						if entityId then
-							local now = os.clock()
-							if (now - lastMinionOpenRequestAt) < MINION_OPEN_DEBOUNCE then
-								print("[BlockInteraction] Minion open request debounced (entity path FP)")
-								return Enum.ContextActionResult.Sink
-							end
-							lastMinionOpenRequestAt = now
-							print("[BlockInteraction] RequestOpenMinionByEntity (FP) entityId=", tostring(entityId))
-							EventManager:SendToServer("RequestOpenMinionByEntity", { entityId = tostring(entityId) })
+		-- Try minion mob model interaction in first-person
+		do
+			local target = mouse and mouse.Target
+			if target then
+				local model = target:FindFirstAncestorOfClass("Model")
+				if model then
+					local entityId = model:GetAttribute("MobEntityId")
+					if entityId then
+						local now = os.clock()
+						if (now - lastMinionOpenRequestAt) < MINION_OPEN_DEBOUNCE then
+							print("[BlockInteraction] Minion open request debounced (entity path FP)")
 							return Enum.ContextActionResult.Sink
 						end
+						lastMinionOpenRequestAt = now
+						print("[BlockInteraction] RequestOpenMinionByEntity (FP) entityId=", tostring(entityId))
+						EventManager:SendToServer("RequestOpenMinionByEntity", { entityId = tostring(entityId) })
+						return Enum.ContextActionResult.Sink
 					end
 				end
 			end
-			-- Check if clicking on an interactable block first
+		end
+		-- Try NPC model interaction in first-person
+		do
+			local target = mouse and mouse.Target
+			if target then
+				local model = target:FindFirstAncestorOfClass("Model")
+				if model then
+					local npcId = model:GetAttribute("NPCId")
+					if npcId then
+						local now = os.clock()
+						if (now - lastMinionOpenRequestAt) < MINION_OPEN_DEBOUNCE then
+							print("[BlockInteraction] NPC interact request debounced (FP)")
+							return Enum.ContextActionResult.Sink
+						end
+						lastMinionOpenRequestAt = now
+						print("[BlockInteraction] RequestNPCInteract (FP) npcId=", tostring(npcId))
+						EventManager:SendToServer("RequestNPCInteract", { npcId = tostring(npcId) })
+						return Enum.ContextActionResult.Sink
+					end
+				end
+			end
+		end
+		-- Check if clicking on an interactable block first
 			local blockPos, faceNormal, preciseHitPos = getTargetedBlock()
 			if blockPos then
 				local worldManager = blockAPI and blockAPI.worldManager

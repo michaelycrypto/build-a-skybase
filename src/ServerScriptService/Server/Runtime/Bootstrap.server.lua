@@ -113,6 +113,10 @@ if IS_LOBBY then
 		dependencies = {"VoxelWorldService", "PlayerInventoryService"},
 		mixins = {}
 	})
+	Injector:Bind("NPCService", script.Parent.Parent.Services.NPCService, {
+		dependencies = {},
+		mixins = {}
+	})
 else
 	-- Worlds place services
 	-- Also bind WorldsListService so players can view/manage worlds from within their worlds
@@ -193,6 +197,7 @@ local crossPlaceTeleportService = Injector:Resolve("CrossPlaceTeleportService")
 local loadingProtectionService = Injector:Resolve("LoadingProtectionService")
 local hungerService = Injector:Resolve("HungerService")
 local foodService = Injector:Resolve("FoodService")
+local npcService = IS_LOBBY and Injector:Resolve("NPCService") or nil
 
 -- Manually inject ChestStorageService into VoxelWorldService (to avoid circular dependency during init)
 if voxelWorldService and chestStorageService then
@@ -239,6 +244,7 @@ local servicesTable = {
 	LoadingProtectionService = loadingProtectionService,
 	HungerService = hungerService,
 	FoodService = foodService,
+	NPCService = npcService,
 }
 
 -- Register all events first (defines RemoteEvents with proper parameter signatures)
@@ -323,7 +329,9 @@ local clientEvents = {
 	"PlayerDealtDamage",
 	"EatingStarted",
 	"EatingCompleted",
-	"EatingCancelled"
+	"EatingCancelled",
+	-- NPC system events
+	"NPCInteraction"
 }
 
 -- Register each client-bound event (this will define them in the Network module)
