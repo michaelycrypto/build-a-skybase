@@ -429,7 +429,8 @@ getBridgePlacementCandidate = function(lockedY, lockedDX, lockedDZ)
             return false
         end
         local id = wm:GetBlock(x, y, z)
-        return (id == nil) or (id == Constants.BlockType.AIR)
+        -- Also treat flowing water as "air" for placement purposes (it's replaceable)
+        return (id == nil) or (id == Constants.BlockType.AIR) or (id == Constants.BlockType.FLOWING_WATER)
     end
     local function _nonAirAt(x, y, z)
         -- If chunk isn't loaded, treat as NOT solid (be conservative)
@@ -991,11 +992,12 @@ local function startPlacing()
 						local selectedBlock = GameState:Get("voxelWorld.selectedBlock")
 						if selectedBlock and selectedBlock.id then
 							-- Skip if already occupied (client check)
+							-- Allow placing through air and flowing water (flowing water is replaceable)
 							local worldManager = blockAPI and blockAPI.worldManager
 							local canTryPlace = true
 							if worldManager then
 								local existing = worldManager:GetBlock(placeX, placeY, placeZ)
-								if existing and existing ~= Constants.BlockType.AIR then
+								if existing and existing ~= Constants.BlockType.AIR and existing ~= Constants.BlockType.FLOWING_WATER then
 									canTryPlace = false
 									lastPlacedKey = nil -- Reset so we can try new positions
 								end

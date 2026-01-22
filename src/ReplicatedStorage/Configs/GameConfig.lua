@@ -581,7 +581,7 @@ local GameConfig = {
 	-- World system configuration
 	Worlds = {
 		MaxWorldsPerPlayer = 10, -- Maximum worlds a player can create
-		DataStoreVersion = "PlayerOwnedWorlds_v64" -- Updated for multi-world support
+		DataStoreVersion = "PlayerOwnedWorlds_v68" -- Updated for multi-world support
 	}
 }
 

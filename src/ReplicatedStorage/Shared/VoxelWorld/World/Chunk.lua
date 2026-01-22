@@ -167,6 +167,11 @@ function Chunk:IsEmpty(): boolean
     return (self.numNonAirBlocks or 0) == 0
 end
 
+-- Check if a block ID is water
+local function isWaterBlock(blockId)
+    return blockId == Constants.BlockType.WATER_SOURCE or blockId == Constants.BlockType.FLOWING_WATER
+end
+
 -- Set block at local coordinates
 function Chunk:setBlock(x: number, y: number, z: number, blockId: number)
     if x < 0 or x >= Constants.CHUNK_SIZE_X or y < 0 or y >= Constants.CHUNK_SIZE_Y or z < 0 or z >= Constants.CHUNK_SIZE_Z then
@@ -188,6 +193,25 @@ function Chunk:setBlock(x: number, y: number, z: number, blockId: number)
         self.numNonAirBlocks = (self.numNonAirBlocks or 0) + 1
     elseif oldBlockId ~= Constants.BlockType.AIR and blockId == Constants.BlockType.AIR then
         self.numNonAirBlocks = math.max(0, (self.numNonAirBlocks or 0) - 1)
+    end
+    
+    -- Track water Y bounds for efficient WaterMesher scanning
+    -- This avoids scanning 256 Y levels when water only exists in a small range
+    local wasWater = isWaterBlock(oldBlockId)
+    local isWater = isWaterBlock(blockId)
+    
+    if isWater then
+        -- Water placed - extend bounds
+        if self.waterMinY == nil or y < self.waterMinY then
+            self.waterMinY = y
+        end
+        if self.waterMaxY == nil or y > self.waterMaxY then
+            self.waterMaxY = y
+        end
+    elseif wasWater then
+        -- Water removed - mark bounds as dirty (will be recalculated on next mesh)
+        -- Full recalculation is expensive, so we just invalidate and let WaterMesher handle it
+        self.waterBoundsDirty = true
     end
 
     -- Maintain heightMap (highest non-air y for column)

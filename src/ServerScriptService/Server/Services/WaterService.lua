@@ -1,40 +1,36 @@
 --[[
 	WaterService.lua
-	Minecraft-style water flow simulation for source/flowing water blocks.
+	Water flow simulation for source/flowing water blocks.
 	
 	WATER SPREAD PATTERN:
-	Water spreads to all 8 adjacent blocks (cardinals + diagonals), not just 4.
+	Water spreads ONLY in cardinal directions (N, S, E, W).
+	Diagonal positions are filled when water reaches them via cardinals.
 	
-	  NW  N  NE
-	   W [S] E     ← All 8 blocks at same Y-level receive flow
-	  SW  S  SE
+	     N
+	   W[S]E    ← Direct flow only to N, S, E, W
+	     S
 	
-	This creates circular/diamond spread patterns matching Minecraft behavior.
-	Diagonal flow has the same depth cost as cardinal flow (1 per block).
+	INSTANT FALL:
+	- Water falls instantly to the bottom when placed or unblocked
+	- Entire column created in one operation (no tick-by-tick)
+	- Falling water cleaned up instantly when source removed
 	
 	DEPTH SYSTEM:
 	- Source blocks have depth 0
-	- Each horizontal step (cardinal OR diagonal) increases depth by 1
+	- Each horizontal step increases depth by 1
 	- Max depth is 7 (water disappears beyond this)
 	- Falling water resets depth to 0 but tracks fall distance
 	
 	FALLING FLAG (Minecraft 0x8 bit):
-	The falling flag is set when EITHER condition is true:
+	Set when EITHER condition is true:
 	1. Water CAN flow down (air/replaceable below)
 	2. Water HAS water directly above it
 	
-	This ensures waterfalls render at full height even when hitting surfaces:
-	
-	    [S] ← Source
-	    [F] ← Falling (can flow down)
-	    [F] ← Falling (water above, solid below) ← Key case!
-	   ═════ ← Solid ground
-	
-	Without this, the bottom block would render at reduced height.
+	This ensures waterfalls render at full height even when hitting surfaces.
 	
 	DOWNHILL PATHFINDING:
 	Water prefers flowing toward the nearest drop-off (edge).
-	BFS searches all 8 directions to find shortest path to a hole.
+	BFS searches to find shortest path to a hole.
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -54,11 +50,15 @@ local TICK_INTERVAL = 0.25 -- 5 ticks at 20 TPS
 local MAX_UPDATES_PER_TICK = 200
 local MAX_UPDATES_PER_CHUNK = 50
 local MAX_QUEUE_SIZE = 50000
-local SOURCE_DEPTH = WaterUtils.MAX_DEPTH + 1
 local THROTTLE_THRESHOLD_FRAMES = 3
 local REFLOW_RADIUS = 4
 local MAX_FALL_DISTANCE = 15 -- Maximum fall distance tracked (metadata limit)
-local MAX_TOTAL_FALL = 64 -- Water dissipates after falling this far without solid support
+-- NOTE: No MAX_TOTAL_FALL limit - water falls infinitely until it hits something solid
+
+-- Source conversion settling: prevent cascading conversions
+-- A block must remain at max depth for this many ticks before it can convert to source
+local SOURCE_CONVERSION_SETTLE_TICKS = 4 -- ~1 second at 0.25s tick interval
+local MAX_CONVERSIONS_PER_TICK = 3 -- Limit how many blocks can convert per tick
 
 function WaterService.new()
 	local self = setmetatable(BaseService.new(), WaterService)
@@ -75,6 +75,10 @@ function WaterService.new()
 	self._throttled = false
 	-- Pause control
 	self._paused = false
+	-- Source conversion settling: track how long blocks have been at max depth
+	-- key -> ticksAtMaxDepth (increments each tick block remains at max depth)
+	self._conversionCandidates = {}
+	self._conversionsThisTick = 0
 	return self
 end
 
@@ -102,6 +106,8 @@ function WaterService:Destroy()
 	self._queueKeys = {}
 	self._queueDirty = true
 	self._queueSize = 0
+	self._conversionCandidates = {}
+	self._conversionsThisTick = 0
 end
 
 local function _key(x, y, z)
@@ -122,26 +128,34 @@ function WaterService:_queueKey(x, y, z)
 	self._queueSize += 1
 end
 
--- 8-direction horizontal spread + vertical (Minecraft-style)
--- Water spreads to all 8 neighbors at same Y level
+-- 8-direction horizontal neighbors (used for queuing and pathfinding)
+-- Note: Actual flow uses diagonal gating (see _updateWaterBlock)
 local HORIZONTAL_NEIGHBORS = {
-	-- Cardinals
 	{dx = 1, dz = 0},   -- East (+X)
 	{dx = -1, dz = 0},  -- West (-X)
 	{dx = 0, dz = 1},   -- South (+Z)
 	{dx = 0, dz = -1},  -- North (-Z)
-	-- Diagonals
-	{dx = 1, dz = 1},   -- SE (+X, +Z)
-	{dx = 1, dz = -1},  -- NE (+X, -Z)
-	{dx = -1, dz = 1},  -- SW (-X, +Z)
-	{dx = -1, dz = -1}, -- NW (-X, -Z)
+	{dx = 1, dz = 1},   -- Southeast (+X, +Z)
+	{dx = 1, dz = -1},  -- Northeast (+X, -Z)
+	{dx = -1, dz = 1},  -- Southwest (-X, +Z)
+	{dx = -1, dz = -1}, -- Northwest (-X, -Z)
 }
+
+-- Cardinal directions only (water spreads only in these 4 directions)
+local CARDINAL_DIRS = {"east", "west", "north", "south"}
 
 function WaterService:_queueNeighbors(x, y, z)
 	-- Vertical
 	self:_queueKey(x, y + 1, z)
 	self:_queueKey(x, y - 1, z)
-	-- All 8 horizontal directions
+	-- 8 horizontal directions (cardinals + diagonals)
+	for _, dir in ipairs(HORIZONTAL_NEIGHBORS) do
+		self:_queueKey(x + dir.dx, y, z + dir.dz)
+	end
+end
+
+-- Queue only horizontal neighbors at same Y level (8 directions)
+function WaterService:_queueHorizontalNeighbors(x, y, z)
 	for _, dir in ipairs(HORIZONTAL_NEIGHBORS) do
 		self:_queueKey(x + dir.dx, y, z + dir.dz)
 	end
@@ -194,19 +208,12 @@ local function _shouldReplaceWater(blockId, metadata, newDepth)
 	return newDepth < currentDepth
 end
 
-local function _countCardinalSources(hNeighbors)
+local function _countAdjacentSources(hNeighbors)
 	local sources = 0
-	if hNeighbors.east.id == BLOCK.WATER_SOURCE then
-		sources += 1
-	end
-	if hNeighbors.west.id == BLOCK.WATER_SOURCE then
-		sources += 1
-	end
-	if hNeighbors.south.id == BLOCK.WATER_SOURCE then
-		sources += 1
-	end
-	if hNeighbors.north.id == BLOCK.WATER_SOURCE then
-		sources += 1
+	for _, nb in pairs(hNeighbors) do
+		if nb.id == BLOCK.WATER_SOURCE then
+			sources += 1
+		end
 	end
 	return sources
 end
@@ -220,6 +227,111 @@ function WaterService:_setFlowingWater(x, y, z, depth, falling, fallDistance)
 	self:_queueKey(x, y, z)
 	self:_queueNeighbors(x, y, z)
 	return true
+end
+
+--[[
+	INSTANT FALL OPTIMIZATION
+	Instead of flowing down one block per tick (causing 64 redraws for a 64-block fall),
+	scan all the way down and set the entire column at once.
+	
+	CRITICAL: Falling water does NOT spread horizontally - it only spreads when it LANDS.
+	So we only queue the bottom block's neighbors, not every level.
+	
+	Returns: bottomY (lowest Y where water was placed), blocksPlaced
+]]
+function WaterService:_instantFallColumn(x, startY, z, initialFallDistance)
+	local vws = self.Deps and self.Deps.VoxelWorldService
+	local wm = vws and vws.worldManager
+	if not wm then return startY, 0 end
+	
+	-- Scan downward to find how far water can fall
+	local bottomY = startY
+	local fallDistance = initialFallDistance or 0
+	
+	for checkY = startY - 1, Constants.MIN_HEIGHT, -1 do
+		-- Check if chunk is loaded
+		if not _isChunkLoaded(wm, x, z) then
+			break
+		end
+		
+		local belowId = wm:GetBlock(x, checkY, z)
+		
+		-- Stop if we hit something we can't flow into
+		if not _canFlowInto(belowId) then
+			break
+		end
+		
+		-- Track fall distance for metadata (capped at MAX_FALL_DISTANCE)
+		fallDistance = fallDistance + 1
+		-- No fall limit - water falls until it hits something solid
+		
+		bottomY = checkY
+	end
+	
+	-- If no fall possible, return
+	if bottomY == startY then
+		return startY, 0
+	end
+	
+	-- Set all blocks in the column at once (single batch)
+	local blocksPlaced = 0
+	local currentFallDist = initialFallDistance or 0
+	
+	for y = startY - 1, bottomY, -1 do
+		currentFallDist = math.min(currentFallDist + 1, MAX_FALL_DISTANCE)
+		local meta = WaterUtils.MakeMetadata(0, true, currentFallDist)
+		vws:SetBlock(x, y, z, BLOCK.FLOWING_WATER, nil, meta)
+		blocksPlaced = blocksPlaced + 1
+	end
+	
+	-- ONLY queue the bottom block where water lands - this is where horizontal spread happens
+	-- Falling water columns don't spread horizontally, so don't queue every level
+	-- This reduces queue from O(height * 4) to O(1) per column!
+	self:_queueKey(x, bottomY, z)
+	self:_queueNeighbors(x, bottomY, z)
+	
+	return bottomY, blocksPlaced
+end
+
+--[[
+	INSTANT CLEANUP: Remove all falling water in a column when source is removed
+	Scans downward and removes all connected falling water blocks instantly
+	Returns: blocksRemoved count
+]]
+function WaterService:_instantCleanupColumn(x, startY, z)
+	local vws = self.Deps and self.Deps.VoxelWorldService
+	local wm = vws and vws.worldManager
+	if not wm then return 0 end
+	
+	local blocksRemoved = 0
+	
+	-- Scan downward and remove all falling water
+	for checkY = startY, Constants.MIN_HEIGHT, -1 do
+		-- Check if chunk is loaded
+		if not _isChunkLoaded(wm, x, z) then
+			break
+		end
+		
+		local blockId = wm:GetBlock(x, checkY, z)
+		
+		-- Only remove falling water
+		if blockId == BLOCK.FLOWING_WATER then
+			local meta = wm:GetBlockMetadata(x, checkY, z) or 0
+			if WaterUtils.IsFalling(meta) then
+				vws:SetBlock(x, checkY, z, BLOCK.AIR, nil, 0)
+				blocksRemoved = blocksRemoved + 1
+			else
+				-- Hit non-falling water, stop
+				break
+			end
+		elseif blockId ~= BLOCK.AIR then
+			-- Hit something solid, stop
+			break
+		end
+		-- Continue through air gaps (in case water hasn't filled yet)
+	end
+	
+	return blocksRemoved
 end
 
 function WaterService:_findDownhillDistance(x, y, z, maxDistance): number
@@ -249,7 +361,7 @@ function WaterService:_findDownhillDistance(x, y, z, maxDistance): number
 			end
 		end
 
-		-- Check all 8 horizontal directions
+		-- Check 8 horizontal directions (cardinals + diagonals)
 		for _, dir in ipairs(HORIZONTAL_NEIGHBORS) do
 			local nx = node.x + dir.dx
 			local nz = node.z + dir.dz
@@ -300,20 +412,31 @@ function WaterService:_updateWaterBlock(x, y, z): boolean
 	local aboveId = (y + 1 <= Constants.WORLD_HEIGHT) and wm:GetBlock(x, y + 1, z) or BLOCK.AIR
 	local belowId = (y - 1 >= Constants.MIN_HEIGHT) and wm:GetBlock(x, y - 1, z) or BLOCK.AIR
 	local belowMeta = (y - 1 >= Constants.MIN_HEIGHT) and (wm:GetBlockMetadata(x, y - 1, z) or 0) or 0
+	
+	-- OPTIMIZATION: Skip processing falling water that's part of an existing column
+	-- If this block is falling AND has falling water above it, it's already been handled by _instantFallColumn
+	-- This prevents O(n^2) processing where each block in a column tries to process the entire column again
+	if id == BLOCK.FLOWING_WATER and isFalling then
+		local aboveMeta = (y + 1 <= Constants.WORLD_HEIGHT) and (wm:GetBlockMetadata(x, y + 1, z) or 0) or 0
+		local aboveIsFalling = WaterUtils.IsWater(aboveId) and WaterUtils.IsFalling(aboveMeta)
+		if aboveIsFalling then
+			-- This block is part of an existing falling column - nothing to do
+			-- It will be updated when the column is regenerated from above
+			return false
+		end
+	end
 
-	-- Cache all 8 horizontal neighbors: {id, meta, chunkLoaded}
+	-- Cache all 8 horizontal neighbors (cardinals + diagonals)
 	-- Coordinate system: +X = East, -X = West, +Z = South, -Z = North
 	local hNeighbors = {
-		-- Cardinals
 		east  = {x = x + 1, z = z, dx = 1, dz = 0},
 		west  = {x = x - 1, z = z, dx = -1, dz = 0},
 		south = {x = x, z = z + 1, dx = 0, dz = 1},
 		north = {x = x, z = z - 1, dx = 0, dz = -1},
-		-- Diagonals
-		ne = {x = x + 1, z = z - 1, dx = 1, dz = -1},
-		nw = {x = x - 1, z = z - 1, dx = -1, dz = -1},
-		se = {x = x + 1, z = z + 1, dx = 1, dz = 1},
-		sw = {x = x - 1, z = z + 1, dx = -1, dz = 1},
+		se    = {x = x + 1, z = z + 1, dx = 1, dz = 1},
+		ne    = {x = x + 1, z = z - 1, dx = 1, dz = -1},
+		sw    = {x = x - 1, z = z + 1, dx = -1, dz = 1},
+		nw    = {x = x - 1, z = z - 1, dx = -1, dz = -1},
 	}
 	for dir, nb in pairs(hNeighbors) do
 		if _isChunkLoaded(wm, nb.x, nb.z) then
@@ -357,7 +480,7 @@ function WaterService:_updateWaterBlock(x, y, z): boolean
 			considerSource(aboveDepth, aboveFallDist)
 		end
 
-		-- Check horizontal neighbors
+		-- Check all 8 horizontal neighbors
 		for _, nb in pairs(hNeighbors) do
 			if nb.loaded then
 				if nb.id == BLOCK.WATER_SOURCE then
@@ -389,20 +512,21 @@ function WaterService:_updateWaterBlock(x, y, z): boolean
 		end
 	end
 
-	-- Downward flow (highest priority)
+	-- Downward flow (highest priority) - USE INSTANT FALL OPTIMIZATION
 	if (y - 1) >= Constants.MIN_HEIGHT and _canFlowInto(belowId) then
-		-- Increment fall distance when flowing down
+		-- Calculate initial fall distance
 		local newFallDistance = (id == BLOCK.WATER_SOURCE) and 1 or math.min(fallDistance + 1, MAX_FALL_DISTANCE)
 		
-		-- Check if water has fallen too far and should dissipate (but not if falling into existing water)
-		if newFallDistance >= MAX_TOTAL_FALL and belowId ~= BLOCK.FLOWING_WATER then
-			-- Water dissipates - don't spread further down
-			return changed
+		-- No fall distance limit - water falls infinitely until hitting solid ground
+		
+		-- INSTANT FALL: Scan down and set entire column at once
+		-- This dramatically reduces redraws (1 instead of N for N-block falls)
+		local bottomY, blocksPlaced = self:_instantFallColumn(x, y, z, newFallDistance - 1)
+		
+		if blocksPlaced > 0 then
+			changed = true
 		end
 		
-		if _shouldReplaceWater(belowId, belowMeta, 0) then
-			changed = self:_setFlowingWater(x, y - 1, z, 0, true, newFallDistance) or changed
-		end
 		return changed
 	end
 
@@ -422,16 +546,40 @@ function WaterService:_updateWaterBlock(x, y, z): boolean
 		if id == BLOCK.FLOWING_WATER then
 			-- Only convert after settling; falling water never converts
 			if not isFalling then
-				-- Count adjacent sources from cardinals only (no diagonals)
-				local sources = _countCardinalSources(hNeighbors)
+				local posKey = _key(x, y, z)
+				-- Count adjacent sources from all 8 directions
+				local sources = _countAdjacentSources(hNeighbors)
 				if sources >= 2 and (_isSolid(belowId) or belowId == BLOCK.WATER_SOURCE) then
-					vws:SetBlock(x, y, z, BLOCK.WATER_SOURCE, nil, 0)
-					self:_queueNeighbors(x, y, z)
-					changed = true
+					-- Track settling time: block must remain at max depth for several ticks
+					local settleCount = self._conversionCandidates[posKey] or 0
+					settleCount = settleCount + 1
+					self._conversionCandidates[posKey] = settleCount
+					
+					-- Only convert after settling AND within per-tick limit
+					if settleCount >= SOURCE_CONVERSION_SETTLE_TICKS then
+						if self._conversionsThisTick < MAX_CONVERSIONS_PER_TICK then
+							vws:SetBlock(x, y, z, BLOCK.WATER_SOURCE, nil, 0)
+							self._conversionCandidates[posKey] = nil
+							self._conversionsThisTick = self._conversionsThisTick + 1
+							-- Don't queue neighbors immediately - let them settle naturally
+							-- This prevents cascading conversions
+							changed = true
+						end
+						-- If at conversion limit, keep in candidates for next tick
+					end
+				else
+					-- No longer a conversion candidate (sources moved/removed)
+					self._conversionCandidates[posKey] = nil
 				end
+			else
+				-- Falling water resets conversion candidacy
+				self._conversionCandidates[_key(x, y, z)] = nil
 			end
 		end
 		return changed
+	else
+		-- Not at max depth, reset conversion candidacy
+		self._conversionCandidates[_key(x, y, z)] = nil
 	end
 
 	local newDepth = depth + 1
@@ -441,10 +589,14 @@ function WaterService:_updateWaterBlock(x, y, z): boolean
 		return changed
 	end
 
-	-- Find downhill weights using cached neighbors
+	-- Find downhill weights using CARDINAL directions only (no diagonal spread)
+	-- Diagonals are filled when water flows through adjacent cardinals
 	local minWeight = 1000
 	local weights = {}
-	for dir, nb in pairs(hNeighbors) do
+	
+	-- Process cardinal directions only (N, S, E, W)
+	for _, dir in ipairs(CARDINAL_DIRS) do
+		local nb = hNeighbors[dir]
 		if nb.loaded and _canFlowInto(nb.id) then
 			local weight = self:_findDownhillDistance(nb.x, y, nb.z, 4)
 			weights[#weights + 1] = { x = nb.x, z = nb.z, weight = weight, id = nb.id, meta = nb.meta }
@@ -470,6 +622,10 @@ function WaterService:_processQueue()
 	if self._paused then
 		return
 	end
+	
+	-- Reset per-tick conversion limit
+	self._conversionsThisTick = 0
+	
 	if self._queueDirty then
 		self:_rebuildQueueKeys()
 	end
@@ -480,6 +636,8 @@ function WaterService:_processQueue()
 			self._throttled = false
 			self._overBudgetFrames = 0
 		end
+		-- Clean up stale conversion candidates when queue is empty
+		self._conversionCandidates = {}
 		return
 	end
 
@@ -547,7 +705,7 @@ function WaterService:_processQueue()
 	end
 end
 
-function WaterService:OnBlockChanged(x, y, z, newBlockId, _newMeta, prevBlockId)
+function WaterService:OnBlockChanged(x, y, z, newBlockId, newMeta, prevBlockId)
 	local vws = self.Deps and self.Deps.VoxelWorldService
 	local wm = vws and vws.worldManager
 	if not wm then return end
@@ -555,32 +713,76 @@ function WaterService:OnBlockChanged(x, y, z, newBlockId, _newMeta, prevBlockId)
 	if WaterUtils.IsWater(newBlockId) then
 		if newBlockId == BLOCK.WATER_SOURCE then
 			wm:SetBlockMetadata(x, y, z, 0)
-		end
-		for dx = -1, 1 do
-			for dy = -1, 1 do
-				for dz = -1, 1 do
-					self:_queueKey(x + dx, y + dy, z + dz)
+			
+			-- INSTANT FALL: If there's air below, fall immediately
+			local belowId = (y - 1 >= Constants.MIN_HEIGHT) and wm:GetBlock(x, y - 1, z) or nil
+			if belowId and _canFlowInto(belowId) then
+				self:_instantFallColumn(x, y, z, 0)
+			end
+			
+			-- Queue self and horizontal neighbors for spread
+			self:_queueKey(x, y, z)
+			self:_queueHorizontalNeighbors(x, y, z)
+			
+		elseif newBlockId == BLOCK.FLOWING_WATER then
+			-- Flowing water: skip only if part of existing falling COLUMN (has falling water above)
+			-- Water at the TOP of a waterfall still needs to spread horizontally
+			local meta = newMeta or (wm:GetBlockMetadata(x, y, z) or 0)
+			local isFalling = WaterUtils.IsFalling(meta)
+			
+			local skipQueue = false
+			if isFalling then
+				-- Check if there's falling water above (part of existing column)
+				local aboveId = (y + 1 <= Constants.WORLD_HEIGHT) and wm:GetBlock(x, y + 1, z) or BLOCK.AIR
+				if WaterUtils.IsWater(aboveId) then
+					local aboveMeta = wm:GetBlockMetadata(x, y + 1, z) or 0
+					if WaterUtils.IsFalling(aboveMeta) then
+						skipQueue = true -- Part of existing column, don't queue
+					end
 				end
+			end
+			
+			if not skipQueue then
+				self:_queueKey(x, y, z)
+				self:_queueHorizontalNeighbors(x, y, z)
 			end
 		end
 		return
 	end
 
 	if WaterUtils.IsWater(prevBlockId) then
-		-- If a source was removed, trigger BFS reflow in region
+		-- INSTANT CLEANUP: If water was removed, clean up falling column below
+		local belowId = (y - 1 >= Constants.MIN_HEIGHT) and wm:GetBlock(x, y - 1, z) or nil
+		if belowId == BLOCK.FLOWING_WATER then
+			local belowMeta = wm:GetBlockMetadata(x, y - 1, z) or 0
+			if WaterUtils.IsFalling(belowMeta) then
+				self:_instantCleanupColumn(x, y - 1, z)
+			end
+		end
+		
+		-- If a source was removed, trigger BFS reflow for horizontal water
 		if prevBlockId == BLOCK.WATER_SOURCE then
 			task.defer(function()
 				self:ReflowRegion(x, y, z, REFLOW_RADIUS)
 			end)
 		end
-		for dx = -1, 1 do
-			for dy = -1, 1 do
-				for dz = -1, 1 do
-					self:_queueKey(x + dx, y + dy, z + dz)
-				end
-			end
-		end
+		
+		-- Queue neighbors for reflow
+		self:_queueKey(x, y + 1, z)
+		self:_queueHorizontalNeighbors(x, y, z)
 		return
+	end
+
+	-- A non-water block was removed/changed - check if water above can now fall
+	if newBlockId == BLOCK.AIR then
+		-- Check for water above that can now fall instantly
+		local aboveId = (y + 1 <= Constants.WORLD_HEIGHT) and wm:GetBlock(x, y + 1, z) or BLOCK.AIR
+		if WaterUtils.IsWater(aboveId) then
+			-- Water above can now fall - trigger instant fall from above
+			local aboveMeta = wm:GetBlockMetadata(x, y + 1, z) or 0
+			local fallDist = WaterUtils.GetFallDistance(aboveMeta)
+			self:_instantFallColumn(x, y + 1, z, fallDist)
+		end
 	end
 
 	-- If a non-water block changed, only queue if adjacent to water
@@ -621,15 +823,25 @@ function WaterService:ClearQueue()
 	self._overBudgetFrames = 0
 	self._currentBudget = MAX_UPDATES_PER_TICK
 	self._throttled = false
+	self._conversionCandidates = {}
+	self._conversionsThisTick = 0
 end
 
 function WaterService:GetStats()
+	-- Count conversion candidates
+	local candidateCount = 0
+	for _ in pairs(self._conversionCandidates) do
+		candidateCount = candidateCount + 1
+	end
+	
 	return {
 		queueSize = self._queueSize,
 		paused = self._paused,
 		throttled = self._throttled,
 		currentBudget = self._currentBudget,
 		droppedUpdates = self._droppedUpdates,
+		conversionCandidates = candidateCount,
+		conversionsThisTick = self._conversionsThisTick,
 	}
 end
 
@@ -705,20 +917,17 @@ function WaterService:ReflowRegion(centerX, centerY, centerZ, radius)
 			continue
 		end
 
-		-- All 8 horizontal directions + down
+		-- 8 horizontal directions + down
 		local neighbors = {
-			-- Cardinals
-			{dx = 1, dy = 0, dz = 0},
-			{dx = -1, dy = 0, dz = 0},
-			{dx = 0, dy = 0, dz = 1},
-			{dx = 0, dy = 0, dz = -1},
-			-- Diagonals
-			{dx = 1, dy = 0, dz = 1},
-			{dx = 1, dy = 0, dz = -1},
-			{dx = -1, dy = 0, dz = 1},
-			{dx = -1, dy = 0, dz = -1},
-			-- Down
-			{dx = 0, dy = -1, dz = 0},
+			{dx = 1, dy = 0, dz = 0},   -- East
+			{dx = -1, dy = 0, dz = 0},  -- West
+			{dx = 0, dy = 0, dz = 1},   -- South
+			{dx = 0, dy = 0, dz = -1},  -- North
+			{dx = 1, dy = 0, dz = 1},   -- Southeast
+			{dx = 1, dy = 0, dz = -1},  -- Northeast
+			{dx = -1, dy = 0, dz = 1},  -- Southwest
+			{dx = -1, dy = 0, dz = -1}, -- Northwest
+			{dx = 0, dy = -1, dz = 0},  -- Down
 		}
 		for _, dir in ipairs(neighbors) do
 			local nx = node.x + dir.dx
@@ -734,7 +943,7 @@ function WaterService:ReflowRegion(centerX, centerY, centerZ, radius)
 					newDepth = 0
 					newFallDistance = math.min(currentFallDistance + 1, MAX_FALL_DISTANCE)
 				else
-					-- Horizontal (cardinal or diagonal): increment depth, maintain fall distance
+					-- Horizontal (8 directions): increment depth, maintain fall distance
 					newDepth = currentDepth + 1
 					newFallDistance = currentFallDistance
 				end

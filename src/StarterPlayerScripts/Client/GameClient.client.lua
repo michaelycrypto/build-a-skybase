@@ -1256,7 +1256,8 @@ local function initialize()
                 local nx, nz = cx + offset[1], cz + offset[2]
                 local neighborKey = Constants.ToChunkKey(nx, nz)
                 -- Only remesh if neighbor already has a rendered mesh
-                if chunkFolders[neighborKey] then
+                -- AND is not currently being built (prevent duplicate builds)
+                if chunkFolders[neighborKey] and not meshBuildingSet[neighborKey] then
                     local neighborChunk = wm and wm.chunks and wm.chunks[neighborKey]
                     if neighborChunk then
                         voxelWorldHandle.chunkManager.meshUpdateQueue[neighborKey] = neighborChunk
@@ -1320,7 +1321,11 @@ local function initialize()
 	-- Collects all affected chunks and processes them together to avoid border flicker
 	local pendingRemeshChunks = {} -- Set of "cx,cz" keys
 	local remeshBatchTimer = nil
+	local remeshBatchStartTime = nil
 	local REMESH_BATCH_DELAY = 0.05 -- 50ms - short delay to batch rapid edits
+	local REMESH_BATCH_DELAY_WATER = 0.15 -- 150ms - longer delay for water (many rapid updates)
+	local REMESH_MAX_DELAY = 0.3 -- 300ms - maximum delay before forced flush (prevents indefinite batching)
+	local pendingWaterChanges = false -- Track if batch contains water changes
 
 	-- Queue a chunk for batched remesh
 	local function queueChunkRemesh(cx, cz)
@@ -1331,6 +1336,9 @@ local function initialize()
 	-- Flush all pending chunk remeshes at once
 	local function flushPendingRemeshes()
 		remeshBatchTimer = nil
+		remeshBatchStartTime = nil
+		pendingWaterChanges = false
+		
 		if not voxelWorldHandle then return end
 		local wm = voxelWorldHandle:GetWorldManager()
 		if not wm then return end
@@ -1338,10 +1346,13 @@ local function initialize()
 		if not cm then return end
 
 		-- Queue all pending chunks for mesh update
+		-- Skip chunks currently being built to prevent duplicate work
 		for k, coords in pairs(pendingRemeshChunks) do
-			local ch = wm:GetChunk(coords.cx, coords.cz)
-			if ch then
-				cm.meshUpdateQueue[k] = ch
+			if not meshBuildingSet[k] then
+				local ch = wm:GetChunk(coords.cx, coords.cz)
+				if ch then
+					cm.meshUpdateQueue[k] = ch
+				end
 			end
 		end
 
@@ -1350,11 +1361,40 @@ local function initialize()
 	end
 
 	-- Schedule a batched remesh (resets timer on each call to batch rapid edits)
-	local function scheduleBatchedRemesh()
+	-- Uses longer delay for water and caps maximum delay
+	local function scheduleBatchedRemesh(isWater)
+		-- Track water changes for delay calculation
+		if isWater then
+			pendingWaterChanges = true
+		end
+		
+		-- Record batch start time (for max delay cap)
+		if not remeshBatchStartTime then
+			remeshBatchStartTime = tick()
+		end
+		
+		-- Check if we've hit max delay - force flush
+		local elapsed = tick() - remeshBatchStartTime
+		if elapsed >= REMESH_MAX_DELAY then
+			if remeshBatchTimer then
+				task.cancel(remeshBatchTimer)
+				remeshBatchTimer = nil
+			end
+			flushPendingRemeshes()
+			return
+		end
+		
+		-- Calculate delay based on batch contents
+		local delay = pendingWaterChanges and REMESH_BATCH_DELAY_WATER or REMESH_BATCH_DELAY
+		
+		-- Cap delay to not exceed max delay from start
+		local remainingTime = REMESH_MAX_DELAY - elapsed
+		delay = math.min(delay, remainingTime)
+		
 		if remeshBatchTimer then
 			task.cancel(remeshBatchTimer)
 		end
-		remeshBatchTimer = task.delay(REMESH_BATCH_DELAY, flushPendingRemeshes)
+		remeshBatchTimer = task.delay(delay, flushPendingRemeshes)
 	end
 
 	EventManager:RegisterEvent("BlockChanged", function(data)
@@ -1370,10 +1410,14 @@ local function initialize()
 			wm:SetBlockMetadata(data.x, data.y, data.z, data.metadata)
 		end
 
-		-- Play block placement sound (only if placing a block, not breaking, and not water flow)
-		-- Water blocks are excluded to prevent constant sound spam during water simulation
+		-- Check if this is a water block (for batching optimization)
 		local isWaterBlock = data.blockId == Constants.BlockType.WATER_SOURCE 
 			or data.blockId == Constants.BlockType.FLOWING_WATER
+		
+		-- Also check if previous block was water (water removal)
+		local prevBlock = wm:GetBlock(data.x, data.y, data.z)
+		local wasWaterBlock = prevBlock == Constants.BlockType.WATER_SOURCE 
+			or prevBlock == Constants.BlockType.FLOWING_WATER
 		if data.blockId and data.blockId ~= 0 and not isWaterBlock then
 			local SoundManager = Client.managers and Client.managers.SoundManager
 			if SoundManager and SoundManager.PlaySFXSafely then
@@ -1409,7 +1453,8 @@ local function initialize()
 		end
 
 		-- Schedule batched flush (all chunks will be queued together)
-		scheduleBatchedRemesh()
+		-- Pass water flag for longer batching delay (water causes many rapid updates)
+		scheduleBatchedRemesh(isWaterBlock or wasWaterBlock)
 
 		-- Update block targeting after block change
 		if Client.blockInteraction and Client.blockInteraction.UpdateTargeting then

@@ -20,9 +20,8 @@
 	WATER SPREAD (8 directions, max 7 blocks)
 	============================================================================
 	
-	Water spreads to all 8 neighbors (N/NE/E/SE/S/SW/W/NW):
-	- Cardinal spread: Direct from source/flowing water
-	- Diagonal spread: Filled by orthogonal flows meeting
+	Water spreads to all 8 horizontal neighbors (cardinals + diagonals):
+	- Creates square spread patterns
 	- Max horizontal distance: 7 blocks from source (reduced by fall distance)
 	- Depth resets to 0 when falling down
 	- Fall distance increases when flowing down, reduces horizontal spread
@@ -56,13 +55,20 @@ WaterUtils.DIRECTION = {
 	DOWN = "Dn", -- -Y
 }
 
--- Cardinal direction vectors (used for water spread)
-WaterUtils.CARDINAL_DIRS = {
-	{dx = 0, dz = -1, name = "N"},   -- North (-Z)
-	{dx = 1, dz = 0, name = "E"},    -- East (+X)
-	{dx = 0, dz = 1, name = "S"},    -- South (+Z)
-	{dx = -1, dz = 0, name = "W"},   -- West (-X)
+-- All 8 horizontal direction vectors (cardinals + diagonals)
+WaterUtils.HORIZONTAL_DIRS = {
+	{dx = 0, dz = -1, name = "N"},    -- North (-Z)
+	{dx = 1, dz = 0, name = "E"},     -- East (+X)
+	{dx = 0, dz = 1, name = "S"},     -- South (+Z)
+	{dx = -1, dz = 0, name = "W"},    -- West (-X)
+	{dx = 1, dz = -1, name = "NE"},   -- Northeast (+X, -Z)
+	{dx = 1, dz = 1, name = "SE"},    -- Southeast (+X, +Z)
+	{dx = -1, dz = 1, name = "SW"},   -- Southwest (-X, +Z)
+	{dx = -1, dz = -1, name = "NW"},  -- Northwest (-X, -Z)
 }
+
+-- Alias for backward compatibility
+WaterUtils.CARDINAL_DIRS = WaterUtils.HORIZONTAL_DIRS
 
 --============================================================================
 -- BLOCK TYPE CHECKS
@@ -333,18 +339,13 @@ function WaterUtils.AnalyzeFlow(worldManager, x: number, y: number, z: number)
 		table.insert(flowDirections, WaterUtils.DIRECTION.DOWN)
 	end
 	
-	-- Source blocks have no horizontal sources
-	if isSource then
-		return sourceDirections, flowDirections
-	end
-	
-	-- Falling water's source is above only
+	-- Falling water's horizontal source is above only
 	if isFalling then
 		return sourceDirections, flowDirections
 	end
 	
-	-- Check CARDINAL neighbors only (no diagonals!)
-	for _, dir in ipairs(WaterUtils.CARDINAL_DIRS) do
+	-- Check all 8 horizontal neighbors
+	for _, dir in ipairs(WaterUtils.HORIZONTAL_DIRS) do
 		local nx, nz = x + dir.dx, z + dir.dz
 		local neighborId = worldManager:GetBlock(nx, y, nz)
 		
@@ -355,15 +356,30 @@ function WaterUtils.AnalyzeFlow(worldManager, x: number, y: number, z: number)
 				local neighborIsFalling = WaterUtils.IsFalling(neighborMeta)
 				local neighborLevel = neighborIsSource and 0 or WaterUtils.GetLevel(neighborMeta)
 				
-				-- Source or falling = always a source direction
-				if neighborIsSource or neighborIsFalling then
-					table.insert(sourceDirections, dir.name)
-				elseif neighborLevel < currentLevel then
-					-- Lower level = source direction
-					table.insert(sourceDirections, dir.name)
-				elseif neighborLevel > currentLevel then
-					-- Higher level = flow direction
-					table.insert(flowDirections, dir.name)
+				if isSource then
+					-- SOURCE BLOCK: Water flows TO neighbors with higher levels (flowing water we feed)
+					-- Adjacent sources are peers (no flow)
+					if not neighborIsSource then
+						if neighborIsFalling then
+							-- Falling water adjacent to source: we're feeding it horizontally
+							table.insert(flowDirections, dir.name)
+						elseif neighborLevel > 0 then
+							-- Flowing water: source feeds it (flow TO)
+							table.insert(flowDirections, dir.name)
+						end
+					end
+				else
+					-- FLOWING WATER: Check for sources and targets
+					-- Source or falling = always a source direction
+					if neighborIsSource or neighborIsFalling then
+						table.insert(sourceDirections, dir.name)
+					elseif neighborLevel < currentLevel then
+						-- Lower level = source direction (water comes from there)
+						table.insert(sourceDirections, dir.name)
+					elseif neighborLevel > currentLevel then
+						-- Higher level = flow direction (water goes there)
+						table.insert(flowDirections, dir.name)
+					end
 				end
 			else
 				-- Non-water: check if replaceable (flow target)
@@ -390,7 +406,28 @@ function WaterUtils.GetFlowStrings(worldManager, x: number, y: number, z: number
 end
 
 --[[
+	Get the visual height of a water block (0-1 scale).
+]]
+local function getWaterVisualHeight(worldManager, x, y, z)
+	local blockId = worldManager:GetBlock(x, y, z)
+	if not WaterUtils.IsWater(blockId) then
+		return 0
+	end
+	local metadata = worldManager:GetBlockMetadata(x, y, z) or 0
+	if WaterUtils.IsSource(blockId) then
+		return 1.0
+	end
+	if WaterUtils.IsFalling(metadata) then
+		return 1.0
+	end
+	local depth = WaterUtils.GetDepth(metadata)
+	if depth <= 0 then depth = 1 end
+	return math.max((8 - math.clamp(depth, 1, 7)) / 8, 0.125)
+end
+
+--[[
 	Get a simple string describing the water surface for debug display.
+	Uses corner height calculation to match actual rendering.
 ]]
 function WaterUtils.GetCornerString(worldManager, x: number, y: number, z: number)
 	if not worldManager then return "?" end
@@ -405,13 +442,84 @@ function WaterUtils.GetCornerString(worldManager, x: number, y: number, z: numbe
 	local isFalling = WaterUtils.IsFalling(metadata)
 	local level = WaterUtils.GetLevel(metadata)
 	
-	if isSource then
-		return "SOURCE"
-	elseif isFalling then
-		return "FALLING"
-	else
-		return string.format("L%d", level)
+	-- Falling water always renders flat (full height column)
+	if isFalling then
+		return "FLAT (fall)"
 	end
+	
+	-- Get current block height
+	local currentHeight = getWaterVisualHeight(worldManager, x, y, z)
+	
+	-- Get all 8 neighbor heights
+	local hN  = getWaterVisualHeight(worldManager, x, y, z - 1)
+	local hS  = getWaterVisualHeight(worldManager, x, y, z + 1)
+	local hE  = getWaterVisualHeight(worldManager, x + 1, y, z)
+	local hW  = getWaterVisualHeight(worldManager, x - 1, y, z)
+	local hNE = getWaterVisualHeight(worldManager, x + 1, y, z - 1)
+	local hNW = getWaterVisualHeight(worldManager, x - 1, y, z - 1)
+	local hSE = getWaterVisualHeight(worldManager, x + 1, y, z + 1)
+	local hSW = getWaterVisualHeight(worldManager, x - 1, y, z + 1)
+	
+	-- Minecraft formula: corner height = MAX of the 4 blocks sharing that corner
+	local cornerNE = math.max(currentHeight, hN, hE, hNE)
+	local cornerNW = math.max(currentHeight, hN, hW, hNW)
+	local cornerSE = math.max(currentHeight, hS, hE, hSE)
+	local cornerSW = math.max(currentHeight, hS, hW, hSW)
+	
+	-- Analyze corner pattern
+	local heights = {cornerNE, cornerNW, cornerSE, cornerSW}
+	local maxH = math.max(unpack(heights))
+	local minH = math.min(unpack(heights))
+	
+	-- All same height: FLAT
+	if maxH - minH < 0.01 then
+		if isSource then
+			return "FLAT (src)"
+		else
+			return string.format("FLAT L%d", level)
+		end
+	end
+	
+	-- Count high and low corners
+	local threshold = (maxH + minH) / 2
+	local highCorners, lowCorners = {}, {}
+	
+	if cornerNE >= threshold then table.insert(highCorners, "NE") else table.insert(lowCorners, "NE") end
+	if cornerNW >= threshold then table.insert(highCorners, "NW") else table.insert(lowCorners, "NW") end
+	if cornerSE >= threshold then table.insert(highCorners, "SE") else table.insert(lowCorners, "SE") end
+	if cornerSW >= threshold then table.insert(highCorners, "SW") else table.insert(lowCorners, "SW") end
+	
+	local suffix = isSource and " (src)" or string.format(" L%d", level)
+	
+	-- 1 high, 3 low: CONVEX (peak)
+	if #highCorners == 1 then
+		return string.format("CONVEX %s%s", highCorners[1], suffix)
+	end
+	
+	-- 3 high, 1 low: CONCAVE (valley)
+	if #lowCorners == 1 then
+		return string.format("CONCAVE %s%s", lowCorners[1], suffix)
+	end
+	
+	-- 2 high, 2 low: SLOPE
+	if #highCorners == 2 then
+		local h1, h2 = highCorners[1], highCorners[2]
+		-- Determine slope direction
+		if (h1 == "NE" and h2 == "NW") or (h1 == "NW" and h2 == "NE") then
+			return string.format("SLOPE→S%s", suffix)
+		elseif (h1 == "SE" and h2 == "SW") or (h1 == "SW" and h2 == "SE") then
+			return string.format("SLOPE→N%s", suffix)
+		elseif (h1 == "NE" and h2 == "SE") or (h1 == "SE" and h2 == "NE") then
+			return string.format("SLOPE→W%s", suffix)
+		elseif (h1 == "NW" and h2 == "SW") or (h1 == "SW" and h2 == "NW") then
+			return string.format("SLOPE→E%s", suffix)
+		else
+			-- Diagonal (saddle)
+			return string.format("SADDLE%s", suffix)
+		end
+	end
+	
+	return string.format("?%s", suffix)
 end
 
 --[[
@@ -437,8 +545,8 @@ function WaterUtils.GetFlowVector(worldManager, x: number, y: number, z: number)
 	local currentLevel = WaterUtils.GetLevel(metadata)
 	local flowX, flowZ = 0, 0
 	
-	-- Check cardinal neighbors
-	for _, dir in ipairs(WaterUtils.CARDINAL_DIRS) do
+	-- Check all 8 horizontal neighbors
+	for _, dir in ipairs(WaterUtils.HORIZONTAL_DIRS) do
 		local nx, nz = x + dir.dx, z + dir.dz
 		local neighborId = worldManager:GetBlock(nx, y, nz)
 		

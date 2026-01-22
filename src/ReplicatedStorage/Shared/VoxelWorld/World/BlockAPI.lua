@@ -533,7 +533,8 @@ function BlockAPI:GetTargetedBlockFace(origin: Vector3, direction: Vector3, maxD
 	while true do
 		local block = self:GetBlock(currentX, currentY, currentZ)
 
-        if block ~= Constants.BlockType.AIR then
+		-- Skip air and flowing water (flowing water is non-targetable, allows placement through it)
+        if block ~= Constants.BlockType.AIR and block ~= Constants.BlockType.FLOWING_WATER then
             -- Check if ray actually intersects shape (slab or stair); otherwise continue
             local metadata = self.worldManager:GetBlockMetadata(currentX, currentY, currentZ)
             local def = BlockRegistry:GetBlock(block)
