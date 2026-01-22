@@ -26,6 +26,7 @@ These PRDs define how to implement items that were exported from Minecraft but a
 - `PRD_FURNACE.md` ✅ - Furnace smelting system (already existed)
 - `PRD_CHEST_STORAGE.md` ✅ - Storage chest system, inventory management
 - `PRD_CRAFTING_TABLE.md` ✅ - 3x3 crafting grid expansion
+- `PRD_WATER_SYSTEM.md` ✅ - Minecraft water dynamics, EditableMesh rendering, entity currents
 
 #### Farming & Resources
 - `PRD_FARMING_SYSTEM.md` ✅ - Crop growth, farmland, seeds, harvesting

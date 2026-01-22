@@ -57,6 +57,8 @@ end)
 
 -- Background mesh generation system (avoids blocking RenderStepped)
 local meshReadyQueue = {}  -- {key, model} pairs ready to be parented
+local waterfallTextures = {}
+local waterfallScrollSpeed = 0.6
 local meshBuildingSet = {} -- Keys currently being built (prevent duplicates)
 local meshWorkerRunning = false
 
@@ -356,6 +358,29 @@ local function startMeshWorker()
 end
 
 -- Lightweight RenderStepped handler - only parents ready meshes and updates fog
+local function registerWaterfallTextures(model)
+	for _, inst in ipairs(model:GetDescendants()) do
+		if inst:IsA("Texture") and inst.Name == "WaterfallScroll" then
+			table.insert(waterfallTextures, inst)
+		end
+	end
+end
+
+local function updateWaterfallTextures()
+	if #waterfallTextures == 0 then
+		return
+	end
+	local now = os.clock()
+	for i = #waterfallTextures, 1, -1 do
+		local tex = waterfallTextures[i]
+		if not tex.Parent then
+			table.remove(waterfallTextures, i)
+		else
+			tex.OffsetStudsV = -(now * waterfallScrollSpeed)
+		end
+	end
+end
+
 local function updateVoxelWorld()
 	if not voxelWorldHandle then
 		return
@@ -465,6 +490,7 @@ local function updateVoxelWorld()
 		if cm and cm.meshUpdateQueue and cm.meshUpdateQueue[key] then
 			-- Parent new model (very fast)
 			nextModel.Parent = voxelWorldContainer
+			registerWaterfallTextures(nextModel)
 
 			-- Queue old model for cleanup
 			local prev = chunkFolders[key]
@@ -506,6 +532,8 @@ local function updateVoxelWorld()
 			print("[VoxelWorld] Hub voxel mesh build complete")
 		end
 	end
+
+	updateWaterfallTextures()
 end
 
 -- Connect voxel world update to RenderStepped
@@ -1342,8 +1370,11 @@ local function initialize()
 			wm:SetBlockMetadata(data.x, data.y, data.z, data.metadata)
 		end
 
-		-- Play block placement sound (only if placing a block, not breaking)
-		if data.blockId and data.blockId ~= 0 then
+		-- Play block placement sound (only if placing a block, not breaking, and not water flow)
+		-- Water blocks are excluded to prevent constant sound spam during water simulation
+		local isWaterBlock = data.blockId == Constants.BlockType.WATER_SOURCE 
+			or data.blockId == Constants.BlockType.FLOWING_WATER
+		if data.blockId and data.blockId ~= 0 and not isWaterBlock then
 			local SoundManager = Client.managers and Client.managers.SoundManager
 			if SoundManager and SoundManager.PlaySFXSafely then
 				SoundManager:PlaySFXSafely("blockPlace")

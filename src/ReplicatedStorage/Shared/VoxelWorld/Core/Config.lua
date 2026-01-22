@@ -98,7 +98,9 @@ local Config = {
 		SHOW_PERFORMANCE_STATS = true,
 		LOG_NETWORK_EVENTS = false,
 		DISABLE_FRUSTUM_CULLING = false,
-		MAX_PARTS_PER_CHUNK = nil
+		MAX_PARTS_PER_CHUNK = nil,
+		-- Enable to log cross-shaped block texture selection (tall grass, flowers)
+		LOG_CROSSSHAPE_TEXTURES = false
 	}
 }
 

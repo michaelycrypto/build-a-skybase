@@ -40,9 +40,23 @@ local TEXTURE_ASSETS = {
 	-- Leaves texture
 	["leaves"] = "rbxassetid://0",       -- Leaf texture with transparency (all faces)
 
-	-- Cross-shaped block textures
-	["tall_grass"] = "rbxassetid://0",   -- Tall grass blade texture
-	["flower"] = "rbxassetid://0",       -- Flower texture
+	-- Water textures
+	["water_still"] = "rbxassetid://101973122634153",
+	["water_overlay"] = "rbxassetid://139385214440445",
+	["water_flow"] = "rbxassetid://92724971522269",
+
+	-- Cross-shaped block textures (Minecraft naming convention)
+	-- Two-block tall grass: lower block shows base, upper block shows tips
+	["tall_grass_bottom"] = "rbxassetid://72372576895806",   -- Lower block texture (base/roots)
+	["tall_grass_top"] = "rbxassetid://72700603792788",      -- Upper block texture (tips)
+	["tall_grass"] = "rbxassetid://72372576895806",          -- Alias for single-block short grass
+	["flower"] = "rbxassetid://87572508373911",       -- Flower texture (default: poppy)
+	["flower_poppy"] = "rbxassetid://87572508373911", -- Poppy flower texture
+	["flower_azure_bluet"] = "rbxassetid://87572508373911", -- Azure Bluet (using poppy for now, needs separate texture)
+	["flower_rose_bush_top"] = "rbxassetid://80318970197042", -- Rose Bush top texture
+	["flower_rose_bush_bottom"] = "rbxassetid://96465374166553", -- Rose Bush bottom texture
+	["flower_lilac_top"] = "rbxassetid://109233564104296", -- Lilac top texture
+	["flower_lilac_bottom"] = "rbxassetid://128080255483654", -- Lilac bottom texture
 	["oak_sapling"] = "rbxassetid://87985508905533",  -- Oak sapling texture
 	["stick"] = "rbxassetid://0",        -- Stick texture (crafting material)
 
@@ -95,6 +109,54 @@ local TEXTURE_ASSETS = {
 
 	-- Bricks texture
 	["bricks"] = "rbxassetid://131145686654663",  -- Bricks texture (all faces)
+
+	-- ═══════════════════════════════════════════════════════════════════════
+	-- MELON & PUMPKIN
+	-- ═══════════════════════════════════════════════════════════════════════
+	-- Note: MELON and PUMPKIN blocks use direct rbxassetid:// in BlockRegistry
+	-- These textures are for stems (which map to TALL_GRASS block type)
+	["melon_stem"] = "rbxassetid://131285032012914",  -- Melon stem (cross-shaped)
+	["pumpkin_stem"] = "rbxassetid://103264904816321",  -- Pumpkin stem (cross-shaped)
+	["carved_pumpkin"] = "rbxassetid://134873735074293",  -- Carved Pumpkin texture
+	["jack_o_lantern"] = "rbxassetid://100828620621190",  -- Jack o'Lantern front texture
+
+	-- ═══════════════════════════════════════════════════════════════════════
+	-- CACTUS (regular block with multiple faces)
+	-- ═══════════════════════════════════════════════════════════════════════
+	-- Note: CACTUS already uses direct rbxassetid:// in BlockRegistry
+	-- These are provided for reference/consistency
+	["cactus_top"] = "rbxassetid://94563015961260",  -- Cactus top texture
+	["cactus_side"] = "rbxassetid://79094656952253",  -- Cactus side texture
+	["cactus_bottom"] = "rbxassetid://97822724502105",  -- Cactus bottom texture
+
+	-- ═══════════════════════════════════════════════════════════════════════
+	-- PLANTS & VEGETATION (cross-shaped)
+	-- ═══════════════════════════════════════════════════════════════════════
+	-- Note: SUGAR_CANE already uses direct rbxassetid:// in BlockRegistry
+	["sugar_cane"] = "rbxassetid://128037896541445",  -- Sugar Cane (cross-shaped)
+
+	-- ═══════════════════════════════════════════════════════════════════════
+	-- HAY_BLOCK (regular block with multiple faces)
+	-- ═══════════════════════════════════════════════════════════════════════
+	-- Note: HAY_BLOCK already uses direct rbxassetid:// in BlockRegistry
+	["hay_block_top"] = "rbxassetid://114055682157370",  -- Hay Block top texture
+	["hay_block_side"] = "rbxassetid://92792702867171",  -- Hay Block side texture
+
+	-- ═══════════════════════════════════════════════════════════════════════
+	-- DEAD_BUSH (cross-shaped)
+	-- ═══════════════════════════════════════════════════════════════════════
+	-- Note: DEAD_BUSH already uses direct rbxassetid://116161927933610 in BlockRegistry
+	-- Missing texture - user did not provide one
+
+	-- ═══════════════════════════════════════════════════════════════════════
+	-- MUSHROOMS (cross-shaped and blocks)
+	-- ═══════════════════════════════════════════════════════════════════════
+	-- Note: All mushrooms already use direct rbxassetid:// in BlockRegistry
+	["brown_mushroom"] = "rbxassetid://78203109427997",  -- Brown Mushroom (cross-shaped)
+	["red_mushroom"] = "rbxassetid://130349192960951",  -- Red Mushroom (cross-shaped)
+	["brown_mushroom_block"] = "rbxassetid://125837820790379",  -- Brown Mushroom Block
+	["red_mushroom_block"] = "rbxassetid://98579956986334",  -- Red Mushroom Block
+	["mushroom_stem"] = "rbxassetid://110653819771271",  -- Mushroom Stem
 }
 
 -- Enable/disable texture system globally (useful for debugging)
@@ -233,15 +295,18 @@ function TextureManager:GetTextureAssetIdsForBlocks(blockIds: {number}): {string
 	for blockId, _ in pairs(blockIdSet) do
 		local def = BlockRegistry:GetBlock(blockId)
 		if def and def.textures then
-			-- Handle both "all" and face-specific textures
+			-- Handle all texture types: "all", face-specific, and half-specific (lower/upper)
 			local textureNames = {}
 			if def.textures.all then
 				table.insert(textureNames, def.textures.all)
-			else
-				if def.textures.top then table.insert(textureNames, def.textures.top) end
-				if def.textures.bottom then table.insert(textureNames, def.textures.bottom) end
-				if def.textures.side then table.insert(textureNames, def.textures.side) end
 			end
+			-- Face-specific textures (for regular blocks)
+			if def.textures.top then table.insert(textureNames, def.textures.top) end
+			if def.textures.bottom then table.insert(textureNames, def.textures.bottom) end
+			if def.textures.side then table.insert(textureNames, def.textures.side) end
+			-- Half-specific textures (for two-block tall plants like tall grass)
+			if def.textures.lower then table.insert(textureNames, def.textures.lower) end
+			if def.textures.upper then table.insert(textureNames, def.textures.upper) end
 
 			for _, textureName in ipairs(textureNames) do
 				local assetId = self:GetTextureId(textureName)

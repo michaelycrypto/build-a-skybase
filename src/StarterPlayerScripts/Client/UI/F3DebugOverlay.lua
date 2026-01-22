@@ -17,6 +17,7 @@ local Constants = require(ReplicatedStorage.Shared.VoxelWorld.Core.Constants)
 local BlockRegistry = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockRegistry)
 local BlockInteraction = require(script.Parent.Parent.Controllers.BlockInteraction)
 local CustomFont = require(ReplicatedStorage.RBX_CustomFont)
+local WaterUtils = require(ReplicatedStorage.Shared.VoxelWorld.World.WaterUtils)
 
 -- Player
 local player = Players.LocalPlayer
@@ -54,16 +55,24 @@ local labels = {}
 
 --[[
 	Get cardinal direction from yaw angle
+	Minecraft coordinate system:
+	- +Z = South, -Z = North
+	- +X = East, -X = West
+	Yaw calculated from atan2(X, Z):
+	- 0° = looking at +Z (South)
+	- 90° = looking at +X (East)
+	- 180° = looking at -Z (North)
+	- 270° = looking at -X (West)
 ]]
 local function getCardinalDirection(yaw)
 	if yaw >= 337.5 or yaw < 22.5 then return "S"
-	elseif yaw >= 22.5 and yaw < 67.5 then return "SW"
-	elseif yaw >= 67.5 and yaw < 112.5 then return "W"
-	elseif yaw >= 112.5 and yaw < 157.5 then return "NW"
+	elseif yaw >= 22.5 and yaw < 67.5 then return "SE"
+	elseif yaw >= 67.5 and yaw < 112.5 then return "E"
+	elseif yaw >= 112.5 and yaw < 157.5 then return "NE"
 	elseif yaw >= 157.5 and yaw < 202.5 then return "N"
-	elseif yaw >= 202.5 and yaw < 247.5 then return "NE"
-	elseif yaw >= 247.5 and yaw < 292.5 then return "E"
-	else return "SE"
+	elseif yaw >= 202.5 and yaw < 247.5 then return "NW"
+	elseif yaw >= 247.5 and yaw < 292.5 then return "W"
+	else return "SW"
 	end
 end
 
@@ -185,9 +194,21 @@ local function createUI()
 	labels.targetPos = createLabel(rightPanel, "TargetPos", "At: -", y)
 	y = y + LINE_HEIGHT
 
+	labels.targetMeta = createLabel(rightPanel, "TargetMeta", "Meta: -", y)
+	y = y + LINE_HEIGHT
+
+	labels.targetSource = createLabel(rightPanel, "TargetSource", "From: -", y)
+	y = y + LINE_HEIGHT
+
+	labels.targetFlow = createLabel(rightPanel, "TargetFlow", "To: -", y)
+	y = y + LINE_HEIGHT
+
+	labels.targetCorner = createLabel(rightPanel, "TargetCorner", "Surface: -", y)
+	y = y + LINE_HEIGHT
+
 	labels.targetDist = createLabel(rightPanel, "TargetDist", "Distance: -", y)
 
-	rightPanel.Size = UDim2.new(0, 200, 0, y + PADDING + LINE_HEIGHT)
+	rightPanel.Size = UDim2.new(0, 220, 0, y + PADDING + LINE_HEIGHT)
 end
 
 --[[
@@ -257,12 +278,38 @@ local function updateDebugInfo()
 	labels.memory.Text = string.format("Memory: %.0f MB", Stats:GetTotalMemoryUsageMb())
 	labels.ping.Text = string.format("Ping: %.0f ms", player:GetNetworkPing() * 1000)
 
-	local targetPos, targetId = getTargetedBlock()
+	local targetPos, targetId, _, targetMeta = getTargetedBlock()
 	if targetPos and targetId and targetId ~= 0 then
 		local blockDef = BlockRegistry.Blocks[targetId]
 		local blockName = blockDef and blockDef.name or "Unknown"
 		labels.targetBlock.Text = string.format("Block: %s", blockName)
 		labels.targetPos.Text = string.format("At: %d, %d, %d", targetPos.X, targetPos.Y, targetPos.Z)
+
+		-- Display metadata with special decoding for water blocks
+		local metaDisplay = tostring(targetMeta or 0)
+		local sourceStr, flowStr, cornerStr = "-", "-", "-"
+		
+		if WaterUtils.IsWater(targetId) then
+			local depth = WaterUtils.GetDepth(targetMeta or 0)
+			local falling = WaterUtils.IsFalling(targetMeta or 0)
+			if targetId == Constants.BlockType.WATER_SOURCE then
+				metaDisplay = string.format("%d (source)", targetMeta or 0)
+			else
+				metaDisplay = string.format("%d (d:%d%s)", targetMeta or 0, depth, falling and ",fall" or "")
+			end
+			
+			-- Get flow direction info
+			local worldManager = BlockInteraction:GetWorldManager()
+			if worldManager then
+				sourceStr, flowStr = WaterUtils.GetFlowStrings(worldManager, targetPos.X, targetPos.Y, targetPos.Z)
+				cornerStr = WaterUtils.GetCornerString(worldManager, targetPos.X, targetPos.Y, targetPos.Z)
+			end
+		end
+		
+		labels.targetMeta.Text = string.format("Meta: %s", metaDisplay)
+		labels.targetSource.Text = string.format("From: %s", sourceStr)
+		labels.targetFlow.Text = string.format("To: %s", flowStr)
+		labels.targetCorner.Text = string.format("Surface: %s", cornerStr)
 
 		-- Calculate distance from camera to block center (in blocks)
 		local bs = Constants.BLOCK_SIZE
@@ -277,6 +324,10 @@ local function updateDebugInfo()
 	else
 		labels.targetBlock.Text = "Block: None"
 		labels.targetPos.Text = "At: -"
+		labels.targetMeta.Text = "Meta: -"
+		labels.targetSource.Text = "From: -"
+		labels.targetFlow.Text = "To: -"
+		labels.targetCorner.Text = "Surface: -"
 		labels.targetDist.Text = "Distance: -"
 	end
 end

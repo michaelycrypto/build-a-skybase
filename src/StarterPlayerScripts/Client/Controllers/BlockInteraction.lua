@@ -1426,25 +1426,26 @@ end
 
 --[[
 	Get the currently targeted block (for F3 debug overlay)
-	Returns: blockPos (Vector3), blockId (number), faceNormal (Vector3)
+	Returns: blockPos (Vector3), blockId (number), faceNormal (Vector3), metadata (number)
 ]]
 function BlockInteraction:GetTargetedBlock()
 	if not BlockInteraction.isReady or not blockAPI then
-		return nil, nil, nil
+		return nil, nil, nil, nil
 	end
 
 	local blockPos, faceNormal = getTargetedBlock()
 	if not blockPos then
-		return nil, nil, nil
+		return nil, nil, nil, nil
 	end
 
 	local worldManager = blockAPI.worldManager
 	if not worldManager then
-		return nil, nil, nil
+		return nil, nil, nil, nil
 	end
 
 	local blockId = worldManager:GetBlock(blockPos.X, blockPos.Y, blockPos.Z)
-	return blockPos, blockId, faceNormal
+	local metadata = worldManager:GetBlockMetadata(blockPos.X, blockPos.Y, blockPos.Z) or 0
+	return blockPos, blockId, faceNormal, metadata
 end
 
 --[[
@@ -1466,6 +1467,17 @@ function BlockInteraction:GetLoadedChunkCount()
 		count = count + 1
 	end
 	return count
+end
+
+--[[
+	Get the world manager (for F3 debug overlay water flow analysis)
+	Returns: worldManager or nil
+]]
+function BlockInteraction:GetWorldManager()
+	if not BlockInteraction.isReady or not blockAPI then
+		return nil
+	end
+	return blockAPI.worldManager
 end
 
 return BlockInteraction

@@ -41,6 +41,7 @@ local FACING_TO_ROTATION = {
 }
 
 -- Supports both abbreviated (h=t) and full (half=top) property names
+-- Also supports "lower" and "upper" for two-block tall plants (tall_grass, flowers)
 local HALF_TO_VERTICAL = {
 	-- Abbreviated
 	["t"] = Constants.BlockMetadata.VERTICAL_TOP,
@@ -48,6 +49,9 @@ local HALF_TO_VERTICAL = {
 	-- Full
 	["top"] = Constants.BlockMetadata.VERTICAL_TOP,
 	["bottom"] = Constants.BlockMetadata.VERTICAL_BOTTOM,
+	-- Two-block tall plants (tall_grass, large_fern, rose_bush, lilac, etc.)
+	["lower"] = Constants.BlockMetadata.VERTICAL_BOTTOM,  -- Lower half (default, no flag needed but explicit for clarity)
+	["upper"] = Constants.BlockMetadata.VERTICAL_TOP,     -- Upper half
 }
 
 -- Supports both abbreviated (s=st) and full (shape=straight) property names

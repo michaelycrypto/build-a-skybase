@@ -158,6 +158,7 @@ function TextureApplicator:ApplyBoxTextures(
 			if textureId then
 				-- Use pooled texture (much faster than Instance.new)
 				local texture = PartPool.AcquireTexture()
+				texture.Name = "BlockTexture"
 				texture.Face = faceInfo.normalId
 				texture.Texture = textureId
 				texture.StudsPerTileU = bs

@@ -562,9 +562,13 @@ local Constants = {
 		ROTTEN_FLESH = 376,
 		SPIDER_EYE = 377,
 		POISONOUS_POTATO = 378,
-		CHORUS_FRUIT = 379
+		CHORUS_FRUIT = 379,
 
-		-- Note: Block IDs continue from 380+
+		-- Liquids
+		WATER_SOURCE = 380,
+		FLOWING_WATER = 381
+
+		-- Note: Block IDs continue from 382+
 	},
 
 	-- Mapping: Slab block ID → Full block ID (when two slabs combine)
@@ -614,6 +618,39 @@ local Constants = {
 	-- Mapping: Block ID → Drop item ID (blocks that transform when broken)
 	BlockToDrop = {
 		[3] = 14,   -- STONE → COBBLESTONE
+	},
+
+	-- ═══════════════════════════════════════════════════════════════════════
+	-- FLOWER VARIANTS
+	-- ═══════════════════════════════════════════════════════════════════════
+	-- All flowers map to BlockType.FLOWER (ID 8) but use different textures
+	-- This table maps Minecraft flower names to variant identifiers
+	FlowerVariants = {
+		-- Single-block tall flowers (use top texture only)
+		POPPY = "poppy",
+		AZURE_BLUET = "azure_bluet",
+		DANDELION = "poppy",  -- Uses poppy texture (needs separate texture)
+		BLUE_ORCHID = "poppy",  -- Uses poppy texture (needs separate texture)
+		CORNFLOWER = "poppy",  -- Uses poppy texture (needs separate texture)
+		LILY_OF_THE_VALLEY = "poppy",  -- Uses poppy texture (needs separate texture)
+		OXEYE_DAISY = "poppy",  -- Uses poppy texture (needs separate texture)
+		ORANGE_TULIP = "poppy",  -- Uses poppy texture (needs separate texture)
+		PINK_TULIP = "poppy",  -- Uses poppy texture (needs separate texture)
+		RED_TULIP = "poppy",  -- Uses poppy texture (needs separate texture)
+		WHITE_TULIP = "poppy",  -- Uses poppy texture (needs separate texture)
+		WITHER_ROSE = "poppy",  -- Uses poppy texture (needs separate texture)
+		-- Two-block tall flowers (use top texture for lower half, bottom texture for upper half)
+		ROSE_BUSH = "rose_bush",
+		LILAC = "lilac",
+		PEONY = "lilac",  -- Uses lilac texture (needs separate texture)
+		SUNFLOWER = "lilac",  -- Uses lilac texture (needs separate texture)
+		AZALEA = "poppy",  -- Uses poppy texture (needs separate texture)
+		FLOWERING_AZALEA = "poppy",  -- Uses poppy texture (needs separate texture)
+	},
+	-- Flowers that are two blocks tall (need bottom texture for upper half)
+	TwoBlockTallFlowers = {
+		["rose_bush"] = true,
+		["lilac"] = true,
 	},
 
 	-- Block metadata format (single byte: 0-255)

@@ -109,6 +109,10 @@ if IS_LOBBY then
 		dependencies = {"PlayerInventoryService", "DamageService"},
 		mixins = {}
 	})
+	Injector:Bind("WaterService", script.Parent.Parent.Services.WaterService, {
+		dependencies = {"VoxelWorldService"},
+		mixins = {}
+	})
 	Injector:Bind("DroppedItemService", script.Parent.Parent.Services.DroppedItemService, {
 		dependencies = {"VoxelWorldService", "PlayerInventoryService"},
 		mixins = {}
@@ -135,6 +139,10 @@ else
 	})
 	Injector:Bind("VoxelWorldService", script.Parent.Parent.Services.VoxelWorldService, {
 		dependencies = {"PlayerInventoryService", "WorldOwnershipService", "DamageService"},
+		mixins = {}
+	})
+	Injector:Bind("WaterService", script.Parent.Parent.Services.WaterService, {
+		dependencies = {"VoxelWorldService"},
 		mixins = {}
 	})
 	Injector:Bind("SaplingService", script.Parent.Parent.Services.SaplingService, {
@@ -183,6 +191,7 @@ local craftingService = Injector:Resolve("CraftingService")
 local bowService = Injector:Resolve("BowService")
 local armorEquipService = Injector:Resolve("ArmorEquipService")
 local voxelWorldService = Injector:Resolve("VoxelWorldService")
+local waterService = Injector:Resolve("WaterService")
 local saplingService = not IS_LOBBY and Injector:Resolve("SaplingService") or nil
 local cropService = not IS_LOBBY and Injector:Resolve("CropService") or nil
 local worldOwnershipService = not IS_LOBBY and Injector:Resolve("WorldOwnershipService") or nil
@@ -208,6 +217,11 @@ end
 if voxelWorldService then
 	voxelWorldService.Deps.DroppedItemService = droppedItemService
 	voxelWorldService.Deps.MobEntityService = mobEntityService
+end
+
+-- Manually inject WaterService into VoxelWorldService
+if voxelWorldService and waterService then
+	voxelWorldService.Deps.WaterService = waterService
 end
 
 -- Manually inject SaplingService into VoxelWorldService for block-change notifications

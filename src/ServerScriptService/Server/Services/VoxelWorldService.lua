@@ -1179,13 +1179,27 @@ end
 function VoxelWorldService:SetBlock(x, y, z, blockId, player, metadata)
 	if not self.worldManager then return false end
 
-	-- Set block
+	-- Get current state
     local prevBlockId = self.worldManager:GetBlock(x, y, z)
-    local success = self.worldManager:SetBlock(x, y, z, blockId)
-	if not success then return false end
+    local prevMeta = self.worldManager:GetBlockMetadata(x, y, z) or 0
+    
+    -- Determine if anything is actually changing
+    local blockTypeChanged = (prevBlockId ~= blockId)
+    local metadataChanged = (metadata ~= nil and metadata ~= prevMeta)
+    
+    -- Early exit if nothing changed (prevents unnecessary network events, especially for water)
+    if not blockTypeChanged and not metadataChanged then
+    	return true -- Already set, no change needed
+    end
+    
+    -- Set block type if changed
+    if blockTypeChanged then
+    	local success = self.worldManager:SetBlock(x, y, z, blockId)
+		if not success then return false end
+    end
 
 	-- If block type changed and no explicit metadata provided, clear old metadata
-	if prevBlockId ~= blockId and (metadata == nil) then
+	if blockTypeChanged and (metadata == nil) then
 		self.worldManager:SetBlockMetadata(x, y, z, 0)
 	end
 
@@ -1206,8 +1220,9 @@ function VoxelWorldService:SetBlock(x, y, z, blockId, player, metadata)
 			self.worldManager:SetBlockMetadata(x, y, z, metaToSet)
 		end
 	else
-		-- Non-leaf blocks: set metadata if provided explicitly (e.g., slabs/stairs orientation)
-		if metadata and metadata ~= 0 then
+		-- Non-leaf blocks: set metadata if provided explicitly (e.g., slabs/stairs orientation, water depth)
+		-- Note: metadata=0 is valid for water sources and other blocks, so we check for nil, not falsy
+		if metadata ~= nil then
 			self.worldManager:SetBlockMetadata(x, y, z, metadata)
 		end
 	end
@@ -1224,6 +1239,13 @@ function VoxelWorldService:SetBlock(x, y, z, blockId, player, metadata)
 	if cropService and cropService.OnBlockChanged then
 		local metaNow = metadata or self.worldManager:GetBlockMetadata(x, y, z) or 0
 		cropService:OnBlockChanged(x, y, z, blockId, metaNow, prevBlockId)
+	end
+
+	-- Notify WaterService about block change (for water flow updates)
+	local waterService = self.Deps and self.Deps.WaterService
+	if waterService and waterService.OnBlockChanged then
+		local metaNow = metadata or self.worldManager:GetBlockMetadata(x, y, z) or 0
+		waterService:OnBlockChanged(x, y, z, blockId, metaNow, prevBlockId)
 	end
 
 	-- Minion block: if removed/replaced, despawn linked minion

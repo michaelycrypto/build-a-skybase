@@ -53,6 +53,18 @@ BlockProperties.Properties = {
 		minToolTier = nil,
 		resistance = 0
 	},
+	[Constants.BlockType.WATER_SOURCE] = {
+		hardness = 0,
+		toolType = nil,
+		minToolTier = nil,
+		resistance = 0
+	},
+	[Constants.BlockType.FLOWING_WATER] = {
+		hardness = 0,
+		toolType = nil,
+		minToolTier = nil,
+		resistance = 0
+	},
     [Constants.BlockType.GRASS] = {
         hardness = 0.6,  -- Minecraft hardness
         toolType = BlockProperties.ToolType.SHOVEL, -- Recommended tool, not required

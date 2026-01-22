@@ -137,6 +137,10 @@ function GreedyMesher:ShouldRenderFace(chunk, x: number, y: number, z: number, f
 	if not neighbor then
 		return true
 	end
+	-- Liquids should not render internal faces
+	if block and block.liquid and neighbor.liquid then
+		return false
+	end
 	-- Transparent, non-solid, or cross-shaped neighbors should not occlude
 	if neighbor.transparent or (neighbor.solid == false) or neighbor.crossShape then
 		return true
@@ -679,8 +683,29 @@ function GreedyMesher:GenerateMesh(chunk, worldManager, options)
 						p2.CFrame = CFrame.new(Vector3.new(snap(center.X), snap(center.Y), snap(center.Z))) * CFrame.Angles(0, math.rad(-45), 0)
 
 						-- Apply textures to both planes if available
-						if def.textures and def.textures.all then
-							local textureId = TextureManager:GetTextureId(def.textures.all)
+						-- Handle two-block tall plants (tall grass, flowers) with half=lower/upper variants
+						local textureName = nil
+						if def.textures then
+							-- Support metadata-based texture selection for any cross-shaped block with supportsVariants
+							if def.supportsVariants then
+								-- Check metadata for half property (upper vs lower)
+								local metadata = chunk:GetMetadata(x, y, z)
+								local verticalOrientation = Constants.GetVerticalOrientation(metadata)
+								local isUpperHalf = (verticalOrientation == Constants.BlockMetadata.VERTICAL_TOP)
+
+								-- Minecraft convention: lower block = "lower" texture, upper block = "upper" texture
+								if isUpperHalf then
+									textureName = def.textures.upper or def.textures.all
+								else
+									textureName = def.textures.lower or def.textures.all
+								end
+							else
+								textureName = def.textures.all
+							end
+						end
+
+						if textureName then
+							local textureId = TextureManager:GetTextureId(textureName)
 							if textureId then
 								local bs = Constants.BLOCK_SIZE
 								-- First plane - both sides

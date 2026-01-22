@@ -10,6 +10,7 @@ local PartPool = {}
 local facePool = {}
 local colliderPool = {}
 local texturePool = {}  -- Pool for Texture instances
+local wedgePool = {}    -- Pool for WedgePart instances (water rendering)
 
 -- Pre-allocated default values
 local DEFAULT_SIZE = Vector3.new(1, 1, 1)
@@ -31,9 +32,15 @@ end
 function PartPool.ReleaseTexture(tex)
 	if not tex then return end
 	tex.Parent = nil
-	-- Reset commonly changed properties
+	-- Reset ALL commonly changed properties to prevent bleeding
 	tex.Texture = ""
 	tex.Color3 = DEFAULT_COLOR
+	tex.Name = "Texture"
+	tex.Face = Enum.NormalId.Front
+	tex.OffsetStudsU = 0
+	tex.OffsetStudsV = 0
+	tex.StudsPerTileU = 1
+	tex.StudsPerTileV = 1
 	table.insert(texturePool, tex)
 end
 
@@ -112,10 +119,97 @@ function PartPool.ReleaseColliderPart(part)
 	table.insert(colliderPool, part)
 end
 
+-- WedgePart pooling for water flow rendering
+function PartPool.AcquireWedgePart()
+	local part = table.remove(wedgePool)
+	if part then
+		part.Parent = nil
+		return part
+	end
+	local p = Instance.new("WedgePart")
+	p.Anchored = true
+	p.Massless = true
+	p.CanCollide = false
+	p.CanTouch = false
+	p.CanQuery = false
+	p.CastShadow = false
+	return p
+end
+
+function PartPool.ReleaseWedgePart(part)
+	if not part then return end
+	-- Reset properties similar to resetCommon but for WedgePart
+	part.Size = DEFAULT_SIZE
+	part.CFrame = DEFAULT_CFRAME
+	part.Transparency = 0
+	part.Color = DEFAULT_COLOR
+	part.Material = Enum.Material.Plastic
+	part.Reflectance = 0
+	part.Name = ""
+	-- Pool texture children
+	local children = part:GetChildren()
+	for i = 1, #children do
+		local child = children[i]
+		if child:IsA("Texture") then
+			PartPool.ReleaseTexture(child)
+		elseif child:IsA("Decal") or child:IsA("SurfaceAppearance") then
+			child:Destroy()
+		end
+	end
+	part.Parent = nil
+	table.insert(wedgePool, part)
+end
+
+-- CornerWedgePart pooling for outer corner water rendering
+local cornerWedgePool = {}
+
+function PartPool.AcquireCornerWedgePart()
+	local part = table.remove(cornerWedgePool)
+	if part then
+		part.Parent = nil
+		return part
+	end
+	local p = Instance.new("CornerWedgePart")
+	p.Anchored = true
+	p.Massless = true
+	p.CanCollide = false
+	p.CanTouch = false
+	p.CanQuery = false
+	p.CastShadow = false
+	return p
+end
+
+function PartPool.ReleaseCornerWedgePart(part)
+	if not part then return end
+	part.Size = DEFAULT_SIZE
+	part.CFrame = DEFAULT_CFRAME
+	part.Transparency = 0
+	part.Color = DEFAULT_COLOR
+	part.Material = Enum.Material.Plastic
+	part.Reflectance = 0
+	part.Name = ""
+	-- Pool texture children
+	local children = part:GetChildren()
+	for i = 1, #children do
+		local child = children[i]
+		if child:IsA("Texture") then
+			PartPool.ReleaseTexture(child)
+		elseif child:IsA("Decal") or child:IsA("SurfaceAppearance") then
+			child:Destroy()
+		end
+	end
+	part.Parent = nil
+	table.insert(cornerWedgePool, part)
+end
+
 function PartPool.ReleaseAllFromModel(model)
 	if not model then return end
 	for _, child in ipairs(model:GetChildren()) do
-		if child:IsA("BasePart") then
+		if child:IsA("CornerWedgePart") then
+			PartPool.ReleaseCornerWedgePart(child)
+		elseif child:IsA("WedgePart") then
+			PartPool.ReleaseWedgePart(child)
+		elseif child:IsA("BasePart") then
 			if child.Name == "Collider" then
 				PartPool.ReleaseColliderPart(child)
 			else

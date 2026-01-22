@@ -20,6 +20,8 @@ local MIN_STACK_SIZE = 0
 -- Valid block/item IDs (based on Constants.BlockType)
 local VALID_ITEM_IDS = {
 	[Constants.BlockType.AIR] = true,
+	[Constants.BlockType.WATER_SOURCE] = true,
+	[Constants.BlockType.FLOWING_WATER] = true,
 	[Constants.BlockType.GRASS] = true,
 	[Constants.BlockType.DIRT] = true,
 	[Constants.BlockType.STONE] = true,
@@ -174,6 +176,22 @@ local VALID_ITEM_IDS = {
 	[Constants.BlockType.SPIDER_EYE] = true,
 	[Constants.BlockType.POISONOUS_POTATO] = true,
 	[Constants.BlockType.CHORUS_FRUIT] = true,
+	-- Plants & Vegetation (cross-shaped)
+	[Constants.BlockType.MELON] = true,
+	[Constants.BlockType.PUMPKIN] = true,
+	[Constants.BlockType.CARVED_PUMPKIN] = true,
+	[Constants.BlockType.JACK_O_LANTERN] = true,
+	[Constants.BlockType.CACTUS] = true,
+	[Constants.BlockType.SUGAR_CANE] = true,
+	[Constants.BlockType.HAY_BLOCK] = true,
+	[Constants.BlockType.DEAD_BUSH] = true,
+	[Constants.BlockType.LILY_PAD] = true,
+	-- Mushrooms (cross-shaped)
+	[Constants.BlockType.BROWN_MUSHROOM] = true,
+	[Constants.BlockType.RED_MUSHROOM] = true,
+	[Constants.BlockType.BROWN_MUSHROOM_BLOCK] = true,
+	[Constants.BlockType.RED_MUSHROOM_BLOCK] = true,
+	[Constants.BlockType.MUSHROOM_STEM] = true,
 }
 
 --[[

@@ -18,12 +18,14 @@
 local Constants = require(script.Parent.Parent.Core.Constants)
 local Config = require(script.Parent.Parent.Core.Config)
 local BlockRegistry = require(script.Parent.Parent.World.BlockRegistry)
+local WaterUtils = require(script.Parent.Parent.World.WaterUtils)
 local PartPool = require(script.Parent.PartPool)
 local Blocks = BlockRegistry.Blocks
-
 -- Texture system
 local TextureApplicator = require(script.Parent.TextureApplicator)
 local TextureManager = require(script.Parent.TextureManager)
+-- Water rendering with Part + WedgePart system
+local WaterMesher = require(script.Parent.WaterMesher)
 
 local BoxMesher = {}
 BoxMesher.__index = BoxMesher
@@ -135,6 +137,7 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 	local meshParts = table.create(256)  -- Pre-allocate for typical chunk
 	local partsBudget = 0
 	local MAX_PARTS = options.maxParts or 500
+	local metaSampler = options.sampleMetadata or DefaultSampleMetadata
 
 	-- Cache constants locally for faster access
 	local CHUNK_SX = Constants.CHUNK_SIZE_X
@@ -1276,8 +1279,41 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 									CFrame.Angles(0, math.rad(-45), 0)
 
 						-- Apply textures to both planes if available
-						if def.textures and def.textures.all then
-							local textureId = TextureManager:GetTextureId(def.textures.all)
+						-- Handle two-block tall plants (tall grass, flowers) with half=lower/upper variants
+						local textureName = nil
+						if def.textures then
+							-- Support metadata-based texture selection for any cross-shaped block with supportsVariants
+							if def.supportsVariants then
+								-- Check metadata for half property (upper vs lower)
+								local metadata = chunk:GetMetadata(x, y, z)
+								local verticalOrientation = Constants.GetVerticalOrientation(metadata)
+								local isUpperHalf = (verticalOrientation == Constants.BlockMetadata.VERTICAL_TOP)
+
+								-- Minecraft convention: lower block = "lower" texture, upper block = "upper" texture
+								if isUpperHalf then
+									textureName = def.textures.upper or def.textures.all
+								else
+									textureName = def.textures.lower or def.textures.all
+								end
+
+								-- Debug logging (enable in Config.DEBUG.LOG_CROSSSHAPE_TEXTURES)
+								if Config.DEBUG.LOG_CROSSSHAPE_TEXTURES then
+									print(string.format("[CrossShape] id=%d, name=%s, meta=%d, isUpper=%s -> tex=%s",
+										id, def.name or "?", metadata, tostring(isUpperHalf), tostring(textureName)))
+								end
+							else
+								textureName = def.textures.all
+							end
+						end
+
+						if textureName then
+							local textureId = TextureManager:GetTextureId(textureName)
+
+							-- Extended debug logging with texture ID
+							if Config.DEBUG.LOG_CROSSSHAPE_TEXTURES and textureId then
+								print(string.format("[CrossShape] Applying textureId=%s for textureName=%s", tostring(textureId), tostring(textureName)))
+							end
+
 							if textureId then
 								-- First plane - both sides
 								local t1f = PartPool.AcquireTexture()
@@ -1317,6 +1353,22 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 					end
 				end
 			end
+		end
+	end
+
+	-- Water meshing: use dedicated WaterMesher for Part + WedgePart rendering
+	local waterMesher = WaterMesher.new()
+	local waterOptions = {
+		sampleBlock = sampler,
+		sampleMetadata = metaSampler,
+		maxWaterParts = math.max(0, MAX_PARTS - partsBudget)
+	}
+	local waterParts = waterMesher:GenerateMesh(chunk, worldManager, waterOptions)
+	for _, part in ipairs(waterParts) do
+		table.insert(meshParts, part)
+		partsBudget = partsBudget + 1
+		if partsBudget >= MAX_PARTS then
+			break
 		end
 	end
 

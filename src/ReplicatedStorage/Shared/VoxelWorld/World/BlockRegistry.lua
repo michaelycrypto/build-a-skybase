@@ -107,9 +107,13 @@ BlockRegistry.Blocks = {
 		transparent = true,
 		color = Color3.fromRGB(146, 190, 100),
 		textures = {
-			all = "tall_grass"
+			-- Minecraft naming: lower block shows "bottom" texture, upper block shows "top" texture
+			lower = "tall_grass_bottom",  -- Lower half block texture (base/roots)
+			upper = "tall_grass_top",     -- Upper half block texture (tips)
+			all = "tall_grass"            -- Fallback for single-block short grass
 		},
-		crossShape = true
+		crossShape = true,
+		supportsVariants = true  -- Supports half=lower and half=upper variants
 	},
 
 	[Constants.BlockType.FLOWER] = {
@@ -118,9 +122,23 @@ BlockRegistry.Blocks = {
 		transparent = true,
 		color = Color3.fromRGB(255, 255, 100),
 		textures = {
-			all = "flower"
+			all = "flower",  -- Default: poppy (single-block flowers)
+			-- For two-block tall flowers, use lower/upper (but need baseName to select variant)
+			-- Currently falls back to "flower" (poppy) since we don't store the flower type
+			lower = "flower",  -- Lower half of two-block flowers (falls back to poppy)
+			upper = "flower",  -- Upper half of two-block flowers (falls back to poppy)
+			-- Flower variant textures (for reference - need baseName to use these)
+			variants = {
+				poppy = "flower_poppy",
+				azure_bluet = "flower_azure_bluet",
+				rose_bush_lower = "flower_rose_bush_top",    -- Rose bush lower block
+				rose_bush_upper = "flower_rose_bush_bottom", -- Rose bush upper block
+				lilac_lower = "flower_lilac_top",            -- Lilac lower block
+				lilac_upper = "flower_lilac_bottom",         -- Lilac upper block
+			}
 		},
-		crossShape = true
+		crossShape = true,
+		supportsVariants = true  -- Flag to indicate this block supports texture variants
 	},
 
 	[Constants.BlockType.CHEST] = {
@@ -2589,6 +2607,36 @@ BlockRegistry.Blocks = {
 	},
 
 	-- ═══════════════════════════════════════════════════════════════════════════
+	-- LIQUIDS
+	-- ═══════════════════════════════════════════════════════════════════════════
+	[Constants.BlockType.WATER_SOURCE] = {
+		name = "Water",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(64, 164, 223),
+		textures = {
+			all = "water_still",
+			overlay = "water_overlay"
+		},
+		crossShape = false,
+		liquid = true,
+		replaceable = true
+	},
+	[Constants.BlockType.FLOWING_WATER] = {
+		name = "Flowing Water",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(64, 164, 223),
+		textures = {
+			all = "water_flow",
+			overlay = "water_overlay"
+		},
+		crossShape = false,
+		liquid = true,
+		replaceable = true
+	},
+
+	-- ═══════════════════════════════════════════════════════════════════════════
 	-- MUSHROOMS
 	-- ═══════════════════════════════════════════════════════════════════════════
 	[Constants.BlockType.BROWN_MUSHROOM] = {
@@ -3848,12 +3896,77 @@ function BlockRegistry:IsCrossShape(blockId: number): boolean
 end
 
 -- Get block texture for face
-function BlockRegistry:GetTexture(blockId: number, face: string): string
+-- @param blockId: Block type ID
+-- @param face: Face name ("top", "bottom", "side", "all")
+-- @param variant: Optional variant name (e.g., "poppy", "rose_bush", "lilac") for blocks that support variants
+function BlockRegistry:GetTexture(blockId: number, face: string, variant: string?): string
 	local block = self:GetBlock(blockId)
 	if not block.textures then
 		return nil
 	end
+
+	-- Support for flower variants
+	if variant and block.supportsVariants and block.textures.variants then
+		local variantTexture = block.textures.variants[variant]
+		if variantTexture then
+			-- For two-block tall flowers (rose_bush, lilac), check if this is the bottom half
+			if face == "bottom" and block.textures.variantsBottom and block.textures.variantsBottom[variant] then
+				return block.textures.variantsBottom[variant]
+			end
+			return variantTexture
+		end
+	end
+
+	-- Standard texture lookup
 	return block.textures[face] or block.textures.all
+end
+
+-- Get flower texture by Minecraft base name
+-- @param baseName: Minecraft block name (e.g., "poppy", "rose_bush", "lilac", "azure_bluet")
+-- @param isUpperHalf: Whether this is the upper half of a two-block tall flower
+function BlockRegistry:GetFlowerTexture(baseName: string, isUpperHalf: boolean?): string
+	local block = self:GetBlock(Constants.BlockType.FLOWER)
+	if not block or not block.textures then
+		return "flower"
+	end
+
+	-- Normalize base name (remove metadata like [half=lower])
+	local normalizedName = string.match(baseName, "^([^%[]+)") or baseName
+
+	-- Map Minecraft names to variant keys
+	local variantMap = {
+		poppy = "poppy",
+		azure_bluet = "azure_bluet",
+		rose_bush = "rose_bush",
+		lilac = "lilac",
+	}
+
+	local variant = variantMap[normalizedName]
+	if variant and block.textures.variants then
+		-- For upper half of two-block tall flowers, use bottom texture
+		if isUpperHalf and block.textures.variantsBottom and block.textures.variantsBottom[variant] then
+			return block.textures.variantsBottom[variant]
+		end
+		return block.textures.variants[variant] or block.textures.all
+	end
+
+	return block.textures.all
+end
+
+-- Get tall grass texture by half property (Minecraft convention)
+-- @param isUpperHalf: Whether this is the upper half of two-block tall grass
+function BlockRegistry:GetTallGrassTexture(isUpperHalf: boolean?): string
+	local block = self:GetBlock(Constants.BlockType.TALL_GRASS)
+	if not block or not block.textures then
+		return "tall_grass"
+	end
+
+	-- Minecraft convention: lower block = "lower" texture, upper block = "upper" texture
+	if isUpperHalf then
+		return block.textures.upper or block.textures.all
+	else
+		return block.textures.lower or block.textures.all
+	end
 end
 
 -- Check if block is interactable (like chests)

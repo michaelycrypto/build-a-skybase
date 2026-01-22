@@ -97,7 +97,7 @@ local function buildBlockModel(itemId)
 
 			-- Always apply texture from BlockRegistry to ensure consistency
 			if part:IsA("MeshPart") and def.textures then
-				local textureName = def.textures.all or def.textures.side or def.textures.top
+				local textureName = def.textures.all or def.textures.side or def.textures.top or def.textures.lower
 				if textureName then
 					local textureId = TextureManager:GetTextureId(textureName)
 					if textureId then
@@ -479,7 +479,7 @@ local function buildFlatBlockItem(itemId)
 
             -- Always apply texture from BlockRegistry to ensure consistency
             if part:IsA("MeshPart") and def.textures then
-                local textureName = def.textures.all or def.textures.side or def.textures.top
+                local textureName = def.textures.all or def.textures.side or def.textures.top or def.textures.lower
                 if textureName then
                     local textureId = TextureManager:GetTextureId(textureName)
                     if textureId then
@@ -496,7 +496,7 @@ local function buildFlatBlockItem(itemId)
 
     -- Fallback: use flat sprite with texture
     if not def.textures then return nil end
-    local textureName = def.textures.all or def.textures.side or def.textures.top
+    local textureName = def.textures.all or def.textures.side or def.textures.top or def.textures.lower
     if not textureName then return nil end
     local textureId = TextureManager:GetTextureId(textureName)
     if not textureId then return nil end

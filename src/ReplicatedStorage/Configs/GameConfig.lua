@@ -138,7 +138,7 @@ local GameConfig = {
 	-- Data Store settings
 	DataStore = {
 		PlayerData = {
-			DataStoreVersion = "PlayerData_v71", -- Keep in sync with PlayerDataStoreService (updated for 6-tier system)
+			DataStoreVersion = "PlayerData_v75", -- Keep in sync with PlayerDataStoreService (updated for 6-tier system)
 			SchemaVersion = 5, -- Increment to force migrations/default resets
 			AutoSaveInterval = 300 -- 5 minutes in seconds
 		},
@@ -161,6 +161,7 @@ local GameConfig = {
 			{slot = 3, itemId = 1021, count = 1},  -- Copper Shovel (digging)
 			{slot = 4, itemId = 1041, count = 1},  -- Copper Sword (defense)
 			{slot = 5, itemId = 348, count = 16},  -- Bread (food)
+			{slot = 6, itemId = 380, count = 32},   -- Water Source Block
 		},
 
 		-- Inventory: Starter resources
@@ -178,9 +179,9 @@ local GameConfig = {
 			{itemId = 73, count = 4},   -- Carrots (plantable)
 
 			-- Basic Materials (to get started)
-			{itemId = 2, count = 16},   -- Dirt (for farming)
-			{itemId = 14, count = 16},  -- Cobblestone (basic building)
-			{itemId = 12, count = 8},   -- Oak Planks (crafting)
+			{itemId = 2, count = 64},   -- Dirt (for farming)
+			{itemId = 14, count = 64},  -- Cobblestone (basic building)
+			{itemId = 12, count = 64},   -- Oak Planks (crafting)
 
 			-- Food (survive first few minutes)
 			{itemId = 37, count = 8},   -- Apples
@@ -390,6 +391,30 @@ local GameConfig = {
 		enableConsoleLogging = true
 	},
 
+	-- Water system configuration (Minecraft-style water physics)
+	Water = {
+		-- Infinite water source: When enabled, 2+ adjacent water sources + solid below
+		-- creates a new source block (Minecraft-style infinite water)
+		InfiniteWaterSource = true,
+
+		-- Water tick rate (seconds between spread updates)
+		-- Lower = faster spread, higher = better performance
+		TickInterval = 0.25,
+
+		-- Maximum blocks to update per tick (performance limit)
+		MaxUpdatesPerTick = 200,
+
+		-- Maximum blocks to update per chunk per tick
+		MaxUpdatesPerChunk = 50,
+
+		-- BFS search distance for downhill pathfinding
+		-- Water looks this far ahead to find the nearest drop-off
+		FlowSearchDistance = 4,
+
+		-- Maximum queue size (prevents runaway water updates)
+		MaxQueueSize = 50000,
+	},
+
 	-- Performance debug toggles (server/client)
 	PERF_DEBUG = {
 		-- Set true to skip server dropped item merges (keeps despawn)
@@ -556,7 +581,7 @@ local GameConfig = {
 	-- World system configuration
 	Worlds = {
 		MaxWorldsPerPlayer = 10, -- Maximum worlds a player can create
-		DataStoreVersion = "PlayerOwnedWorlds_v63" -- Updated for multi-world support
+		DataStoreVersion = "PlayerOwnedWorlds_v64" -- Updated for multi-world support
 	}
 }
 
