@@ -415,6 +415,41 @@ local GameConfig = {
 		MaxQueueSize = 50000,
 	},
 
+	-- Swimming configuration (Minecraft-style water swimming)
+	Swimming = {
+		-- Movement speeds (studs/second)
+		NormalWalkSpeed = 14,           -- Normal land walking speed
+		NormalJumpPower = 50,           -- Normal jump power
+		WadingSpeedMultiplier = 0.7,    -- Speed multiplier in shallow water (1 block)
+		SwimmingSpeed = 8,              -- Horizontal swimming speed (normal)
+		SwimSprintSpeed = 14,           -- Horizontal swimming speed when holding Space/Shift (sprint swim)
+		AscendSpeed = 6,                -- Vertical speed when swimming up (Space)
+		DescendSpeed = 8,               -- Vertical speed when swimming down (Shift)
+		FallingWaterDescentSpeed = 16,  -- Fast descent speed in falling water (waterfalls)
+
+		-- Physics
+		WaterGravityMultiplier = 0.3,   -- Gravity reduction while swimming (0.3 = 30% of normal)
+		WaterDrag = 0.85,               -- Velocity damping in water
+		SurfaceTension = 0.5,           -- Resistance when breaking water surface
+		CurrentPushStrength = 3,        -- How strongly water currents push the player
+		FallingWaterPullStrength = 12,  -- Downward pull in falling water (waterfalls)
+
+		-- Thresholds
+		SwimDepthBlocks = 2,            -- Water depth (blocks) required for full swimming
+
+		-- Visual effects (underwater)
+		UnderwaterFogColor = Color3.fromRGB(32, 84, 164),
+		UnderwaterFogStart = 8,
+		UnderwaterFogEnd = 48,
+		UnderwaterTintColor = Color3.fromRGB(50, 100, 180),
+		UnderwaterTintBrightness = -0.1,
+
+		-- Oxygen/Drowning (for future implementation)
+		MaxOxygenSeconds = 30,          -- Seconds of air underwater before drowning
+		OxygenRegenRate = 3,            -- Seconds on surface to regen 1 second of oxygen
+		DrowningDamagePerSecond = 2,    -- Damage per second when drowning
+	},
+
 	-- Performance debug toggles (server/client)
 	PERF_DEBUG = {
 		-- Set true to skip server dropped item merges (keeps despawn)

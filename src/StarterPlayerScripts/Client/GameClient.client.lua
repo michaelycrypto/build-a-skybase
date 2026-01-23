@@ -915,6 +915,19 @@ local function completeInitialization(EmoteManager)
 	SprintController:Initialize()
 	Client.sprintController = SprintController
 
+	-- Initialize Swimming Controller (water block swimming)
+	local SwimmingController = require(script.Parent.Controllers.SwimmingController)
+	SwimmingController:Initialize()
+	-- Set world manager reference for water detection
+	if voxelWorldHandle and voxelWorldHandle.GetWorldManager then
+		SwimmingController:SetWorldManager(voxelWorldHandle:GetWorldManager())
+	end
+	Client.swimmingController = SwimmingController
+
+	-- Connect SprintController and SwimmingController bidirectionally
+	SprintController:SetSwimmingController(SwimmingController)
+	SwimmingController:SetSprintController(SprintController)
+
 	-- Initialize Cloud Controller (Minecraft-style layered clouds)
 	CloudController:Initialize()
 	Client.cloudController = CloudController
@@ -1437,19 +1450,29 @@ local function initialize()
 		-- Always queue the block's own chunk
 		queueChunkRemesh(chunkX, chunkZ)
 
-		-- Check if block is on a chunk edge and queue neighbor chunks
-		local localX = data.x - chunkX * Constants.CHUNK_SIZE_X
-		local localZ = data.z - chunkZ * Constants.CHUNK_SIZE_Z
-
-		if localX == 0 then
+		-- For water blocks, queue ALL 4 neighbor chunks
+		-- Water mesh visibility depends on neighbor water heights, so any water change
+		-- can affect adjacent chunk water meshes (not just edge blocks)
+		if isWaterBlock or wasWaterBlock then
 			queueChunkRemesh(chunkX - 1, chunkZ)
-		elseif localX == (Constants.CHUNK_SIZE_X - 1) then
 			queueChunkRemesh(chunkX + 1, chunkZ)
-		end
-		if localZ == 0 then
 			queueChunkRemesh(chunkX, chunkZ - 1)
-		elseif localZ == (Constants.CHUNK_SIZE_Z - 1) then
 			queueChunkRemesh(chunkX, chunkZ + 1)
+		else
+			-- For non-water blocks, only queue neighbors if block is on chunk edge
+			local localX = data.x - chunkX * Constants.CHUNK_SIZE_X
+			local localZ = data.z - chunkZ * Constants.CHUNK_SIZE_Z
+
+			if localX == 0 then
+				queueChunkRemesh(chunkX - 1, chunkZ)
+			elseif localX == (Constants.CHUNK_SIZE_X - 1) then
+				queueChunkRemesh(chunkX + 1, chunkZ)
+			end
+			if localZ == 0 then
+				queueChunkRemesh(chunkX, chunkZ - 1)
+			elseif localZ == (Constants.CHUNK_SIZE_Z - 1) then
+				queueChunkRemesh(chunkX, chunkZ + 1)
+			end
 		end
 
 		-- Schedule batched flush (all chunks will be queued together)

@@ -3,6 +3,7 @@
 	Manages sprint functionality
 	- Hold Left Shift to sprint (WalkSpeed 20)
 	- Release to return to normal walk speed (16)
+	- Disabled while swimming (SwimmingController integration)
 ]]
 
 local Players = game:GetService("Players")
@@ -15,12 +16,16 @@ local player = Players.LocalPlayer
 local character = nil
 local humanoid = nil
 
+-- Swimming controller reference (for checking if player is swimming)
+local swimmingController = nil
+
 -- Settings
 local NORMAL_WALKSPEED = 14
 local SPRINT_WALKSPEED = 20
 
 -- State
 local isSprinting = false
+local sprintInputHeld = false -- Track if sprint key is held (separate from actual sprinting)
 
 local function setupCharacter(char)
 	-- Wait for humanoid
@@ -32,8 +37,22 @@ local function setupCharacter(char)
 	return hum
 end
 
+--[[
+	Check if sprinting is allowed (not swimming).
+]]
+local function canSprint()
+	-- Can't sprint while swimming
+	if swimmingController and swimmingController:IsSwimming() then
+		return false
+	end
+	return true
+end
+
 local function startSprint()
 	if not humanoid or isSprinting then return end
+	
+	-- Don't start sprint if swimming
+	if not canSprint() then return end
 
 	isSprinting = true
 	humanoid.WalkSpeed = SPRINT_WALKSPEED
@@ -43,7 +62,10 @@ local function stopSprint()
 	if not humanoid or not isSprinting then return end
 
 	isSprinting = false
-	humanoid.WalkSpeed = NORMAL_WALKSPEED
+	-- Only reset to normal speed if not swimming (swimming manages its own speed)
+	if not swimmingController or not swimmingController:IsInWater() then
+		humanoid.WalkSpeed = NORMAL_WALKSPEED
+	end
 end
 
 --[[
@@ -52,8 +74,10 @@ end
 ]]
 function SprintController:SetSprinting(enabled)
 	if enabled then
+		sprintInputHeld = true
 		startSprint()
 	else
+		sprintInputHeld = false
 		stopSprint()
 	end
 end
@@ -66,6 +90,33 @@ function SprintController:IsSprinting()
 	return isSprinting
 end
 
+--[[
+	Set the swimming controller reference.
+	Used to check if player is swimming (sprint disabled while swimming).
+	@param controller SwimmingController
+]]
+function SprintController:SetSwimmingController(controller)
+	swimmingController = controller
+end
+
+--[[
+	Called by other systems when swimming state changes.
+	If sprint key was held when entering water, resume sprinting on exit.
+]]
+function SprintController:OnWaterStateChanged(isInWater)
+	if isInWater then
+		-- Stop sprinting when entering water
+		if isSprinting then
+			stopSprint()
+		end
+	else
+		-- Resume sprinting if key is still held
+		if sprintInputHeld and canSprint() then
+			startSprint()
+		end
+	end
+end
+
 function SprintController:Initialize()
 	-- Setup character
 	character = player.Character or player.CharacterAdded:Wait()
@@ -76,6 +127,7 @@ function SprintController:Initialize()
 		character = newCharacter
 		humanoid = setupCharacter(newCharacter)
 		isSprinting = false
+		sprintInputHeld = false
 	end)
 
 	-- Handle sprint input (Left Shift)
@@ -83,12 +135,14 @@ function SprintController:Initialize()
 		if gameProcessed then return end
 
 		if input.KeyCode == Enum.KeyCode.LeftShift then
+			sprintInputHeld = true
 			startSprint()
 		end
 	end)
 
 	InputService.InputEnded:Connect(function(input, gameProcessed)
 		if input.KeyCode == Enum.KeyCode.LeftShift then
+			sprintInputHeld = false
 			stopSprint()
 		end
 	end)

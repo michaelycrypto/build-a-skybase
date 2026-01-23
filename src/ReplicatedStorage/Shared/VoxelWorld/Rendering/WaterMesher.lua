@@ -170,6 +170,75 @@ local TWO_WEDGE_DIRECTIONS = {
 }
 
 --============================================================================
+-- WORLD-TO-LOCAL FACE MAPPING FOR ROTATED PARTS
+--============================================================================
+-- When parts are rotated around Y, world-space face directions must be 
+-- transformed to local-space NormalIds for correct texture application.
+-- Key: rotation in radians, Value: mapping from world direction to local NormalId
+
+local WORLD_TO_LOCAL_FACE = {
+	-- 0° rotation (NORTH): World faces = Local faces
+	[0] = {
+		north = Enum.NormalId.Back,   -- World -Z = Local Back
+		south = Enum.NormalId.Front,  -- World +Z = Local Front
+		east = Enum.NormalId.Right,   -- World +X = Local Right
+		west = Enum.NormalId.Left,    -- World -X = Local Left
+	},
+	-- 90° rotation (WEST): Part's local -Z now points World +X
+	[90] = {
+		north = Enum.NormalId.Right,  -- World -Z = Local Right
+		south = Enum.NormalId.Left,   -- World +Z = Local Left
+		east = Enum.NormalId.Back,    -- World +X = Local Back
+		west = Enum.NormalId.Front,   -- World -X = Local Front
+	},
+	-- -90° rotation (EAST): Part's local -Z now points World -X
+	[-90] = {
+		north = Enum.NormalId.Left,   -- World -Z = Local Left
+		south = Enum.NormalId.Right,  -- World +Z = Local Right
+		east = Enum.NormalId.Front,   -- World +X = Local Front
+		west = Enum.NormalId.Back,    -- World -X = Local Back
+	},
+	-- 180° rotation (SOUTH): Part's local -Z now points World +Z
+	[180] = {
+		north = Enum.NormalId.Front,  -- World -Z = Local Front
+		south = Enum.NormalId.Back,   -- World +Z = Local Back
+		east = Enum.NormalId.Left,    -- World +X = Local Left
+		west = Enum.NormalId.Right,   -- World -X = Local Right
+	},
+}
+
+-- Helper to get the face mapping for a given rotation (in radians)
+local function getFaceMapping(rotationRad)
+	local deg = math.floor(math.deg(rotationRad) + 0.5) % 360
+	if deg > 180 then deg = deg - 360 end  -- Normalize to -180 to 180
+	return WORLD_TO_LOCAL_FACE[deg] or WORLD_TO_LOCAL_FACE[0]
+end
+
+-- Transform world-space visible faces to local-space NormalIds for a rotated part
+local function transformFacesToLocal(worldFaces, rotationRad)
+	local mapping = getFaceMapping(rotationRad)
+	local localFaces = {}
+	
+	for _, face in ipairs(worldFaces) do
+		if face == Enum.NormalId.Top then
+			table.insert(localFaces, Enum.NormalId.Top)
+		elseif face == Enum.NormalId.Bottom then
+			table.insert(localFaces, Enum.NormalId.Bottom)
+		elseif face == Enum.NormalId.Back then  -- World -Z (North)
+			table.insert(localFaces, mapping.north)
+		elseif face == Enum.NormalId.Front then -- World +Z (South)
+			table.insert(localFaces, mapping.south)
+		elseif face == Enum.NormalId.Right then -- World +X (East)
+			table.insert(localFaces, mapping.east)
+		elseif face == Enum.NormalId.Left then  -- World -X (West)
+			table.insert(localFaces, mapping.west)
+		end
+	end
+	
+	return localFaces
+end
+
+--============================================================================
 -- UTILITY FUNCTIONS
 --============================================================================
 
@@ -220,7 +289,9 @@ local function getWaterHeight(blockId, metadata, hasWaterAbove)
 		-- The source depth is stored in the level bits
 		local sourceDepth = WaterUtils.GetDepth(metadata)
 		if sourceDepth <= 0 then
-			return 1.0  -- Source block (depth 0) = full height
+			-- Source block (depth 0) = SOURCE_HEIGHT (7/8), not full height
+			-- This matches how source blocks render at the surface
+			return SOURCE_HEIGHT
 		end
 		-- Calculate height based on source depth
 		sourceDepth = math.clamp(sourceDepth, 1, 7)
@@ -236,6 +307,10 @@ local function getWaterHeight(blockId, metadata, hasWaterAbove)
 end
 
 local function getBaseHeight(blockId, metadata, hasWaterAbove)
+	-- Full height when water above (no visible top, connects seamlessly to water above)
+	if hasWaterAbove then
+		return 1.0
+	end
 	local totalHeight = getWaterHeight(blockId, metadata, hasWaterAbove)
 	if blockId == Constants.BlockType.WATER_SOURCE or WaterUtils.IsFalling(metadata) then
 		return totalHeight
@@ -407,7 +482,36 @@ end
 -- FACE VISIBILITY
 --============================================================================
 
-local function getVisibleFaces(waterMap, x, y, z, height, yBlocks)
+-- Check if a side face is exposed (neighbor water is shorter or doesn't exist)
+-- Returns true if the side face should be textured
+-- fallingWaterMap - falling water neighbors don't occlude horizontal water
+-- currentIsFalling - if true, current block is falling water (optional parameter)
+local function isSideFaceExposed(waterMap, waterHeightMap, fallingWaterMap, nx, ny, nz, currentHeight, currentIsFalling)
+	local key = posKey(nx, ny, nz)
+	-- No water at neighbor position = definitely exposed (adjacent to air/solid)
+	if not waterMap[key] then
+		return true
+	end
+	-- Falling water shouldn't occlude horizontal water sides
+	-- Waterfalls are visually separate from horizontal flow
+	if fallingWaterMap and fallingWaterMap[key] then
+		return true
+	end
+	-- If current block is falling water and neighbor is NOT falling (horizontal water),
+	-- always expose the side face - there's a visual discontinuity at the junction
+	-- This handles the "spread joins waterfall" edge case
+	if currentIsFalling and fallingWaterMap and not fallingWaterMap[key] then
+		return true
+	end
+	-- For non-falling water neighbors, compare heights
+	-- Only occlude if neighbor water fully covers the current block's side
+	local neighborHeight = waterHeightMap[key] or 0
+	-- Be permissive: expose if neighbor is shorter OR at same height (allows partial exposure)
+	-- Only fully occlude if neighbor is taller than current
+	return neighborHeight <= currentHeight
+end
+
+local function getVisibleFaces(waterMap, waterHeightMap, fallingWaterMap, x, y, z, currentHeight, yBlocks)
 	local faces = {}
 	yBlocks = yBlocks or 1
 
@@ -421,13 +525,14 @@ local function getVisibleFaces(waterMap, x, y, z, height, yBlocks)
 		table.insert(faces, Enum.NormalId.Bottom)
 	end
 
-	-- Sides: check all y levels for multi-block parts
+	-- Sides: check if exposed (no water OR neighbor water is shorter)
+	-- For multi-block parts, check all y levels
 	local hasN, hasS, hasE, hasW = true, true, true, true
 	for checkY = y, y + yBlocks - 1 do
-		if not waterMap[posKey(x, checkY, z - 1)] then hasN = false end
-		if not waterMap[posKey(x, checkY, z + 1)] then hasS = false end
-		if not waterMap[posKey(x + 1, checkY, z)] then hasE = false end
-		if not waterMap[posKey(x - 1, checkY, z)] then hasW = false end
+		if isSideFaceExposed(waterMap, waterHeightMap, fallingWaterMap, x, checkY, z - 1, currentHeight) then hasN = false end
+		if isSideFaceExposed(waterMap, waterHeightMap, fallingWaterMap, x, checkY, z + 1, currentHeight) then hasS = false end
+		if isSideFaceExposed(waterMap, waterHeightMap, fallingWaterMap, x + 1, checkY, z, currentHeight) then hasE = false end
+		if isSideFaceExposed(waterMap, waterHeightMap, fallingWaterMap, x - 1, checkY, z, currentHeight) then hasW = false end
 	end
 
 	if not hasN then table.insert(faces, Enum.NormalId.Back) end   -- -Z
@@ -443,7 +548,7 @@ end
 --============================================================================
 
 local function applyTextures(part, textureId, bs, faces)
-	if not textureId then return end
+	if not textureId or not faces or #faces == 0 then return end
 	for _, face in ipairs(faces) do
 		local tex = PartPool.AcquireTexture()
 		tex.Face = face
@@ -538,7 +643,9 @@ local function createWedgePart(worldX, worldY, worldZ, baseHeight, bs, flowDir, 
 	local rotation = WEDGE_ROTATIONS[flowDir] or 0
 	wedge.CFrame = CFrame.new(snap(worldX), snap(wedgeY), snap(worldZ)) * CFrame.Angles(0, rotation, 0)
 
-	applyTextures(wedge, textureId, bs, faces)
+	-- Transform world-space faces to local-space for the rotated wedge
+	local localFaces = transformFacesToLocal(faces, rotation)
+	applyTextures(wedge, textureId, bs, localFaces)
 	return wedge
 end
 
@@ -567,10 +674,13 @@ local function createConcaveCorner(worldX, worldY, worldZ, baseHeight, bs, corne
 	wedge1.Reflectance = WATER_REFLECTANCE
 	wedge1.Name = "WaterConcave1"
 
+	local rotation1 = WEDGE_ROTATIONS[dirs[1]] or 0
 	wedge1.Size = Vector3.new(snap(bs), snap(wedgeH), snap(bs))
 	wedge1.CFrame = CFrame.new(snap(worldX), snap(wedgeY), snap(worldZ)) *
-	                CFrame.Angles(0, WEDGE_ROTATIONS[dirs[1]] or 0, 0)
-	applyTextures(wedge1, textureId, bs, faces)
+	                CFrame.Angles(0, rotation1, 0)
+	-- Transform world-space faces to local-space for the rotated wedge
+	local localFaces1 = transformFacesToLocal(faces, rotation1)
+	applyTextures(wedge1, textureId, bs, localFaces1)
 	table.insert(parts, wedge1)
 
 	-- Second wedge
@@ -586,10 +696,13 @@ local function createConcaveCorner(worldX, worldY, worldZ, baseHeight, bs, corne
 	wedge2.Reflectance = WATER_REFLECTANCE
 	wedge2.Name = "WaterConcave2"
 
+	local rotation2 = WEDGE_ROTATIONS[dirs[2]] or 0
 	wedge2.Size = Vector3.new(snap(bs), snap(wedgeH), snap(bs))
 	wedge2.CFrame = CFrame.new(snap(worldX), snap(wedgeY), snap(worldZ)) *
-	                CFrame.Angles(0, WEDGE_ROTATIONS[dirs[2]] or 0, 0)
-	applyTextures(wedge2, textureId, bs, faces)
+	                CFrame.Angles(0, rotation2, 0)
+	-- Transform world-space faces to local-space for the rotated wedge
+	local localFaces2 = transformFacesToLocal(faces, rotation2)
+	applyTextures(wedge2, textureId, bs, localFaces2)
 	table.insert(parts, wedge2)
 
 	return parts
@@ -618,7 +731,9 @@ local function createConvexCorner(worldX, worldY, worldZ, baseHeight, bs, corner
 	local rotation = CORNER_WEDGE_ROTATIONS[cornerType] or 0
 	corner.CFrame = CFrame.new(snap(worldX), snap(cornerY), snap(worldZ)) * CFrame.Angles(0, rotation, 0)
 
-	applyTextures(corner, textureId, bs, faces)
+	-- Transform world-space faces to local-space for the rotated corner
+	local localFaces = transformFacesToLocal(faces, rotation)
+	applyTextures(corner, textureId, bs, localFaces)
 	return corner
 end
 
@@ -700,7 +815,9 @@ function WaterMesher:GenerateMesh(chunk, worldManager, options)
 	-- This is necessary because heightMap only tracks solid blocks, not water
 	--========================================================================
 	local waterBlocks = {}
-	local waterMap = {}
+	local waterMap = {}        -- [posKey] = true (water exists)
+	local waterHeightMap = {}  -- [posKey] = height (water visual height for side face culling)
+	local fallingWaterMap = {} -- [posKey] = true (falling water - shouldn't occlude horizontal flow)
 	local visited = {}
 	local waterYMin, waterYMax = CHUNK_SY, 0
 	
@@ -742,6 +859,10 @@ function WaterMesher:GenerateMesh(chunk, worldManager, options)
 					if height > 0 then
 						local key = posKey(x, y, z)
 						waterMap[key] = true
+						waterHeightMap[key] = height  -- Store height for side face culling
+						if WaterUtils.IsFalling(meta) then
+							fallingWaterMap[key] = true  -- Mark falling water for special handling
+						end
 						table.insert(waterBlocks, {
 							x = x, y = y, z = z,
 							blockId = blockId,
@@ -776,22 +897,63 @@ function WaterMesher:GenerateMesh(chunk, worldManager, options)
 
 	-- Add neighbor chunk water to map (for face culling)
 	-- Scan the full water Y range to catch water in neighboring chunks at any height
+	-- Also store heights for proper side face occlusion checks
 	if hasWater then
 		for y = waterYMin, waterYMax do
 			for z = 0, CHUNK_SZ - 1 do
-				if WaterUtils.IsWater(sampler(worldManager, chunk, -1, y, z)) then
-					waterMap[posKey(-1, y, z)] = true
+				-- Left neighbor (-X edge)
+				local leftId = sampler(worldManager, chunk, -1, y, z)
+				if WaterUtils.IsWater(leftId) then
+					local key = posKey(-1, y, z)
+					waterMap[key] = true
+					local meta = metaSampler(worldManager, chunk, -1, y, z) or 0
+					local aboveId = sampler(worldManager, chunk, -1, y + 1, z)
+					local hasAbove = WaterUtils.IsWater(aboveId)
+					waterHeightMap[key] = getWaterHeight(leftId, meta, hasAbove)
+					if WaterUtils.IsFalling(meta) then
+						fallingWaterMap[key] = true
+					end
 				end
-				if WaterUtils.IsWater(sampler(worldManager, chunk, CHUNK_SX, y, z)) then
-					waterMap[posKey(CHUNK_SX, y, z)] = true
+				-- Right neighbor (+X edge)
+				local rightId = sampler(worldManager, chunk, CHUNK_SX, y, z)
+				if WaterUtils.IsWater(rightId) then
+					local key = posKey(CHUNK_SX, y, z)
+					waterMap[key] = true
+					local meta = metaSampler(worldManager, chunk, CHUNK_SX, y, z) or 0
+					local aboveId = sampler(worldManager, chunk, CHUNK_SX, y + 1, z)
+					local hasAbove = WaterUtils.IsWater(aboveId)
+					waterHeightMap[key] = getWaterHeight(rightId, meta, hasAbove)
+					if WaterUtils.IsFalling(meta) then
+						fallingWaterMap[key] = true
+					end
 				end
 			end
 			for x = 0, CHUNK_SX - 1 do
-				if WaterUtils.IsWater(sampler(worldManager, chunk, x, y, -1)) then
-					waterMap[posKey(x, y, -1)] = true
+				-- Back neighbor (-Z edge)
+				local backId = sampler(worldManager, chunk, x, y, -1)
+				if WaterUtils.IsWater(backId) then
+					local key = posKey(x, y, -1)
+					waterMap[key] = true
+					local meta = metaSampler(worldManager, chunk, x, y, -1) or 0
+					local aboveId = sampler(worldManager, chunk, x, y + 1, -1)
+					local hasAbove = WaterUtils.IsWater(aboveId)
+					waterHeightMap[key] = getWaterHeight(backId, meta, hasAbove)
+					if WaterUtils.IsFalling(meta) then
+						fallingWaterMap[key] = true
+					end
 				end
-				if WaterUtils.IsWater(sampler(worldManager, chunk, x, y, CHUNK_SZ)) then
-					waterMap[posKey(x, y, CHUNK_SZ)] = true
+				-- Front neighbor (+Z edge)
+				local frontId = sampler(worldManager, chunk, x, y, CHUNK_SZ)
+				if WaterUtils.IsWater(frontId) then
+					local key = posKey(x, y, CHUNK_SZ)
+					waterMap[key] = true
+					local meta = metaSampler(worldManager, chunk, x, y, CHUNK_SZ) or 0
+					local aboveId = sampler(worldManager, chunk, x, y + 1, CHUNK_SZ)
+					local hasAbove = WaterUtils.IsWater(aboveId)
+					waterHeightMap[key] = getWaterHeight(frontId, meta, hasAbove)
+					if WaterUtils.IsFalling(meta) then
+						fallingWaterMap[key] = true
+					end
 				end
 			end
 		end
@@ -802,52 +964,70 @@ function WaterMesher:GenerateMesh(chunk, worldManager, options)
 	-- Instantly detects full vertical columns, then merges horizontally
 	-- This creates optimal boxes for waterfalls (single part per waterfall)
 	-- 
-	-- NOTE: TOP of falling columns (no water above) are EXCLUDED from Phase 2
-	-- because they need special height handling based on source depth.
-	-- These are handled in Phase 4 with proper height calculation.
+	-- NOW INCLUDES top of falling columns - merges entire waterfall into 1 part
+	-- Top block height is tracked separately to handle partial heights
 	--========================================================================
 	
 	-- Step 1: Build column map - for each XZ position, find full vertical extent
-	-- columnMap[x][z] = {minY, maxY} representing the full falling water column
-	-- Only include blocks that have water above (not the top of the column)
-	-- Top-of-column blocks are NOT included here - they're processed in Phase 4
-	-- with their correct height based on stored source depth.
-	local columnMap = {} -- [x][z] = {minY, maxY}
+	-- columnMap[x][z] = {minY, maxY, topHeight, topKey} representing the full falling water column
+	-- Includes ALL falling water blocks (top and non-top)
+	local columnMap = {} -- [x][z] = {minY, maxY, topHeight, topKey}
 	
 	for _, wb in ipairs(waterBlocks) do
 		if wb.isFalling then
 			local x, y, z = wb.x, wb.y, wb.z
 			local hasWaterAbove = waterMap[posKey(x, y + 1, z)]
 			
-			if hasWaterAbove then
-				-- Middle/bottom of column: can be box-meshed at full height
-				if not columnMap[x] then columnMap[x] = {} end
-				
-				if not columnMap[x][z] then
-					columnMap[x][z] = {minY = y, maxY = y}
-				else
-					local col = columnMap[x][z]
-					if y < col.minY then col.minY = y end
-					if y > col.maxY then col.maxY = y end
-				end
+			if not columnMap[x] then columnMap[x] = {} end
+			
+			if not columnMap[x][z] then
+				columnMap[x][z] = {minY = y, maxY = y, topHeight = nil, topKey = nil, topIsFalling = nil}
 			end
-			-- Top of column blocks (no water above) are skipped here
-			-- They remain in waterBlocks and are processed in Phase 4
-			-- with proper height based on stored source depth
+			
+			local col = columnMap[x][z]
+			if y < col.minY then col.minY = y end
+			if y > col.maxY then 
+				col.maxY = y 
+			end
+			
+			-- Track top of column info (block without water above)
+			if not hasWaterAbove then
+				col.topHeight = wb.height
+				col.topKey = wb.key
+				col.topIsFalling = true
+			end
 		end
 	end
 	
-	-- Step 2: Group columns by their Y extent (minY, maxY) for optimal merging
-	-- Columns with same Y extent can be merged into a single box
-	local columnGroups = {} -- [minY * 1000 + maxY] = {{x, z}, ...}
+	-- Update maxY to be the actual top block for each column
+	-- and ensure topHeight is set
+	for x, zMap in pairs(columnMap) do
+		for z, col in pairs(zMap) do
+			-- If no explicit top was found, the maxY block is the top
+			if not col.topHeight then
+				local topKey = posKey(x, col.maxY, z)
+				col.topHeight = waterHeightMap[topKey] or 1.0
+				col.topKey = topKey
+				col.topIsFalling = true
+			end
+		end
+	end
+	
+	-- Step 2: Group columns by their Y extent AND top height for optimal merging
+	-- Columns with same Y extent and top height can be merged into a single box
+	-- Top height is quantized to 1/8 block increments for better grouping
+	local columnGroups = {} -- [groupKey] = {minY, maxY, topHeight, columns}
 	
 	for x, zMap in pairs(columnMap) do
 		for z, col in pairs(zMap) do
-			local groupKey = col.minY * 1000 + col.maxY
+			-- Quantize top height to nearest 1/8 for grouping (allows slight variations)
+			local quantizedTopHeight = math.floor(col.topHeight * 8 + 0.5) / 8
+			-- Group key combines minY, maxY, and quantized top height
+			local groupKey = col.minY * 100000 + col.maxY * 100 + math.floor(quantizedTopHeight * 8)
 			if not columnGroups[groupKey] then
-				columnGroups[groupKey] = {minY = col.minY, maxY = col.maxY, columns = {}}
+				columnGroups[groupKey] = {minY = col.minY, maxY = col.maxY, topHeight = quantizedTopHeight, columns = {}}
 			end
-			table.insert(columnGroups[groupKey].columns, {x = x, z = z})
+			table.insert(columnGroups[groupKey].columns, {x = x, z = z, topKey = col.topKey})
 		end
 	end
 	
@@ -856,7 +1036,10 @@ function WaterMesher:GenerateMesh(chunk, worldManager, options)
 		if partsBudget >= MAX_PARTS then break end
 		
 		local minY, maxY = group.minY, group.maxY
-		local height = maxY - minY + 1
+		local topHeight = group.topHeight  -- Partial height of top block (0.125 to 1.0)
+		-- Total height: full blocks below top + partial top block
+		-- (maxY - minY) full blocks from minY to maxY-1, plus topHeight for maxY
+		local heightInBlocks = (maxY - minY) + topHeight
 		
 		-- Build 2D grid for this Y-extent group
 		local grid = {} -- [x][z] = true
@@ -902,7 +1085,7 @@ function WaterMesher:GenerateMesh(chunk, worldManager, options)
 				for iz = 0, dz - 1 do
 					local cx, cz = x0 + ix, z0 + iz
 					colVisited[cx * 1000 + cz] = true
-					-- Mark all Y levels in this column as visited
+					-- Mark all Y levels in this column as visited (including top)
 					for y = minY, maxY do
 						visited[posKey(cx, y, cz)] = true
 					end
@@ -912,18 +1095,8 @@ function WaterMesher:GenerateMesh(chunk, worldManager, options)
 			-- Calculate visible faces for the merged box
 			local boxFaces = {}
 			
-			-- Top face: check if any column top has no water above
-			local hasTop = false
-			for ix = 0, dx - 1 do
-				for iz = 0, dz - 1 do
-					if not waterMap[posKey(x0 + ix, maxY + 1, z0 + iz)] then
-						hasTop = true
-						break
-					end
-				end
-				if hasTop then break end
-			end
-			if hasTop then table.insert(boxFaces, Enum.NormalId.Top) end
+			-- Top face: always visible (top of waterfall, no water above by definition)
+			table.insert(boxFaces, Enum.NormalId.Top)
 			
 			-- Bottom face: check if any column bottom has no water below
 			local hasBottom = false
@@ -938,66 +1111,99 @@ function WaterMesher:GenerateMesh(chunk, worldManager, options)
 			end
 			if hasBottom then table.insert(boxFaces, Enum.NormalId.Bottom) end
 			
-			-- Left face (-X): check entire YZ face
+			-- Side faces: check entire YZ/XY face
+			-- For the top level (maxY), use isSideFaceExposed with currentIsFalling=true
+			-- to properly handle junction with horizontal water
 			local hasLeft = false
 			for y = minY, maxY do
 				for iz = 0, dz - 1 do
-					if not waterMap[posKey(x0 - 1, y, z0 + iz)] then
+					local neighborKey = posKey(x0 - 1, y, z0 + iz)
+					if not waterMap[neighborKey] then
 						hasLeft = true
 						break
+					end
+					-- At top level, check if horizontal water neighbor should expose face
+					if y == maxY then
+						local neighborIsFalling = fallingWaterMap[neighborKey]
+						if not neighborIsFalling then
+							-- Top of falling column next to horizontal water = exposed
+							hasLeft = true
+							break
+						end
 					end
 				end
 				if hasLeft then break end
 			end
 			if hasLeft then table.insert(boxFaces, Enum.NormalId.Left) end
 			
-			-- Right face (+X): check entire YZ face
 			local hasRight = false
 			for y = minY, maxY do
 				for iz = 0, dz - 1 do
-					if not waterMap[posKey(x0 + dx, y, z0 + iz)] then
+					local neighborKey = posKey(x0 + dx, y, z0 + iz)
+					if not waterMap[neighborKey] then
 						hasRight = true
 						break
+					end
+					if y == maxY then
+						local neighborIsFalling = fallingWaterMap[neighborKey]
+						if not neighborIsFalling then
+							hasRight = true
+							break
+						end
 					end
 				end
 				if hasRight then break end
 			end
 			if hasRight then table.insert(boxFaces, Enum.NormalId.Right) end
 			
-			-- Back face (-Z): check entire XY face
 			local hasBack = false
 			for y = minY, maxY do
 				for ix = 0, dx - 1 do
-					if not waterMap[posKey(x0 + ix, y, z0 - 1)] then
+					local neighborKey = posKey(x0 + ix, y, z0 - 1)
+					if not waterMap[neighborKey] then
 						hasBack = true
 						break
+					end
+					if y == maxY then
+						local neighborIsFalling = fallingWaterMap[neighborKey]
+						if not neighborIsFalling then
+							hasBack = true
+							break
+						end
 					end
 				end
 				if hasBack then break end
 			end
 			if hasBack then table.insert(boxFaces, Enum.NormalId.Back) end
 			
-			-- Front face (+Z): check entire XY face
 			local hasFront = false
 			for y = minY, maxY do
 				for ix = 0, dx - 1 do
-					if not waterMap[posKey(x0 + ix, y, z0 + dz)] then
+					local neighborKey = posKey(x0 + ix, y, z0 + dz)
+					if not waterMap[neighborKey] then
 						hasFront = true
 						break
+					end
+					if y == maxY then
+						local neighborIsFalling = fallingWaterMap[neighborKey]
+						if not neighborIsFalling then
+							hasFront = true
+							break
+						end
 					end
 				end
 				if hasFront then break end
 			end
 			if hasFront then table.insert(boxFaces, Enum.NormalId.Front) end
 			
-			-- Skip fully-occluded boxes
+			-- Skip fully-occluded boxes (shouldn't happen for waterfalls, but safety check)
 			if #boxFaces == 0 then
 				continue
 			end
 			
-			-- Create the merged box part
+			-- Create the merged box part with correct height
 			local sizeX = dx * BLOCK_SIZE
-			local sizeY = height * BLOCK_SIZE
+			local sizeY = heightInBlocks * BLOCK_SIZE
 			local sizeZ = dz * BLOCK_SIZE
 			local worldX = (chunk.x * CHUNK_SX + x0) * BLOCK_SIZE + sizeX * 0.5
 			local worldY = minY * BLOCK_SIZE + sizeY * 0.5
@@ -1027,8 +1233,9 @@ function WaterMesher:GenerateMesh(chunk, worldManager, options)
 	-- PHASE 3: Horizontal greedy meshing (INTERIOR source water only)
 	-- Edge sources (those with non-source neighbors) are left for Phase 4
 	-- so they can render with proper slopes/corners
+	-- Groups by Y level AND hasAbove to ensure correct heights
 	--========================================================================
-	local sourceByY = {}
+	local sourceGroups = {} -- [y * 2 + (hasAbove ? 1 : 0)] = {y, hasAbove, blocks}
 	for _, wb in ipairs(waterBlocks) do
 		if wb.isSource and not visited[wb.key] then
 			-- Check if this is an interior source (all 4 cardinal neighbors are sources)
@@ -1044,16 +1251,24 @@ function WaterMesher:GenerateMesh(chunk, worldManager, options)
 			                   (wId == Constants.BlockType.WATER_SOURCE)
 			
 			if isInterior then
-				-- Interior source: can be greedy meshed (flat top)
-				if not sourceByY[wb.y] then sourceByY[wb.y] = {} end
-				table.insert(sourceByY[wb.y], {x = wb.x, z = wb.z, key = wb.key})
+				-- Group by Y AND hasAbove to ensure only blocks with same state are merged
+				local hasAbove = waterMap[posKey(x, y + 1, z)] or false
+				local groupKey = y * 2 + (hasAbove and 1 or 0)
+				if not sourceGroups[groupKey] then
+					sourceGroups[groupKey] = {y = y, hasAbove = hasAbove, blocks = {}}
+				end
+				table.insert(sourceGroups[groupKey].blocks, {x = x, z = z, key = wb.key})
 			end
 			-- Edge sources will be handled in Phase 4 with slopes/corners
 		end
 	end
 
-	for y, blocks in pairs(sourceByY) do
+	for _, group in pairs(sourceGroups) do
 		if partsBudget >= MAX_PARTS then return meshParts end
+		
+		local y = group.y
+		local hasAbove = group.hasAbove
+		local blocks = group.blocks
 
 		local grid = {}
 		for _, b in ipairs(blocks) do
@@ -1097,19 +1312,12 @@ function WaterMesher:GenerateMesh(chunk, worldManager, options)
 					end
 				end
 
-				-- Check water above
-				local hasAbove = false
-				for dx = 0, widthX - 1 do
-					for dz = 0, widthZ - 1 do
-						if waterMap[posKey(startX + dx, y + 1, startZ + dz)] then
-							hasAbove = true
-							break
-						end
-					end
-					if hasAbove then break end
-				end
+				-- Determine height first (needed for side face checks)
+				local tex = hasAbove and texFlow or texStill
+				-- Use full height when water above so stacked sources merge seamlessly
+				local height = hasAbove and 1.0 or SOURCE_HEIGHT
 
-				-- Determine visible faces
+				-- Determine visible faces (using height comparison for sides)
 				local faces = {}
 				if not hasAbove then table.insert(faces, Enum.NormalId.Top) end
 
@@ -1124,36 +1332,48 @@ function WaterMesher:GenerateMesh(chunk, worldManager, options)
 				end
 				if hasBottom then table.insert(faces, Enum.NormalId.Bottom) end
 
+				-- Check side faces (exposed if no water OR neighbor water is shorter)
 				local hasLeft = false
 				for dz = 0, widthZ - 1 do
-					if not waterMap[posKey(startX - 1, y, startZ + dz)] then hasLeft = true break end
+					if isSideFaceExposed(waterMap, waterHeightMap, fallingWaterMap, startX - 1, y, startZ + dz, height) then 
+						hasLeft = true 
+						break 
+					end
 				end
 				if hasLeft then table.insert(faces, Enum.NormalId.Left) end
 
 				local hasRight = false
 				for dz = 0, widthZ - 1 do
-					if not waterMap[posKey(startX + widthX, y, startZ + dz)] then hasRight = true break end
+					if isSideFaceExposed(waterMap, waterHeightMap, fallingWaterMap, startX + widthX, y, startZ + dz, height) then 
+						hasRight = true 
+						break 
+					end
 				end
 				if hasRight then table.insert(faces, Enum.NormalId.Right) end
 
 				local hasBack = false
 				for dx = 0, widthX - 1 do
-					if not waterMap[posKey(startX + dx, y, startZ - 1)] then hasBack = true break end
+					if isSideFaceExposed(waterMap, waterHeightMap, fallingWaterMap, startX + dx, y, startZ - 1, height) then 
+						hasBack = true 
+						break 
+					end
 				end
 				if hasBack then table.insert(faces, Enum.NormalId.Back) end
 
 				local hasFront = false
 				for dx = 0, widthX - 1 do
-					if not waterMap[posKey(startX + dx, y, startZ + widthZ)] then hasFront = true break end
+					if isSideFaceExposed(waterMap, waterHeightMap, fallingWaterMap, startX + dx, y, startZ + widthZ, height) then 
+						hasFront = true 
+						break 
+					end
 				end
 				if hasFront then table.insert(faces, Enum.NormalId.Front) end
 
 				local worldX = (chunk.x * CHUNK_SX + startX) * BLOCK_SIZE
 				local worldY = y * BLOCK_SIZE
 				local worldZ = (chunk.z * CHUNK_SZ + startZ) * BLOCK_SIZE
-				local tex = hasAbove and texFlow or texStill
 
-				local part = createMergedPart(worldX, worldZ, worldY, widthX, widthZ, SOURCE_HEIGHT, BLOCK_SIZE, tex, faces)
+				local part = createMergedPart(worldX, worldZ, worldY, widthX, widthZ, height, BLOCK_SIZE, tex, faces)
 				table.insert(meshParts, part)
 				partsBudget = partsBudget + 1
 			end
@@ -1253,7 +1473,7 @@ function WaterMesher:GenerateMesh(chunk, worldManager, options)
 				end
 			end
 			
-			-- Calculate visible faces
+			-- Calculate visible faces (using height comparison for sides)
 			local faces = {}
 			if not hasAbove then table.insert(faces, Enum.NormalId.Top) end
 			
@@ -1270,28 +1490,40 @@ function WaterMesher:GenerateMesh(chunk, worldManager, options)
 			end
 			if hasBottom then table.insert(faces, Enum.NormalId.Bottom) end
 			
-			-- Check side faces
+			-- Check side faces (exposed if no water OR neighbor water is shorter)
 			local hasLeft = false
 			for dz = 0, widthZ - 1 do
-				if not waterMap[posKey(startX - 1, y, startZ + dz)] then hasLeft = true break end
+				if isSideFaceExposed(waterMap, waterHeightMap, fallingWaterMap, startX - 1, y, startZ + dz, baseHeight) then 
+					hasLeft = true 
+					break 
+				end
 			end
 			if hasLeft then table.insert(faces, Enum.NormalId.Left) end
 			
 			local hasRight = false
 			for dz = 0, widthZ - 1 do
-				if not waterMap[posKey(startX + widthX, y, startZ + dz)] then hasRight = true break end
+				if isSideFaceExposed(waterMap, waterHeightMap, fallingWaterMap, startX + widthX, y, startZ + dz, baseHeight) then 
+					hasRight = true 
+					break 
+				end
 			end
 			if hasRight then table.insert(faces, Enum.NormalId.Right) end
 			
 			local hasBack = false
 			for dx = 0, widthX - 1 do
-				if not waterMap[posKey(startX + dx, y, startZ - 1)] then hasBack = true break end
+				if isSideFaceExposed(waterMap, waterHeightMap, fallingWaterMap, startX + dx, y, startZ - 1, baseHeight) then 
+					hasBack = true 
+					break 
+				end
 			end
 			if hasBack then table.insert(faces, Enum.NormalId.Back) end
 			
 			local hasFront = false
 			for dx = 0, widthX - 1 do
-				if not waterMap[posKey(startX + dx, y, startZ + widthZ)] then hasFront = true break end
+				if isSideFaceExposed(waterMap, waterHeightMap, fallingWaterMap, startX + dx, y, startZ + widthZ, baseHeight) then 
+					hasFront = true 
+					break 
+				end
 			end
 			if hasFront then table.insert(faces, Enum.NormalId.Front) end
 			
@@ -1302,8 +1534,10 @@ function WaterMesher:GenerateMesh(chunk, worldManager, options)
 			local worldX = (chunk.x * CHUNK_SX + startX) * BLOCK_SIZE
 			local worldY = y * BLOCK_SIZE
 			local worldZ = (chunk.z * CHUNK_SZ + startZ) * BLOCK_SIZE
+			-- Use full height when water above so stacked water merges seamlessly
+			local mergeHeight = hasAbove and 1.0 or baseHeight
 			
-			local part = createMergedPart(worldX, worldZ, worldY, widthX, widthZ, baseHeight, BLOCK_SIZE, texFlow, faces)
+			local part = createMergedPart(worldX, worldZ, worldY, widthX, widthZ, mergeHeight, BLOCK_SIZE, texFlow, faces)
 			part.Name = "WaterFlowingMerged"
 			table.insert(meshParts, part)
 			partsBudget = partsBudget + 1
@@ -1344,73 +1578,191 @@ function WaterMesher:GenerateMesh(chunk, worldManager, options)
 		local worldZ = (chunk.z * CHUNK_SZ + z + 0.5) * BLOCK_SIZE
 
 		local hasAbove = waterMap[posKey(x, y + 1, z)] or false
-		local faces = getVisibleFaces(waterMap, x, y, z, wb.height, 1)
+		local faces = getVisibleFaces(waterMap, waterHeightMap, fallingWaterMap, x, y, z, wb.height, 1)
 		
 		-- OPTIMIZATION: Skip if no visible faces at all
 		if #faces == 0 and hasAbove then
 			continue
 		end
 
-		-- Falling water: always flat (vertical column)
+		-- Falling water handling
 		-- Note: Most falling water should be handled in Phase 2 box-meshing
+		-- But top of falling columns (no water above) get slopes/corners
 		if wb.isFalling then
-			local part = createBasePart(worldX, worldY, worldZ, wb.height, BLOCK_SIZE, texFlow, faces)
-			table.insert(meshParts, part)
-			partsBudget = partsBudget + 1
-			continue
+			if hasAbove then
+				-- Middle/bottom of falling column: flat full-height block
+				local part = createBasePart(worldX, worldY, worldZ, 1.0, BLOCK_SIZE, texFlow, faces)
+				table.insert(meshParts, part)
+				partsBudget = partsBudget + 1
+				continue
+			end
+			-- Top of falling column: calculate shape for slope/corner
+			-- Fall through to shape calculation below
 		end
 
 		-- Calculate shape using Minecraft corner height formula (MAX of neighbors)
+		-- For falling water at top of column, pass isFalling=false to allow shape calculation
 		local flowDir, cornerType = calculateWaterShape(
 			chunk, worldManager, sampler, metaSampler,
-			x, y, z, wb.height, wb.isFalling
+			x, y, z, wb.height, wb.isFalling and hasAbove  -- Only skip shape calc if falling AND has water above
 		)
 
 		-- Determine base height and texture
 		local baseHeight, tex
 		if wb.isSource then
 			-- Source blocks: full height base, but can have sloped top
-			-- Base height is SOURCE_HEIGHT minus WEDGE_HEIGHT for the slope
-			if hasAbove or (flowDir == DIRECTION.NONE and cornerType == CORNER.NONE) then
-				-- Flat top: use full height
+			if hasAbove then
+				-- Water above: use full block height so stacked sources merge seamlessly
+				baseHeight = 1.0
+			elseif flowDir == DIRECTION.NONE and cornerType == CORNER.NONE then
+				-- Flat top (no slope needed): use SOURCE_HEIGHT (7/8)
 				baseHeight = SOURCE_HEIGHT
 			else
 				-- Sloped top: reserve space for wedge
 				baseHeight = SOURCE_HEIGHT - WEDGE_HEIGHT
 			end
 			tex = hasAbove and texFlow or texStill
+		elseif wb.isFalling then
+			-- Falling water at top of column (hasAbove=false, handled above)
+			-- Use the stored source depth to determine base height
+			if flowDir == DIRECTION.NONE and cornerType == CORNER.NONE then
+				-- Flat top: use the calculated height from getWaterHeight
+				baseHeight = wb.height
+			else
+				-- Sloped top: reserve space for wedge
+				baseHeight = math.max(wb.height - WEDGE_HEIGHT, 0)
+			end
+			tex = texFlow
 		else
 			-- Flowing water: base + wedge
 			baseHeight = getBaseHeight(wb.blockId, wb.metadata, hasAbove)
 			tex = texFlow
 		end
 
-		-- Create base part only if we have visible side/bottom faces OR no water above
-		-- This prevents creating invisible base parts under wedges when submerged
-		local needsBasePart = baseHeight > 0 and (#faces > 0 or not hasAbove)
+		-- Skip top if water above (no visible slope)
+		if hasAbove then
+			-- Base part with full height, no slope needed
+			local needsBasePart = baseHeight > 0 and #faces > 0
+			if needsBasePart then
+				local base = createBasePart(worldX, worldY, worldZ, baseHeight, BLOCK_SIZE, tex, faces)
+				table.insert(meshParts, base)
+				partsBudget = partsBudget + 1
+			end
+			continue
+		end
+
+		-- Skip top for fully flat blocks (source, falling, or flowing water with no flow direction)
+		-- This handles ALL water types that don't need a slope/wedge on top
+		if flowDir == DIRECTION.NONE and cornerType == CORNER.NONE then
+			-- Flat top - base part includes Top face and all exposed side faces
+			-- Re-calculate faces to ensure all exposed sides are included (defensive)
+			local flatFaces = {}
+			if not hasAbove then
+				table.insert(flatFaces, Enum.NormalId.Top)
+			end
+			if not waterMap[posKey(x, y - 1, z)] then
+				table.insert(flatFaces, Enum.NormalId.Bottom)
+			end
+			-- Ensure side faces are always checked for flat blocks
+			-- Pass wb.isFalling to handle falling water junction with horizontal spread
+			if isSideFaceExposed(waterMap, waterHeightMap, fallingWaterMap, x, y, z - 1, wb.height, wb.isFalling) then
+				table.insert(flatFaces, Enum.NormalId.Back)
+			end
+			if isSideFaceExposed(waterMap, waterHeightMap, fallingWaterMap, x, y, z + 1, wb.height, wb.isFalling) then
+				table.insert(flatFaces, Enum.NormalId.Front)
+			end
+			if isSideFaceExposed(waterMap, waterHeightMap, fallingWaterMap, x - 1, y, z, wb.height, wb.isFalling) then
+				table.insert(flatFaces, Enum.NormalId.Left)
+			end
+			if isSideFaceExposed(waterMap, waterHeightMap, fallingWaterMap, x + 1, y, z, wb.height, wb.isFalling) then
+				table.insert(flatFaces, Enum.NormalId.Right)
+			end
+			
+			local needsBasePart = baseHeight > 0 and #flatFaces > 0
+			if needsBasePart then
+				local base = createBasePart(worldX, worldY, worldZ, baseHeight, BLOCK_SIZE, tex, flatFaces)
+				table.insert(meshParts, base)
+				partsBudget = partsBudget + 1
+			elseif #flatFaces > 0 then
+				-- For very shallow water (baseHeight = 0), still create part with exposed faces
+				-- This handles level 7 flowing water at edges
+				local flat = createFlatTop(worldX, worldY, worldZ, 0, BLOCK_SIZE, tex, flatFaces)
+				table.insert(meshParts, flat)
+				partsBudget = partsBudget + 1
+			end
+			continue
+		end
+
+		-- We're creating a slope (wedge/corner) on top
+		-- Base part should NOT have Top face texture (covered by wedge)
+		-- Calculate base part's faces
+		local baseFaces = {}
+		-- Bottom face: exposed if no water below, OR if water below is horizontal (not falling)
+		-- For falling water columns, falling water below connects seamlessly (no bottom face needed)
+		-- But if there's horizontal water below, the bottom might be partially exposed
+		local belowKey = posKey(x, y - 1, z)
+		local hasWaterBelow = waterMap[belowKey]
+		local hasFallingBelow = hasWaterBelow and fallingWaterMap[belowKey]
+		if not hasWaterBelow then
+			-- No water below = bottom exposed
+			table.insert(baseFaces, Enum.NormalId.Bottom)
+		elseif not hasFallingBelow and wb.isFalling then
+			-- Current is falling water, water below is horizontal = bottom exposed
+			-- (falling water doesn't seamlessly connect to horizontal water)
+			table.insert(baseFaces, Enum.NormalId.Bottom)
+		end
+		-- Side faces: use same logic as topFaces (check against wb.height, not baseHeight)
+		-- This ensures base and wedge have consistent face texturing
+		-- The base part extends from 0 to baseHeight, but for face visibility
+		-- we should check if neighbor water fully occludes the visual column
+		-- Pass wb.isFalling to handle falling water junction with horizontal spread
+		if isSideFaceExposed(waterMap, waterHeightMap, fallingWaterMap, x, y, z - 1, wb.height, wb.isFalling) then
+			table.insert(baseFaces, Enum.NormalId.Back)  -- North, -Z
+		end
+		if isSideFaceExposed(waterMap, waterHeightMap, fallingWaterMap, x, y, z + 1, wb.height, wb.isFalling) then
+			table.insert(baseFaces, Enum.NormalId.Front)  -- South, +Z
+		end
+		if isSideFaceExposed(waterMap, waterHeightMap, fallingWaterMap, x - 1, y, z, wb.height, wb.isFalling) then
+			table.insert(baseFaces, Enum.NormalId.Left)  -- West, -X
+		end
+		if isSideFaceExposed(waterMap, waterHeightMap, fallingWaterMap, x + 1, y, z, wb.height, wb.isFalling) then
+			table.insert(baseFaces, Enum.NormalId.Right)  -- East, +X
+		end
+		
+		-- Create base part with side/bottom faces only
+		local needsBasePart = baseHeight > 0 and #baseFaces > 0
 		if needsBasePart then
-			local base = createBasePart(worldX, worldY, worldZ, baseHeight, BLOCK_SIZE, tex, faces)
+			local base = createBasePart(worldX, worldY, worldZ, baseHeight, BLOCK_SIZE, tex, baseFaces)
 			table.insert(meshParts, base)
 			partsBudget = partsBudget + 1
 		end
 
-		-- Skip top if water above (no visible slope)
-		if hasAbove then continue end
-
-		-- Skip top for fully flat blocks (source with no flow direction)
-		if wb.isSource and flowDir == DIRECTION.NONE and cornerType == CORNER.NONE then
-			continue
-		end
-
-		-- Determine which top faces are visible (optimization: not all faces needed for wedges)
+		-- Determine which faces are visible for the wedge/corner on top
 		local topFaces = {}
-		-- Top face always visible for top pieces
+		-- Top face always visible for top pieces (the sloped surface)
 		table.insert(topFaces, Enum.NormalId.Top)
-		-- Side faces only if not occluded by water
-		if not waterMap[posKey(x, y, z - 1)] then table.insert(topFaces, Enum.NormalId.Back) end
-		if not waterMap[posKey(x, y, z + 1)] then table.insert(topFaces, Enum.NormalId.Front) end
-		if not waterMap[posKey(x - 1, y, z)] then table.insert(topFaces, Enum.NormalId.Left) end
-		if not waterMap[posKey(x + 1, y, z)] then table.insert(topFaces, Enum.NormalId.Right) end
+		-- Bottom face: if no base part below the wedge AND (no water below OR non-falling water below falling block)
+		if not needsBasePart then
+			if not hasWaterBelow then
+				table.insert(topFaces, Enum.NormalId.Bottom)
+			elseif not hasFallingBelow and wb.isFalling then
+				table.insert(topFaces, Enum.NormalId.Bottom)
+			end
+		end
+		-- Side faces: exposed if no water OR neighbor water is shorter than this block
+		-- Pass wb.isFalling to handle falling water junction with horizontal spread
+		if isSideFaceExposed(waterMap, waterHeightMap, fallingWaterMap, x, y, z - 1, wb.height, wb.isFalling) then 
+			table.insert(topFaces, Enum.NormalId.Back) 
+		end
+		if isSideFaceExposed(waterMap, waterHeightMap, fallingWaterMap, x, y, z + 1, wb.height, wb.isFalling) then 
+			table.insert(topFaces, Enum.NormalId.Front) 
+		end
+		if isSideFaceExposed(waterMap, waterHeightMap, fallingWaterMap, x - 1, y, z, wb.height, wb.isFalling) then 
+			table.insert(topFaces, Enum.NormalId.Left) 
+		end
+		if isSideFaceExposed(waterMap, waterHeightMap, fallingWaterMap, x + 1, y, z, wb.height, wb.isFalling) then 
+			table.insert(topFaces, Enum.NormalId.Right) 
+		end
 
 		-- Use flow texture for slopes
 		local slopeTex = texFlow
