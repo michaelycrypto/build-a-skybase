@@ -15,6 +15,8 @@ local TeleportService = game:GetService("TeleportService")
 local MemoryStoreService = game:GetService("MemoryStoreService")
 local RunService = game:GetService("RunService")
 
+local IS_STUDIO = RunService:IsStudio()
+
 -- Configure with your place IDs
 local LOBBY_PLACE_ID = 139848475014328
 local WORLDS_PLACE_ID = 111115817294342
@@ -37,7 +39,12 @@ end
 function LobbyWorldTeleportService:Init()
 	if self._initialized then return end
 	-- Use SortedMap for registry (simple key-value; TTL supported)
-	self._map = MemoryStoreService:GetSortedMap(REGISTRY_NAME)
+	-- Skip in Studio - MemoryStoreService doesn't work reliably in local testing
+	if not IS_STUDIO then
+		self._map = MemoryStoreService:GetSortedMap(REGISTRY_NAME)
+	else
+		self._logger.Debug("MemoryStore skipped in Studio")
+	end
 	BaseService.Init(self)
 	self._logger.Debug("LobbyWorldTeleportService initialized")
 end

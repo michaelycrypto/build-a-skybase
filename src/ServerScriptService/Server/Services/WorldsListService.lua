@@ -10,8 +10,11 @@ local BaseService = require(script.Parent.BaseService)
 local Logger = require(game.ReplicatedStorage.Shared.Logger)
 local DataStoreService = game:GetService("DataStoreService")
 local MemoryStoreService = game:GetService("MemoryStoreService")
+local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local Config = require(game.ReplicatedStorage.Shared.Config)
+
+local IS_STUDIO = RunService:IsStudio()
 
 local WorldsListService = setmetatable({}, BaseService)
 WorldsListService.__index = WorldsListService
@@ -154,11 +157,16 @@ function WorldsListService:Init()
 	-- Initialize DataStores
 	local success, err = pcall(function()
 		self._worldDataStore = DataStoreService:GetDataStore(WORLD_DATA_STORE_NAME)
-		self._activeWorldsMap = MemoryStoreService:GetSortedMap("ActiveWorlds_v1")
+		-- Skip MemoryStore in Studio - it doesn't work reliably in local testing
+		if not IS_STUDIO then
+			self._activeWorldsMap = MemoryStoreService:GetSortedMap("ActiveWorlds_v1")
+		end
 	end)
 
 	if not success then
 		self._logger.Warn("Failed to initialize DataStore/MemoryStore:", err)
+	elseif IS_STUDIO then
+		self._logger.Debug("MemoryStore skipped in Studio - world online status unavailable")
 	end
 
 	self._initialized = true

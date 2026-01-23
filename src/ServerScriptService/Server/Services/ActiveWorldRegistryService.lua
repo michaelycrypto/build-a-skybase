@@ -10,8 +10,10 @@ local BaseService = require(script.Parent.BaseService)
 local Logger = require(game.ReplicatedStorage.Shared.Logger)
 
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 local MemoryStoreService = game:GetService("MemoryStoreService")
 local REGISTRY_NAME = "ActiveWorlds_v1"
+local IS_STUDIO = RunService:IsStudio()
 -- S5: Reduced TTL from 90s to 30s with more frequent heartbeats (every 15s)
 -- This reduces stale entries from crashed servers, improving teleport reliability
 -- Heartbeat frequency ensures entry is refreshed 2x before expiry for redundancy
@@ -44,7 +46,10 @@ end
 function ActiveWorldRegistryService:Init()
 	if self._initialized then return end
 	-- Use SortedMap for key-value registry (supports Get/Set/Update/Remove with TTL)
-	self._map = MemoryStoreService:GetSortedMap(REGISTRY_NAME)
+	-- Skip in Studio - MemoryStoreService doesn't work reliably in local testing
+	if not IS_STUDIO then
+		self._map = MemoryStoreService:GetSortedMap(REGISTRY_NAME)
+	end
 
 	-- Track player count automatically
 	Players.PlayerAdded:Connect(function()
@@ -74,7 +79,19 @@ function ActiveWorldRegistryService:Configure(worldId: string, ownerUserId: numb
 		return false, "invalid_parameters"
 	end
 
+	-- In Studio, MemoryStore is unavailable - skip registry but allow configuration
 	if not self._map then
+		if IS_STUDIO then
+			self._logger.Debug("MemoryStore unavailable in Studio - skipping registry")
+			self._worldId = worldId
+			self._ownerUserId = ownerUserId
+			self._ownerName = ownerName
+			self._accessCode = accessCode
+			self._playerCount = #Players:GetPlayers()
+			self._claimToken = self._instanceId
+			self._configured = true
+			return true
+		end
 		self._logger.Error("Cannot configure registry - MemoryStore unavailable")
 		return false, "registry_unavailable"
 	end

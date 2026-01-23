@@ -198,17 +198,33 @@ end
 	- Level 7 = 0.125
 	
 	This is used for corner interpolation, not visual mesh height.
+	
+	For falling water:
+	- If hasWaterAbove is true: full height (1.0) - middle/bottom of column
+	- If hasWaterAbove is false: use stored source depth - top of falling column
 ]]
-local function getWaterHeight(blockId, metadata)
+local function getWaterHeight(blockId, metadata, hasWaterAbove)
 	if blockId == Constants.BlockType.WATER_SOURCE then
 		return 1.0  -- Source = level 0 = full height for corner calculations
 	end
 	if blockId ~= Constants.BlockType.FLOWING_WATER then
 		return 0
 	end
-	-- Falling water = full height (vertical column)
+	-- Falling water handling
 	if WaterUtils.IsFalling(metadata) then
-		return 1.0
+		-- If water above, this is middle/bottom of column = full height
+		if hasWaterAbove then
+			return 1.0
+		end
+		-- Top of falling column: use stored source depth for proper height
+		-- The source depth is stored in the level bits
+		local sourceDepth = WaterUtils.GetDepth(metadata)
+		if sourceDepth <= 0 then
+			return 1.0  -- Source block (depth 0) = full height
+		end
+		-- Calculate height based on source depth
+		sourceDepth = math.clamp(sourceDepth, 1, 7)
+		return 1.0 - (sourceDepth / 8)
 	end
 	local level = WaterUtils.GetDepth(metadata)
 	-- Clamp to valid range
@@ -219,8 +235,8 @@ local function getWaterHeight(blockId, metadata)
 	return 1.0 - (level / 8)
 end
 
-local function getBaseHeight(blockId, metadata)
-	local totalHeight = getWaterHeight(blockId, metadata)
+local function getBaseHeight(blockId, metadata, hasWaterAbove)
+	local totalHeight = getWaterHeight(blockId, metadata, hasWaterAbove)
 	if blockId == Constants.BlockType.WATER_SOURCE or WaterUtils.IsFalling(metadata) then
 		return totalHeight
 	end
@@ -338,6 +354,7 @@ end
 --[[
 	Get the visual height of a water block for corner calculations.
 	Non-water blocks return 0 (don't contribute to MAX).
+	Checks for water above neighbor to properly handle falling water top-of-column.
 ]]
 local function getNeighborWaterHeight(sampler, metaSampler, worldManager, chunk, nx, y, nz)
 	local blockId = sampler(worldManager, chunk, nx, y, nz)
@@ -345,7 +362,10 @@ local function getNeighborWaterHeight(sampler, metaSampler, worldManager, chunk,
 		return 0
 	end
 	local meta = metaSampler(worldManager, chunk, nx, y, nz) or 0
-	return getWaterHeight(blockId, meta)
+	-- Check if neighbor has water above (for falling water height calculation)
+	local aboveId = sampler(worldManager, chunk, nx, y + 1, nz)
+	local hasWaterAbove = WaterUtils.IsWater(aboveId)
+	return getWaterHeight(blockId, meta, hasWaterAbove)
 end
 
 --[[
@@ -715,7 +735,10 @@ function WaterMesher:GenerateMesh(chunk, worldManager, options)
 				local blockId = chunk:GetBlock(x, y, z)
 				if WaterUtils.IsWater(blockId) then
 					local meta = chunk:GetMetadata(x, y, z)
-					local height = getWaterHeight(blockId, meta)
+					-- Check for water above (needed for falling water top-of-column height)
+					local aboveId = (y + 1 < CHUNK_SY) and chunk:GetBlock(x, y + 1, z) or Constants.BlockType.AIR
+					local hasWaterAbove = WaterUtils.IsWater(aboveId)
+					local height = getWaterHeight(blockId, meta, hasWaterAbove)
 					if height > 0 then
 						local key = posKey(x, y, z)
 						waterMap[key] = true
@@ -778,24 +801,39 @@ function WaterMesher:GenerateMesh(chunk, worldManager, options)
 	-- PHASE 2: Column-first box-meshing for falling water
 	-- Instantly detects full vertical columns, then merges horizontally
 	-- This creates optimal boxes for waterfalls (single part per waterfall)
+	-- 
+	-- NOTE: TOP of falling columns (no water above) are EXCLUDED from Phase 2
+	-- because they need special height handling based on source depth.
+	-- These are handled in Phase 4 with proper height calculation.
 	--========================================================================
 	
 	-- Step 1: Build column map - for each XZ position, find full vertical extent
 	-- columnMap[x][z] = {minY, maxY} representing the full falling water column
+	-- Only include blocks that have water above (not the top of the column)
+	-- Top-of-column blocks are NOT included here - they're processed in Phase 4
+	-- with their correct height based on stored source depth.
 	local columnMap = {} -- [x][z] = {minY, maxY}
 	
 	for _, wb in ipairs(waterBlocks) do
 		if wb.isFalling then
-			local x, z = wb.x, wb.z
-			if not columnMap[x] then columnMap[x] = {} end
+			local x, y, z = wb.x, wb.y, wb.z
+			local hasWaterAbove = waterMap[posKey(x, y + 1, z)]
 			
-			if not columnMap[x][z] then
-				columnMap[x][z] = {minY = wb.y, maxY = wb.y}
-			else
-				local col = columnMap[x][z]
-				if wb.y < col.minY then col.minY = wb.y end
-				if wb.y > col.maxY then col.maxY = wb.y end
+			if hasWaterAbove then
+				-- Middle/bottom of column: can be box-meshed at full height
+				if not columnMap[x] then columnMap[x] = {} end
+				
+				if not columnMap[x][z] then
+					columnMap[x][z] = {minY = y, maxY = y}
+				else
+					local col = columnMap[x][z]
+					if y < col.minY then col.minY = y end
+					if y > col.maxY then col.maxY = y end
+				end
 			end
+			-- Top of column blocks (no water above) are skipped here
+			-- They remain in waterBlocks and are processed in Phase 4
+			-- with proper height based on stored source depth
 		end
 	end
 	
@@ -1343,7 +1381,7 @@ function WaterMesher:GenerateMesh(chunk, worldManager, options)
 			tex = hasAbove and texFlow or texStill
 		else
 			-- Flowing water: base + wedge
-			baseHeight = getBaseHeight(wb.blockId, wb.metadata)
+			baseHeight = getBaseHeight(wb.blockId, wb.metadata, hasAbove)
 			tex = texFlow
 		end
 

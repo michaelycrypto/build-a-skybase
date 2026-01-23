@@ -8,13 +8,29 @@
 	
 	Water uses a level-based system (0-7):
 	- Source block: Full height (1.0), level 0
-	- Falling water: Full height (1.0), level 0, falling flag set
 	- Flowing water: Level 1-7, height = (8 - level) / 9
+	- Falling water: Level stores "source depth" (where water came from)
 	
 	Metadata format (single byte):
 	- Bits 0-2: Water level (0-7)
+	    - For flowing water: depth from source (1-7)
+	    - For falling water: source depth (depth of water that started the fall)
+	      This allows the TOP of falling columns to render at the correct height
 	- Bit 3: Falling flag (water can flow down OR has water above)
 	- Bits 4-7: Fall distance (0-15) - tracks vertical fall for spread reduction
+	
+	============================================================================
+	FALLING WATER TOP-OF-COLUMN HEIGHT
+	============================================================================
+	
+	When water flows off an edge:
+	- The TOP block of the falling column stores the source's depth in its level bits
+	- Blocks BELOW the top store level 0 (they render at full height)
+	- This makes the top surface match the height of the water it came from
+	
+	Example: Water at depth 3 (height ~0.56) falls off an edge:
+	- Top of falling column renders at height 0.56 (matches source)
+	- Rest of column renders at full height (1.0)
 	
 	============================================================================
 	WATER SPREAD (8 directions, max 7 blocks)
@@ -210,7 +226,8 @@ end
 	
 	Water height system:
 	- Source: 1.0 (full height)
-	- Falling: 1.0 (full height column)
+	- Falling (with water above): 1.0 (middle/bottom of column)
+	- Falling (no water above): Uses stored source depth (top of column)
 	- Flowing Level 0: ~0.89 (8/9)
 	- Flowing Level 1: ~0.78 (7/9)
 	- Flowing Level 2: ~0.67 (6/9)
@@ -219,8 +236,14 @@ end
 	- Flowing Level 5: ~0.33 (3/9)
 	- Flowing Level 6: ~0.22 (2/9)
 	- Flowing Level 7: ~0.11 (1/9, minimum visible)
+	
+	@param blockId: The water block type
+	@param metadata: Block metadata containing level, falling flag, etc.
+	@param hasWaterAbove: Optional. If true, falling water returns full height.
+	                      If false (top of falling column), uses stored source depth.
+	                      Defaults to true for backward compatibility.
 ]]
-function WaterUtils.GetWaterHeight(blockId: number, metadata: number?): number
+function WaterUtils.GetWaterHeight(blockId: number, metadata: number?, hasWaterAbove: boolean?): number
 	-- Source blocks render at full height
 	if blockId == Constants.BlockType.WATER_SOURCE then
 		return 1.0
@@ -233,9 +256,20 @@ function WaterUtils.GetWaterHeight(blockId: number, metadata: number?): number
 	
 	local meta = metadata or 0
 	
-	-- Falling water always renders at full height
+	-- Falling water height depends on position in column
 	if WaterUtils.IsFalling(meta) then
-		return 1.0
+		-- Default hasWaterAbove to true for backward compatibility
+		if hasWaterAbove == nil or hasWaterAbove then
+			return 1.0  -- Middle/bottom of column: full height
+		end
+		-- Top of falling column: use stored source depth
+		local sourceDepth = WaterUtils.GetLevel(meta)
+		if sourceDepth <= 0 then
+			return 1.0  -- Source block (depth 0) = full height
+		end
+		-- Calculate height based on source depth (same formula as flowing water)
+		sourceDepth = math.clamp(sourceDepth, 1, 7)
+		return (8 - sourceDepth) / 9
 	end
 	
 	local level = WaterUtils.GetLevel(meta)
