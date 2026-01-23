@@ -138,7 +138,7 @@ local GameConfig = {
 	-- Data Store settings
 	DataStore = {
 		PlayerData = {
-			DataStoreVersion = "PlayerData_v75", -- Keep in sync with PlayerDataStoreService (updated for 6-tier system)
+			DataStoreVersion = "PlayerData_v76", -- Keep in sync with PlayerDataStoreService (updated for 6-tier system)
 			SchemaVersion = 5, -- Increment to force migrations/default resets
 			AutoSaveInterval = 300 -- 5 minutes in seconds
 		},

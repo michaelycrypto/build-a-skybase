@@ -1,16 +1,16 @@
 --[[
 	WaterUtils.lua
 	Helpers for water block metadata and identification.
-	
+
 	============================================================================
 	MINECRAFT WATER LEVEL SYSTEM
 	============================================================================
-	
+
 	Water uses a level-based system (0-7):
 	- Source block: Full height (1.0), level 0
 	- Flowing water: Level 1-7, height = (8 - level) / 9
 	- Falling water: Level stores "source depth" (where water came from)
-	
+
 	Metadata format (single byte):
 	- Bits 0-2: Water level (0-7)
 	    - For flowing water: depth from source (1-7)
@@ -18,30 +18,30 @@
 	      This allows the TOP of falling columns to render at the correct height
 	- Bit 3: Falling flag (water can flow down OR has water above)
 	- Bits 4-7: Fall distance (0-15) - tracks vertical fall for spread reduction
-	
+
 	============================================================================
 	FALLING WATER TOP-OF-COLUMN HEIGHT
 	============================================================================
-	
+
 	When water flows off an edge:
 	- The TOP block of the falling column stores the source's depth in its level bits
 	- Blocks BELOW the top store level 0 (they render at full height)
 	- This makes the top surface match the height of the water it came from
-	
+
 	Example: Water at depth 3 (height ~0.56) falls off an edge:
 	- Top of falling column renders at height 0.56 (matches source)
 	- Rest of column renders at full height (1.0)
-	
+
 	============================================================================
 	WATER SPREAD (8 directions, max 7 blocks)
 	============================================================================
-	
+
 	Water spreads to all 8 horizontal neighbors (cardinals + diagonals):
 	- Creates square spread patterns
 	- Max horizontal distance: 7 blocks from source (reduced by fall distance)
 	- Depth resets to 0 when falling down
 	- Fall distance increases when flowing down, reduces horizontal spread
-	
+
 	Level increases by 1 per horizontal step.
 	Water prefers flowing toward nearest drop-off (BFS pathfinding).
 ]]
@@ -141,7 +141,7 @@ end
 
 --[[
 	Create metadata byte from level, falling flag, and optional fall distance.
-	
+
 	@param level: Water level 0-7
 	@param falling: Whether water is falling
 	@param fallDistance: How far water has fallen (0-15), optional
@@ -174,7 +174,7 @@ end
 --[[
 	Get effective max depth based on fall distance.
 	Water that has fallen far spreads less horizontally.
-	
+
 	Fall 0-3 blocks: full spread (7 blocks)
 	Fall 4-7 blocks: reduced spread (5 blocks)
 	Fall 8-11 blocks: minimal spread (3 blocks)
@@ -223,20 +223,21 @@ end
 
 --[[
 	Get visual height of water block as fraction of block height [0, 1].
-	
-	Water height system:
-	- Source: 1.0 (full height)
+
+	Water height system (Minecraft-style):
+	- Source: 1.0 (full height for corner calculations)
 	- Falling (with water above): 1.0 (middle/bottom of column)
 	- Falling (no water above): Uses stored source depth (top of column)
-	- Flowing Level 0: ~0.89 (8/9)
-	- Flowing Level 1: ~0.78 (7/9)
-	- Flowing Level 2: ~0.67 (6/9)
-	- Flowing Level 3: ~0.56 (5/9)
-	- Flowing Level 4: ~0.44 (4/9)
-	- Flowing Level 5: ~0.33 (3/9)
-	- Flowing Level 6: ~0.22 (2/9)
-	- Flowing Level 7: ~0.11 (1/9, minimum visible)
-	
+	- Flowing Level 1: 0.875 (7/8)
+	- Flowing Level 2: 0.75  (6/8)
+	- Flowing Level 3: 0.625 (5/8)
+	- Flowing Level 4: 0.5   (4/8)
+	- Flowing Level 5: 0.375 (3/8)
+	- Flowing Level 6: 0.25  (2/8)
+	- Flowing Level 7: 0.125 (1/8, minimum visible)
+
+	Formula: height = 1.0 - (level / 8) = (8 - level) / 8
+
 	@param blockId: The water block type
 	@param metadata: Block metadata containing level, falling flag, etc.
 	@param hasWaterAbove: Optional. If true, falling water returns full height.
@@ -244,18 +245,18 @@ end
 	                      Defaults to true for backward compatibility.
 ]]
 function WaterUtils.GetWaterHeight(blockId: number, metadata: number?, hasWaterAbove: boolean?): number
-	-- Source blocks render at full height
+	-- Source blocks render at full height (for corner calculations)
 	if blockId == Constants.BlockType.WATER_SOURCE then
 		return 1.0
 	end
-	
+
 	-- Non-water blocks have no height
 	if blockId ~= Constants.BlockType.FLOWING_WATER then
 		return 0
 	end
-	
+
 	local meta = metadata or 0
-	
+
 	-- Falling water height depends on position in column
 	if WaterUtils.IsFalling(meta) then
 		-- Default hasWaterAbove to true for backward compatibility
@@ -265,18 +266,23 @@ function WaterUtils.GetWaterHeight(blockId: number, metadata: number?, hasWaterA
 		-- Top of falling column: use stored source depth
 		local sourceDepth = WaterUtils.GetLevel(meta)
 		if sourceDepth <= 0 then
-			return 1.0  -- Source block (depth 0) = full height
+			-- Source block (depth 0) at top of fall = 7/8 height (matches SOURCE_HEIGHT)
+			return 7/8
 		end
-		-- Calculate height based on source depth (same formula as flowing water)
+		-- Calculate height based on source depth
 		sourceDepth = math.clamp(sourceDepth, 1, 7)
-		return (8 - sourceDepth) / 9
+		return 1.0 - (sourceDepth / 8)
 	end
-	
+
 	local level = WaterUtils.GetLevel(meta)
-	
-	-- Height formula: (8 - level) / 9
-	-- Level 0 = 8/9 ≈ 0.89, Level 7 = 1/9 ≈ 0.11
-	return (8 - level) / 9
+
+	-- Clamp level to valid range (level 0 shouldn't happen for flowing water)
+	if level <= 0 then level = 1 end
+	level = math.clamp(level, 1, 7)
+
+	-- Height formula: 1.0 - (level / 8)
+	-- Level 1 = 0.875, Level 7 = 0.125
+	return 1.0 - (level / 8)
 end
 
 -- Alias for backward compatibility
@@ -291,28 +297,28 @@ WaterUtils.GetHeight = WaterUtils.GetWaterHeight
 ]]
 function WaterUtils.CanWaterReplace(blockId: number?): boolean
 	if not blockId then return false end
-	
+
 	-- Air is always replaceable
 	if blockId == Constants.BlockType.AIR then
 		return true
 	end
-	
+
 	-- Don't replace source blocks
 	if blockId == Constants.BlockType.WATER_SOURCE then
 		return false
 	end
-	
+
 	-- Can replace flowing water with different level
 	if blockId == Constants.BlockType.FLOWING_WATER then
 		return true
 	end
-	
+
 	-- Check block registry for non-solid blocks
 	local def = BlockRegistry:GetBlock(blockId)
 	if def and def.solid == false then
 		return true
 	end
-	
+
 	return false
 end
 
@@ -322,12 +328,12 @@ end
 function WaterUtils.IsSolid(blockId: number?): boolean
 	if not blockId then return false end
 	if blockId == Constants.BlockType.AIR then return false end
-	
+
 	-- Water is not solid
 	if WaterUtils.IsWater(blockId) then
 		return false
 	end
-	
+
 	local def = BlockRegistry:GetBlock(blockId)
 	return def and def.solid ~= false
 end
@@ -339,7 +345,7 @@ end
 --[[
 	Analyze water flow at a position using CARDINAL directions only.
 	Returns: sourceDirections (table), flowDirections (table)
-	
+
 	sourceDirections: Where water is coming FROM (lower level neighbors)
 	flowDirections: Where water is flowing TO (higher level neighbors or air)
 ]]
@@ -347,49 +353,49 @@ function WaterUtils.AnalyzeFlow(worldManager, x: number, y: number, z: number)
 	if not worldManager then
 		return {}, {}
 	end
-	
+
 	local blockId = worldManager:GetBlock(x, y, z)
 	if not WaterUtils.IsWater(blockId) then
 		return {}, {}
 	end
-	
+
 	local metadata = worldManager:GetBlockMetadata(x, y, z) or 0
 	local isSource = WaterUtils.IsSource(blockId)
 	local isFalling = WaterUtils.IsFalling(metadata)
 	local currentLevel = isSource and 0 or WaterUtils.GetLevel(metadata)
-	
+
 	local sourceDirections = {}
 	local flowDirections = {}
-	
+
 	-- Check above for source (vertical)
 	local aboveId = worldManager:GetBlock(x, y + 1, z)
 	if WaterUtils.IsWater(aboveId) then
 		table.insert(sourceDirections, WaterUtils.DIRECTION.UP)
 	end
-	
+
 	-- Check below for flow target
 	local belowId = worldManager:GetBlock(x, y - 1, z)
 	if belowId and WaterUtils.CanWaterReplace(belowId) then
 		table.insert(flowDirections, WaterUtils.DIRECTION.DOWN)
 	end
-	
+
 	-- Falling water's horizontal source is above only
 	if isFalling then
 		return sourceDirections, flowDirections
 	end
-	
+
 	-- Check all 8 horizontal neighbors
 	for _, dir in ipairs(WaterUtils.HORIZONTAL_DIRS) do
 		local nx, nz = x + dir.dx, z + dir.dz
 		local neighborId = worldManager:GetBlock(nx, y, nz)
-		
+
 		if neighborId then
 			if WaterUtils.IsWater(neighborId) then
 				local neighborMeta = worldManager:GetBlockMetadata(nx, y, nz) or 0
 				local neighborIsSource = WaterUtils.IsSource(neighborId)
 				local neighborIsFalling = WaterUtils.IsFalling(neighborMeta)
 				local neighborLevel = neighborIsSource and 0 or WaterUtils.GetLevel(neighborMeta)
-				
+
 				if isSource then
 					-- SOURCE BLOCK: Water flows TO neighbors with higher levels (flowing water we feed)
 					-- Adjacent sources are peers (no flow)
@@ -423,7 +429,7 @@ function WaterUtils.AnalyzeFlow(worldManager, x: number, y: number, z: number)
 			end
 		end
 	end
-	
+
 	return sourceDirections, flowDirections
 end
 
@@ -432,15 +438,16 @@ end
 ]]
 function WaterUtils.GetFlowStrings(worldManager, x: number, y: number, z: number)
 	local sources, flows = WaterUtils.AnalyzeFlow(worldManager, x, y, z)
-	
+
 	local sourceStr = #sources > 0 and table.concat(sources, ",") or "none"
 	local flowStr = #flows > 0 and table.concat(flows, ",") or "none"
-	
+
 	return sourceStr, flowStr
 end
 
 --[[
 	Get the visual height of a water block (0-1 scale).
+	Uses the same formula as WaterMesher for consistency.
 ]]
 local function getWaterVisualHeight(worldManager, x, y, z)
 	local blockId = worldManager:GetBlock(x, y, z)
@@ -448,15 +455,9 @@ local function getWaterVisualHeight(worldManager, x, y, z)
 		return 0
 	end
 	local metadata = worldManager:GetBlockMetadata(x, y, z) or 0
-	if WaterUtils.IsSource(blockId) then
-		return 1.0
-	end
-	if WaterUtils.IsFalling(metadata) then
-		return 1.0
-	end
-	local depth = WaterUtils.GetDepth(metadata)
-	if depth <= 0 then depth = 1 end
-	return math.max((8 - math.clamp(depth, 1, 7)) / 8, 0.125)
+	-- Check for water above (needed for falling water top-of-column)
+	local hasWaterAbove = WaterUtils.IsWater(worldManager:GetBlock(x, y + 1, z))
+	return WaterUtils.GetWaterHeight(blockId, metadata, hasWaterAbove)
 end
 
 --[[
@@ -465,25 +466,25 @@ end
 ]]
 function WaterUtils.GetCornerString(worldManager, x: number, y: number, z: number)
 	if not worldManager then return "?" end
-	
+
 	local blockId = worldManager:GetBlock(x, y, z)
 	if not WaterUtils.IsWater(blockId) then
 		return "N/A"
 	end
-	
+
 	local metadata = worldManager:GetBlockMetadata(x, y, z) or 0
 	local isSource = WaterUtils.IsSource(blockId)
 	local isFalling = WaterUtils.IsFalling(metadata)
 	local level = WaterUtils.GetLevel(metadata)
-	
+
 	-- Falling water always renders flat (full height column)
 	if isFalling then
 		return "FLAT (fall)"
 	end
-	
+
 	-- Get current block height
 	local currentHeight = getWaterVisualHeight(worldManager, x, y, z)
-	
+
 	-- Get all 8 neighbor heights
 	local hN  = getWaterVisualHeight(worldManager, x, y, z - 1)
 	local hS  = getWaterVisualHeight(worldManager, x, y, z + 1)
@@ -493,18 +494,18 @@ function WaterUtils.GetCornerString(worldManager, x: number, y: number, z: numbe
 	local hNW = getWaterVisualHeight(worldManager, x - 1, y, z - 1)
 	local hSE = getWaterVisualHeight(worldManager, x + 1, y, z + 1)
 	local hSW = getWaterVisualHeight(worldManager, x - 1, y, z + 1)
-	
+
 	-- Minecraft formula: corner height = MAX of the 4 blocks sharing that corner
 	local cornerNE = math.max(currentHeight, hN, hE, hNE)
 	local cornerNW = math.max(currentHeight, hN, hW, hNW)
 	local cornerSE = math.max(currentHeight, hS, hE, hSE)
 	local cornerSW = math.max(currentHeight, hS, hW, hSW)
-	
+
 	-- Analyze corner pattern
 	local heights = {cornerNE, cornerNW, cornerSE, cornerSW}
 	local maxH = math.max(unpack(heights))
 	local minH = math.min(unpack(heights))
-	
+
 	-- All same height: FLAT
 	if maxH - minH < 0.01 then
 		if isSource then
@@ -513,28 +514,28 @@ function WaterUtils.GetCornerString(worldManager, x: number, y: number, z: numbe
 			return string.format("FLAT L%d", level)
 		end
 	end
-	
+
 	-- Count high and low corners
 	local threshold = (maxH + minH) / 2
 	local highCorners, lowCorners = {}, {}
-	
+
 	if cornerNE >= threshold then table.insert(highCorners, "NE") else table.insert(lowCorners, "NE") end
 	if cornerNW >= threshold then table.insert(highCorners, "NW") else table.insert(lowCorners, "NW") end
 	if cornerSE >= threshold then table.insert(highCorners, "SE") else table.insert(lowCorners, "SE") end
 	if cornerSW >= threshold then table.insert(highCorners, "SW") else table.insert(lowCorners, "SW") end
-	
+
 	local suffix = isSource and " (src)" or string.format(" L%d", level)
-	
-	-- 1 high, 3 low: CONVEX (peak)
+
+	-- 1 high, 3 low: CONVEX (single peak at high corner)
 	if #highCorners == 1 then
-		return string.format("CONVEX %s%s", highCorners[1], suffix)
+		return string.format("PEAK %s%s", highCorners[1], suffix)
 	end
-	
-	-- 3 high, 1 low: CONCAVE (valley)
+
+	-- 3 high, 1 low: CONCAVE (single valley at low corner)
 	if #lowCorners == 1 then
-		return string.format("CONCAVE %s%s", lowCorners[1], suffix)
+		return string.format("VALLEY %s%s", lowCorners[1], suffix)
 	end
-	
+
 	-- 2 high, 2 low: SLOPE
 	if #highCorners == 2 then
 		local h1, h2 = highCorners[1], highCorners[2]
@@ -552,7 +553,7 @@ function WaterUtils.GetCornerString(worldManager, x: number, y: number, z: numbe
 			return string.format("SADDLE%s", suffix)
 		end
 	end
-	
+
 	return string.format("?%s", suffix)
 end
 
@@ -563,34 +564,34 @@ end
 ]]
 function WaterUtils.GetFlowVector(worldManager, x: number, y: number, z: number)
 	if not worldManager then return nil end
-	
+
 	local blockId = worldManager:GetBlock(x, y, z)
 	if not WaterUtils.IsWater(blockId) then return nil end
-	
+
 	local metadata = worldManager:GetBlockMetadata(x, y, z) or 0
 	local isSource = WaterUtils.IsSource(blockId)
 	local isFalling = WaterUtils.IsFalling(metadata)
-	
+
 	-- Source blocks and falling water have no horizontal flow vector
 	if isSource or isFalling then
 		return nil
 	end
-	
+
 	local currentLevel = WaterUtils.GetLevel(metadata)
 	local flowX, flowZ = 0, 0
-	
+
 	-- Check all 8 horizontal neighbors
 	for _, dir in ipairs(WaterUtils.HORIZONTAL_DIRS) do
 		local nx, nz = x + dir.dx, z + dir.dz
 		local neighborId = worldManager:GetBlock(nx, y, nz)
-		
+
 		if neighborId then
 			if WaterUtils.IsWater(neighborId) then
 				local neighborMeta = worldManager:GetBlockMetadata(nx, y, nz) or 0
 				local neighborIsSource = WaterUtils.IsSource(neighborId)
 				local neighborIsFalling = WaterUtils.IsFalling(neighborMeta)
 				local neighborLevel = neighborIsSource and 0 or WaterUtils.GetLevel(neighborMeta)
-				
+
 				-- Flow toward higher levels (away from source)
 				if neighborLevel > currentLevel then
 					flowX = flowX + dir.dx
@@ -607,12 +608,12 @@ function WaterUtils.GetFlowVector(worldManager, x: number, y: number, z: number)
 			end
 		end
 	end
-	
+
 	local mag = math.sqrt(flowX * flowX + flowZ * flowZ)
 	if mag > 0.001 then
 		return Vector2.new(flowX / mag, flowZ / mag)
 	end
-	
+
 	return nil
 end
 

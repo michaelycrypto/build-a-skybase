@@ -1,7 +1,7 @@
 --[[
 	WaterService.lua
 	Optimized water flow simulation.
-	
+
 	KEY OPTIMIZATIONS:
 	- Instant fall/cleanup: Entire columns handled in one operation
 	- Minimal queuing: Only queue blocks that actually need updates
@@ -160,10 +160,10 @@ function WaterService:_instantFallColumn(x, startY, z, initialFallDist, sourceDe
 	local vws = self.Deps and self.Deps.VoxelWorldService
 	local wm = vws and vws.worldManager
 	if not wm then return startY, 0 end
-	
+
 	sourceDepth = sourceDepth or 0
 	local bottomY = startY
-	
+
 	-- Scan down to find where column ends
 	for checkY = startY - 1, Constants.MIN_HEIGHT, -1 do
 		if not isChunkLoaded(wm, x, z) then break end
@@ -175,19 +175,19 @@ function WaterService:_instantFallColumn(x, startY, z, initialFallDist, sourceDe
 		if belowId == BLOCK.WATER_SOURCE then break end
 		bottomY = checkY
 	end
-	
+
 	if bottomY == startY then return startY, 0 end
-	
+
 	-- Place column (only if different from current state)
 	local blocksPlaced = 0
 	local fallDist = initialFallDist or 0
 	local isTop = true
-	
+
 	for y = startY - 1, bottomY, -1 do
 		fallDist = math.min(fallDist + 1, MAX_FALL_DISTANCE)
 		local level = isTop and sourceDepth or 0
 		local meta = WaterUtils.MakeMetadata(level, true, fallDist)
-		
+
 		-- Only set if different (prevents redundant OnBlockChanged triggers)
 		local currentId = wm:GetBlock(x, y, z)
 		local currentMeta = wm:GetBlockMetadata(x, y, z) or 0
@@ -197,7 +197,7 @@ function WaterService:_instantFallColumn(x, startY, z, initialFallDist, sourceDe
 		end
 		isTop = false
 	end
-	
+
 	-- Only queue if we actually placed new blocks
 	if blocksPlaced > 0 then
 		self:_enqueue(x, bottomY, z)
@@ -205,7 +205,7 @@ function WaterService:_instantFallColumn(x, startY, z, initialFallDist, sourceDe
 			self:_enqueue(x + d.dx, bottomY, z + d.dz)
 		end
 	end
-	
+
 	return bottomY, blocksPlaced
 end
 
@@ -216,11 +216,11 @@ end
 -- Batch remove falling column and return edge neighbors to queue
 function WaterService:_cleanupFallingColumn(x, startY, z)
 	if self._inCleanup then return 0 end
-	
+
 	local vws = self.Deps and self.Deps.VoxelWorldService
 	local wm = vws and vws.worldManager
 	if not wm then return 0 end
-	
+
 	-- Collect falling blocks in one pass
 	local toRemove = {}
 	for checkY = startY, Constants.MIN_HEIGHT, -1 do
@@ -237,16 +237,16 @@ function WaterService:_cleanupFallingColumn(x, startY, z)
 			break
 		end
 	end
-	
+
 	if #toRemove == 0 then return 0 end
-	
+
 	-- Batch remove
 	self._inCleanup = true
 	for i = 1, #toRemove do
 		vws:SetBlock(x, toRemove[i], z, BLOCK.AIR, nil, 0)
 	end
 	self._inCleanup = false
-	
+
 	-- Collect unique edge neighbors
 	local edgeSet = {}
 	for i = 1, #toRemove do
@@ -262,7 +262,7 @@ function WaterService:_cleanupFallingColumn(x, startY, z)
 			end
 		end
 	end
-	
+
 	return #toRemove
 end
 
@@ -277,14 +277,14 @@ local function hasSourceExcluding(wm, x, y, z, depth, excluded)
 			if aboveId == BLOCK.FLOWING_WATER then return true end
 		end
 	end
-	
+
 	-- Check cardinal neighbors
 	for _, d in ipairs(CARDINALS) do
 		local nx, nz = x + d.dx, z + d.dz
 		local nk = posKey(nx, y, nz)
 		if excluded[nk] then continue end
 		if not isChunkLoaded(wm, nx, nz) then continue end
-		
+
 		local nBlockId = wm:GetBlock(nx, y, nz)
 		if nBlockId == BLOCK.WATER_SOURCE then return true end
 		if nBlockId == BLOCK.FLOWING_WATER then
@@ -292,7 +292,7 @@ local function hasSourceExcluding(wm, x, y, z, depth, excluded)
 			if WaterUtils.GetDepth(nMeta) < depth then return true end
 		end
 	end
-	
+
 	return false
 end
 
@@ -300,40 +300,40 @@ end
 -- More efficient than queuing each block for later processing
 function WaterService:_cascadeRemove(x, y, z)
 	if self._inCleanup then return 0 end
-	
+
 	local vws = self.Deps and self.Deps.VoxelWorldService
 	local wm = vws and vws.worldManager
 	if not wm then return 0 end
-	
+
 	-- Phase 1: Collect all orphaned blocks using BFS
 	local orphaned = {}
 	local toProcess = {{x = x, y = y, z = z}}
 	local head = 1
-	
+
 	while head <= #toProcess do
 		local node = toProcess[head]
 		head += 1
-		
+
 		local nx, ny, nz = node.x, node.y, node.z
 		local k = posKey(nx, ny, nz)
-		
+
 		if orphaned[k] then continue end
 		if not isChunkLoaded(wm, nx, nz) then continue end
-		
+
 		local blockId = wm:GetBlock(nx, ny, nz)
 		if blockId ~= BLOCK.FLOWING_WATER then continue end
-		
+
 		local meta = wm:GetBlockMetadata(nx, ny, nz) or 0
 		local depth = WaterUtils.GetDepth(meta)
-		
+
 		-- Check if this block has a valid source (excluding already-orphaned blocks)
 		if hasSourceExcluding(wm, nx, ny, nz, depth, orphaned) then
 			continue -- Has source, not orphaned
 		end
-		
+
 		-- Mark as orphaned
 		orphaned[k] = {x = nx, y = ny, z = nz, depth = depth}
-		
+
 		-- Add neighbors to check (they might depend on this block)
 		for _, d in ipairs(CARDINALS) do
 			local nnx, nnz = nx + d.dx, nz + d.dz
@@ -342,7 +342,7 @@ function WaterService:_cascadeRemove(x, y, z)
 				toProcess[#toProcess + 1] = {x = nnx, y = ny, z = nnz}
 			end
 		end
-		
+
 		-- Check below for dependent falling water
 		if ny - 1 >= Constants.MIN_HEIGHT then
 			local belowK = posKey(nx, ny - 1, nz)
@@ -351,18 +351,18 @@ function WaterService:_cascadeRemove(x, y, z)
 			end
 		end
 	end
-	
+
 	-- Phase 2: Batch remove all orphaned blocks
 	local count = 0
 	for k, _ in pairs(orphaned) do count += 1 end
 	if count == 0 then return 0 end
-	
+
 	self._inCleanup = true
 	for k, pos in pairs(orphaned) do
 		vws:SetBlock(pos.x, pos.y, pos.z, BLOCK.AIR, nil, 0)
 	end
 	self._inCleanup = false
-	
+
 	-- Phase 3: Queue edge neighbors (non-orphaned water adjacent to removed blocks)
 	local queued = {}
 	for k, pos in pairs(orphaned) do
@@ -378,7 +378,7 @@ function WaterService:_cascadeRemove(x, y, z)
 			end
 		end
 	end
-	
+
 	return count
 end
 
@@ -393,23 +393,23 @@ end
 
 function WaterService:_findDropDistance(wm, x, y, z, maxDist)
 	if not isChunkLoaded(wm, x, z) then return 1000 end
-	
+
 	local visited = {[posKey(x, y, z)] = true}
 	local queue = {{x = x, z = z, d = 0}}
 	local head = 1
-	
+
 	while head <= #queue do
 		local node = queue[head]
 		head += 1
-		
+
 		if node.d >= maxDist then continue end
-		
+
 		-- Check if can drop here
 		local belowId = (y - 1 >= Constants.MIN_HEIGHT) and wm:GetBlock(node.x, y - 1, node.z)
 		if belowId and canFlowInto(belowId) then
 			return node.d + 1
 		end
-		
+
 		-- Expand cardinals only
 		for _, d in ipairs(CARDINALS) do
 			local nx, nz = node.x + d.dx, node.z + d.dz
@@ -425,7 +425,7 @@ function WaterService:_findDropDistance(wm, x, y, z, maxDist)
 			end
 		end
 	end
-	
+
 	return 1000
 end
 
@@ -438,20 +438,20 @@ function WaterService:_updateWaterBlock(x, y, z)
 	local wm = vws and vws.worldManager
 	if not wm then return false end
 	if not isChunkLoaded(wm, x, z) then return false end
-	
+
 	local id = wm:GetBlock(x, y, z)
 	if not WaterUtils.IsWater(id) then return false end
-	
+
 	local meta = wm:GetBlockMetadata(x, y, z) or 0
 	local isSource = (id == BLOCK.WATER_SOURCE)
 	local depth = isSource and 0 or WaterUtils.GetDepth(meta)
 	local fallDist = isSource and 0 or WaterUtils.GetFallDistance(meta)
 	local isFalling = WaterUtils.IsFalling(meta)
-	
+
 	-- Get vertical neighbors
 	local aboveId = (y + 1 <= Constants.WORLD_HEIGHT) and wm:GetBlock(x, y + 1, z) or BLOCK.AIR
 	local belowId = (y - 1 >= Constants.MIN_HEIGHT) and wm:GetBlock(x, y - 1, z) or BLOCK.AIR
-	
+
 	-- Skip interior falling column blocks (handled by column top)
 	-- But DON'T skip bottom of column - it needs to process horizontal spread
 	if not isSource and isFalling and canFlowInto(belowId) then
@@ -460,7 +460,7 @@ function WaterService:_updateWaterBlock(x, y, z)
 			return false -- Interior of column, skip
 		end
 	end
-	
+
 	-- Cache horizontal neighbors
 	local neighbors = {}
 	for _, d in ipairs(HORIZONTAL_8) do
@@ -474,13 +474,13 @@ function WaterService:_updateWaterBlock(x, y, z)
 			}
 		end
 	end
-	
+
 	local changed = false
-	
+
 	-- FLOWING WATER: Validate depth or remove
 	if not isSource then
 		local bestDepth, bestFallDist = nil, nil
-		
+
 		-- Check above (water from above = depth 0)
 		if WaterUtils.IsWater(aboveId) then
 			local aboveMeta = wm:GetBlockMetadata(x, y + 1, z) or 0
@@ -488,7 +488,7 @@ function WaterService:_updateWaterBlock(x, y, z)
 			local aFall = (aboveId == BLOCK.WATER_SOURCE) and 0 or WaterUtils.GetFallDistance(aboveMeta)
 			bestDepth, bestFallDist = aDepth, aFall
 		end
-		
+
 		-- Check horizontal neighbors
 		for _, nb in ipairs(neighbors) do
 			if nb.id == BLOCK.WATER_SOURCE then
@@ -503,7 +503,7 @@ function WaterService:_updateWaterBlock(x, y, z)
 				end
 			end
 		end
-		
+
 		-- No source path OR lost shorter path: remove
 		-- Water at depth D requires a neighbor at depth D-1 (or source adjacent)
 		-- If bestDepth > depth, the short path is gone and water should decay
@@ -514,13 +514,13 @@ function WaterService:_updateWaterBlock(x, y, z)
 			vws:SetBlock(x, y, z, BLOCK.AIR, nil, 0)
 			return true
 		end
-		
+
 		-- Update metadata if needed
 		local canDrop = canFlowInto(belowId)
 		local hasAbove = WaterUtils.IsWater(aboveId)
 		local shouldFall = canDrop or hasAbove
 		bestFallDist = math.min(bestFallDist or 0, MAX_FALL_DISTANCE)
-		
+
 		if bestDepth ~= depth or shouldFall ~= isFalling or bestFallDist ~= fallDist then
 			local newMeta = WaterUtils.MakeMetadata(bestDepth, shouldFall, bestFallDist)
 			vws:SetBlock(x, y, z, BLOCK.FLOWING_WATER, nil, newMeta)
@@ -528,7 +528,7 @@ function WaterService:_updateWaterBlock(x, y, z)
 			changed = true
 		end
 	end
-	
+
 	-- DOWNWARD FLOW (priority)
 	if canFlowInto(belowId) then
 		-- Skip if falling column already exists (prevents repeated recreation)
@@ -542,7 +542,7 @@ function WaterService:_updateWaterBlock(x, y, z)
 		local _, placed = self:_instantFallColumn(x, y, z, fallDist, sourceDepth)
 		return placed > 0 or changed
 	end
-	
+
 	-- Check max spread based on fall distance
 	local maxDepth = WaterUtils.GetEffectiveMaxDepth(fallDist)
 	if depth >= maxDepth then
@@ -570,15 +570,15 @@ function WaterService:_updateWaterBlock(x, y, z)
 	else
 		self._conversionCandidates[strKey(x, y, z)] = nil
 	end
-	
+
 	-- HORIZONTAL SPREAD (cardinals only)
 	local newDepth = depth + 1
 	if newDepth > maxDepth then return changed end
-	
+
 	-- Find best flow direction (toward nearest drop)
 	local minWeight = 1000
 	local targets = {}
-	
+
 	for _, nb in ipairs(neighbors) do
 		-- Cardinals only (dx == 0 or dz == 0, not both non-zero)
 		if nb.dx == 0 or nb.dz == 0 then
@@ -589,7 +589,7 @@ function WaterService:_updateWaterBlock(x, y, z)
 			end
 		end
 	end
-	
+
 	-- Spread to best directions
 	-- Note: vws:SetBlock triggers OnBlockChanged which queues the new block
 	for _, t in ipairs(targets) do
@@ -602,7 +602,7 @@ function WaterService:_updateWaterBlock(x, y, z)
 			end
 		end
 	end
-	
+
 	return changed
 end
 
@@ -612,41 +612,41 @@ end
 
 function WaterService:_processQueue()
 	if self._paused then return end
-	
+
 	self._conversionsThisTick = 0
-	
+
 	if self._dirty then self:_rebuildList() end
 	if #self._queueList == 0 then
 		self._conversionCandidates = {}
 		return
 	end
-	
+
 	local budget = MAX_UPDATES_PER_TICK
 	local processed = 0
 	local chunkBudget = {}
-	
+
 	while processed < budget and self._cursor <= #self._queueList do
 		local item = self._queueList[self._cursor]
 		self._cursor += 1
-		
+
 		if not self._queue[item.k] then continue end
-		
+
 		local cx = math.floor(item.x / Constants.CHUNK_SIZE_X)
 		local cz = math.floor(item.z / Constants.CHUNK_SIZE_Z)
 		local ck = cx * 65536 + cz
 		local remaining = chunkBudget[ck] or MAX_UPDATES_PER_CHUNK
-		
+
 		if remaining > 0 then
 			local changed = self:_updateWaterBlock(item.x, item.y, item.z)
 			processed += 1
 			chunkBudget[ck] = remaining - 1
-			
+
 			if not changed then
 				self:_dequeue(item.k)
 			end
 		end
 	end
-	
+
 	if self._cursor > #self._queueList then
 		self._cursor = 1
 	end
@@ -660,7 +660,7 @@ function WaterService:OnBlockChanged(x, y, z, newBlockId, newMeta, prevBlockId)
 	local vws = self.Deps and self.Deps.VoxelWorldService
 	local wm = vws and vws.worldManager
 	if not wm then return end
-	
+
 	-- Water placed
 	if WaterUtils.IsWater(newBlockId) then
 		if newBlockId == BLOCK.WATER_SOURCE then
@@ -689,12 +689,12 @@ function WaterService:OnBlockChanged(x, y, z, newBlockId, newMeta, prevBlockId)
 		end
 		return
 	end
-	
+
 	-- Water removed
 	if WaterUtils.IsWater(prevBlockId) then
 		-- Skip all processing if already in cleanup (cleanup handles queuing afterward)
 		if self._inCleanup then return end
-		
+
 		-- Cascade remove: clean up falling water below and any dependent orphaned water
 		local belowId = (y - 1 >= Constants.MIN_HEIGHT) and wm:GetBlock(x, y - 1, z)
 		if belowId == BLOCK.FLOWING_WATER then
@@ -707,7 +707,7 @@ function WaterService:OnBlockChanged(x, y, z, newBlockId, newMeta, prevBlockId)
 				self:_cascadeRemove(x, y - 1, z)
 			end
 		end
-		
+
 		-- Cascade remove adjacent orphaned water (more efficient than queuing)
 		for _, d in ipairs(CARDINALS) do
 			local nx, nz = x + d.dx, z + d.dz
@@ -718,7 +718,7 @@ function WaterService:OnBlockChanged(x, y, z, newBlockId, newMeta, prevBlockId)
 				end
 			end
 		end
-		
+
 		-- Check above for falling water
 		if y + 1 <= Constants.WORLD_HEIGHT then
 			local aboveId = wm:GetBlock(x, y + 1, z)
@@ -735,7 +735,7 @@ function WaterService:OnBlockChanged(x, y, z, newBlockId, newMeta, prevBlockId)
 		end
 		return
 	end
-	
+
 	-- Non-water block changed to air: check if water above can fall
 	if newBlockId == BLOCK.AIR then
 		local aboveId = (y + 1 <= Constants.WORLD_HEIGHT) and wm:GetBlock(x, y + 1, z)
@@ -784,7 +784,7 @@ function WaterService:ClearWaterInRadius(cx, cy, cz, radius)
 	local vws = self.Deps and self.Deps.VoxelWorldService
 	local wm = vws and vws.worldManager
 	if not wm then return 0 end
-	
+
 	local cleared = 0
 	for dy = -radius, radius do
 		for dz = -radius, radius do
