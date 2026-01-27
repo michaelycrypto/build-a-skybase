@@ -109,10 +109,12 @@ function ReservedServerTeleportService:TeleportToHub(player)
 		return
 	end
 	
-	-- Save player data before teleport (new server will take lock seamlessly)
+	-- CRITICAL: Mark player as teleporting BEFORE saving to prevent dupe exploits
+	-- This blocks all inventory actions (drops, pickups, transfers) during teleport
 	local Injector = require(script.Parent.Parent.Injector)
 	local playerService = Injector:Resolve("PlayerService")
 	if playerService then
+		playerService:SetTeleporting(player)
 		playerService:SavePlayerData(player)
 	end
 	
@@ -125,6 +127,10 @@ function ReservedServerTeleportService:TeleportToHub(player)
 	end)
 	
 	if not ok then
+		-- Clear teleporting status if teleport failed
+		if playerService then
+			playerService:ClearTeleporting(player)
+		end
 		EventManager:FireEvent("WorldJoinError", player, { message = "Teleport failed" })
 	end
 end
@@ -167,10 +173,12 @@ function ReservedServerTeleportService:ReturnHome(player)
 		end)
 	end
 	
-	-- Save player data before teleport (new server will take lock seamlessly)
+	-- CRITICAL: Mark player as teleporting BEFORE saving to prevent dupe exploits
+	-- This blocks all inventory actions (drops, pickups, transfers) during teleport
 	local Injector = require(script.Parent.Parent.Injector)
 	local playerService = Injector:Resolve("PlayerService")
 	if playerService then
+		playerService:SetTeleporting(player)
 		playerService:SavePlayerData(player)
 	end
 	
@@ -191,6 +199,10 @@ function ReservedServerTeleportService:ReturnHome(player)
 	end)
 	
 	if not ok then
+		-- Clear teleporting status if teleport failed
+		if playerService then
+			playerService:ClearTeleporting(player)
+		end
 		EventManager:FireEvent("WorldJoinError", player, { message = "Teleport failed" })
 	end
 end

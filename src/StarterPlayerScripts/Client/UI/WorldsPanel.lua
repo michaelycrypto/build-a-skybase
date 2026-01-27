@@ -20,6 +20,7 @@ local FontBinder = require(ReplicatedStorage.Shared.UI.FontBinder)
 local UIVisibilityManager = require(script.Parent.Parent.Managers.UIVisibilityManager)
 local GameConfig = require(ReplicatedStorage.Configs.GameConfig)
 local UpheavalFont = require(ReplicatedStorage.Fonts["Upheaval BRK"])
+local TeleportTransition = require(script.Parent.TeleportTransition)
 local _ = UpheavalFont -- Ensure font module loads
 
 local CUSTOM_FONT_NAME = "Upheaval BRK"
@@ -2876,11 +2877,16 @@ function WorldsPanel:JoinWorld(worldData)
 		end
 	end
 
+	-- Show teleport transition effect
+	local isOwnWorld = worldData.ownerId == player.UserId
+	local message = isOwnWorld and "Entering your world" or ("Joining " .. (worldData.ownerName or "world"))
+	TeleportTransition:Show(message)
+
 	EventManager:SendToServer("RequestJoinWorld", {
 		worldId = worldData.worldId,
 		ownerUserId = worldData.ownerId,
 		slotId = worldData.slot,
-		visitingAsOwner = worldData.ownerId == player.UserId
+		visitingAsOwner = isOwnWorld
 	})
 end
 
@@ -2899,6 +2905,9 @@ function WorldsPanel:TeleportToHub()
 	if self.hubSpinner then
 		self.hubSpinner.Visible = true
 	end
+
+	-- Show teleport transition effect
+	TeleportTransition:Show("Returning to Nexus")
 
 	-- Send teleport request to server
 	EventManager:SendToServer("RequestTeleportToHub", {})
@@ -3113,6 +3122,8 @@ function WorldsPanel:Initialize()
 		if self.hubSpinner then
 			self.hubSpinner.Visible = false
 		end
+		-- Hide teleport transition on error
+		TeleportTransition:Hide()
 	end)
 
 	EventManager:RegisterEvent("HubTeleportError", function(data)
@@ -3122,6 +3133,8 @@ function WorldsPanel:Initialize()
 		if self.hubSpinner then
 			self.hubSpinner.Visible = false
 		end
+		-- Hide teleport transition on error
+		TeleportTransition:Hide()
 	end)
 end
 

@@ -64,6 +64,14 @@ function CraftingService:HandleCraftBatchRequest(player, data)
 		return
 	end
 
+	-- Anti-duplication: Block crafting while teleporting
+	local Injector = require(script.Parent.Parent.Injector)
+	local playerService = Injector:Resolve("PlayerService")
+	if playerService and playerService:IsTeleporting(player) then
+		self._logger.Warn("BLOCKED: Player tried to craft while teleporting", {player = player.Name})
+		return
+	end
+
 	local recipeId = data.recipeId
 	local requestedCount = tonumber(data.count) or 0
 	local toCursor = data.toCursor or false
@@ -266,6 +274,14 @@ function CraftingService:HandleCraftRequest(player, data)
         self._logger.Warn("Invalid craft request", {player = player and player.Name})
         return
     end
+
+	-- Anti-duplication: Block crafting while teleporting
+	local Injector = require(script.Parent.Parent.Injector)
+	local playerService = Injector:Resolve("PlayerService")
+	if playerService and playerService:IsTeleporting(player) then
+		self._logger.Warn("BLOCKED: Player tried to craft while teleporting", {player = player.Name})
+		return
+	end
 
     local recipeId = data.recipeId
     local toCursor = data.toCursor or false

@@ -292,6 +292,15 @@ end
 function DroppedItemService:HandlePickupRequest(player, data)
 	if not player or not data or not data.id then return end
 
+	-- Anti-duplication check #0: Block pickups while teleporting
+	-- Get PlayerService to check teleporting status
+	local Injector = require(script.Parent.Parent.Injector)
+	local playerService = Injector:Resolve("PlayerService")
+	if playerService and playerService:IsTeleporting(player) then
+		warn(string.format("BLOCKED: Player %s tried to pickup item while teleporting", player.Name))
+		return
+	end
+
 	local itemId = data.id
 	local item = self.items[itemId]
 
@@ -374,6 +383,15 @@ end
 ]]
 function DroppedItemService:HandleDropRequest(player, data)
 	if not player or not data or not data.itemId or not data.count then return end
+
+	-- Anti-duplication: Block drops while teleporting
+	-- This is CRITICAL - prevents the world hop dupe exploit
+	local Injector = require(script.Parent.Parent.Injector)
+	local playerService = Injector:Resolve("PlayerService")
+	if playerService and playerService:IsTeleporting(player) then
+		warn(string.format("BLOCKED: Player %s tried to drop item while teleporting (dupe attempt)", player.Name))
+		return
+	end
 
 	-- Normalize inputs
 	local droppingItemId = tonumber(data.itemId) or 0

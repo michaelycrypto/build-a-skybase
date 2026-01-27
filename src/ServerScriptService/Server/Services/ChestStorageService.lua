@@ -363,6 +363,14 @@ function ChestStorageService:HandleChestSlotClick(player, data)
 		return
 	end
 
+	-- Anti-duplication: Block chest interactions while teleporting
+	local Injector = require(script.Parent.Parent.Injector)
+	local playerService = Injector:Resolve("PlayerService")
+	if playerService and playerService:IsTeleporting(player) then
+		warn(string.format("BLOCKED: Player %s tried to interact with chest while teleporting", player.Name))
+		return
+	end
+
     -- Normalize numeric inputs
     local x = tonumber(data.chestPosition.x) or data.chestPosition.x
     local y = tonumber(data.chestPosition.y) or data.chestPosition.y

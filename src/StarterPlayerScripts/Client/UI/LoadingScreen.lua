@@ -39,11 +39,7 @@ local assetProgress = 0  -- 0-0.5 (50% of total progress for assets)
 local worldProgress = 0  -- 0-0.5 (50% of total progress for world)
 
 local CUSTOM_FONT_NAME = "Upheaval BRK"
-
-local CUSTOM_FONT_THEME = {
-	logo = CUSTOM_FONT_NAME,
-	status = CUSTOM_FONT_NAME
-}
+local CUSTOM_FONT_THEME = { status = CUSTOM_FONT_NAME }
 
 local WORLDS_PRELOAD_TIMEOUT = 0.3  -- Reduced from 0.75s for faster loading
 local WORLDS_EVENT_NAME = "WorldsListUpdated"
@@ -58,22 +54,6 @@ local function cleanupWorldsPrimeConnection()
 			worldsPrimeConnection:Disconnect()
 		end)
 		worldsPrimeConnection = nil
-	end
-end
-
-local function applyFontMetadata(target, fontName, fontPx)
-	if not target then return end
-
-	if fontName then
-		pcall(function()
-			target.FontName = fontName
-		end)
-	end
-
-	if fontPx then
-		pcall(function()
-			target.FontPx = fontPx
-		end)
 	end
 end
 
@@ -221,10 +201,7 @@ end
 	Create the loading screen
 --]]
 function LoadingScreen:Create()
-	-- Guard against being called multiple times
-	if loadingGui then
-		return
-	end
+	if loadingGui then return end
 	
 	FontBinder.preload(CUSTOM_FONT_THEME)
 
@@ -232,7 +209,7 @@ function LoadingScreen:Create()
 	loadingGui.Name = "LoadingScreen"
 	loadingGui.ResetOnSpawn = false
 	loadingGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-	loadingGui.DisplayOrder = 1000  -- Above all other UI (VoxelHotbar is 50)
+	loadingGui.DisplayOrder = 1000
 	loadingGui.IgnoreGuiInset = true
 	loadingGui.Parent = playerGui
 
@@ -259,8 +236,6 @@ function LoadingScreen:Create()
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
 	layout.Parent = centerContainer
 
-	local heroFontName = CUSTOM_FONT_THEME.logo
-	math.randomseed(tick() % 1 * 1e6)
 	local uiTypography = Config.UI_SETTINGS and Config.UI_SETTINGS.typography
 	local sizes = uiTypography and uiTypography.sizes
 	local titleFontPx = (sizes and sizes.body and sizes.body.base) or 24
@@ -272,18 +247,13 @@ function LoadingScreen:Create()
 	titleLabel.BorderSizePixel = 0
 	titleLabel.TextXAlignment = Enum.TextXAlignment.Center
 	titleLabel.TextYAlignment = Enum.TextYAlignment.Center
-	titleLabel.TextWrapped = false
-	titleLabel.RichText = false
-	titleLabel.AutoLocalize = false
-	titleLabel.ClipsDescendants = true
 	titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	titleLabel.TextSize = titleFontPx
+	titleLabel.Text = "Loading..."
 	titleLabel.LayoutOrder = 1
 	titleLabel.Parent = centerContainer
 
-	FontBinder.apply(titleLabel, heroFontName)
-	setTextContent(titleLabel, "Preparing assets...")
-	applyFontMetadata(titleLabel, heroFontName, titleFontPx)
+	FontBinder.apply(titleLabel, CUSTOM_FONT_NAME)
 
 	local progressContainer = Instance.new("Frame")
 	progressContainer.Name = "ProgressContainer"
@@ -308,8 +278,6 @@ function LoadingScreen:Create()
 	local fillCorner = Instance.new("UICorner")
 	fillCorner.CornerRadius = UDim.new(0, 2)
 	fillCorner.Parent = progressFill
-
-	setStatusText("Preparing assets...")
 end
 
 --[[

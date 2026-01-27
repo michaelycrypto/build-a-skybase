@@ -22,6 +22,8 @@ function PlayerService.new()
 	self._playerData = {}
 	self._connections = {}
 	self._eventManager = nil
+	-- Track players who are currently teleporting (prevents item dupe exploits)
+	self._teleportingPlayers = {}
 
 	return self
 end
@@ -220,6 +222,9 @@ end
 --]]
 function PlayerService:OnPlayerRemoving(player)
 	self._logger.Debug("Player leaving", {playerName = player.Name})
+
+	-- Clear teleporting status (cleanup)
+	self._teleportingPlayers[player.UserId] = nil
 
 	-- Save player data (including armor)
 	self:SavePlayerData(player)
@@ -795,6 +800,54 @@ function PlayerService:SetSaturation(player, saturation)
 		return
 	end
 	data.saturation = math.clamp(saturation, 0, 20)
+end
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- TELEPORT PROTECTION (Anti-duplication)
+-- Prevents item drop/pickup exploits during teleportation
+-- ═══════════════════════════════════════════════════════════════════════════
+
+--[[
+	Mark player as teleporting - blocks inventory actions until teleport completes
+	This MUST be called BEFORE saving player data to prevent race conditions
+	@param player: Player - The player about to teleport
+]]
+function PlayerService:SetTeleporting(player)
+	if not player then return end
+	self._teleportingPlayers[player.UserId] = os.clock()
+	self._logger.Info("Player marked as teleporting (inventory locked)", {
+		player = player.Name,
+		userId = player.UserId
+	})
+end
+
+--[[
+	Clear teleporting status (called on player leaving or teleport cancel)
+	@param player: Player - The player
+]]
+function PlayerService:ClearTeleporting(player)
+	if not player then return end
+	self._teleportingPlayers[player.UserId] = nil
+end
+
+--[[
+	Check if player is currently teleporting (inventory actions should be blocked)
+	@param player: Player - The player to check
+	@return: boolean - True if player is teleporting
+]]
+function PlayerService:IsTeleporting(player)
+	if not player then return false end
+	local teleportTime = self._teleportingPlayers[player.UserId]
+	if not teleportTime then
+		return false
+	end
+	-- Auto-expire after 30 seconds (failsafe in case teleport fails)
+	if os.clock() - teleportTime > 30 then
+		self._teleportingPlayers[player.UserId] = nil
+		self._logger.Warn("Teleport lock expired (failsafe)", {player = player.Name})
+		return false
+	end
+	return true
 end
 
 return PlayerService

@@ -112,10 +112,12 @@ function WorldTeleportService:RequestJoinWorld(player, payload)
 	-- Try active instance first
 	local entry = self:_getActiveWorld(worldId)
 	if entry and entry.accessCode then
-		-- Save player data before teleport (new server will take lock seamlessly)
+		-- CRITICAL: Mark player as teleporting BEFORE saving to prevent dupe exploits
+		-- This blocks all inventory actions (drops, pickups, transfers) during teleport
 		local Injector = require(script.Parent.Parent.Injector)
 		local playerService = Injector:Resolve("PlayerService")
 		if playerService then
+			playerService:SetTeleporting(player)
 			playerService:SavePlayerData(player)
 		end
 		
@@ -162,10 +164,11 @@ function WorldTeleportService:RequestJoinWorld(player, payload)
 	-- Register and teleport
 	self:_registerWorld(worldId, ownerUserId, ownerName, accessCode, slotId)
 	
-	-- Save player data before teleport (new server will take lock seamlessly)
+	-- CRITICAL: Mark player as teleporting BEFORE saving to prevent dupe exploits
 	local Injector = require(script.Parent.Parent.Injector)
 	local playerService = Injector:Resolve("PlayerService")
 	if playerService then
+		playerService:SetTeleporting(player)
 		playerService:SavePlayerData(player)
 	end
 	
@@ -186,6 +189,10 @@ function WorldTeleportService:RequestJoinWorld(player, payload)
 	end)
 	
 	if not ok2 then
+		-- Clear teleporting status if teleport failed
+		if playerService then
+			playerService:ClearTeleporting(player)
+		end
 		EventManager:FireEvent("WorldJoinError", player, { message = "Teleport failed" })
 	end
 end
