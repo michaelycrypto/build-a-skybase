@@ -1351,7 +1351,7 @@ local function initialize()
 		remeshBatchTimer = nil
 		remeshBatchStartTime = nil
 		pendingWaterChanges = false
-		
+
 		if not voxelWorldHandle then return end
 		local wm = voxelWorldHandle:GetWorldManager()
 		if not wm then return end
@@ -1380,12 +1380,12 @@ local function initialize()
 		if isWater then
 			pendingWaterChanges = true
 		end
-		
+
 		-- Record batch start time (for max delay cap)
 		if not remeshBatchStartTime then
 			remeshBatchStartTime = tick()
 		end
-		
+
 		-- Check if we've hit max delay - force flush
 		local elapsed = tick() - remeshBatchStartTime
 		if elapsed >= REMESH_MAX_DELAY then
@@ -1396,14 +1396,14 @@ local function initialize()
 			flushPendingRemeshes()
 			return
 		end
-		
+
 		-- Calculate delay based on batch contents
 		local delay = pendingWaterChanges and REMESH_BATCH_DELAY_WATER or REMESH_BATCH_DELAY
-		
+
 		-- Cap delay to not exceed max delay from start
 		local remainingTime = REMESH_MAX_DELAY - elapsed
 		delay = math.min(delay, remainingTime)
-		
+
 		if remeshBatchTimer then
 			task.cancel(remeshBatchTimer)
 		end
@@ -1424,12 +1424,12 @@ local function initialize()
 		end
 
 		-- Check if this is a water block (for batching optimization)
-		local isWaterBlock = data.blockId == Constants.BlockType.WATER_SOURCE 
+		local isWaterBlock = data.blockId == Constants.BlockType.WATER_SOURCE
 			or data.blockId == Constants.BlockType.FLOWING_WATER
-		
+
 		-- Also check if previous block was water (water removal)
 		local prevBlock = wm:GetBlock(data.x, data.y, data.z)
-		local wasWaterBlock = prevBlock == Constants.BlockType.WATER_SOURCE 
+		local wasWaterBlock = prevBlock == Constants.BlockType.WATER_SOURCE
 			or prevBlock == Constants.BlockType.FLOWING_WATER
 		if data.blockId and data.blockId ~= 0 and not isWaterBlock then
 			local SoundManager = Client.managers and Client.managers.SoundManager

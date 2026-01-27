@@ -53,6 +53,9 @@ local Manifest = {
 		VoxelRequestRenderDistance = {"any"},
 		PlayerPunch = {"any"},  -- Block breaking via punch system
 		CancelBlockBreak = {"any"}, -- Immediate cancel of break progress for a block
+		-- Bucket interactions (Minecraft-style water pickup/placement)
+		RequestBucketPickup = {"any"}, -- {x, y, z, hotbarSlot} - Pick up water source with bucket
+		RequestBucketPlace = {"any"}, -- {x, y, z, hotbarSlot, targetBlockPos, faceNormal} - Place water from bucket
 		-- PvP melee
 		PlayerMeleeHit = {"any"}, -- {targetUserId, swingTimeMs}
 

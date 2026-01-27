@@ -1,351 +1,149 @@
 --[[
 	HeldItemRenderer.lua
-	Unified module for rendering held items (tools OR blocks) on any character.
+	Renders held items on characters.
 
-	Used by:
-	- ToolVisualController (local player 3rd person + remote players)
-	- VoxelInventoryPanel (armor UI viewmodel)
-
-	API:
-	- HeldItemRenderer.AttachItem(character, itemId) → returns handle Part
-	- HeldItemRenderer.ClearItem(character)
-	- HeldItemRenderer.GetAttachedItemId(character) → returns itemId or nil
+	- Placeable solid block → textured cube
+	- Everything else → 3D model from ReplicatedStorage.Tools
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
-local BlockProperties = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockProperties)
+local ItemRegistry = require(ReplicatedStorage.Configs.ItemRegistry)
 local BlockRegistry = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockRegistry)
 local TextureManager = require(ReplicatedStorage.Shared.VoxelWorld.Rendering.TextureManager)
 local ItemModelLoader = require(ReplicatedStorage.Shared.ItemModelLoader)
+local ItemPixelSizes = require(ReplicatedStorage.Shared.ItemPixelSizes)
 
 local HeldItemRenderer = {}
 
--- Constants
 local STUDS_PER_PIXEL = 3 / 16
-local HELD_ITEM_TAG = "HeldItemHandle" -- Tag for identifying held items
-
--- Tool mesh asset names
-local TOOL_ASSET_NAMES = {
-	[BlockProperties.ToolType.SWORD] = "Sword",
-	[BlockProperties.ToolType.AXE] = "Axe",
-	[BlockProperties.ToolType.SHOVEL] = "Shovel",
-	[BlockProperties.ToolType.PICKAXE] = "Pickaxe",
-	[BlockProperties.ToolType.BOW] = "Bow",
-}
-
--- Tool pixel sizes for scaling
-local TOOL_PX_SIZES = {
-	[BlockProperties.ToolType.SWORD] = {x = 14, y = 14},
-	[BlockProperties.ToolType.AXE] = {x = 12, y = 14},
-	[BlockProperties.ToolType.SHOVEL] = {x = 12, y = 12},
-	[BlockProperties.ToolType.PICKAXE] = {x = 13, y = 13},
-	[BlockProperties.ToolType.BOW] = {x = 14, y = 14},
-}
-
--- Tool grip positions/rotations
-local TOOL_GRIPS = {
-	[BlockProperties.ToolType.SWORD] = {pos = Vector3.new(0, -0.15, -1.5), rot = Vector3.new(225, 90, 0)},
-	[BlockProperties.ToolType.AXE] = {pos = Vector3.new(0, -0.15, -1.5), rot = Vector3.new(225, 90, 0)},
-	[BlockProperties.ToolType.SHOVEL] = {pos = Vector3.new(0, -0.15, -1.5), rot = Vector3.new(225, 90, 0)},
-	[BlockProperties.ToolType.PICKAXE] = {pos = Vector3.new(0, -0.15, -1.5), rot = Vector3.new(225, 90, 0)},
-	[BlockProperties.ToolType.BOW] = {pos = Vector3.new(0, 0.3, 0), rot = Vector3.new(225, 90, 0)},
-}
-
--- Block grip (smaller, held differently)
+local BLOCK_SIZE = 1
+local ITEM_SCALE = 0.6 -- Scale for non-tool/weapon/bow items
+local TOOL_GRIP = {pos = Vector3.new(0, 0.4, -1.4), rot = Vector3.new(-20, -270, -90)}
+local BOW_GRIP = {pos = Vector3.new(0, 0.5, 0.05), rot = Vector3.new(-20, -270, -90)}
+local ITEM_GRIP = {pos = Vector3.new(0, 0.2, -0.5), rot = Vector3.new(-20, -90, 0)}
 local BLOCK_GRIP = {pos = Vector3.new(0, -0.3, -0.5), rot = Vector3.new(0, 45, 0)}
-local BLOCK_SIZE = 0.5 -- Studs
 
-----------------------------------------------------------------
--- Helper Functions
-----------------------------------------------------------------
-
-local function getToolsFolder()
-	local folder = ReplicatedStorage:FindFirstChild("Tools")
-	if folder then return folder end
-	local assets = ReplicatedStorage:FindFirstChild("Assets")
-	return assets and assets:FindFirstChild("Tools")
-end
-
-local function getMeshTemplate(name)
-	local folder = getToolsFolder()
-	if not folder then return nil end
-	local template = folder:FindFirstChild(name)
-	if not template then return nil end
-	if template:IsA("MeshPart") then return template end
-	return template:FindFirstChildWhichIsA("MeshPart", true)
-end
-
-local function scaleMeshToPixels(part, pxX, pxY)
-	local longestPx = math.max(pxX or 0, pxY or 0)
-	if longestPx <= 0 then return end
-	local targetStuds = longestPx * STUDS_PER_PIXEL
-	local size = part.Size
-	local maxDim = math.max(size.X, size.Y, size.Z)
-	if maxDim > 0 then
-		local scale = targetStuds / maxDim
-		part.Size = Vector3.new(size.X * scale, size.Y * scale, size.Z * scale)
-	end
-end
-
-local function createGripCFrame(grip)
-	return CFrame.new(grip.pos) * CFrame.Angles(
-		math.rad(grip.rot.X),
-		math.rad(grip.rot.Y),
-		math.rad(grip.rot.Z)
-	)
+local function isTool(itemName)
+	local lower = itemName:lower()
+	return lower:find("pickaxe") or lower:find("axe") or lower:find("sword") or lower:find("shovel")
 end
 
 local function getHand(character)
-	if not character then return nil end
-	return character:FindFirstChild("RightHand") or character:FindFirstChild("Right Arm")
+	return character and (character:FindFirstChild("RightHand") or character:FindFirstChild("Right Arm"))
 end
 
-----------------------------------------------------------------
--- Clear any existing held items from a character
-----------------------------------------------------------------
+local function createGripCFrame(grip)
+	return CFrame.new(grip.pos) * CFrame.Angles(math.rad(grip.rot.X), math.rad(grip.rot.Y), math.rad(grip.rot.Z))
+end
 
-function HeldItemRenderer.ClearItem(character)
-	if not character then return end
-
-	-- Find and destroy all held item handles
-	for _, child in ipairs(character:GetDescendants()) do
-		if child:GetAttribute(HELD_ITEM_TAG) then
-			pcall(function() child:Destroy() end)
-		end
-	end
-
-	-- Also clear by common names (for legacy/cloned items)
-	for _, child in ipairs(character:GetDescendants()) do
-		local name = child.Name
-		if name == "HeldItemHandle" or name == "ToolHandle" or name == "ArmorToolHandle"
-		   or name == "RemoteToolHandle" or name == "BlockHandle"
-		   or name:match("^BowHandle_") then
-			pcall(function() child:Destroy() end)
-		end
+local function scaleMeshToPixels(part, pxX, pxY)
+	local longest = math.max(pxX or 0, pxY or 0)
+	if longest <= 0 then return end
+	local target = longest * STUDS_PER_PIXEL
+	local maxDim = math.max(part.Size.X, part.Size.Y, part.Size.Z)
+	if maxDim > 0 then
+		part.Size = part.Size * (target / maxDim)
 	end
 end
 
-----------------------------------------------------------------
--- Get currently attached item ID
-----------------------------------------------------------------
-
-function HeldItemRenderer.GetAttachedItemId(character)
-	if not character then return nil end
-
-	for _, child in ipairs(character:GetDescendants()) do
-		if child:GetAttribute(HELD_ITEM_TAG) then
-			return child:GetAttribute("ItemId")
-		end
-	end
-
-	return nil
+local function isPlaceableBlock(itemId)
+	local def = BlockRegistry.Blocks[itemId]
+	if not def or not def.solid or def.crossShape or def.craftingMaterial then return false end
+	return def.textures ~= nil
 end
 
-----------------------------------------------------------------
--- Create a tool handle
-----------------------------------------------------------------
+local function createBlockPart(itemId)
+	local def = BlockRegistry.Blocks[itemId]
+	local part = Instance.new("Part")
+	part.Name = "HeldItemHandle"
+	part.Size = Vector3.new(BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE)
+	part.Massless = true
+	part.CanCollide = false
+	part.Anchored = false
+	part.Material = def.material or Enum.Material.Plastic
+	part.Color = def.color or Color3.fromRGB(128, 128, 128)
 
-local function createToolHandle(itemId, toolType)
-	local assetName = TOOL_ASSET_NAMES[toolType]
-	local mesh = assetName and getMeshTemplate(assetName)
-
-	local part
-	if mesh then
-		part = mesh:Clone()
-	else
-		-- Fallback: simple wooden stick
-		part = Instance.new("Part")
-		part.Size = Vector3.new(0.15, 1.2, 0.15)
-		part.Color = Color3.fromRGB(139, 90, 43)
-		part.Material = Enum.Material.Wood
+	for _, face in ipairs({
+		{Enum.NormalId.Top, "top"}, {Enum.NormalId.Bottom, "bottom"},
+		{Enum.NormalId.Right, "side"}, {Enum.NormalId.Left, "side"},
+		{Enum.NormalId.Front, "side"}, {Enum.NormalId.Back, "side"}
+	}) do
+		local textureId = TextureManager:GetTextureForBlockFace(itemId, face[2])
+		if textureId then
+			local tex = Instance.new("Texture")
+			tex.Face = face[1]
+			tex.Texture = textureId
+			tex.StudsPerTileU = BLOCK_SIZE
+			tex.StudsPerTileV = BLOCK_SIZE
+			tex.Parent = part
+		end
 	end
+	return part
+end
 
+local function createItemPart(itemId, itemName)
+	local template = ItemModelLoader.GetModelTemplate(itemName, itemId)
+	if not template then return nil end
+
+	local part = template:Clone()
 	part.Name = "HeldItemHandle"
 	part.Massless = true
 	part.CanCollide = false
 	part.CastShadow = false
 	part.Anchored = false
 
-	-- Apply texture from ToolConfig
-	local toolInfo = ToolConfig.GetToolInfo(itemId)
-	if toolInfo and toolInfo.image then
-		pcall(function()
-			if part:IsA("MeshPart") and (not part.TextureID or part.TextureID == "") then
-				part.TextureID = toolInfo.image
-			end
-		end)
-	end
+	local px = ItemPixelSizes.GetSize(itemName)
+	if px then scaleMeshToPixels(part, px.x, px.y) end
 
-	-- Scale to proper size
-	local px = TOOL_PX_SIZES[toolType]
-	if px then
-		scaleMeshToPixels(part, px.x, px.y)
-	end
-
-	return part, TOOL_GRIPS[toolType] or TOOL_GRIPS[BlockProperties.ToolType.SWORD]
+	return part
 end
 
-----------------------------------------------------------------
--- Create a block handle (rendered like dropped item blocks)
-----------------------------------------------------------------
-
-local function createBlockHandle(blockId, blockInfo)
-	blockInfo = blockInfo or BlockRegistry.Blocks[blockId]
-
-	-- Try to use 3D model from Tools folder first (for food items, etc.)
-	if blockInfo and blockInfo.name then
-		local modelTemplate = ItemModelLoader.GetModelTemplate(blockInfo.name, blockId)
-		if modelTemplate then
-			local part = modelTemplate:Clone()
-			part.Name = "HeldItemHandle"
-			part.Massless = true
-			part.CanCollide = false
-			part.CastShadow = false
-			part.Anchored = false
-
-			-- Always apply texture from BlockRegistry to ensure consistency
-			if part:IsA("MeshPart") and blockInfo.textures then
-				local textureName = blockInfo.textures.all or blockInfo.textures.side or blockInfo.textures.top
-				if textureName then
-					local textureId = TextureManager:GetTextureId(textureName)
-					if textureId then
-						pcall(function()
-							part.TextureID = textureId
-						end)
-					end
-				end
-			end
-
-			return part, BLOCK_GRIP
+function HeldItemRenderer.ClearItem(character)
+	if not character then return end
+	for _, child in ipairs(character:GetDescendants()) do
+		if child.Name == "HeldItemHandle" then
+			pcall(function() child:Destroy() end)
 		end
 	end
-
-	-- Check if it's a cross-shaped plant (flowers, grass, etc.)
-	local isCrossShape = blockInfo and blockInfo.crossShape
-
-	local part = Instance.new("Part")
-	part.Name = "HeldItemHandle"
-	part.Massless = true
-	part.CanCollide = false
-	part.Anchored = false
-
-	if isCrossShape then
-		-- 2D sprite for plants (like dropped items)
-		part.Size = Vector3.new(BLOCK_SIZE * 2, BLOCK_SIZE * 2, 0.02)
-		part.Transparency = 1 -- Only texture shows
-		part.CastShadow = false
-
-		-- Apply texture to front and back faces
-		local textureId
-		if blockInfo.textures and blockInfo.textures.all then
-			textureId = TextureManager:GetTextureId(blockInfo.textures.all)
-		end
-
-		if textureId then
-			local frontTexture = Instance.new("Texture")
-			frontTexture.Face = Enum.NormalId.Front
-			frontTexture.Texture = textureId
-			frontTexture.StudsPerTileU = BLOCK_SIZE * 2
-			frontTexture.StudsPerTileV = BLOCK_SIZE * 2
-			if blockInfo.greyscaleTexture and blockInfo.color then
-				frontTexture.Color3 = blockInfo.color
-			end
-			frontTexture.Parent = part
-
-			local backTexture = Instance.new("Texture")
-			backTexture.Face = Enum.NormalId.Back
-			backTexture.Texture = textureId
-			backTexture.StudsPerTileU = BLOCK_SIZE * 2
-			backTexture.StudsPerTileV = BLOCK_SIZE * 2
-			if blockInfo.greyscaleTexture and blockInfo.color then
-				backTexture.Color3 = blockInfo.color
-			end
-			backTexture.Parent = part
-		end
-	else
-		-- 3D cube for regular blocks (like dropped items)
-		part.Size = Vector3.new(BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE)
-		part.Material = blockInfo and blockInfo.material or Enum.Material.Plastic
-		part.Color = blockInfo and blockInfo.color or Color3.fromRGB(128, 128, 128)
-		part.Transparency = (blockInfo and blockInfo.transparent) and 0.3 or 0
-		part.CastShadow = true
-
-		-- Apply textures to all 6 faces (like dropped item blocks)
-		local faces = {
-			{normalId = Enum.NormalId.Top, faceName = "top"},
-			{normalId = Enum.NormalId.Bottom, faceName = "bottom"},
-			{normalId = Enum.NormalId.Right, faceName = "side"},
-			{normalId = Enum.NormalId.Left, faceName = "side"},
-			{normalId = Enum.NormalId.Front, faceName = "side"},
-			{normalId = Enum.NormalId.Back, faceName = "side"},
-		}
-
-		for _, faceInfo in ipairs(faces) do
-			local textureId = TextureManager:GetTextureForBlockFace(blockId, faceInfo.faceName)
-			if textureId then
-				local texture = Instance.new("Texture")
-				texture.Face = faceInfo.normalId
-				texture.Texture = textureId
-				texture.StudsPerTileU = BLOCK_SIZE
-				texture.StudsPerTileV = BLOCK_SIZE
-				if blockInfo and blockInfo.greyscaleTexture and blockInfo.color then
-					texture.Color3 = blockInfo.color
-				end
-				texture.Parent = part
-			end
-		end
-	end
-
-	return part, BLOCK_GRIP
 end
-
-----------------------------------------------------------------
--- Attach an item to a character's hand
-----------------------------------------------------------------
 
 function HeldItemRenderer.AttachItem(character, itemId)
-	if not character or not itemId or itemId == 0 then
-		return nil
-	end
+	if not character or not itemId or itemId == 0 then return nil end
 
 	local hand = getHand(character)
-	if not hand then
-		return nil
-	end
+	if not hand then return nil end
 
-	-- Clear any existing held item first
 	HeldItemRenderer.ClearItem(character)
 
-	-- Determine if it's a tool or block
-	local isTool = ToolConfig.IsTool(itemId)
 	local part, grip
 
-	if isTool then
-		local toolType = select(1, ToolConfig.GetBlockProps(itemId))
-		if not toolType then return nil end
-		part, grip = createToolHandle(itemId, toolType)
+	if isPlaceableBlock(itemId) then
+		part = createBlockPart(itemId)
+		grip = BLOCK_GRIP
 	else
-		-- It's a block
-		local blockInfo = BlockRegistry.Blocks[itemId]
-		if not blockInfo then
-			warn(string.format("[HeldItemRenderer] Block id %s missing from BlockRegistry; skipping render", tostring(itemId)))
-			return nil
+		local itemName = ItemRegistry.GetItemName(itemId)
+		if not itemName or itemName == "Unknown" then return nil end
+		part = createItemPart(itemId, itemName)
+		-- Select grip based on item type
+		if itemName:lower():find("bow") then
+			grip = BOW_GRIP
+		elseif isTool(itemName) then
+			grip = TOOL_GRIP
+		else
+			grip = ITEM_GRIP
+			-- Scale down non-tool/weapon/bow items
+			if part then
+				part.Size = part.Size * ITEM_SCALE
+			end
 		end
-		part, grip = createBlockHandle(itemId, blockInfo)
 	end
 
 	if not part then return nil end
 
-	-- Tag the part for identification
-	part:SetAttribute(HELD_ITEM_TAG, true)
 	part:SetAttribute("ItemId", itemId)
-
-	-- Parent to character
 	part.Parent = character
 
-	-- Create weld to hand
 	local weld = Instance.new("Weld")
 	weld.Name = "HeldItemWeld"
 	weld.Part0 = hand
@@ -356,20 +154,14 @@ function HeldItemRenderer.AttachItem(character, itemId)
 	return part
 end
 
-----------------------------------------------------------------
--- Check if an item ID is a tool or block
-----------------------------------------------------------------
-
-function HeldItemRenderer.IsTool(itemId)
-	return ToolConfig.IsTool(itemId)
-end
-
-function HeldItemRenderer.IsBlock(itemId)
-	if not itemId or itemId == 0 then return false end
-	if ToolConfig.IsTool(itemId) then return false end
-	local def = BlockRegistry.Blocks[itemId]
-	return def ~= nil
+function HeldItemRenderer.GetAttachedItemId(character)
+	if not character then return nil end
+	for _, child in ipairs(character:GetDescendants()) do
+		if child.Name == "HeldItemHandle" and child:GetAttribute("ItemId") then
+			return child:GetAttribute("ItemId")
+		end
+	end
+	return nil
 end
 
 return HeldItemRenderer
-

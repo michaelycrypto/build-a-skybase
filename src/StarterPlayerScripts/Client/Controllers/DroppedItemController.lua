@@ -17,7 +17,12 @@ local GameConfig = require(ReplicatedStorage.Configs.GameConfig)
 local ItemRegistry = require(ReplicatedStorage.Configs.ItemRegistry)
 local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
 local ItemModelLoader = require(ReplicatedStorage.Shared.ItemModelLoader)
+local ItemPixelSizes = require(ReplicatedStorage.Shared.ItemPixelSizes)
 local SoundManager = require(script.Parent.Parent.Managers.SoundManager)
+
+-- Scaling constants for dropped items
+local STUDS_PER_PIXEL = 3 / 16
+local DROPPED_ITEM_SCALE = 0.6 -- Dropped items are smaller than held items
 
 local player = Players.LocalPlayer
 local items = {}
@@ -499,26 +504,11 @@ function DroppedItemController:CreateModel(itemId, count)
 			{x = 0, y = LAYER_OFFSET_Y * 3, z = LAYER_OFFSET_XZ},
 		}
 
-		-- Try to use 3D model from Tools folder first (for ALL items: tools, blocks, food, etc.)
+		-- Try to use 3D model from Tools folder (unified lookup via ItemRegistry)
+		local itemName = ItemRegistry.GetItemName(itemId)
 		local modelTemplate = nil
-		if typeof(itemId) == "number" then
-			-- Try by item name first (from BlockRegistry or ToolConfig)
-			local itemName = nil
-			if blockInfo and blockInfo.name then
-				itemName = blockInfo.name
-			elseif ToolConfig and ToolConfig.IsTool and ToolConfig.IsTool(itemId) then
-				local toolInfo = ToolConfig.GetToolInfo(itemId)
-				itemName = toolInfo and toolInfo.name
-			end
-
-			if itemName then
-				modelTemplate = ItemModelLoader.GetModelTemplate(itemName, itemId)
-			end
-
-			-- If not found by name, try by ID
-			if not modelTemplate then
-				modelTemplate = ItemModelLoader.GetModelTemplate(nil, itemId)
-			end
+		if itemName and itemName ~= "Unknown" then
+			modelTemplate = ItemModelLoader.GetModelTemplate(itemName, itemId)
 		end
 
 		if modelTemplate then
@@ -533,24 +523,34 @@ function DroppedItemController:CreateModel(itemId, count)
 			base.CastShadow = true
 			base.Parent = visualFolder
 
-			-- Always apply texture from BlockRegistry/ToolConfig to ensure consistency
+			-- Apply texture from ItemRegistry if needed
 			if base:IsA("MeshPart") then
-				local textureId = nil
-				if blockInfo and blockInfo.textures then
-					if blockInfo.textures.all then
-						textureId = TextureManager:GetTextureId(blockInfo.textures.all)
-					else
-						textureId = TextureManager:GetTextureForBlockFace(itemId, "side")
+				local hasTexture = false
+				pcall(function()
+					hasTexture = base.TextureID ~= nil and tostring(base.TextureID) ~= ""
+				end)
+				if not hasTexture then
+					local itemDef = ItemRegistry.GetItem(itemId)
+					local textureId = itemDef and itemDef.image
+					if textureId then
+						pcall(function()
+							base.TextureID = textureId
+						end)
 					end
-				elseif ToolConfig and ToolConfig.IsTool and ToolConfig.IsTool(itemId) then
-					local toolInfo = ToolConfig.GetToolInfo(itemId)
-					textureId = toolInfo and toolInfo.image
 				end
+			end
 
-				if textureId then
-					pcall(function()
-						base.TextureID = textureId
-					end)
+			-- Scale using ItemPixelSizes (smaller for dropped items)
+			local px = ItemPixelSizes.GetSize(itemName)
+			if px then
+				local longestPx = math.max(px.x or 0, px.y or 0)
+				if longestPx > 0 then
+					local targetStuds = longestPx * STUDS_PER_PIXEL * DROPPED_ITEM_SCALE
+					local maxDim = math.max(base.Size.X, base.Size.Y, base.Size.Z)
+					if maxDim > 0 then
+						local scale = targetStuds / maxDim
+						base.Size = base.Size * scale
+					end
 				end
 			end
 
@@ -566,9 +566,9 @@ function DroppedItemController:CreateModel(itemId, count)
 				end
 			end
 		elseif typeof(itemId) == "number" and ToolConfig and ToolConfig.IsTool and ToolConfig.IsTool(itemId) then
-			-- Fallback: Tool without 3D model - render as cross-shaped sprite using tool image
-			local info = ToolConfig.GetToolInfo(itemId)
-			local base = makeSprite(info and info.image or nil)
+			-- Fallback: Tool without 3D model - render as cross-shaped sprite using item texture
+			local itemDef = ItemRegistry.GetItem(itemId)
+			local base = makeSprite(itemDef and itemDef.image or nil)
 			base.CFrame = hitbox.CFrame * CFrame.new(0, hitbox.Size.Y * 0.5 + 0.025, 0)
 			table.insert(visualParts, base)
 			if layerCount > 1 then
@@ -649,9 +649,10 @@ function DroppedItemController:CreateModel(itemId, count)
 		{x = 0, y = LAYER_OFFSET_Y * 3, z = LAYER_OFFSET_XZ},
 	}
 
-	-- Try to use 3D model from Tools folder first (for block items, just like Viewmodel)
-	if blockInfo and blockInfo.name then
-		local modelTemplate = ItemModelLoader.GetModelTemplate(blockInfo.name, itemId)
+	-- Try to use 3D model from Tools folder (unified lookup via ItemRegistry)
+	local blockItemName = ItemRegistry.GetItemName(itemId)
+	if blockItemName and blockItemName ~= "Unknown" then
+		local modelTemplate = ItemModelLoader.GetModelTemplate(blockItemName, itemId)
 		if modelTemplate then
 			-- Use 3D model for block item
 			local hitbox = Instance.new("Part")
@@ -681,19 +682,34 @@ function DroppedItemController:CreateModel(itemId, count)
 			base.CastShadow = true
 			base.Parent = visualFolder
 
-			-- Apply texture from BlockRegistry to ensure consistency
-			if base:IsA("MeshPart") and blockInfo.textures then
-				local textureId = nil
-				if blockInfo.textures.all then
-					textureId = TextureManager:GetTextureId(blockInfo.textures.all)
-				else
-					textureId = TextureManager:GetTextureForBlockFace(itemId, "side")
+			-- Apply texture from ItemRegistry if needed
+			if base:IsA("MeshPart") then
+				local hasTexture = false
+				pcall(function()
+					hasTexture = base.TextureID ~= nil and tostring(base.TextureID) ~= ""
+				end)
+				if not hasTexture then
+					local itemDef = ItemRegistry.GetItem(itemId)
+					local textureId = itemDef and itemDef.image
+					if textureId then
+						pcall(function()
+							base.TextureID = textureId
+						end)
+					end
 				end
+			end
 
-				if textureId then
-					pcall(function()
-						base.TextureID = textureId
-					end)
+			-- Scale using ItemPixelSizes (smaller for dropped items)
+			local px = ItemPixelSizes.GetSize(blockItemName)
+			if px then
+				local longestPx = math.max(px.x or 0, px.y or 0)
+				if longestPx > 0 then
+					local targetStuds = longestPx * STUDS_PER_PIXEL * DROPPED_ITEM_SCALE
+					local maxDim = math.max(base.Size.X, base.Size.Y, base.Size.Z)
+					if maxDim > 0 then
+						local scale = targetStuds / maxDim
+						base.Size = base.Size * scale
+					end
 				end
 			end
 

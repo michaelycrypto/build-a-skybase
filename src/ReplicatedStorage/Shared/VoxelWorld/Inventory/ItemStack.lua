@@ -25,6 +25,10 @@ do
 	-- Minion item is non-stackable
 	MAX_STACK_SIZES[Constants.BlockType.COBBLESTONE_MINION] = 1
 	MAX_STACK_SIZES[Constants.BlockType.COAL_MINION] = 1
+	
+	-- Bucket stack sizes (Minecraft-style)
+	MAX_STACK_SIZES[Constants.BlockType.BUCKET] = 16  -- Empty buckets stack to 16
+	MAX_STACK_SIZES[Constants.BlockType.WATER_BUCKET] = 1  -- Water buckets don't stack
 end
 
 function ItemStack.new(itemId, count, maxStack)
@@ -149,6 +153,41 @@ end
 function ItemStack:Clear()
 	self.itemId = 0
 	self.count = 0
+end
+
+-- Set a new item into this slot, resolving the correct maxStack
+-- Use this instead of direct itemId assignment to avoid maxStack bugs
+function ItemStack:SetItem(itemId, count)
+	itemId = tonumber(itemId) or 0
+	count = tonumber(count) or 1
+	
+	self.itemId = itemId
+	
+	-- Resolve maxStack for the new item type
+	local explicit = MAX_STACK_SIZES[itemId]
+	if explicit then
+		self.maxStack = explicit
+	elseif ToolConfig.IsTool(itemId) or ArmorConfig.IsArmor(itemId) then
+		self.maxStack = 1
+	else
+		self.maxStack = DEFAULT_MAX_STACK
+	end
+	
+	-- Set count (will clamp and clear if needed)
+	self:SetCount(count)
+end
+
+-- Static helper to get max stack size for an item
+function ItemStack.GetMaxStackForItem(itemId)
+	itemId = tonumber(itemId) or 0
+	local explicit = MAX_STACK_SIZES[itemId]
+	if explicit then
+		return explicit
+	elseif ToolConfig.IsTool(itemId) or ArmorConfig.IsArmor(itemId) then
+		return 1
+	else
+		return DEFAULT_MAX_STACK
+	end
 end
 
 function ItemStack:Clone()

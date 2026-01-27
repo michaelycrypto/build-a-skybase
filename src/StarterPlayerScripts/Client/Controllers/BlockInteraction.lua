@@ -102,6 +102,25 @@ local function isBowEquipped()
 	return toolType == BlockProperties.ToolType.BOW
 end
 
+-- Check if player is holding an empty bucket
+local function isEmptyBucketEquipped()
+	local selectedBlock = GameState:Get("voxelWorld.selectedBlock")
+	if not selectedBlock or not selectedBlock.id then return false end
+	return selectedBlock.id == Constants.BlockType.BUCKET
+end
+
+-- Check if player is holding a water bucket
+local function isWaterBucketEquipped()
+	local selectedBlock = GameState:Get("voxelWorld.selectedBlock")
+	if not selectedBlock or not selectedBlock.id then return false end
+	return selectedBlock.id == Constants.BlockType.WATER_BUCKET
+end
+
+-- Check if player is holding any bucket (empty or filled)
+local function isBucketEquipped()
+	return isEmptyBucketEquipped() or isWaterBucketEquipped()
+end
+
 local function sendCancelForBlock(blockPos)
 	if not blockPos then return end
 	local key = _blockKey(blockPos)
@@ -565,6 +584,16 @@ local function startBreaking()
 	local blockPos, _, _ = getTargetedBlock()
 	if not blockPos then return end
 
+	-- Water source blocks cannot be broken - they must be picked up with a bucket
+	local worldManager = blockAPI and blockAPI.worldManager
+	if worldManager then
+		local blockId = worldManager:GetBlock(blockPos.X, blockPos.Y, blockPos.Z)
+		if blockId == Constants.BlockType.WATER_SOURCE or blockId == Constants.BlockType.FLOWING_WATER then
+			-- Water cannot be broken, only picked up with bucket (via right-click)
+			return
+		end
+	end
+
 	isBreaking = true
 	breakingBlock = blockPos
 	lastBreakTime = os.clock()
@@ -708,6 +737,53 @@ local function interactOrPlace()
 	lastPlaceTime = now
 
 	local blockPos, faceNormal, preciseHitPos = getTargetedBlock()
+
+	-- ═══════════════════════════════════════════════════════════════════════════
+	-- BUCKET HANDLING (Minecraft-style water pickup/placement)
+	-- ═══════════════════════════════════════════════════════════════════════════
+	local selectedBlock = GameState:Get("voxelWorld.selectedBlock")
+	local selectedSlot = GameState:Get("voxelWorld.selectedSlot") or 1
+
+	-- Empty bucket + targeting water source = pick up water
+	if isEmptyBucketEquipped() and blockPos then
+		local worldManager = blockAPI and blockAPI.worldManager
+		if worldManager then
+			local blockId = worldManager:GetBlock(blockPos.X, blockPos.Y, blockPos.Z)
+			if blockId == Constants.BlockType.WATER_SOURCE then
+				-- Send bucket pickup request to server
+				EventManager:SendToServer("RequestBucketPickup", {
+					x = blockPos.X,
+					y = blockPos.Y,
+					z = blockPos.Z,
+					hotbarSlot = selectedSlot
+				})
+				return true
+			end
+		end
+	end
+
+	-- Water bucket + right-click = place water source
+	if isWaterBucketEquipped() then
+		-- Need a valid surface to place water on
+		if blockPos and faceNormal then
+			local placeX = blockPos.X + faceNormal.X
+			local placeY = blockPos.Y + faceNormal.Y
+			local placeZ = blockPos.Z + faceNormal.Z
+
+			-- Send bucket place request to server
+			EventManager:SendToServer("RequestBucketPlace", {
+				x = placeX,
+				y = placeY,
+				z = placeZ,
+				hotbarSlot = selectedSlot,
+				targetBlockPos = blockPos,
+				faceNormal = faceNormal
+			})
+			return true
+		end
+		return false  -- Can't place water without a target
+	end
+	-- ═══════════════════════════════════════════════════════════════════════════
 	
 	-- Helper to check if a block position is within interaction range
 	local function isBlockInRange(pos)
@@ -836,11 +912,24 @@ local function interactOrPlace()
 		return false
 	end
 
-	-- Always place adjacent to clicked face (Minecraft logic)
-	-- Server will handle slab merging if applicable
-	local placeX = blockPos.X + faceNormal.X
-	local placeY = blockPos.Y + faceNormal.Y
-	local placeZ = blockPos.Z + faceNormal.Z
+	-- Determine placement position
+	-- If targeted block is replaceable (water, flowing water), place INTO that position
+	-- Otherwise, place adjacent to clicked face (Minecraft logic)
+	local placeX, placeY, placeZ
+	local worldManager = blockAPI and blockAPI.worldManager
+	local targetBlockId = worldManager and worldManager:GetBlock(blockPos.X, blockPos.Y, blockPos.Z)
+	
+	if targetBlockId and BlockRegistry:IsReplaceable(targetBlockId) and targetBlockId ~= BLOCK.AIR then
+		-- Target is replaceable (water/flowing water) - place INTO the water position
+		placeX = blockPos.X
+		placeY = blockPos.Y
+		placeZ = blockPos.Z
+	else
+		-- Normal placement - place adjacent to clicked face
+		placeX = blockPos.X + faceNormal.X
+		placeY = blockPos.Y + faceNormal.Y
+		placeZ = blockPos.Z + faceNormal.Z
+	end
 
 	local selectedSlot = GameState:Get("voxelWorld.selectedSlot") or 1
 
@@ -982,9 +1071,24 @@ local function startPlacing()
 				
 				-- Place block if we have valid target
 				if blockPos and faceNormal then
-					local placeX = blockPos.X + faceNormal.X
-					local placeY = blockPos.Y + faceNormal.Y
-					local placeZ = blockPos.Z + faceNormal.Z
+					-- Determine placement position
+					-- If targeted block is replaceable (water), place INTO that position
+					local worldManager = blockAPI and blockAPI.worldManager
+					local targetBlockId = worldManager and worldManager:GetBlock(blockPos.X, blockPos.Y, blockPos.Z)
+					local placeX, placeY, placeZ
+					
+					if targetBlockId and BlockRegistry:IsReplaceable(targetBlockId) and targetBlockId ~= Constants.BlockType.AIR then
+						-- Target is replaceable (water/flowing water) - place INTO the water position
+						placeX = blockPos.X
+						placeY = blockPos.Y
+						placeZ = blockPos.Z
+					else
+						-- Normal placement - place adjacent to clicked face
+						placeX = blockPos.X + faceNormal.X
+						placeY = blockPos.Y + faceNormal.Y
+						placeZ = blockPos.Z + faceNormal.Z
+					end
+					
 					local placeKey = string.format("%d,%d,%d", placeX, placeY, placeZ)
 					
 					-- Skip if we already sent a request for this exact position
@@ -992,12 +1096,11 @@ local function startPlacing()
 						local selectedBlock = GameState:Get("voxelWorld.selectedBlock")
 						if selectedBlock and selectedBlock.id then
 							-- Skip if already occupied (client check)
-							-- Allow placing through air and flowing water (flowing water is replaceable)
-							local worldManager = blockAPI and blockAPI.worldManager
+							-- Allow placing through air and replaceable blocks (water)
 							local canTryPlace = true
 							if worldManager then
 								local existing = worldManager:GetBlock(placeX, placeY, placeZ)
-								if existing and existing ~= Constants.BlockType.AIR and existing ~= Constants.BlockType.FLOWING_WATER then
+								if existing and existing ~= Constants.BlockType.AIR and not BlockRegistry:IsReplaceable(existing) then
 									canTryPlace = false
 									lastPlacedKey = nil -- Reset so we can try new positions
 								end

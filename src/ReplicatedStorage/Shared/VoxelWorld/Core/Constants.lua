@@ -157,18 +157,14 @@ local Constants = {
 		COBBLESTONE_MINION = 97,
 		COAL_MINION = 123,
 
-		-- Ores (6-tier progression: Copper → Iron → Steel → Bluesteel → Tungsten → Titanium)
+		-- Ores (4-tier progression: Copper → Iron → Steel → Bluesteel)
 		COPPER_ORE = 98,
 		BLUESTEEL_ORE = 101,   -- Tier 4 ore (drops Bluesteel Dust)
-		TUNGSTEN_ORE = 102,    -- Tier 5 ore
-		TITANIUM_ORE = 103,    -- Tier 6 ore
 
 		-- Ingots/materials
 		COPPER_INGOT = 105,
 		STEEL_INGOT = 108,     -- Alloy: Iron + 2 Coal
 		BLUESTEEL_INGOT = 109, -- Tier 4 ingot (Iron + 3 Coal + Bluesteel Dust)
-		TUNGSTEN_INGOT = 110,  -- Tier 5 ingot
-		TITANIUM_INGOT = 111,  -- Tier 6 ingot
 		BLUESTEEL_DUST = 115,  -- Drops from Bluesteel Ore
 
 		-- Full Blocks (9x ingots/items)
@@ -177,8 +173,6 @@ local Constants = {
 		IRON_BLOCK = 118,
 		STEEL_BLOCK = 119,
 		BLUESTEEL_BLOCK = 120,
-		TUNGSTEN_BLOCK = 121,
-		TITANIUM_BLOCK = 122,
 
 		-- Stained Glass blocks (16 colors)
 		WHITE_STAINED_GLASS = 123,
@@ -566,9 +560,13 @@ local Constants = {
 
 		-- Liquids
 		WATER_SOURCE = 380,
-		FLOWING_WATER = 381
+		FLOWING_WATER = 381,
 
-		-- Note: Block IDs continue from 382+
+		-- Bucket items
+		BUCKET = 382,
+		WATER_BUCKET = 383
+
+		-- Note: Block IDs continue from 384+
 	},
 
 	-- Mapping: Slab block ID → Full block ID (when two slabs combine)
@@ -611,8 +609,6 @@ local Constants = {
 		[30] = 30,   -- IRON_ORE → IRON_ORE (needs smelting)
 		[98] = 98,   -- COPPER_ORE → COPPER_ORE (needs smelting)
 		[101] = 115, -- BLUESTEEL_ORE → BLUESTEEL_DUST (drops dust item)
-		[102] = 102, -- TUNGSTEN_ORE → TUNGSTEN_ORE (needs smelting)
-		[103] = 103, -- TITANIUM_ORE → TITANIUM_ORE (needs smelting)
 	},
 
 	-- Mapping: Block ID → Drop item ID (blocks that transform when broken)

@@ -25,14 +25,12 @@ local Config = {
 		CAVE_SCALE = 50, -- Cave noise scale
 		CAVE_THRESHOLD = 0.3, -- Cave formation threshold
 
-		-- Ore generation (6-tier: Copper → Iron → Steel → Bluesteel → Tungsten → Titanium)
+		-- Ore generation (4-tier: Copper → Iron → Steel → Bluesteel)
 		ORE_CHANCES = {
 			COAL = 0.012,        -- Common fuel
 			COPPER = 0.010,      -- Tier 1 - abundant
 			IRON = 0.008,        -- Tier 2 - common
-			BLUESTEEL = 0.004,   -- Tier 4 - rare (drops dust)
-			TUNGSTEN = 0.003,    -- Tier 5 - very rare
-			TITANIUM = 0.002     -- Tier 6 - extremely rare
+			BLUESTEEL = 0.004    -- Tier 4 - rare (drops dust)
 		}
 	},
 

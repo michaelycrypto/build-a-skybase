@@ -1,7 +1,7 @@
 --[[
 	CombatConfig.lua
-	Shared PvP tuning constants with 6-tier weapon progression
-	Progression: Copper → Iron → Steel → Bluesteel → Tungsten → Titanium
+	Shared PvP tuning constants with 4-tier weapon progression
+	Progression: Copper → Iron → Steel → Bluesteel
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -10,49 +10,51 @@ local BlockProperties = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockP
 local CombatConfig = {}
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- WEAPON DAMAGE BY TIER (6-tier progression)
--- Damage scales smoothly from Copper (lowest) to Titanium (highest)
+-- WEAPON DAMAGE BY TIER (4-tier progression)
+-- Damage scales from Copper (lowest) to Bluesteel (highest)
 -- ═══════════════════════════════════════════════════════════════════════════
 
 -- Swords: Primary melee weapons, highest burst damage
 CombatConfig.SWORD_DAMAGE_BY_TIER = {
 	[BlockProperties.ToolTier.COPPER] = 4,      -- 2 hearts
 	[BlockProperties.ToolTier.IRON] = 6,        -- 3 hearts
-	[BlockProperties.ToolTier.STEEL] = 7,       -- 3.5 hearts
-	[BlockProperties.ToolTier.BLUESTEEL] = 9,   -- 4.5 hearts
-	[BlockProperties.ToolTier.TUNGSTEN] = 11,   -- 5.5 hearts
-	[BlockProperties.ToolTier.TITANIUM] = 13    -- 6.5 hearts
+	[BlockProperties.ToolTier.STEEL] = 8,       -- 4 hearts
+	[BlockProperties.ToolTier.BLUESTEEL] = 10,  -- 5 hearts
 }
 
 -- Axes: Strong melee, comparable to swords
 CombatConfig.AXE_DAMAGE_BY_TIER = {
 	[BlockProperties.ToolTier.COPPER] = 4,
 	[BlockProperties.ToolTier.IRON] = 6,
-	[BlockProperties.ToolTier.STEEL] = 7,
-	[BlockProperties.ToolTier.BLUESTEEL] = 9,
-	[BlockProperties.ToolTier.TUNGSTEN] = 11,
-	[BlockProperties.ToolTier.TITANIUM] = 13
+	[BlockProperties.ToolTier.STEEL] = 8,
+	[BlockProperties.ToolTier.BLUESTEEL] = 10,
 }
 
 -- Pickaxes: Medium melee damage
 CombatConfig.PICKAXE_DAMAGE_BY_TIER = {
 	[BlockProperties.ToolTier.COPPER] = 3,
 	[BlockProperties.ToolTier.IRON] = 5,
-	[BlockProperties.ToolTier.STEEL] = 6,
-	[BlockProperties.ToolTier.BLUESTEEL] = 8,
-	[BlockProperties.ToolTier.TUNGSTEN] = 10,
-	[BlockProperties.ToolTier.TITANIUM] = 12
+	[BlockProperties.ToolTier.STEEL] = 7,
+	[BlockProperties.ToolTier.BLUESTEEL] = 9,
 }
 
 -- Shovels: Lower melee damage
 CombatConfig.SHOVEL_DAMAGE_BY_TIER = {
 	[BlockProperties.ToolTier.COPPER] = 2,
 	[BlockProperties.ToolTier.IRON] = 4,
-	[BlockProperties.ToolTier.STEEL] = 5,
-	[BlockProperties.ToolTier.BLUESTEEL] = 7,
-	[BlockProperties.ToolTier.TUNGSTEN] = 9,
-	[BlockProperties.ToolTier.TITANIUM] = 11
+	[BlockProperties.ToolTier.STEEL] = 6,
+	[BlockProperties.ToolTier.BLUESTEEL] = 8,
 }
+
+-- Arrows: Ranged damage (bow adds base damage)
+CombatConfig.ARROW_DAMAGE_BY_TIER = {
+	[BlockProperties.ToolTier.COPPER] = 4,
+	[BlockProperties.ToolTier.IRON] = 6,
+	[BlockProperties.ToolTier.STEEL] = 8,
+	[BlockProperties.ToolTier.BLUESTEEL] = 10,
+}
+
+CombatConfig.BOW_BASE_DAMAGE = 2  -- Added to arrow damage
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- COMBAT MECHANICS
@@ -120,6 +122,12 @@ function CombatConfig.GetWeaponDamage(weaponType, tier)
         return damageTable[tier] or CombatConfig.HAND_DAMAGE
     end
     return CombatConfig.HAND_DAMAGE
+end
+
+-- Get arrow damage by tier (bow adds BOW_BASE_DAMAGE)
+function CombatConfig.GetArrowDamage(arrowTier)
+    local baseDamage = CombatConfig.ARROW_DAMAGE_BY_TIER[arrowTier] or 4
+    return baseDamage + CombatConfig.BOW_BASE_DAMAGE
 end
 
 return CombatConfig

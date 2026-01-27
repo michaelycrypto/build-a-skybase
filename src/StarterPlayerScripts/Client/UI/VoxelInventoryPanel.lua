@@ -26,6 +26,7 @@ local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
 local ArmorConfig = require(ReplicatedStorage.Configs.ArmorConfig)
 local BlockProperties = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockProperties)
 local SpawnEggConfig = require(ReplicatedStorage.Configs.SpawnEggConfig)
+local BlockRegistry = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockRegistry)
 local EventManager = require(ReplicatedStorage.Shared.EventManager)
 local GameConfig = require(ReplicatedStorage.Configs.GameConfig)
 local SoundManager = require(script.Parent.Parent.Managers.SoundManager)
@@ -37,6 +38,9 @@ local ViewportPreview = require(script.Parent.Parent.Managers.ViewportPreview)
 local UIScaler = require(script.Parent.Parent.Managers.UIScaler)
 local CharacterRigBuilder = require(script.Parent.CharacterRigBuilder)
 local HeldItemRenderer = require(ReplicatedStorage.Shared.HeldItemRenderer)
+local ItemModelLoader = require(ReplicatedStorage.Shared.ItemModelLoader)
+local ItemRegistry = require(ReplicatedStorage.Configs.ItemRegistry)
+local ItemPixelSizes = require(ReplicatedStorage.Shared.ItemPixelSizes)
 local BOLD_FONT = GameConfig.UI_SETTINGS.typography.fonts.bold
 local MIN_TEXT_SIZE = 20
 
@@ -88,29 +92,9 @@ local INVENTORY_CONFIG = {
 	OVERLAY_TRANSPARENCY = 0.35,
 }
 
-local TOOL_ASSET_NAME_BY_TYPE = {
-	[BlockProperties.ToolType.SWORD] = "Sword",
-	[BlockProperties.ToolType.AXE] = "Axe",
-	[BlockProperties.ToolType.SHOVEL] = "Shovel",
-	[BlockProperties.ToolType.PICKAXE] = "Pickaxe",
-	[BlockProperties.ToolType.BOW] = "Bow",
-}
-
-local TOOL_PX_BY_TYPE = {
-	[BlockProperties.ToolType.SWORD] = {x = 14, y = 14},
-	[BlockProperties.ToolType.AXE] = {x = 12, y = 14},
-	[BlockProperties.ToolType.SHOVEL] = {x = 12, y = 12},
-	[BlockProperties.ToolType.PICKAXE] = {x = 13, y = 13},
-	[BlockProperties.ToolType.BOW] = {x = 14, y = 14},
-}
-
-local TOOL_C0_BY_TYPE = {
-	[BlockProperties.ToolType.SWORD] = { pos = Vector3.new(0, -0.15, -1.5), rot = Vector3.new(225, 90, 0) },
-	[BlockProperties.ToolType.AXE] = { pos = Vector3.new(0, -0.15, -1.5), rot = Vector3.new(225, 90, 0) },
-	[BlockProperties.ToolType.SHOVEL] = { pos = Vector3.new(0, -0.15, -1.5), rot = Vector3.new(225, 90, 0) },
-	[BlockProperties.ToolType.PICKAXE] = { pos = Vector3.new(0, -0.15, -1.5), rot = Vector3.new(225, 90, 0) },
-	[BlockProperties.ToolType.BOW] = { pos = Vector3.new(0, 0.3, 0), rot = Vector3.new(225, 90, 0) },
-}
+-- Universal grip for character preview (same as HeldItemRenderer)
+local PREVIEW_GRIP = { pos = Vector3.new(0, -0.3, -0.5), rot = Vector3.new(0, 45, 0) }
+local STUDS_PER_PIXEL = 3 / 16
 
 local function cframeFromPosRotDeg(pos, rot)
 	return CFrame.new(pos) * CFrame.Angles(
@@ -120,37 +104,10 @@ local function cframeFromPosRotDeg(pos, rot)
 	)
 end
 
-local function findToolsContainer(assetsFolder)
-	if not assetsFolder then return nil end
-	local direct = assetsFolder:FindFirstChild("Tools")
-	if direct then return direct end
-	local expectedNames = {}
-	for _, name in pairs(TOOL_ASSET_NAME_BY_TYPE) do
-		expectedNames[name] = true
-	end
-	for _, child in ipairs(assetsFolder:GetChildren()) do
-		if child:IsA("Folder") or child:IsA("Model") then
-			for name in pairs(expectedNames) do
-				if child:FindFirstChild(name) then
-					return child
-				end
-			end
-		end
-	end
-	return nil
-end
-
-local function findMeshPartFromTemplate(template)
-	if not template then return nil end
-	if template:IsA("MeshPart") then
-		return template
-	end
-	return template:FindFirstChildWhichIsA("MeshPart", true)
-end
-
-local function scaleMeshToPixels(part, pxX, pxY)
-	local STUDS_PER_PIXEL = 3 / 16
-	local longestPx = math.max(pxX or 0, pxY or 0)
+local function scaleMeshToPixels(part, itemName)
+	local px = ItemPixelSizes.GetSize(itemName)
+	if not px then return end
+	local longestPx = math.max(px.x or 0, px.y or 0)
 	if longestPx <= 0 then return end
 	local targetStuds = longestPx * STUDS_PER_PIXEL
 	local size = part.Size
@@ -167,49 +124,18 @@ local function playInventoryPopSound()
 	end
 end
 
-local function cloneToolMesh(toolType)
-	local assetName = TOOL_ASSET_NAME_BY_TYPE[toolType]
-	if not assetName then return nil end
-
-	local toolsFolder = ReplicatedStorage:FindFirstChild("Tools")
-	if not toolsFolder then
-		local assetsFolder = ReplicatedStorage:FindFirstChild("Assets")
-		toolsFolder = assetsFolder and (assetsFolder:FindFirstChild("Tools") or findToolsContainer(assetsFolder)) or nil
-	end
-
-	local template = toolsFolder and toolsFolder:FindFirstChild(assetName)
-	local mesh = template and findMeshPartFromTemplate(template)
-	if not mesh then
-		return nil
-	end
-	return mesh:Clone()
-end
-
-local function createFallbackToolHandle(toolType)
-	-- Create a simple placeholder part if mesh isn't found
-	local part = Instance.new("Part")
-	part.Name = "ArmorToolHandle"
-	part.Size = Vector3.new(0.15, 1.2, 0.15) -- Simple stick shape
-	part.Color = Color3.fromRGB(139, 90, 43)  -- Wood brown
-	part.Material = Enum.Material.Wood
-	part.Massless = true
-	part.CanCollide = false
-	part.CastShadow = false
-	part.Anchored = false
-	return part
-end
-
 local function createToolHandle(itemId)
-	if not itemId or not ToolConfig.IsTool(itemId) then return nil end
-	local toolType = select(1, ToolConfig.GetBlockProps(itemId))
-	if not toolType then return nil end
+	if not itemId then return nil end
 
-	local handle = cloneToolMesh(toolType)
-	if not handle then
-		-- Fallback: create a simple placeholder if mesh not found
-		handle = createFallbackToolHandle(toolType)
-	end
+	-- Get item name for model lookup
+	local itemName = ItemRegistry.GetItemName(itemId)
+	if not itemName or itemName == "Unknown" then return nil end
 
+	-- Get model using unified loader
+	local mesh = ItemModelLoader.GetModelTemplate(itemName, itemId)
+	if not mesh then return nil end
+
+	local handle = mesh:Clone()
 	handle.Name = "ArmorToolHandle"
 	handle.Massless = true
 	handle.CanCollide = false
@@ -218,22 +144,29 @@ local function createToolHandle(itemId)
 		handle.Anchored = false
 	end)
 
-	local toolInfo = ToolConfig.GetToolInfo(itemId)
-	local textureId = toolInfo and toolInfo.image
+	-- Apply texture from ItemRegistry if needed
 	local hasExistingTexture = false
 	pcall(function()
 		local currentTexture = handle.TextureID
 		hasExistingTexture = currentTexture ~= nil and tostring(currentTexture) ~= ""
 	end)
-	if textureId and not hasExistingTexture then
-		pcall(function()
-			handle.TextureID = textureId
-		end)
+	if not hasExistingTexture then
+		local itemDef = ItemRegistry.GetItem(itemId)
+		local textureId = itemDef and itemDef.image
+		if textureId then
+			pcall(function()
+				handle.TextureID = textureId
+			end)
+		end
 	end
 
-	local px = TOOL_PX_BY_TYPE[toolType]
-	if px then
-		scaleMeshToPixels(handle, px.x, px.y)
+	-- Scale using ItemPixelSizes
+	scaleMeshToPixels(handle, itemName)
+
+	-- Return handle and toolType for backward compatibility
+	local toolType = nil
+	if ToolConfig.IsTool(itemId) then
+		toolType = select(1, ToolConfig.GetBlockProps(itemId))
 	end
 
 	return handle, toolType
@@ -244,10 +177,9 @@ local function GetItemDisplayName(itemId)
 		return nil
 	end
 
-	-- Check if it's a tool
+	-- Check if it's a tool (use unified ItemRegistry)
 	if ToolConfig.IsTool(itemId) then
-		local toolInfo = ToolConfig.GetToolInfo(itemId)
-		return toolInfo and toolInfo.name or "Tool"
+		return ItemRegistry.GetItemName(itemId)
 	end
 
 	-- Check if it's armor
@@ -1728,14 +1660,14 @@ function VoxelInventoryPanel:UpdateInventorySlotDisplay(index)
 			end
 
 			if isTool then
-				local info = ToolConfig.GetToolInfo(itemId)
+				local itemDef = ItemRegistry.GetItem(itemId)
 				local image = Instance.new("ImageLabel")
 				image.Name = "ToolImage"
 				image.Size = UDim2.new(1, -6, 1, -6)
 				image.Position = UDim2.new(0.5, 0, 0.5, 0)
 				image.AnchorPoint = Vector2.new(0.5, 0.5)
 				image.BackgroundTransparency = 1
-				image.Image = info and info.image or ""
+				image.Image = itemDef and itemDef.image or ""
 				image.ScaleType = Enum.ScaleType.Fit
 				image.Parent = slotFrame.iconContainer
 			elseif ArmorConfig.IsArmor(itemId) then
@@ -1771,6 +1703,20 @@ function VoxelInventoryPanel:UpdateInventorySlotDisplay(index)
 				icon.Position = UDim2.new(0.5, 0, 0.5, 0)
 				icon.AnchorPoint = Vector2.new(0.5, 0.5)
 				icon.Parent = slotFrame.iconContainer
+			elseif BlockRegistry:IsBucket(itemId) or BlockRegistry:IsPlaceable(itemId) == false then
+				-- Render non-placeable items (buckets, etc.) as 2D images
+				local blockDef = BlockRegistry:GetBlock(itemId)
+				local textureId = blockDef and blockDef.textures and blockDef.textures.all or ""
+				
+				local image = Instance.new("ImageLabel")
+				image.Name = "ItemImage"
+				image.Size = UDim2.new(1, -6, 1, -6)
+				image.Position = UDim2.new(0.5, 0, 0.5, 0)
+				image.AnchorPoint = Vector2.new(0.5, 0.5)
+				image.BackgroundTransparency = 1
+				image.Image = textureId
+				image.ScaleType = Enum.ScaleType.Fit
+				image.Parent = slotFrame.iconContainer
 			else
 				BlockViewportCreator.CreateBlockViewport(
 					slotFrame.iconContainer,
@@ -1823,14 +1769,14 @@ function VoxelInventoryPanel:UpdateHotbarSlotDisplay(index, slot, iconContainer,
 			end
 
 			if isTool then
-				local info = ToolConfig.GetToolInfo(itemId)
+				local itemDef = ItemRegistry.GetItem(itemId)
 				local image = Instance.new("ImageLabel")
 				image.Name = "ToolImage"
 				image.Size = UDim2.new(1, -6, 1, -6)
 				image.Position = UDim2.new(0.5, 0, 0.5, 0)
 				image.AnchorPoint = Vector2.new(0.5, 0.5)
 				image.BackgroundTransparency = 1
-				image.Image = info and info.image or ""
+				image.Image = itemDef and itemDef.image or ""
 				image.ScaleType = Enum.ScaleType.Fit
 				image.Parent = iconContainer
 			elseif ArmorConfig.IsArmor(itemId) then
@@ -1866,6 +1812,20 @@ function VoxelInventoryPanel:UpdateHotbarSlotDisplay(index, slot, iconContainer,
 				icon.Position = UDim2.new(0.5, 0, 0.5, 0)
 				icon.AnchorPoint = Vector2.new(0.5, 0.5)
 				icon.Parent = iconContainer
+			elseif BlockRegistry:IsBucket(itemId) or BlockRegistry:IsPlaceable(itemId) == false then
+				-- Render non-placeable items (buckets, etc.) as 2D images
+				local blockDef = BlockRegistry:GetBlock(itemId)
+				local textureId = blockDef and blockDef.textures and blockDef.textures.all or ""
+				
+				local image = Instance.new("ImageLabel")
+				image.Name = "ItemImage"
+				image.Size = UDim2.new(1, -6, 1, -6)
+				image.Position = UDim2.new(0.5, 0, 0.5, 0)
+				image.AnchorPoint = Vector2.new(0.5, 0.5)
+				image.BackgroundTransparency = 1
+				image.Image = textureId
+				image.ScaleType = Enum.ScaleType.Fit
+				image.Parent = iconContainer
 			else
 				BlockViewportCreator.CreateBlockViewport(
 					iconContainer,
@@ -2110,14 +2070,14 @@ function VoxelInventoryPanel:UpdateCursorDisplay()
 				end
 
 				if isTool then
-					local info = ToolConfig.GetToolInfo(itemId)
+					local itemDef = ItemRegistry.GetItem(itemId)
 					local image = Instance.new("ImageLabel")
 					image.Name = "ToolImage"
 					image.Size = UDim2.new(1, -6, 1, -6)
 					image.Position = UDim2.new(0.5, 0, 0.5, 0)
 					image.AnchorPoint = Vector2.new(0.5, 0.5)
 					image.BackgroundTransparency = 1
-					image.Image = info and info.image or ""
+					image.Image = itemDef and itemDef.image or ""
 					image.ScaleType = Enum.ScaleType.Fit
 					image.ZIndex = 1001
 					image.Parent = iconContainer
@@ -2156,6 +2116,21 @@ function VoxelInventoryPanel:UpdateCursorDisplay()
 					icon.AnchorPoint = Vector2.new(0.5, 0.5)
 					icon.ZIndex = 1001
 					icon.Parent = iconContainer
+				elseif BlockRegistry:IsBucket(itemId) or BlockRegistry:IsPlaceable(itemId) == false then
+					-- Render non-placeable items (buckets, etc.) as 2D images
+					local blockDef = BlockRegistry:GetBlock(itemId)
+					local textureId = blockDef and blockDef.textures and blockDef.textures.all or ""
+					
+					local image = Instance.new("ImageLabel")
+					image.Name = "ItemImage"
+					image.Size = UDim2.new(1, -6, 1, -6)
+					image.Position = UDim2.new(0.5, 0, 0.5, 0)
+					image.AnchorPoint = Vector2.new(0.5, 0.5)
+					image.BackgroundTransparency = 1
+					image.Image = textureId
+					image.ScaleType = Enum.ScaleType.Fit
+					image.ZIndex = 1001
+					image.Parent = iconContainer
 				else
 					BlockViewportCreator.CreateBlockViewport(
 						iconContainer,

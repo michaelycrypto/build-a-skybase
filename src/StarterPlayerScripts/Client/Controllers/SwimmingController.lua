@@ -409,10 +409,23 @@ local function update(dt)
 	local wasHeadUnderwater = isHeadUnderwater
 	isHeadUnderwater = swimState.headUnderwater
 	
+	-- Track previous state to detect transitions
+	local wasInWater = (currentState ~= "Dry")
+	
 	-- Update movement state based on water state
 	if swimState.state == WaterDetector.SwimState.DRY then
 		setState("Dry")
-		applyNormalMovement()
+		
+		-- Only apply normal movement when TRANSITIONING from water to dry
+		-- AND only if the player isn't sprinting (sprint controller manages sprint speed)
+		-- This prevents overwriting sprint speed every frame
+		if wasInWater then
+			-- Check if sprint controller has resumed sprinting (key was held)
+			local isSprinting = sprintController and sprintController.IsSprinting and sprintController:IsSprinting()
+			if not isSprinting then
+				applyNormalMovement()
+			end
+		end
 		
 		-- Disable swimming physics
 		if bodyVelocity then

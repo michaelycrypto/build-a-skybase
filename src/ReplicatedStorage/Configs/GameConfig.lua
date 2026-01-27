@@ -138,8 +138,8 @@ local GameConfig = {
 	-- Data Store settings
 	DataStore = {
 		PlayerData = {
-			DataStoreVersion = "PlayerData_v76", -- Keep in sync with PlayerDataStoreService (updated for 6-tier system)
-			SchemaVersion = 5, -- Increment to force migrations/default resets
+			DataStoreVersion = "PlayerData_v79", -- Keep in sync with PlayerDataStoreService (updated for 4-tier system)
+			SchemaVersion = 6, -- Increment to force migrations/default resets
 			AutoSaveInterval = 300 -- 5 minutes in seconds
 		},
 	},
@@ -160,8 +160,10 @@ local GameConfig = {
 			{slot = 2, itemId = 1011, count = 1},  -- Copper Axe (woodcutting)
 			{slot = 3, itemId = 1021, count = 1},  -- Copper Shovel (digging)
 			{slot = 4, itemId = 1041, count = 1},  -- Copper Sword (defense)
-			{slot = 5, itemId = 348, count = 16},  -- Bread (food)
-			{slot = 6, itemId = 380, count = 32},   -- Water Source Block
+			{slot = 5, itemId = 1051, count = 1},  -- Bow (ranged)
+			{slot = 6, itemId = 348, count = 16},  -- Bread (food)
+			{slot = 7, itemId = 380, count = 32},  -- Water Source Block
+			{slot = 8, itemId = 382, count = 4},   -- Bucket (water collection)
 		},
 
 		-- Inventory: Starter resources
@@ -169,6 +171,9 @@ local GameConfig = {
 			-- ═══════════════════════════════════════════════════════════════
 			-- STARTER KIT - Just enough to begin
 			-- ═══════════════════════════════════════════════════════════════
+
+			-- Ammo (for bow)
+			{itemId = 2001, count = 64},  -- Copper Arrows
 
 			-- Saplings (start tree farming immediately)
 			{itemId = 16, count = 4},   -- Oak Saplings

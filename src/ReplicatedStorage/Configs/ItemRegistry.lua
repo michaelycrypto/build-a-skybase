@@ -2,61 +2,95 @@
 	ItemRegistry.lua
 	CENTRALIZED ITEM MANAGEMENT SYSTEM
 
-	This module provides a unified way to look up item information across the codebase.
-	It aggregates data from:
-	- BlockRegistry (blocks, ores, ingots, materials)
-	- ToolConfig (tools)
-	- ArmorConfig (armor)
-	- SpawnEggConfig (mob spawn eggs)
+	This module provides a unified way to look up item information.
+	It aggregates data from ItemDefinitions (single source of truth) and BlockRegistry.
 
 	USAGE:
 		local ItemRegistry = require(ReplicatedStorage.Configs.ItemRegistry)
 
-		-- Get any item's display info
+		-- Get item info
 		local info = ItemRegistry.GetItem(itemId)
-		-- Returns: { name, icon, image, type, tier, ... }
+		local name = ItemRegistry.GetItemName(itemId)
+		local category = ItemRegistry.GetCategory(itemId)
 
-		-- Get item image/texture for UI
-		local image = ItemRegistry.GetItemImage(itemId)
-
-		-- Check item type
-		local isTool = ItemRegistry.IsType(itemId, "tool")
-		local isArmor = ItemRegistry.IsType(itemId, "armor")
-
-	ADDING NEW ITEMS:
-		1. Add BlockType enum in Constants.lua
-		2. Add block definition in BlockRegistry.lua (with textures)
-		3. If tool/armor, add to ToolConfig.lua or ArmorConfig.lua
-		4. Add crafting recipe in RecipeConfig.lua
-		5. That's it! ItemRegistry will automatically find it.
+		-- Check category
+		if ItemRegistry.GetCategory(itemId) == ItemRegistry.Category.FOOD then
+			-- eat it
+		end
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 -- Lazy-load to avoid circular dependencies
-local Constants, BlockRegistry, ToolConfig, ArmorConfig, SpawnEggConfig
+local ItemDefinitions, BlockRegistry, SpawnEggConfig, FoodConfig
 
 local function ensureLoaded()
-	if not Constants then
-		Constants = require(ReplicatedStorage.Shared.VoxelWorld.Core.Constants)
+	if not ItemDefinitions then
+		ItemDefinitions = require(ReplicatedStorage.Configs.ItemDefinitions)
 		BlockRegistry = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockRegistry)
-		ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
-		ArmorConfig = require(ReplicatedStorage.Configs.ArmorConfig)
 		SpawnEggConfig = require(ReplicatedStorage.Configs.SpawnEggConfig)
+		FoodConfig = require(ReplicatedStorage.Shared.FoodConfig)
 	end
 end
 
 local ItemRegistry = {}
 
--- Item type constants
+-- Re-export Category from ItemDefinitions
+ItemRegistry.Category = {
+	TOOL = "tool",
+	WEAPON = "weapon",
+	RANGED = "ranged",
+	ARMOR = "armor",
+	ARROW = "arrow",
+	FOOD = "food",
+	MATERIAL = "material",
+	DYE = "dye",
+	MOB_EGG = "mob_egg",
+	BLOCK = "block",
+	UNKNOWN = "unknown",
+}
+
+-- Legacy type mapping (for backward compatibility)
 ItemRegistry.ItemType = {
 	BLOCK = "block",
 	TOOL = "tool",
 	ARMOR = "armor",
 	MATERIAL = "material",
-	SPAWN_EGG = "spawn_egg",
+	SPAWN_EGG = "mob_egg",
 	UNKNOWN = "unknown"
 }
+
+--[[
+	Get item category
+	@param itemId: number
+	@return string - Category constant
+]]
+function ItemRegistry.GetCategory(itemId)
+	ensureLoaded()
+	if not itemId or itemId == 0 then return ItemRegistry.Category.UNKNOWN end
+
+	-- Check ItemDefinitions first (tools, weapons, armor, etc.)
+	local item = ItemDefinitions.GetById(itemId)
+	if item and item.category then
+		return item.category
+	end
+
+	-- Check spawn eggs
+	if SpawnEggConfig.IsSpawnEgg(itemId) then
+		return ItemRegistry.Category.MOB_EGG
+	end
+
+	-- Check BlockRegistry for blocks
+	local blockDef = BlockRegistry.Blocks[itemId]
+	if blockDef then
+		if blockDef.craftingMaterial then
+			return ItemRegistry.Category.MATERIAL
+		end
+		return ItemRegistry.Category.BLOCK
+	end
+
+	return ItemRegistry.Category.UNKNOWN
+end
 
 --[[
 	Get comprehensive item information
@@ -70,65 +104,50 @@ function ItemRegistry.GetItem(itemId)
 		return nil
 	end
 
-	-- Check if it's a tool
-	local toolInfo = ToolConfig.GetToolInfo(itemId)
-	if toolInfo then
+	-- Check ItemDefinitions first
+	local item = ItemDefinitions.GetById(itemId)
+	if item then
 		return {
 			id = itemId,
-			name = toolInfo.name,
-			icon = toolInfo.icon,
-			image = toolInfo.image,
-			type = ItemRegistry.ItemType.TOOL,
-			toolType = toolInfo.toolType,
-			tier = toolInfo.tier,
-			tierName = ToolConfig.GetTierName(toolInfo.tier),
-			tierColor = ToolConfig.GetTierColor(toolInfo.tier)
+			name = item.name,
+			image = item.texture,
+			category = item.category,
+			type = item.category, -- Legacy compatibility
+			tier = item.tier,
+			tierName = item.tier and ItemDefinitions.GetTierName(item.tier),
+			tierColor = item.tier and ItemDefinitions.GetTierColor(item.tier),
+			-- Category-specific fields
+			toolType = item.toolType,
+			weaponType = item.weaponType,
+			slot = item.slot,
+			defense = item.defense,
+			toughness = item.toughness,
+			hunger = item.hunger,
+			saturation = item.saturation,
+			color = item.color,
 		}
 	end
 
-	-- Check if it's armor
-	local armorInfo = ArmorConfig.GetArmorInfo(itemId)
-	if armorInfo then
-		return {
-			id = itemId,
-			name = armorInfo.name,
-			icon = armorInfo.icon,
-			image = armorInfo.image,
-			type = ItemRegistry.ItemType.ARMOR,
-			slot = armorInfo.slot,
-			tier = armorInfo.tier,
-			tierName = ArmorConfig.GetTierName(armorInfo.tier),
-			tierColor = ArmorConfig.GetTierColor(armorInfo.tier),
-			defense = armorInfo.defense,
-			toughness = armorInfo.toughness,
-			setId = armorInfo.setId
-		}
-	end
-
-	-- Check if it's a spawn egg
+	-- Check spawn eggs
 	if SpawnEggConfig.IsSpawnEgg(itemId) then
 		local eggInfo = SpawnEggConfig.GetSpawnEgg(itemId)
 		if eggInfo then
 			return {
 				id = itemId,
 				name = eggInfo.name,
-				icon = "🥚",
 				image = eggInfo.image,
+				category = ItemRegistry.Category.MOB_EGG,
 				type = ItemRegistry.ItemType.SPAWN_EGG,
 				mobType = eggInfo.mobType
 			}
 		end
 	end
 
-	-- Check if it's a block/material
+	-- Check BlockRegistry
 	local blockDef = BlockRegistry.Blocks[itemId]
 	if blockDef then
-		local itemType = ItemRegistry.ItemType.BLOCK
-		if blockDef.craftingMaterial then
-			itemType = ItemRegistry.ItemType.MATERIAL
-		end
+		local category = blockDef.craftingMaterial and ItemRegistry.Category.MATERIAL or ItemRegistry.Category.BLOCK
 
-		-- Get texture as image
 		local image = nil
 		if blockDef.textures then
 			image = blockDef.textures.all or blockDef.textures.side or blockDef.textures.top
@@ -137,9 +156,9 @@ function ItemRegistry.GetItem(itemId)
 		return {
 			id = itemId,
 			name = blockDef.name,
-			icon = "📦",
 			image = image,
-			type = itemType,
+			category = category,
+			type = category,
 			color = blockDef.color,
 			solid = blockDef.solid,
 			transparent = blockDef.transparent,
@@ -152,18 +171,8 @@ function ItemRegistry.GetItem(itemId)
 end
 
 --[[
-	Get just the image/texture for an item (for UI display)
-	@param itemId: number - The item ID
-	@return string | nil - Image asset ID or nil
-]]
-function ItemRegistry.GetItemImage(itemId)
-	local info = ItemRegistry.GetItem(itemId)
-	return info and info.image or nil
-end
-
---[[
 	Get item name
-	@param itemId: number - The item ID
+	@param itemId: number
 	@return string - Item name or "Unknown"
 ]]
 function ItemRegistry.GetItemName(itemId)
@@ -172,19 +181,34 @@ function ItemRegistry.GetItemName(itemId)
 end
 
 --[[
-	Check if an item is of a specific type
-	@param itemId: number - The item ID
-	@param itemType: string - Type to check (use ItemRegistry.ItemType constants)
-	@return boolean
+	Get item image/texture for UI
+	@param itemId: number
+	@return string | nil
 ]]
-function ItemRegistry.IsType(itemId, itemType)
+function ItemRegistry.GetItemImage(itemId)
 	local info = ItemRegistry.GetItem(itemId)
-	return info and info.type == itemType
+	return info and info.image or nil
 end
 
 --[[
-	Check if an item ID is valid
-	@param itemId: number - The item ID
+	Check if item is of a specific category
+	@param itemId: number
+	@param category: string
+	@return boolean
+]]
+function ItemRegistry.IsCategory(itemId, category)
+	return ItemRegistry.GetCategory(itemId) == category
+end
+
+-- Legacy: Check if item is of a specific type
+function ItemRegistry.IsType(itemId, itemType)
+	local info = ItemRegistry.GetItem(itemId)
+	return info and (info.type == itemType or info.category == itemType)
+end
+
+--[[
+	Check if item ID is valid
+	@param itemId: number
 	@return boolean
 ]]
 function ItemRegistry.IsValidItem(itemId)
@@ -192,58 +216,78 @@ function ItemRegistry.IsValidItem(itemId)
 end
 
 --[[
-	Get the type of an item
-	@param itemId: number - The item ID
-	@return string - Item type constant
+	Get item type (legacy)
+	@param itemId: number
+	@return string
 ]]
 function ItemRegistry.GetItemType(itemId)
-	local info = ItemRegistry.GetItem(itemId)
-	return info and info.type or ItemRegistry.ItemType.UNKNOWN
+	return ItemRegistry.GetCategory(itemId)
 end
 
 --[[
 	Check if item should stack
-	@param itemId: number - The item ID
+	@param itemId: number
 	@return boolean
 ]]
 function ItemRegistry.IsStackable(itemId)
 	ensureLoaded()
-
-	-- Tools and armor don't stack (except arrows)
-	if ToolConfig.IsTool(itemId) then
-		local toolInfo = ToolConfig.GetToolInfo(itemId)
-		-- Arrows are stackable
-		return toolInfo and toolInfo.toolType == "arrow"
-	end
-
-	if ArmorConfig.IsArmor(itemId) then
-		return false
-	end
-
-	-- Everything else stacks
-	return true
+	return ItemDefinitions.IsStackable(itemId)
 end
 
 --[[
-	Get max stack size for an item
-	@param itemId: number - The item ID
-	@return number - Max stack size (1 for tools/armor, 64 for blocks)
+	Get max stack size
+	@param itemId: number
+	@return number
 ]]
 function ItemRegistry.GetMaxStackSize(itemId)
-	if not ItemRegistry.IsStackable(itemId) then
-		return 1
-	end
-	return 64
+	ensureLoaded()
+	return ItemDefinitions.GetMaxStack(itemId)
 end
 
 --[[
-	Get tier color for tiered items (tools, armor)
-	@param itemId: number - The item ID
+	Get tier color
+	@param itemId: number
 	@return Color3 | nil
 ]]
 function ItemRegistry.GetTierColor(itemId)
 	local info = ItemRegistry.GetItem(itemId)
 	return info and info.tierColor or nil
+end
+
+--[[
+	Category check shortcuts
+]]
+function ItemRegistry.IsTool(itemId) return ItemRegistry.GetCategory(itemId) == ItemRegistry.Category.TOOL end
+function ItemRegistry.IsWeapon(itemId) return ItemRegistry.GetCategory(itemId) == ItemRegistry.Category.WEAPON end
+function ItemRegistry.IsRanged(itemId) return ItemRegistry.GetCategory(itemId) == ItemRegistry.Category.RANGED end
+function ItemRegistry.IsArmor(itemId) return ItemRegistry.GetCategory(itemId) == ItemRegistry.Category.ARMOR end
+function ItemRegistry.IsArrow(itemId) return ItemRegistry.GetCategory(itemId) == ItemRegistry.Category.ARROW end
+function ItemRegistry.IsMaterial(itemId) return ItemRegistry.GetCategory(itemId) == ItemRegistry.Category.MATERIAL end
+function ItemRegistry.IsDye(itemId) return ItemRegistry.GetCategory(itemId) == ItemRegistry.Category.DYE end
+function ItemRegistry.IsMobEgg(itemId) return ItemRegistry.GetCategory(itemId) == ItemRegistry.Category.MOB_EGG end
+function ItemRegistry.IsBlock(itemId) return ItemRegistry.GetCategory(itemId) == ItemRegistry.Category.BLOCK end
+
+-- Food check includes both ItemDefinitions and FoodConfig
+function ItemRegistry.IsFood(itemId)
+	ensureLoaded()
+	if ItemRegistry.GetCategory(itemId) == ItemRegistry.Category.FOOD then return true end
+	return FoodConfig.IsFood(itemId)
+end
+
+--[[
+	Check if item is combat-related (deals damage)
+]]
+function ItemRegistry.IsCombatItem(itemId)
+	local cat = ItemRegistry.GetCategory(itemId)
+	return cat == ItemRegistry.Category.WEAPON or cat == ItemRegistry.Category.RANGED or cat == ItemRegistry.Category.TOOL
+end
+
+--[[
+	Check if item is held in hand (not placed in world)
+]]
+function ItemRegistry.IsHeldItem(itemId)
+	local cat = ItemRegistry.GetCategory(itemId)
+	return cat ~= ItemRegistry.Category.BLOCK
 end
 
 --[[
@@ -254,24 +298,23 @@ function ItemRegistry.DebugPrintAll()
 
 	print("=== ItemRegistry Debug ===")
 
-	-- Print tools
-	print("\n-- TOOLS --")
-	for id, tool in pairs(ToolConfig.Items) do
-		print(string.format("  [%d] %s (%s)", id, tool.name, tool.toolType))
+	local counts = {}
+	for _, cat in pairs(ItemRegistry.Category) do
+		counts[cat] = 0
 	end
 
-	-- Print armor
-	print("\n-- ARMOR --")
-	for id, armor in pairs(ArmorConfig.Items) do
-		print(string.format("  [%d] %s (%s)", id, armor.name, armor.slot))
+	-- Count by category
+	for _, categoryTable in ipairs(ItemDefinitions.AllCategories) do
+		for _, item in pairs(categoryTable) do
+			local cat = item.category or "unknown"
+			counts[cat] = (counts[cat] or 0) + 1
+		end
 	end
 
-	-- Print blocks with textures
-	print("\n-- BLOCKS/MATERIALS --")
-	for id, block in pairs(BlockRegistry.Blocks) do
-		if block.textures then
-			local texture = block.textures.all or "none"
-			print(string.format("  [%d] %s (texture: %s)", id, block.name, tostring(texture):sub(1, 30)))
+	print("\n-- ITEM COUNTS BY CATEGORY --")
+	for cat, count in pairs(counts) do
+		if count > 0 then
+			print(string.format("  %s: %d", cat, count))
 		end
 	end
 
@@ -279,4 +322,3 @@ function ItemRegistry.DebugPrintAll()
 end
 
 return ItemRegistry
-

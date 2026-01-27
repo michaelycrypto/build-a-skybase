@@ -1001,6 +1001,23 @@ function EventManager:CreateServerEventConfig(services)
 				end
 			end
 		},
+		-- Bucket events (Minecraft-style water pickup/placement)
+		{
+			name = "RequestBucketPickup",
+			handler = function(player, data)
+				if services.VoxelWorldService and services.VoxelWorldService.HandleBucketPickup then
+					services.VoxelWorldService:HandleBucketPickup(player, data)
+				end
+			end
+		},
+		{
+			name = "RequestBucketPlace",
+			handler = function(player, data)
+				if services.VoxelWorldService and services.VoxelWorldService.HandleBucketPlace then
+					services.VoxelWorldService:HandleBucketPlace(player, data)
+				end
+			end
+		},
 		-- PvP melee
 		{
 			name = "PlayerMeleeHit",

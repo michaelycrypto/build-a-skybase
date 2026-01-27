@@ -44,18 +44,14 @@ ArmorConfig.TierDefense = {
 	[2] = { helmet = 2, chestplate = 4, leggings = 3, boots = 1, total = 10 },
 	[3] = { helmet = 2, chestplate = 5, leggings = 4, boots = 2, total = 13 },
 	[4] = { helmet = 3, chestplate = 6, leggings = 5, boots = 2, total = 16 },
-	[5] = { helmet = 4, chestplate = 7, leggings = 6, boots = 3, total = 20 },
-	[6] = { helmet = 5, chestplate = 8, leggings = 7, boots = 4, total = 24 },
 }
 
 ArmorConfig.TierToughness = {
-	[1] = 0, [2] = 0, [3] = 0,
-	[4] = 1, [5] = 2, [6] = 3,
+	[1] = 0, [2] = 0, [3] = 0, [4] = 1,
 }
 
 ArmorConfig.TierKnockbackResist = {
-	[1] = 0, [2] = 0, [3] = 0,
-	[4] = 0.05, [5] = 0.10, [6] = 0.15,
+	[1] = 0, [2] = 0, [3] = 0, [4] = 0.05,
 }
 
 -- ═══════════════════════════════════════════════════════════════════════════
@@ -98,20 +94,10 @@ ArmorConfig.SetBonuses = {
 	},
 	bluesteel = {
 		name = "Bluesteel Set",
-		description = "Lightweight: +5% movement speed",
-		speedBonus = 0.05
-	},
-	tungsten = {
-		name = "Tungsten Set",
-		description = "+10% melee damage",
+		description = "Lightweight: +5% movement speed, +10% melee damage",
+		speedBonus = 0.05,
 		meleeBonus = 0.10
 	},
-	titanium = {
-		name = "Titanium Set",
-		description = "+15% all damage, +10% knockback resist",
-		damageBonus = 0.15,
-		knockbackResist = 0.10
-	}
 }
 
 -- ═══════════════════════════════════════════════════════════════════════════

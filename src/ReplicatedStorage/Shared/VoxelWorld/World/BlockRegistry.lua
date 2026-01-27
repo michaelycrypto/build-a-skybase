@@ -2151,7 +2151,7 @@ BlockRegistry.Blocks = {
 	[Constants.BlockType.BEETROOT_CROP_3] = { name = "Beetroots (Stage 3)", solid = false, transparent = true, color = Color3.fromRGB(180, 200, 120), textures = { all = "rbxassetid://105511567346427" }, crossShape = true },
 
 	-- ═══════════════════════════════════════════════════════════════════════════
-	-- ORES (6-tier progression: Copper → Iron → Steel → Bluesteel → Tungsten → Titanium)
+	-- ORES (4-tier progression: Copper → Iron → Steel → Bluesteel)
 	-- ═══════════════════════════════════════════════════════════════════════════
 
 	[Constants.BlockType.COPPER_ORE] = {
@@ -2168,22 +2168,6 @@ BlockRegistry.Blocks = {
 		transparent = false,
 		color = Color3.fromRGB(149, 190, 246), -- #95bef6
 		textures = { all = "rbxassetid://101828645932065" },
-		crossShape = false
-	},
-	[Constants.BlockType.TUNGSTEN_ORE] = {
-		name = "Tungsten Ore",
-		solid = true,
-		transparent = false,
-		color = Color3.fromRGB(232, 244, 255), -- #e8f4ff
-		textures = { all = "rbxassetid://133328089014739" },
-		crossShape = false
-	},
-	[Constants.BlockType.TITANIUM_ORE] = {
-		name = "Titanium Ore",
-		solid = true,
-		transparent = false,
-		color = Color3.fromRGB(193, 242, 242), -- #c1f2f2
-		textures = { all = "rbxassetid://70831716548382" },
 		crossShape = false
 	},
 
@@ -2215,24 +2199,6 @@ BlockRegistry.Blocks = {
 		transparent = true,
 		color = Color3.fromRGB(149, 190, 246), -- #95bef6
 		textures = { all = "rbxassetid://121436448752857" },
-		crossShape = true,
-		craftingMaterial = true
-	},
-	[Constants.BlockType.TUNGSTEN_INGOT] = {
-		name = "Tungsten Ingot",
-		solid = false,
-		transparent = true,
-		color = Color3.fromRGB(232, 244, 255), -- #e8f4ff
-		textures = { all = "rbxassetid://136722055090955" },
-		crossShape = true,
-		craftingMaterial = true
-	},
-	[Constants.BlockType.TITANIUM_INGOT] = {
-		name = "Titanium Ingot",
-		solid = false,
-		transparent = true,
-		color = Color3.fromRGB(193, 242, 242), -- #c1f2f2
-		textures = { all = "rbxassetid://72533241452362" },
 		crossShape = true,
 		craftingMaterial = true
 	},
@@ -2288,22 +2254,6 @@ BlockRegistry.Blocks = {
 		transparent = false,
 		color = Color3.fromRGB(149, 190, 246), -- #95bef6
 		textures = { all = "rbxassetid://74339957046108" },
-		crossShape = false
-	},
-	[Constants.BlockType.TUNGSTEN_BLOCK] = {
-		name = "Tungsten Block",
-		solid = true,
-		transparent = false,
-		color = Color3.fromRGB(232, 244, 255), -- #e8f4ff
-		textures = { all = "rbxassetid://91018177845956" },
-		crossShape = false
-	},
-	[Constants.BlockType.TITANIUM_BLOCK] = {
-		name = "Titanium Block",
-		solid = true,
-		transparent = false,
-		color = Color3.fromRGB(193, 242, 242), -- #c1f2f2
-		textures = { all = "rbxassetid://120386947860707" },
 		crossShape = false
 	},
 
@@ -2634,6 +2584,37 @@ BlockRegistry.Blocks = {
 		crossShape = false,
 		liquid = true,
 		replaceable = true
+	},
+
+	-- ═══════════════════════════════════════════════════════════════════════════
+	-- BUCKET ITEMS
+	-- ═══════════════════════════════════════════════════════════════════════════
+	[Constants.BlockType.BUCKET] = {
+		name = "Bucket",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(150, 150, 150),
+		textures = {
+			all = "rbxassetid://116062981484263"
+		},
+		crossShape = false,
+		placeable = false,  -- Cannot be placed as a block
+		craftingMaterial = false,
+		isBucket = true  -- Special flag for bucket behavior
+	},
+	[Constants.BlockType.WATER_BUCKET] = {
+		name = "Water Bucket",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(64, 164, 223),
+		textures = {
+			all = "rbxassetid://93357317651884"
+		},
+		crossShape = false,
+		placeable = false,  -- Cannot be placed as a block (places water instead)
+		craftingMaterial = false,
+		isBucket = true,  -- Special flag for bucket behavior
+		bucketContents = Constants.BlockType.WATER_SOURCE  -- What this bucket places
 	},
 
 	-- ═══════════════════════════════════════════════════════════════════════════
@@ -4009,6 +3990,11 @@ function BlockRegistry:IsPlaceable(blockId: number): boolean
         return false
     end
 
+    -- Explicitly non-placeable items (buckets, etc.)
+    if block.placeable == false then
+        return false
+    end
+
     -- Crafting-only materials are not placeable (e.g., sticks, ingots, gems, apples)
     if block.craftingMaterial == true then
         return false
@@ -4035,6 +4021,39 @@ function BlockRegistry:IsPlaceable(blockId: number): boolean
 
     -- All other block shapes (solid cubes, stairs, slabs, fences, interactables) are placeable
     return true
+end
+
+-- Check if an item is a bucket (empty or filled)
+function BlockRegistry:IsBucket(blockId: number): boolean
+    if not blockId then return false end
+    local block = self:GetBlock(blockId)
+    return block.isBucket == true
+end
+
+-- Check if an item is an empty bucket
+function BlockRegistry:IsEmptyBucket(blockId: number): boolean
+    return blockId == Constants.BlockType.BUCKET
+end
+
+-- Check if an item is a filled bucket (water bucket, lava bucket, etc.)
+function BlockRegistry:IsFilledBucket(blockId: number): boolean
+    if not blockId then return false end
+    local block = self:GetBlock(blockId)
+    return block.isBucket == true and block.bucketContents ~= nil
+end
+
+-- Get what a filled bucket places when used
+function BlockRegistry:GetBucketContents(blockId: number): number?
+    if not blockId then return nil end
+    local block = self:GetBlock(blockId)
+    return block.bucketContents
+end
+
+-- Check if a block requires a bucket to be targeted for pickup (water source, lava source)
+function BlockRegistry:RequiresBucketToTarget(blockId: number): boolean
+    -- Water and lava source blocks can only be targeted when holding a bucket
+    return blockId == Constants.BlockType.WATER_SOURCE
+    -- Add LAVA_SOURCE here when implemented
 end
 
 return BlockRegistry

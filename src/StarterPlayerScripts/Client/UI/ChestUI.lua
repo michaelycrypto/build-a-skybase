@@ -1000,6 +1000,25 @@ function ChestUI:UpdateChestSlotDisplay(index)
 				icon.Position = UDim2.new(0.5, 0, 0.5, 0)
 				icon.AnchorPoint = Vector2.new(0.5, 0.5)
 				icon.Parent = iconContainer
+			elseif BlockRegistry:IsBucket(itemId) or BlockRegistry:IsPlaceable(itemId) == false then
+				-- Render non-placeable items (buckets, etc.) as 2D images
+				for _, child in ipairs(iconContainer:GetChildren()) do
+					if not child:IsA("UILayout") and not child:IsA("UIPadding") and not child:IsA("UICorner") then
+						child:Destroy()
+					end
+				end
+				local blockDef = BlockRegistry:GetBlock(itemId)
+				local textureId = blockDef and blockDef.textures and blockDef.textures.all or ""
+				
+				local image = Instance.new("ImageLabel")
+				image.Name = "ItemImage"
+				image.Size = UDim2.new(1, -6, 1, -6)
+				image.Position = UDim2.new(0.5, 0, 0.5, 0)
+				image.AnchorPoint = Vector2.new(0.5, 0.5)
+				image.BackgroundTransparency = 1
+				image.Image = textureId
+				image.ScaleType = Enum.ScaleType.Fit
+				image.Parent = iconContainer
 			else
 				-- Decide between flat image vs 3D block and rebuild on type mismatch
 				local blockDef = BlockRegistry.Blocks[itemId]
@@ -1132,6 +1151,25 @@ function ChestUI:UpdateInventorySlotDisplay(index)
 				icon.Position = UDim2.new(0.5, 0, 0.5, 0)
 				icon.AnchorPoint = Vector2.new(0.5, 0.5)
 				icon.Parent = iconContainer
+			elseif BlockRegistry:IsBucket(itemId) or BlockRegistry:IsPlaceable(itemId) == false then
+				-- Render non-placeable items (buckets, etc.) as 2D images
+				for _, child in ipairs(iconContainer:GetChildren()) do
+					if not child:IsA("UILayout") and not child:IsA("UIPadding") and not child:IsA("UICorner") then
+						child:Destroy()
+					end
+				end
+				local blockDef = BlockRegistry:GetBlock(itemId)
+				local textureId = blockDef and blockDef.textures and blockDef.textures.all or ""
+				
+				local image = Instance.new("ImageLabel")
+				image.Name = "ItemImage"
+				image.Size = UDim2.new(1, -6, 1, -6)
+				image.Position = UDim2.new(0.5, 0, 0.5, 0)
+				image.AnchorPoint = Vector2.new(0.5, 0.5)
+				image.BackgroundTransparency = 1
+				image.Image = textureId
+				image.ScaleType = Enum.ScaleType.Fit
+				image.Parent = iconContainer
 			else
 				-- Decide between flat image vs 3D block and rebuild on type mismatch
 				local blockDef = BlockRegistry.Blocks[itemId]
@@ -1249,6 +1287,20 @@ function ChestUI:UpdateHotbarSlotDisplay(index)
 					overlay.ZIndex = 4
 					overlay.Parent = iconContainer
 				end
+			elseif BlockRegistry:IsBucket(itemId) or BlockRegistry:IsPlaceable(itemId) == false then
+				-- Render non-placeable items (buckets, etc.) as 2D images
+				local blockDef = BlockRegistry:GetBlock(itemId)
+				local textureId = blockDef and blockDef.textures and blockDef.textures.all or ""
+				
+				local image = Instance.new("ImageLabel")
+				image.Name = "ItemImage"
+				image.Size = UDim2.new(1, -6, 1, -6)
+				image.Position = UDim2.new(0.5, 0, 0.5, 0)
+				image.AnchorPoint = Vector2.new(0.5, 0.5)
+				image.BackgroundTransparency = 1
+				image.Image = textureId
+				image.ScaleType = Enum.ScaleType.Fit
+				image.Parent = iconContainer
 			else
 				BlockViewportCreator.CreateBlockViewport(iconContainer, itemId, UDim2.new(1, 0, 1, 0))
 			end
@@ -1438,6 +1490,21 @@ function ChestUI:UpdateCursorDisplay()
 					overlay.ZIndex = 1002
 					overlay.Parent = iconContainer
 				end
+			elseif BlockRegistry:IsBucket(itemId) or BlockRegistry:IsPlaceable(itemId) == false then
+				-- Render non-placeable items (buckets, etc.) as 2D images
+				local blockDef = BlockRegistry:GetBlock(itemId)
+				local textureId = blockDef and blockDef.textures and blockDef.textures.all or ""
+				
+				local image = Instance.new("ImageLabel")
+				image.Name = "ItemImage"
+				image.Size = UDim2.new(1, -6, 1, -6)
+				image.Position = UDim2.new(0.5, 0, 0.5, 0)
+				image.AnchorPoint = Vector2.new(0.5, 0.5)
+				image.BackgroundTransparency = 1
+				image.Image = textureId
+				image.ScaleType = Enum.ScaleType.Fit
+				image.ZIndex = 1001
+				image.Parent = iconContainer
 			else
 				BlockViewportCreator.CreateBlockViewport(iconContainer, itemId, UDim2.new(1, 0, 1, 0))
 			end

@@ -122,8 +122,6 @@ assign(BlockBreakFeedbackConfig.Material.STONE, {
 	Constants.BlockType.IRON_ORE,
 	Constants.BlockType.COPPER_ORE,
 	Constants.BlockType.BLUESTEEL_ORE,
-	Constants.BlockType.TUNGSTEN_ORE,
-	Constants.BlockType.TITANIUM_ORE,
 	Constants.BlockType.FURNACE,
 	Constants.BlockType.GLASS,
 	Constants.BlockType.BEDROCK,
@@ -133,8 +131,6 @@ assign(BlockBreakFeedbackConfig.Material.STONE, {
 	Constants.BlockType.IRON_BLOCK,
 	Constants.BlockType.STEEL_BLOCK,
 	Constants.BlockType.BLUESTEEL_BLOCK,
-	Constants.BlockType.TUNGSTEN_BLOCK,
-	Constants.BlockType.TITANIUM_BLOCK,
 })
 
 BlockBreakFeedbackConfig.BlockMaterialMap = blockMaterialMap

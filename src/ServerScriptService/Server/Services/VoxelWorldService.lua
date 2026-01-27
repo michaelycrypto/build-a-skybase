@@ -3180,4 +3180,231 @@ function VoxelWorldService:Destroy()
 	print("VoxelWorldService: Cleanup complete")
 end
 
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- BUCKET HANDLERS (Minecraft-style water pickup/placement)
+-- ═══════════════════════════════════════════════════════════════════════════════
+
+--[[
+	Handle bucket pickup (empty bucket + water source = water bucket)
+	@param player: Player - The player performing the action
+	@param data: table - {x, y, z, hotbarSlot}
+]]
+function VoxelWorldService:HandleBucketPickup(player, data)
+	if not data or not data.x or not data.y or not data.z or not data.hotbarSlot then
+		warn("Invalid bucket pickup data from", player.Name)
+		return
+	end
+
+	local x, y, z = data.x, data.y, data.z
+	local hotbarSlot = data.hotbarSlot
+	local playerData = self.players[player]
+	if not playerData then return end
+
+	-- Hub worlds are read-only
+	if self:IsHubWorld() then
+		self:RejectBlockChange(player, { x = x, y = y, z = z }, "hub_read_only")
+		return
+	end
+
+	-- Distance check
+	local character = player.Character
+	if not character then return end
+	local head = character:FindFirstChild("Head")
+	if not head then return end
+
+	local bs = Constants.BLOCK_SIZE
+	local blockCenter = Vector3.new(x * bs + bs * 0.5, y * bs + bs * 0.5, z * bs + bs * 0.5)
+	local distance = (blockCenter - head.Position).Magnitude
+	local maxReach = 4.5 * bs + 2
+
+	if distance > maxReach then
+		self:RejectBlockChange(player, { x = x, y = y, z = z }, "too_far")
+		return
+	end
+
+	-- Verify the block is actually a water source
+	local blockId = self.worldManager:GetBlock(x, y, z)
+	if blockId ~= Constants.BlockType.WATER_SOURCE then
+		self:RejectBlockChange(player, { x = x, y = y, z = z }, "not_water_source")
+		return
+	end
+
+	-- Verify player is holding an empty bucket in the specified slot
+	local invService = self.Deps and self.Deps.PlayerInventoryService
+	if not invService then
+		warn("PlayerInventoryService not available")
+		return
+	end
+
+	local hotbarItem = invService:GetHotbarSlot(player, hotbarSlot)
+	-- ItemStack uses :GetItemId() method, not .id property
+	local heldItemId = hotbarItem and hotbarItem:GetItemId() or 0
+	if heldItemId ~= Constants.BlockType.BUCKET then
+		self:RejectBlockChange(player, { x = x, y = y, z = z }, "not_holding_bucket")
+		return
+	end
+
+	-- Minecraft-style stacking: Consume 1 empty bucket, add 1 water bucket to inventory
+	-- ConsumeFromHotbar will decrement the stack by 1 (or clear if count was 1)
+	if not invService:ConsumeFromHotbar(player, hotbarSlot, Constants.BlockType.BUCKET) then
+		self:RejectBlockChange(player, { x = x, y = y, z = z }, "consume_failed")
+		return
+	end
+
+	-- Add water bucket to inventory (will stack in existing slot or find empty slot)
+	-- Water buckets don't stack (max 1), so each goes to its own slot
+	if not invService:AddItem(player, Constants.BlockType.WATER_BUCKET, 1) then
+		-- Failed to add water bucket - give back the empty bucket
+		invService:AddItem(player, Constants.BlockType.BUCKET, 1)
+		self:RejectBlockChange(player, { x = x, y = y, z = z }, "inventory_full")
+		invService:SyncInventoryToClient(player)
+		return
+	end
+
+	-- Success! Remove the water source block
+	self.worldManager:SetBlock(x, y, z, Constants.BlockType.AIR, 0)
+	self.modifiedChunks[Constants.ToChunkKey(
+		math.floor(x / Constants.CHUNK_SIZE_X),
+		math.floor(z / Constants.CHUNK_SIZE_Z)
+	)] = true
+
+	-- Broadcast the block change
+	EventManager:FireEventToAll("BlockChanged", {
+		x = x, y = y, z = z,
+		blockId = Constants.BlockType.AIR,
+		metadata = 0
+	})
+
+	-- Update water flow (removed source may affect surrounding water)
+	if self.Deps and self.Deps.WaterService then
+		self.Deps.WaterService:OnBlockChanged(x, y, z, Constants.BlockType.AIR, 0, Constants.BlockType.WATER_SOURCE)
+	end
+
+	-- Sync inventory to client
+	invService:SyncInventoryToClient(player)
+
+	print(string.format("[Bucket] %s picked up water at (%d,%d,%d)", player.Name, x, y, z))
+end
+
+--[[
+	Handle bucket place (water bucket + right-click = place water source)
+	@param player: Player - The player performing the action
+	@param data: table - {x, y, z, hotbarSlot, targetBlockPos, faceNormal}
+]]
+function VoxelWorldService:HandleBucketPlace(player, data)
+	if not data or not data.x or not data.y or not data.z or not data.hotbarSlot then
+		warn("Invalid bucket place data from", player.Name)
+		return
+	end
+
+	local x, y, z = data.x, data.y, data.z
+	local hotbarSlot = data.hotbarSlot
+	local playerData = self.players[player]
+	if not playerData then return end
+
+	-- Hub worlds are read-only
+	if self:IsHubWorld() then
+		self:RejectBlockChange(player, { x = x, y = y, z = z }, "hub_read_only")
+		return
+	end
+
+	-- Distance check
+	local character = player.Character
+	if not character then return end
+	local head = character:FindFirstChild("Head")
+	local rootPart = character:FindFirstChild("HumanoidRootPart")
+	if not head or not rootPart then return end
+
+	local bs = Constants.BLOCK_SIZE
+	local blockCenter = Vector3.new(x * bs + bs * 0.5, y * bs + bs * 0.5, z * bs + bs * 0.5)
+	local distance = (blockCenter - head.Position).Magnitude
+	local maxReach = 4.5 * bs + 2
+
+	if distance > maxReach then
+		self:RejectBlockChange(player, { x = x, y = y, z = z }, "too_far")
+		return
+	end
+
+	-- Verify player is holding a water bucket in the specified slot
+	local invService = self.Deps and self.Deps.PlayerInventoryService
+	if not invService then
+		warn("PlayerInventoryService not available")
+		return
+	end
+
+	local hotbarItem = invService:GetHotbarSlot(player, hotbarSlot)
+	-- ItemStack uses :GetItemId() method, not .id property
+	local heldItemId = hotbarItem and hotbarItem:GetItemId() or 0
+	if heldItemId ~= Constants.BlockType.WATER_BUCKET then
+		self:RejectBlockChange(player, { x = x, y = y, z = z }, "not_holding_water_bucket")
+		return
+	end
+
+	-- Check if placement position is valid (air or replaceable block)
+	local existingBlock = self.worldManager:GetBlock(x, y, z)
+	local BlockRegistry = require(game.ReplicatedStorage.Shared.VoxelWorld.World.BlockRegistry)
+	local existingDef = BlockRegistry:GetBlock(existingBlock)
+	local canPlace = (existingBlock == Constants.BlockType.AIR) or
+	                 (existingBlock == Constants.BlockType.FLOWING_WATER) or
+	                 (existingDef and existingDef.replaceable == true)
+
+	if not canPlace then
+		self:RejectBlockChange(player, { x = x, y = y, z = z }, "space_occupied")
+		return
+	end
+
+	-- Check collision with player body (don't place water inside yourself)
+	local bodyPos = rootPart.Position
+	local bodyBlockX = math.floor(bodyPos.X / bs)
+	local bodyBlockY = math.floor(bodyPos.Y / bs)
+	local bodyBlockZ = math.floor(bodyPos.Z / bs)
+	-- Player occupies roughly 2 blocks vertically
+	if x == bodyBlockX and z == bodyBlockZ and (y == bodyBlockY or y == bodyBlockY + 1) then
+		self:RejectBlockChange(player, { x = x, y = y, z = z }, "would_occupy_player")
+		return
+	end
+
+	-- Minecraft-style stacking: Consume 1 water bucket, add 1 empty bucket to inventory
+	-- ConsumeFromHotbar will decrement the stack by 1 (or clear if count was 1)
+	-- Note: Water buckets don't stack (max 1), so this always clears the slot
+	if not invService:ConsumeFromHotbar(player, hotbarSlot, Constants.BlockType.WATER_BUCKET) then
+		self:RejectBlockChange(player, { x = x, y = y, z = z }, "consume_failed")
+		return
+	end
+
+	-- Add empty bucket to inventory (will stack with existing empty buckets)
+	if not invService:AddItem(player, Constants.BlockType.BUCKET, 1) then
+		-- Failed to add empty bucket - give back the water bucket
+		invService:AddItem(player, Constants.BlockType.WATER_BUCKET, 1)
+		self:RejectBlockChange(player, { x = x, y = y, z = z }, "inventory_full")
+		invService:SyncInventoryToClient(player)
+		return
+	end
+
+	-- Success! Place the water source block
+	self.worldManager:SetBlock(x, y, z, Constants.BlockType.WATER_SOURCE, 0)
+	self.modifiedChunks[Constants.ToChunkKey(
+		math.floor(x / Constants.CHUNK_SIZE_X),
+		math.floor(z / Constants.CHUNK_SIZE_Z)
+	)] = true
+
+	-- Broadcast the block change
+	EventManager:FireEventToAll("BlockChanged", {
+		x = x, y = y, z = z,
+		blockId = Constants.BlockType.WATER_SOURCE,
+		metadata = 0
+	})
+
+	-- Trigger water flow from the new source
+	if self.Deps and self.Deps.WaterService then
+		local prevBlock = existingBlock or Constants.BlockType.AIR
+		self.Deps.WaterService:OnBlockChanged(x, y, z, Constants.BlockType.WATER_SOURCE, 0, prevBlock)
+	end
+
+	-- Sync inventory to client
+	invService:SyncInventoryToClient(player)
+
+	print(string.format("[Bucket] %s placed water at (%d,%d,%d)", player.Name, x, y, z))
+end
+
 return VoxelWorldService

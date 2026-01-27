@@ -21,8 +21,10 @@ local EventManager = require(ReplicatedStorage.Shared.EventManager)
 local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
 local ArmorConfig = require(ReplicatedStorage.Configs.ArmorConfig)
 local SpawnEggConfig = require(ReplicatedStorage.Configs.SpawnEggConfig)
+local ItemRegistry = require(ReplicatedStorage.Configs.ItemRegistry)
 local SpawnEggIcon = require(script.Parent.SpawnEggIcon)
 local Config = require(ReplicatedStorage.Shared.Config)
+local BlockRegistry = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockRegistry)
 
 local VoxelHotbar = {}
 local BOLD_FONT = Config.UI_SETTINGS.typography.fonts.bold
@@ -606,15 +608,15 @@ function VoxelHotbar:UpdateSlotDisplay(index)
 			end
 
 			if isTool then
-				-- Render tool image
-				local info = ToolConfig.GetToolInfo(itemId)
+				-- Render tool image (unified via ItemRegistry)
+				local itemDef = ItemRegistry.GetItem(itemId)
 				local image = Instance.new("ImageLabel")
 				image.Name = "ToolImage"
 				image.Size = UDim2.new(1, -8, 1, -8)
 				image.Position = UDim2.new(0.5, 0, 0.5, 0)
 				image.AnchorPoint = Vector2.new(0.5, 0.5)
 				image.BackgroundTransparency = 1
-				image.Image = info and info.image or ""
+				image.Image = itemDef and itemDef.image or ""
 				image.ScaleType = Enum.ScaleType.Fit
 				image.Parent = slotFrame.iconContainer
 			elseif ArmorConfig.IsArmor(itemId) then
@@ -652,6 +654,20 @@ function VoxelHotbar:UpdateSlotDisplay(index)
 				icon.Position = UDim2.new(0.5, 0, 0.5, 0)
 				icon.AnchorPoint = Vector2.new(0.5, 0.5)
 				icon.Parent = slotFrame.iconContainer
+			elseif BlockRegistry:IsBucket(itemId) or BlockRegistry:IsPlaceable(itemId) == false then
+				-- Render non-placeable items (buckets, etc.) as 2D images
+				local blockDef = BlockRegistry:GetBlock(itemId)
+				local textureId = blockDef and blockDef.textures and blockDef.textures.all or ""
+				
+				local image = Instance.new("ImageLabel")
+				image.Name = "ItemImage"
+				image.Size = UDim2.new(1, -8, 1, -8)
+				image.Position = UDim2.new(0.5, 0, 0.5, 0)
+				image.AnchorPoint = Vector2.new(0.5, 0.5)
+				image.BackgroundTransparency = 1
+				image.Image = textureId
+				image.ScaleType = Enum.ScaleType.Fit
+				image.Parent = slotFrame.iconContainer
 			else
 				-- Render block viewport
 				BlockViewportCreator.CreateBlockViewport(

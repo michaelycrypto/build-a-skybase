@@ -12,19 +12,17 @@ local BlockBreakFeedbackConfig = require(ReplicatedStorage.Configs.BlockBreakFee
 local BlockProperties = {}
 
 -- Tool tiers (affects mining speed multiplier)
--- 6-tier progression: Copper → Iron → Steel → Bluesteel → Tungsten → Titanium
+-- 4-tier progression: Copper → Iron → Steel → Bluesteel
 BlockProperties.ToolTier = {
 	NONE = 0,       -- Hand/no tool
 	COPPER = 1,     -- Tier 1 - Starter
 	IRON = 2,       -- Tier 2 - Standard
 	STEEL = 3,      -- Tier 3 - Iron + Coal alloy
-	BLUESTEEL = 4,  -- Tier 4 - Strong blue steel
-	TUNGSTEN = 5,   -- Tier 5 - Heavy metal
-	TITANIUM = 6,   -- Tier 6 - Ultimate
+	BLUESTEEL = 4,  -- Tier 4 - Strong blue steel (max tier)
 	-- Legacy aliases for compatibility
 	WOOD = 1,       -- Alias for COPPER
 	STONE = 2,      -- Alias for IRON
-	DIAMOND = 6     -- Alias for TITANIUM
+	DIAMOND = 4     -- Alias for BLUESTEEL (was TITANIUM)
 }
 
 -- Tool types
@@ -494,7 +492,7 @@ BlockProperties.Properties = {
 	[Constants.BlockType.BEETROOT_CROP_3] = { hardness = 0, toolType = nil, minToolTier = nil, resistance = 0 },
 
 	-- ═══════════════════════════════════════════════════════════════════════════
-	-- ORES (6-tier progression: Copper → Iron → Steel → Bluesteel → Tungsten → Titanium)
+	-- ORES (4-tier progression: Copper → Iron → Steel → Bluesteel)
 	-- ═══════════════════════════════════════════════════════════════════════════
 	[Constants.BlockType.COPPER_ORE] = {
 		hardness = 2.5,
@@ -508,18 +506,6 @@ BlockProperties.Properties = {
 		minToolTier = BlockProperties.ToolTier.STEEL,
 		resistance = 4.0
 	},
-	[Constants.BlockType.TUNGSTEN_ORE] = {
-		hardness = 5.0,
-		toolType = BlockProperties.ToolType.PICKAXE,
-		minToolTier = BlockProperties.ToolTier.BLUESTEEL,
-		resistance = 5.0
-	},
-	[Constants.BlockType.TITANIUM_ORE] = {
-		hardness = 6.0,
-		toolType = BlockProperties.ToolType.PICKAXE,
-		minToolTier = BlockProperties.ToolTier.TUNGSTEN,
-		resistance = 6.0
-	}
 }
 
 -- Tool effectiveness multipliers (Minecraft-accurate)
@@ -534,11 +520,9 @@ BlockProperties.ToolEffectiveness = {
 		[Constants.BlockType.COAL_ORE] = 1.5,
 		[Constants.BlockType.IRON_ORE] = 1.5,
 		[Constants.BlockType.FURNACE] = 1.5,
-		-- Tiered ores (6-tier)
+		-- Tiered ores (4-tier)
 		[Constants.BlockType.COPPER_ORE] = 1.5,
 		[Constants.BlockType.BLUESTEEL_ORE] = 1.5,
-		[Constants.BlockType.TUNGSTEN_ORE] = 1.5,
-		[Constants.BlockType.TITANIUM_ORE] = 1.5,
 	},
 	-- Axe effectiveness
 	axe = {
@@ -589,14 +573,12 @@ BlockProperties.ToolEffectiveness = {
 	}
 }
 
--- Tool speed multipliers by tier (6-tier progression)
+-- Tool speed multipliers by tier (4-tier progression)
 BlockProperties.ToolSpeedMultipliers = {
     [BlockProperties.ToolTier.COPPER] = 2.0,     -- Tier 1: Copper
     [BlockProperties.ToolTier.IRON] = 4.0,       -- Tier 2: Iron
     [BlockProperties.ToolTier.STEEL] = 6.0,      -- Tier 3: Steel
-    [BlockProperties.ToolTier.BLUESTEEL] = 8.0,  -- Tier 4: Bluesteel
-    [BlockProperties.ToolTier.TUNGSTEN] = 10.0,  -- Tier 5: Tungsten
-    [BlockProperties.ToolTier.TITANIUM] = 12.0   -- Tier 6: Titanium
+    [BlockProperties.ToolTier.BLUESTEEL] = 9.0,  -- Tier 4: Bluesteel (max tier)
 }
 
 --[[

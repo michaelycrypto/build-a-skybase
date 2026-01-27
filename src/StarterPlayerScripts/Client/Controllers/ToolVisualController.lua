@@ -1,10 +1,6 @@
 --[[
     ToolVisualController.lua
-    Renders held items (tools AND blocks) on:
-    - Local player (3rd person)
-    - Remote players (multiplayer visibility)
-
-    Uses HeldItemRenderer for unified rendering logic.
+    Renders held items on local and remote players using HeldItemRenderer.
     Handles special bow animations for local player.
 ]]
 
@@ -24,15 +20,8 @@ local player = Players.LocalPlayer
 ----------------------------------------------------------------
 -- Local Player State
 ----------------------------------------------------------------
-local currentHandle = nil
-local handleWeld = nil
 local currentItemId = nil
-local currentToolType = nil
 local isBowCharging = false
-local currentBowStage = nil
-
--- Bow meshes (multiple parts for charge stages)
-local bowMeshParts = {} -- {idle, [0], [1], [2]}
 
 -- Arm animation state
 local shoulderMotor = nil
@@ -42,7 +31,7 @@ local armTween = nil
 ----------------------------------------------------------------
 -- Remote Player State
 ----------------------------------------------------------------
-local remotePlayerItems = {} -- {[userId] = {handle = Part, itemId = number}}
+local remotePlayerItems = {} -- {[userId] = itemId}
 
 ----------------------------------------------------------------
 -- Config
@@ -50,150 +39,9 @@ local remotePlayerItems = {} -- {[userId] = {handle = Part, itemId = number}}
 local BOW_RAISE_ANGLE = 75
 local TWEEN_UP = TweenInfo.new(0.05, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 local TWEEN_DOWN = TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-local STUDS_PER_PIXEL = 3 / 16
-
-local TOOL_ASSETS = {
-    [BlockProperties.ToolType.SWORD] = "Sword",
-    [BlockProperties.ToolType.AXE] = "Axe",
-    [BlockProperties.ToolType.SHOVEL] = "Shovel",
-    [BlockProperties.ToolType.PICKAXE] = "Pickaxe",
-    [BlockProperties.ToolType.BOW] = "Bow",
-    [BlockProperties.ToolType.ARROW] = "Arrow",
-}
-
-local TOOL_PX = {
-    [BlockProperties.ToolType.SWORD] = {x = 14, y = 14},
-    [BlockProperties.ToolType.AXE] = {x = 12, y = 14},
-    [BlockProperties.ToolType.SHOVEL] = {x = 12, y = 12},
-    [BlockProperties.ToolType.PICKAXE] = {x = 13, y = 13},
-    [BlockProperties.ToolType.BOW] = {x = 14, y = 14},
-    [BlockProperties.ToolType.ARROW] = {x = 14, y = 13},
-}
-
-local TOOL_GRIP = {
-    [BlockProperties.ToolType.SWORD] = {pos = Vector3.new(0, -0.15, -1.5), rot = Vector3.new(225, 90, 0)},
-    [BlockProperties.ToolType.AXE] = {pos = Vector3.new(0, -0.15, -1.5), rot = Vector3.new(225, 90, 0)},
-    [BlockProperties.ToolType.SHOVEL] = {pos = Vector3.new(0, -0.15, -1.5), rot = Vector3.new(225, 90, 0)},
-    [BlockProperties.ToolType.PICKAXE] = {pos = Vector3.new(0, -0.15, -1.5), rot = Vector3.new(225, 90, 0)},
-    [BlockProperties.ToolType.BOW] = {pos = Vector3.new(0, 0.3, 0), rot = Vector3.new(225, 90, 0)},
-    [BlockProperties.ToolType.ARROW] = {pos = Vector3.new(0, -0.1, -0.6), rot = Vector3.new(225, 90, 0)},
-}
 
 ----------------------------------------------------------------
--- Helpers
-----------------------------------------------------------------
-
-local function getToolsFolder()
-    local folder = ReplicatedStorage:FindFirstChild("Tools")
-    if folder then return folder end
-    local assets = ReplicatedStorage:FindFirstChild("Assets")
-    return assets and assets:FindFirstChild("Tools")
-end
-
-local function getMeshTemplate(name)
-    local folder = getToolsFolder()
-    if not folder then return nil end
-    local template = folder:FindFirstChild(name)
-    if not template then return nil end
-    if template:IsA("MeshPart") then return template end
-    return template:FindFirstChildWhichIsA("MeshPart", true)
-end
-
-local function getHand()
-    local char = player.Character
-    if not char then return nil end
-    return char:FindFirstChild("RightHand") or char:FindFirstChild("Right Arm")
-end
-
-----------------------------------------------------------------
--- Bow Mesh Handling (Local Player Only)
-----------------------------------------------------------------
-
-local function destroyBowMeshParts()
-    for key, part in pairs(bowMeshParts) do
-        if part and part.Parent then
-            part:Destroy()
-        end
-    end
-    bowMeshParts = {}
-    currentBowStage = nil
-end
-
-local function createBowMeshPart(templateName, hand, gripCFrame, px, toolInfo)
-    local mesh = getMeshTemplate(templateName)
-    if not mesh then return nil end
-
-    local part = mesh:Clone()
-    part.Name = "BowHandle_" .. templateName
-    part.Massless = true
-    part.CanCollide = false
-    part.CastShadow = false
-    part.Anchored = false
-    part.Transparency = 1 -- Start hidden
-
-    if toolInfo and toolInfo.image and (not part.TextureID or part.TextureID == "") then
-        part.TextureID = toolInfo.image
-    end
-
-    if px then
-        local targetStuds = math.max(px.x, px.y) * STUDS_PER_PIXEL
-        local maxDim = math.max(part.Size.X, part.Size.Y, part.Size.Z)
-        if maxDim > 0 then
-            part.Size = part.Size * (targetStuds / maxDim)
-        end
-    end
-
-    part.Parent = hand
-
-    local weld = Instance.new("Weld")
-    weld.Name = "BowWeld"
-    weld.Part0 = hand
-    weld.Part1 = part
-    weld.C0 = gripCFrame
-    weld.Parent = part
-
-    return part
-end
-
-local function createAllBowMeshParts(hand, toolItemId)
-    destroyBowMeshParts()
-
-    local grip = TOOL_GRIP[BlockProperties.ToolType.BOW]
-    local gripCFrame = CFrame.new(grip.pos) * CFrame.Angles(math.rad(grip.rot.X), math.rad(grip.rot.Y), math.rad(grip.rot.Z))
-    local px = TOOL_PX[BlockProperties.ToolType.BOW]
-    local toolInfo = ToolConfig.GetToolInfo(toolItemId)
-
-    bowMeshParts.idle = createBowMeshPart("Bow", hand, gripCFrame, px, toolInfo)
-    bowMeshParts[0] = createBowMeshPart("Bow_pulling_0", hand, gripCFrame, px, toolInfo)
-    bowMeshParts[1] = createBowMeshPart("Bow_pulling_1", hand, gripCFrame, px, toolInfo)
-    bowMeshParts[2] = createBowMeshPart("Bow_pulling_2", hand, gripCFrame, px, toolInfo)
-
-    if bowMeshParts.idle then
-        bowMeshParts.idle.Transparency = 0
-    end
-    currentBowStage = "idle"
-end
-
-local function setBowMeshStage(stage)
-    local targetKey = stage or "idle"
-    if currentBowStage == targetKey then return end
-
-    for key, part in pairs(bowMeshParts) do
-        if part and part.Parent then
-            part.Transparency = 1
-        end
-    end
-
-    local targetPart = bowMeshParts[targetKey] or bowMeshParts.idle
-    if targetPart and targetPart.Parent then
-        targetPart.Transparency = 0
-    end
-
-    currentBowStage = targetKey
-end
-
-----------------------------------------------------------------
--- Arm Animation (Local Player Only)
+-- Arm Animation (Local Player Only - for bow)
 ----------------------------------------------------------------
 
 local function getShoulderMotor()
@@ -250,88 +98,31 @@ end
 -- Local Player Handle Management
 ----------------------------------------------------------------
 
-local function destroyHandle()
-	HeldItemRenderer.ClearItem(player.Character)
+local function clearLocalItem()
+    local char = player.Character
+    if char then
+        HeldItemRenderer.ClearItem(char)
+    end
     resetArm()
     isBowCharging = false
-    currentToolType = nil
     currentItemId = nil
-    destroyBowMeshParts()
-    if handleWeld then handleWeld:Destroy(); handleWeld = nil end
-    if currentHandle then currentHandle:Destroy(); currentHandle = nil end
 end
 
-local function createToolHandle(toolItemId)
-    local hand = getHand()
-    if not hand then return end
+local function attachLocalItem(itemId)
+    local char = player.Character
+    if not char then return end
 
-    destroyHandle()
+    -- Check if same item already attached
+    if itemId == currentItemId then return end
 
-    local toolType = select(1, ToolConfig.GetBlockProps(toolItemId))
-    if not toolType or not TOOL_ASSETS[toolType] then return end
+    clearLocalItem()
 
-    currentToolType = toolType
-    currentItemId = toolItemId
+    if not itemId or itemId == 0 then return end
 
-    -- For bows, create all mesh variants for visibility toggling
-    if toolType == BlockProperties.ToolType.BOW then
-        createAllBowMeshParts(hand, toolItemId)
-        currentHandle = bowMeshParts.idle
-        return
+    local handle = HeldItemRenderer.AttachItem(char, itemId)
+    if handle then
+        currentItemId = itemId
     end
-
-    -- For non-bow tools, use single mesh approach
-    local assetName = TOOL_ASSETS[toolType]
-    local mesh = getMeshTemplate(assetName)
-
-    local part
-    if mesh then
-        part = mesh:Clone()
-        part.Name = "ToolHandle"
-        part.Massless = true
-        part.CanCollide = false
-        part.CastShadow = false
-        part.Anchored = false
-
-        local toolInfo = ToolConfig.GetToolInfo(toolItemId)
-        if toolInfo and toolInfo.image and (not part.TextureID or part.TextureID == "") then
-            part.TextureID = toolInfo.image
-        end
-
-        local px = TOOL_PX[toolType]
-        if px then
-            local targetStuds = math.max(px.x, px.y) * STUDS_PER_PIXEL
-            local maxDim = math.max(part.Size.X, part.Size.Y, part.Size.Z)
-            if maxDim > 0 then
-                part.Size = part.Size * (targetStuds / maxDim)
-            end
-        end
-    else
-        part = Instance.new("Part")
-        part.Name = "ToolHandle"
-        part.Size = Vector3.new(0.2, 1.8, 0.2)
-        part.Color = Color3.fromRGB(230, 230, 230)
-        part.Material = Enum.Material.SmoothPlastic
-        part.Massless = true
-        part.CanCollide = false
-        part.CastShadow = false
-    end
-
-    part.Parent = hand
-
-    local weld = Instance.new("Weld")
-    weld.Part0 = hand
-    weld.Part1 = part
-    local grip = TOOL_GRIP[toolType]
-    if grip then
-        weld.C0 = CFrame.new(grip.pos) * CFrame.Angles(math.rad(grip.rot.X), math.rad(grip.rot.Y), math.rad(grip.rot.Z))
-    else
-        weld.C0 = CFrame.new(0, 0, -0.9) * CFrame.Angles(math.rad(-90), 0, 0)
-    end
-    weld.Parent = part
-
-    currentHandle = part
-    handleWeld = weld
 end
 
 ----------------------------------------------------------------
@@ -345,56 +136,34 @@ local function refresh()
     local isHoldingTool = GameState:Get("voxelWorld.isHoldingTool") == true
     local toolItemId = GameState:Get("voxelWorld.selectedToolItemId")
 
-    -- Check for block
+    -- Check for block/item
     local isHoldingItem = GameState:Get("voxelWorld.isHoldingItem") == true
     local selectedBlock = GameState:Get("voxelWorld.selectedBlock")
     local blockId = selectedBlock and selectedBlock.id
 
-    -- Priority: Tool > Block
-    if isHoldingTool and toolItemId and ToolConfig.IsTool(toolItemId) then
-        local toolType = select(1, ToolConfig.GetBlockProps(toolItemId))
-
-        -- Hide bow in first person (viewmodel handles it)
-        if toolType == BlockProperties.ToolType.BOW and isFirstPerson then
-            destroyHandle()
-            return
-        end
-
-        -- Only recreate if item changed
-        if toolItemId ~= currentItemId then
-            createToolHandle(toolItemId)
-        end
+    -- In first person, viewmodel handles rendering
+    if isFirstPerson then
+        clearLocalItem()
         return
     end
 
-    -- Handle block
-    if isHoldingItem and blockId and blockId > 0 then
-        -- Only show in 3rd person (viewmodel handles 1st person)
-        if isFirstPerson then
-            destroyHandle()
-            return
-        end
+    -- Priority: Tool > Block
+    if isHoldingTool and toolItemId and toolItemId > 0 then
+        attachLocalItem(toolItemId)
+        return
+    end
 
-		if blockId ~= currentItemId then
-			destroyHandle()
-			local char = player.Character
-			if char then
-				local handle = HeldItemRenderer.AttachItem(char, blockId)
-				if handle then
-					currentHandle = handle
-					currentItemId = blockId
-				end
-			end
-        end
+    if isHoldingItem and blockId and blockId > 0 then
+        attachLocalItem(blockId)
         return
     end
 
     -- Nothing held
-    destroyHandle()
+    clearLocalItem()
 end
 
 local function onCharacterAdded(char)
-    destroyHandle()
+    clearLocalItem()
     task.spawn(function()
         local hand = char:WaitForChild("RightHand", 5) or char:WaitForChild("Right Arm", 5)
         if hand then
@@ -403,12 +172,12 @@ local function onCharacterAdded(char)
         end
     end)
     char:GetPropertyChangedSignal("Parent"):Connect(function()
-        if not char.Parent then destroyHandle() end
+        if not char.Parent then clearLocalItem() end
     end)
 end
 
 ----------------------------------------------------------------
--- Remote Player Handling (Uses HeldItemRenderer)
+-- Remote Player Handling
 ----------------------------------------------------------------
 
 local function getRemotePlayerCharacter(userId)
@@ -418,50 +187,37 @@ local function getRemotePlayerCharacter(userId)
 end
 
 local function cleanupRemotePlayerItem(userId)
-    local data = remotePlayerItems[userId]
-    if not data then return end
-
     local char = getRemotePlayerCharacter(userId)
     if char then
         HeldItemRenderer.ClearItem(char)
     end
-
     remotePlayerItems[userId] = nil
 end
 
 local function createRemotePlayerItem(userId, itemId)
-    -- Don't create for local player
     if userId == player.UserId then return end
+    if not itemId or itemId == 0 then
+        cleanupRemotePlayerItem(userId)
+        return
+    end
 
-    -- Validate item exists
-    if not itemId or itemId == 0 then return end
+    -- Check if same item
+    if remotePlayerItems[userId] == itemId then return end
 
-    -- Clean up existing first
     cleanupRemotePlayerItem(userId)
 
-    -- Get remote player's character
     local char = getRemotePlayerCharacter(userId)
     if not char then return end
 
-    -- Use unified renderer
     local handle = HeldItemRenderer.AttachItem(char, itemId)
-
     if handle then
-        remotePlayerItems[userId] = {
-            handle = handle,
-            itemId = itemId
-        }
+        remotePlayerItems[userId] = itemId
     end
 end
 
--- Event handlers
 local function onPlayerHeldItemChanged(data)
     if not data or not data.userId then return end
-    if data.itemId and data.itemId > 0 then
-        createRemotePlayerItem(data.userId, data.itemId)
-    else
-        cleanupRemotePlayerItem(data.userId)
-    end
+    createRemotePlayerItem(data.userId, data.itemId)
 end
 
 local function onPlayerToolEquipped(data)
@@ -492,10 +248,8 @@ end
 
 local function onRemoteCharacterAdded(remotePlayer)
     if remotePlayer == player then return end
-
-    local data = remotePlayerItems[remotePlayer.UserId]
-    if data and data.itemId then
-        local itemId = data.itemId
+    local itemId = remotePlayerItems[remotePlayer.UserId]
+    if itemId then
         task.spawn(function()
             local char = remotePlayer.Character
             if not char then return end
@@ -516,12 +270,9 @@ local function setupRemotePlayerTracking(remotePlayer)
 end
 
 local function initializeRemoteItems()
-    -- Register event listeners (support both old tool events and new unified events)
     EventManager:RegisterEvent("PlayerToolEquipped", onPlayerToolEquipped)
     EventManager:RegisterEvent("PlayerToolUnequipped", onPlayerToolUnequipped)
     EventManager:RegisterEvent("ToolSync", onToolSync)
-
-    -- Future unified events (can be added later)
     EventManager:RegisterEvent("PlayerHeldItemChanged", onPlayerHeldItemChanged)
 
     Players.PlayerRemoving:Connect(onPlayerRemoving)
@@ -531,7 +282,6 @@ local function initializeRemoteItems()
     end
     Players.PlayerAdded:Connect(setupRemotePlayerTracking)
 
-    -- Request sync for late joiners
     task.delay(0.5, function()
         EventManager:SendToServer("RequestToolSync")
     end)
@@ -542,7 +292,6 @@ end
 ----------------------------------------------------------------
 
 function controller:Initialize()
-    -- Local player state changes
     GameState:OnPropertyChanged("voxelWorld.isHoldingTool", refresh)
     GameState:OnPropertyChanged("voxelWorld.selectedToolItemId", refresh)
     GameState:OnPropertyChanged("voxelWorld.isHoldingItem", refresh)
@@ -552,7 +301,6 @@ function controller:Initialize()
     player.CharacterAdded:Connect(onCharacterAdded)
     if player.Character then onCharacterAdded(player.Character) end
 
-    -- Remote player handling
     initializeRemoteItems()
 end
 
@@ -561,8 +309,6 @@ function controller:SetBowPullStage(stage)
     if isFirstPerson then return end
 
     local isCharging = stage ~= nil
-    setBowMeshStage(stage)
-
     if isCharging ~= isBowCharging then
         isBowCharging = isCharging
         setArmRaised(isCharging)
@@ -570,7 +316,7 @@ function controller:SetBowPullStage(stage)
 end
 
 function controller:Cleanup()
-    destroyHandle()
+    clearLocalItem()
     for userId in pairs(remotePlayerItems) do
         cleanupRemotePlayerItem(userId)
     end

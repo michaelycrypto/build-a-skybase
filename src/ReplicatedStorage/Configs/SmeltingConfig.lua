@@ -30,8 +30,6 @@ SmeltingConfig.Difficulty = {
 	[2] = { zoneWidth = 30, driftSpeed = 6,  smeltTime = 4,  baseCoal = 1 },  -- Iron (easy)
 	[3] = { zoneWidth = 26, driftSpeed = 8,  smeltTime = 5,  baseCoal = 2 },  -- Steel (moderate)
 	[4] = { zoneWidth = 22, driftSpeed = 11, smeltTime = 6,  baseCoal = 3 },  -- Bluesteel (challenging)
-	[5] = { zoneWidth = 20, driftSpeed = 13, smeltTime = 7,  baseCoal = 4 },  -- Tungsten (hard)
-	[6] = { zoneWidth = 18, driftSpeed = 16, smeltTime = 9,  baseCoal = 5 },  -- Titanium (expert)
 }
 
 -- Efficiency tiers (sorted by threshold descending)
@@ -61,8 +59,6 @@ SmeltingConfig.RecipeTiers = {
 	smelt_iron = 2,
 	smelt_steel = 3,
 	smelt_bluesteel = 4,
-	smelt_tungsten = 5,
-	smelt_titanium = 6,
 }
 
 -- Maximum interaction distance (studs)

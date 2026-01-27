@@ -303,8 +303,8 @@ function PlayerInventoryService:AddItemCount(player: Player, itemId: number, cou
 		for i, stack in ipairs(playerInv.hotbar) do
 			if remaining <= 0 then break end
 			if stack:IsEmpty() then
-				stack.itemId = itemId
-				stack:SetCount(1)
+				-- Use SetItem to properly set itemId AND maxStack
+				stack:SetItem(itemId, 1)
 				remaining -= 1
 				addedTotal += 1
 				self:TrackSlotChange(player, "hotbar", i)
@@ -313,8 +313,8 @@ function PlayerInventoryService:AddItemCount(player: Player, itemId: number, cou
 		for i, stack in ipairs(playerInv.inventory) do
 			if remaining <= 0 then break end
 			if stack:IsEmpty() then
-				stack.itemId = itemId
-				stack:SetCount(1)
+				-- Use SetItem to properly set itemId AND maxStack
+				stack:SetItem(itemId, 1)
 				remaining -= 1
 				addedTotal += 1
 				self:TrackSlotChange(player, "inventory", i)
@@ -351,12 +351,15 @@ function PlayerInventoryService:AddItemCount(player: Player, itemId: number, cou
 
 	-- Put in empty slots if any remaining
 	if remaining > 0 then
+		-- Get the correct max stack for this item type
+		local maxStackForItem = ItemStack.GetMaxStackForItem(itemId)
+		
 		for i, stack in ipairs(playerInv.hotbar) do
 			if remaining <= 0 then break end
 			if stack:IsEmpty() then
-				local toAdd = math.min(64, remaining)
-				stack.itemId = itemId
-				stack:SetCount(toAdd)
+				local toAdd = math.min(maxStackForItem, remaining)
+				-- Use SetItem to properly set itemId AND resolve maxStack
+				stack:SetItem(itemId, toAdd)
 				remaining = remaining - toAdd
 				addedTotal += toAdd
 				self:TrackSlotChange(player, "hotbar", i)
@@ -366,9 +369,9 @@ function PlayerInventoryService:AddItemCount(player: Player, itemId: number, cou
 		for i, stack in ipairs(playerInv.inventory) do
 			if remaining <= 0 then break end
 			if stack:IsEmpty() then
-				local toAdd = math.min(64, remaining)
-				stack.itemId = itemId
-				stack:SetCount(toAdd)
+				local toAdd = math.min(maxStackForItem, remaining)
+				-- Use SetItem to properly set itemId AND resolve maxStack
+				stack:SetItem(itemId, toAdd)
 				remaining = remaining - toAdd
 				addedTotal += toAdd
 				self:TrackSlotChange(player, "inventory", i)

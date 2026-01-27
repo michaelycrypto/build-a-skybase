@@ -19,6 +19,8 @@ local TextureManager = require(ReplicatedStorage.Shared.VoxelWorld.Rendering.Tex
 local BlockProperties = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockProperties)
 local GameConfig = require(ReplicatedStorage.Configs.GameConfig)
 local ItemModelLoader = require(ReplicatedStorage.Shared.ItemModelLoader)
+local ItemRegistry = require(ReplicatedStorage.Configs.ItemRegistry)
+local ItemPixelSizes = require(ReplicatedStorage.Shared.ItemPixelSizes)
 
 local player = Players.LocalPlayer
 
@@ -84,9 +86,10 @@ local function buildBlockModel(itemId)
 	local def = BlockRegistry.Blocks[itemId]
 	if not def then return nil end
 
-	-- Try to use 3D model from Tools folder first (default behavior)
-	if def.name then
-		local modelTemplate = ItemModelLoader.GetModelTemplate(def.name, itemId)
+	-- Try to use 3D model from Tools folder (unified lookup)
+	local itemName = ItemRegistry.GetItemName(itemId)
+	if itemName and itemName ~= "Unknown" then
+		local modelTemplate = ItemModelLoader.GetModelTemplate(itemName, itemId)
 		if modelTemplate then
 			local part = modelTemplate:Clone()
 			part.Name = "Block3DModel"
@@ -95,11 +98,15 @@ local function buildBlockModel(itemId)
 			part.Massless = true
 			part.CastShadow = false
 
-			-- Always apply texture from BlockRegistry to ensure consistency
-			if part:IsA("MeshPart") and def.textures then
-				local textureName = def.textures.all or def.textures.side or def.textures.top or def.textures.lower
-				if textureName then
-					local textureId = TextureManager:GetTextureId(textureName)
+			-- Apply texture from ItemRegistry if model has none
+			if part:IsA("MeshPart") then
+				local hasTexture = false
+				pcall(function()
+					hasTexture = part.TextureID ~= nil and tostring(part.TextureID) ~= ""
+				end)
+				if not hasTexture then
+					local itemDef = ItemRegistry.GetItem(itemId)
+					local textureId = itemDef and itemDef.image
 					if textureId then
 						pcall(function()
 							part.TextureID = textureId
@@ -107,6 +114,9 @@ local function buildBlockModel(itemId)
 					end
 				end
 			end
+
+			-- Scale using ItemPixelSizes (consistent with tools)
+			scaleMeshToPixels(part, itemName)
 
 			return part
 		end
@@ -203,8 +213,9 @@ local function buildBlockModel(itemId)
 end
 
 local function buildFlatItem(itemId)
-	local info = ToolConfig.GetToolInfo(itemId)
-	local image = info and info.image
+	-- Get texture from ItemRegistry (unified lookup)
+	local itemDef = ItemRegistry.GetItem(itemId)
+	local image = itemDef and itemDef.image
 	if not image then return nil end
     local p = Instance.new("Part")
 	p.Name = "ItemCard"
@@ -243,29 +254,14 @@ local function buildFlatItem(itemId)
 	return p
 end
 
--- === TOOL MESH (replace SurfaceGui for tools) ===
+-- === TOOL MESH RENDERING ===
 local STUDS_PER_PIXEL = 3/16
 local VM_TOOL_SCALE = 0.5 -- shrink first-person tool meshes to 50% of true scale
-local TOOL_ASSET_NAME_BY_TYPE = {
-	[BlockProperties.ToolType.SWORD] = "Sword",
-	[BlockProperties.ToolType.AXE] = "Axe",
-	[BlockProperties.ToolType.SHOVEL] = "Shovel",
-	[BlockProperties.ToolType.PICKAXE] = "Pickaxe",
-	[BlockProperties.ToolType.BOW] = "Bow",
-	[BlockProperties.ToolType.ARROW] = "Arrow",
-}
 
-local TOOL_PX_BY_TYPE = {
-	[BlockProperties.ToolType.SWORD] = {x = 14, y = 14},
-	[BlockProperties.ToolType.AXE] = {x = 12, y = 14},
-	[BlockProperties.ToolType.SHOVEL] = {x = 12, y = 12},
-	[BlockProperties.ToolType.PICKAXE] = {x = 13, y = 13},
-	[BlockProperties.ToolType.BOW] = {x = 14, y = 14},
-	[BlockProperties.ToolType.ARROW] = {x = 14, y = 13},
-}
-
-local function scaleMeshToPixels(part, pxX, pxY)
-	local longestPx = math.max(pxX or 0, pxY or 0)
+local function scaleMeshToPixels(part, itemName)
+	local px = ItemPixelSizes.GetSize(itemName)
+	if not px then return end
+	local longestPx = math.max(px.x or 0, px.y or 0)
 	if longestPx <= 0 then return end
 	local targetStuds = longestPx * STUDS_PER_PIXEL
 	local size = part.Size
@@ -276,48 +272,8 @@ local function scaleMeshToPixels(part, pxX, pxY)
 	end
 end
 
--- Helpers for resolving tool assets (prefer ReplicatedStorage.Tools, fallback to Assets.Tools)
-local function findToolsContainer()
-	-- Prefer direct ReplicatedStorage.Tools
-	local tools = ReplicatedStorage:FindFirstChild("Tools")
-	if tools then return tools end
-	-- Fallback: ReplicatedStorage.Assets.Tools or an auto-detected container under Assets
-	local assets = ReplicatedStorage:FindFirstChild("Assets")
-	if not assets then return nil end
-	local direct = assets:FindFirstChild("Tools")
-	if direct then return direct end
-	-- Heuristic: find a folder/model that contains tool names
-	local expected = {}
-	for _, name in pairs(TOOL_ASSET_NAME_BY_TYPE) do
-		expected[name] = true
-	end
-	for _, child in ipairs(assets:GetChildren()) do
-		if child:IsA("Folder") or child:IsA("Model") then
-			for name, _ in pairs(expected) do
-				if child:FindFirstChild(name) then
-					return child
-				end
-			end
-		end
-	end
-	return nil
-end
-
-local function findMeshPartFromTemplate(template: Instance)
-	if not template then return nil end
-	if template:IsA("MeshPart") then
-		return template
-	end
-	return template:FindFirstChildWhichIsA("MeshPart", true)
-end
-
 local function createBowViewmodelMesh(assetName, itemId)
-	local toolsFolder = findToolsContainer()
-	if not toolsFolder then return nil end
-	local template = toolsFolder:FindFirstChild(assetName)
-	if not template then return nil end
-
-	local mesh = findMeshPartFromTemplate(template)
+	local mesh = ItemModelLoader.GetModelTemplate(assetName, itemId)
 	if not mesh then return nil end
 
 	local p = mesh:Clone()
@@ -328,15 +284,15 @@ local function createBowViewmodelMesh(assetName, itemId)
 	p.CastShadow = false
 	p.Transparency = 1 -- Start hidden
 
-	-- Apply texture
+	-- Apply texture from ItemRegistry if needed
 	local hasExistingTexture = false
 	pcall(function()
 		local currentTex = p.TextureID
 		hasExistingTexture = (currentTex ~= nil and tostring(currentTex) ~= "")
 	end)
 	if not hasExistingTexture then
-		local info = ToolConfig.GetToolInfo(itemId)
-		local texId = info and info.image
+		local itemDef = ItemRegistry.GetItem(itemId)
+		local texId = itemDef and itemDef.image
 		if texId and p:IsA("MeshPart") then
 			pcall(function()
 				p.TextureID = texId
@@ -344,11 +300,8 @@ local function createBowViewmodelMesh(assetName, itemId)
 		end
 	end
 
-	-- Scale
-	local px = TOOL_PX_BY_TYPE[BlockProperties.ToolType.BOW]
-	if px then
-		scaleMeshToPixels(p, px.x, px.y)
-	end
+	-- Scale using ItemPixelSizes
+	scaleMeshToPixels(p, assetName)
 
 	return p
 end
@@ -419,33 +372,29 @@ local function buildToolMesh(itemId)
 		return bowViewmodelParts.idle -- Return idle as the "current" instance
 	end
 
-	local assetName = toolType and TOOL_ASSET_NAME_BY_TYPE[toolType]
-	if not assetName then return nil end
+	-- Get item name for model lookup
+	local itemName = ItemRegistry.GetItemName(itemId)
+	if not itemName or itemName == "Unknown" then return nil end
 
-	local toolsFolder = findToolsContainer()
-	if not toolsFolder then return nil end
-	local template = toolsFolder:FindFirstChild(assetName)
-	if not template then return nil end
-
-	local mesh = findMeshPartFromTemplate(template)
+	local mesh = ItemModelLoader.GetModelTemplate(itemName, itemId)
 	if not mesh then return nil end
 
 	local p = mesh:Clone()
-	p.Name = "ToolVM_" .. tostring(toolType)
+	p.Name = "ToolVM_" .. itemName
 	p.Anchored = true
 	p.CanCollide = false
 	p.Massless = true
 	p.CastShadow = false
 
-	-- Apply tier texture from ToolConfig if template has none
+	-- Apply texture from ItemDefinitions if template has none
 	local hasExistingTexture = false
 	pcall(function()
 		local currentTex = p.TextureID
 		hasExistingTexture = (currentTex ~= nil and tostring(currentTex) ~= "")
 	end)
 	if not hasExistingTexture then
-		local info = ToolConfig.GetToolInfo(itemId)
-		local texId = info and info.image
+		local itemDef = ItemRegistry.GetItem(itemId)
+		local texId = itemDef and itemDef.image
 		if texId and p:IsA("MeshPart") then
 			pcall(function()
 				p.TextureID = texId
@@ -453,11 +402,8 @@ local function buildToolMesh(itemId)
 		end
 	end
 
-	-- Scale to pixel dimensions per tool type
-	local px = TOOL_PX_BY_TYPE[toolType]
-	if px then
-		scaleMeshToPixels(p, px.x, px.y)
-	end
+	-- Scale using ItemPixelSizes
+	scaleMeshToPixels(p, itemName)
 
 	return p
 end
@@ -466,9 +412,10 @@ local function buildFlatBlockItem(itemId)
     local def = BlockRegistry.Blocks[itemId]
     if not def then return nil end
 
-    -- Try to use 3D model from Tools folder first
-    if def.name then
-        local modelTemplate = ItemModelLoader.GetModelTemplate(def.name, itemId)
+    -- Try to use 3D model from Tools folder (unified lookup)
+    local itemName = ItemRegistry.GetItemName(itemId)
+    if itemName and itemName ~= "Unknown" then
+        local modelTemplate = ItemModelLoader.GetModelTemplate(itemName, itemId)
         if modelTemplate then
             local part = modelTemplate:Clone()
             part.Name = "Item3DModel"
@@ -477,11 +424,15 @@ local function buildFlatBlockItem(itemId)
             part.Massless = true
             part.CastShadow = false
 
-            -- Always apply texture from BlockRegistry to ensure consistency
-            if part:IsA("MeshPart") and def.textures then
-                local textureName = def.textures.all or def.textures.side or def.textures.top or def.textures.lower
-                if textureName then
-                    local textureId = TextureManager:GetTextureId(textureName)
+            -- Apply texture from ItemRegistry if model has none
+            if part:IsA("MeshPart") then
+                local hasTexture = false
+                pcall(function()
+                    hasTexture = part.TextureID ~= nil and tostring(part.TextureID) ~= ""
+                end)
+                if not hasTexture then
+                    local itemDef = ItemRegistry.GetItem(itemId)
+                    local textureId = itemDef and itemDef.image
                     if textureId then
                         pcall(function()
                             part.TextureID = textureId
@@ -489,6 +440,9 @@ local function buildFlatBlockItem(itemId)
                     end
                 end
             end
+
+            -- Scale using ItemPixelSizes (consistent with tools)
+            scaleMeshToPixels(part, itemName)
 
             return part
         end
@@ -633,7 +587,8 @@ local function onStateChanged()
     local nextIsFlat = false
     if isItem and blockId then
         local def = BlockRegistry.Blocks[blockId]
-        nextIsFlat = def and (def.crossShape or def.craftingMaterial) and true or false
+        -- Non-solid items (bucket, etc.), cross-shaped, or crafting materials use flat/tool positioning
+        nextIsFlat = def and (def.crossShape or def.craftingMaterial or not def.solid) and true or false
     end
 
 	-- Check if only the bow stage changed (not a full state change)

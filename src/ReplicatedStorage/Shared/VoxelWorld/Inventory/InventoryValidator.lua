@@ -123,17 +123,13 @@ local VALID_ITEM_IDS = {
 	[Constants.BlockType.COMPOST] = true,
 	[Constants.BlockType.COBBLESTONE_MINION] = true,
 	[Constants.BlockType.COAL_MINION] = true,
-	-- Ores (6-tier progression: Copper → Iron → Steel → Bluesteel → Tungsten → Titanium)
+	-- Ores (4-tier progression: Copper → Iron → Steel → Bluesteel)
 	[Constants.BlockType.COPPER_ORE] = true,
 	[Constants.BlockType.BLUESTEEL_ORE] = true,
-	[Constants.BlockType.TUNGSTEN_ORE] = true,
-	[Constants.BlockType.TITANIUM_ORE] = true,
 	-- Ingots/materials
 	[Constants.BlockType.COPPER_INGOT] = true,
 	[Constants.BlockType.STEEL_INGOT] = true,
 	[Constants.BlockType.BLUESTEEL_INGOT] = true,
-	[Constants.BlockType.TUNGSTEN_INGOT] = true,
-	[Constants.BlockType.TITANIUM_INGOT] = true,
 	[Constants.BlockType.BLUESTEEL_DUST] = true,
 	-- Full blocks (9x ingots)
 	[Constants.BlockType.COPPER_BLOCK] = true,
@@ -141,8 +137,6 @@ local VALID_ITEM_IDS = {
 	[Constants.BlockType.IRON_BLOCK] = true,
 	[Constants.BlockType.STEEL_BLOCK] = true,
 	[Constants.BlockType.BLUESTEEL_BLOCK] = true,
-	[Constants.BlockType.TUNGSTEN_BLOCK] = true,
-	[Constants.BlockType.TITANIUM_BLOCK] = true,
 	-- Food Items (348-379)
 	[Constants.BlockType.BREAD] = true,
 	[Constants.BlockType.BAKED_POTATO] = true,
@@ -176,6 +170,9 @@ local VALID_ITEM_IDS = {
 	[Constants.BlockType.SPIDER_EYE] = true,
 	[Constants.BlockType.POISONOUS_POTATO] = true,
 	[Constants.BlockType.CHORUS_FRUIT] = true,
+	-- Bucket items
+	[Constants.BlockType.BUCKET] = true,
+	[Constants.BlockType.WATER_BUCKET] = true,
 	-- Plants & Vegetation (cross-shaped)
 	[Constants.BlockType.MELON] = true,
 	[Constants.BlockType.PUMPKIN] = true,

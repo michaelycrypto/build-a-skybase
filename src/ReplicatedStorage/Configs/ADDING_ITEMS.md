@@ -57,8 +57,8 @@ MYTHRIL_ORE = {
     name = "Mythril Ore",
     texture = "rbxassetid://xxx",
     color = Color3.fromRGB(r, g, b),
-    hardness = 7.0,
-    minToolTier = 6,              -- Titanium required to mine
+    hardness = 5.0,
+    minToolTier = 4,              -- Bluesteel required to mine
     drops = 104,                  -- Item ID it drops (itself or material)
     spawnRate = 0.001,
 },

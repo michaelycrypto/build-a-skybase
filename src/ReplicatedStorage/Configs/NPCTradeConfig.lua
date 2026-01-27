@@ -52,8 +52,11 @@ NPCTradeConfig.ShopItems = {
 	{ itemId = 1022, price = 250,  stock = 3,  category = "Tools" },   -- Iron Shovel
 	{ itemId = 1042, price = 350,  stock = 2,  category = "Tools" },   -- Iron Sword
 	
-	-- ARROWS (ammo sink)
-	{ itemId = 2001, price = 5,    stock = 64, category = "Ammo" },    -- Arrow
+	-- ARROWS (ammo sink - tiered)
+	{ itemId = 2001, price = 5,    stock = 64, category = "Ammo" },    -- Copper Arrow
+	{ itemId = 2002, price = 10,   stock = 32, category = "Ammo" },    -- Iron Arrow
+	{ itemId = 2003, price = 20,   stock = 16, category = "Ammo" },    -- Steel Arrow
+	{ itemId = 2004, price = 40,   stock = 8,  category = "Ammo" },    -- Bluesteel Arrow
 	
 	-- ═══════════════════════════════════════════════════════════════════════
 	-- SEEDS & FARMING (kickstart farming loop)
@@ -241,8 +244,6 @@ NPCTradeConfig.SellPrices = {
 	[98]  = 8,   -- Copper Ore
 	[30]  = 12,  -- Iron Ore
 	[101] = 20,  -- Bluesteel Ore
-	[102] = 35,  -- Tungsten Ore
-	[103] = 60,  -- Titanium Ore
 	[31]  = 100, -- Diamond Ore
 	
 	-- ═══════════════════════════════════════════════════════════════════════
@@ -254,8 +255,6 @@ NPCTradeConfig.SellPrices = {
 	[108] = 32,  -- Steel Ingot (buy 80, sell 32 = 40%)
 	[34]  = 200, -- Diamond
 	[109] = 50,  -- Bluesteel Ingot
-	[110] = 80,  -- Tungsten Ingot
-	[111] = 120, -- Titanium Ingot
 	[115] = 15,  -- Bluesteel Dust
 	
 	-- ═══════════════════════════════════════════════════════════════════════
@@ -267,8 +266,6 @@ NPCTradeConfig.SellPrices = {
 	[118] = 150,  -- Iron Block (8x20 = 160, sell 150)
 	[119] = 240,  -- Steel Block (8x32 = 256, sell 240)
 	[120] = 375,  -- Bluesteel Block
-	[121] = 600,  -- Tungsten Block
-	[122] = 900,  -- Titanium Block
 	
 	-- ═══════════════════════════════════════════════════════════════════════
 	-- TIER 2: FOOD (farming byproducts)
@@ -365,8 +362,11 @@ NPCTradeConfig.SellPrices = {
 	[249] = 15,  -- Pumpkin
 	[252] = 10,  -- Cactus
 	
-	-- Arrows
-	[2001] = 2,  -- Arrow (buy 5, sell 2 = 40%)
+	-- Arrows (tiered)
+	[2001] = 2,   -- Copper Arrow (buy 5, sell 2 = 40%)
+	[2002] = 4,   -- Iron Arrow (buy 10, sell 4 = 40%)
+	[2003] = 8,   -- Steel Arrow (buy 20, sell 8 = 40%)
+	[2004] = 16,  -- Bluesteel Arrow (buy 40, sell 16 = 40%)
 }
 
 -- Tool sell multiplier (% of shop price)

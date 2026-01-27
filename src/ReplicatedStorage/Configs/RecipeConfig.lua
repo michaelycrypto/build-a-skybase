@@ -2,15 +2,13 @@
 	RecipeConfig.lua
 	Defines all crafting recipes for the simplified crafting system
 
-	6-tier progression: Copper → Iron → Steel → Bluesteel → Tungsten → Titanium
+	4-tier progression: Copper → Iron → Steel → Bluesteel
 
 	Smelting (Furnace):
 	- Copper Ingot: Copper Ore + 1 Coal
 	- Iron Ingot: Iron Ore + 1 Coal
 	- Steel Ingot: Iron Ore + 2 Coal
 	- Bluesteel Ingot: Iron Ore + 3 Coal + 1 Bluesteel Dust
-	- Tungsten Ingot: Tungsten Ore + 4 Coal
-	- Titanium Ingot: Titanium Ore + 5 Coal
 
 	Recipe Format:
 	{
@@ -113,27 +111,6 @@ RecipeConfig.Recipes = {
 		outputs = { {itemId = 109, count = 1} }  -- 1x Bluesteel Ingot
 	},
 
-	smelt_tungsten = {
-		id = "smelt_tungsten",
-		name = "Tungsten Ingot",
-		category = RecipeConfig.Categories.SMELTING,
-		requiresFurnace = true,
-		inputs = {
-			{itemId = 102, count = 1}  -- 1x Tungsten Ore
-		},
-		outputs = { {itemId = 110, count = 1} }  -- 1x Tungsten Ingot
-	},
-
-	smelt_titanium = {
-		id = "smelt_titanium",
-		name = "Titanium Ingot",
-		category = RecipeConfig.Categories.SMELTING,
-		requiresFurnace = true,
-		inputs = {
-			{itemId = 103, count = 1}  -- 1x Titanium Ore
-		},
-		outputs = { {itemId = 111, count = 1} }  -- 1x Titanium Ingot
-	},
 
 	-- ═══════════════════════════════════════════════════════════════════════════
 	-- FULL BLOCKS (9x ingots/items → 1 block)
@@ -184,23 +161,6 @@ RecipeConfig.Recipes = {
 		outputs = { {itemId = 120, count = 1} }  -- 1x Bluesteel Block
 	},
 
-	tungsten_block = {
-		id = "tungsten_block",
-		name = "Tungsten Block",
-		category = RecipeConfig.Categories.BUILDING,
-		requiresWorkbench = true,
-		inputs = { {itemId = 110, count = 9} },  -- 9x Tungsten Ingot
-		outputs = { {itemId = 121, count = 1} }  -- 1x Tungsten Block
-	},
-
-	titanium_block = {
-		id = "titanium_block",
-		name = "Titanium Block",
-		category = RecipeConfig.Categories.BUILDING,
-		requiresWorkbench = true,
-		inputs = { {itemId = 111, count = 9} },  -- 9x Titanium Ingot
-		outputs = { {itemId = 122, count = 1} }  -- 1x Titanium Block
-	},
 
 	-- ═══════════════════════════════════════════════════════════════════════════
 	-- COPPER TOOLS (Tier 1)
@@ -410,109 +370,6 @@ RecipeConfig.Recipes = {
 		outputs = { {itemId = 1044, count = 1} }
 	},
 
-	-- ═══════════════════════════════════════════════════════════════════════════
-	-- TUNGSTEN TOOLS (Tier 5)
-	-- ═══════════════════════════════════════════════════════════════════════════
-
-	tungsten_pickaxe = {
-		id = "tungsten_pickaxe",
-		name = "Tungsten Pickaxe",
-		category = RecipeConfig.Categories.TOOLS,
-		requiresWorkbench = true,
-		inputs = {
-			{itemId = 110, count = 3},  -- 3x Tungsten Ingot
-			{itemId = 28, count = 2}
-		},
-		outputs = { {itemId = 1005, count = 1} }
-	},
-
-	tungsten_axe = {
-		id = "tungsten_axe",
-		name = "Tungsten Axe",
-		category = RecipeConfig.Categories.TOOLS,
-		requiresWorkbench = true,
-		inputs = {
-			{itemId = 110, count = 3},
-			{itemId = 28, count = 2}
-		},
-		outputs = { {itemId = 1015, count = 1} }
-	},
-
-	tungsten_shovel = {
-		id = "tungsten_shovel",
-		name = "Tungsten Shovel",
-		category = RecipeConfig.Categories.TOOLS,
-		requiresWorkbench = true,
-		inputs = {
-			{itemId = 110, count = 1},
-			{itemId = 28, count = 2}
-		},
-		outputs = { {itemId = 1025, count = 1} }
-	},
-
-	tungsten_sword = {
-		id = "tungsten_sword",
-		name = "Tungsten Sword",
-		category = RecipeConfig.Categories.TOOLS,
-		requiresWorkbench = true,
-		inputs = {
-			{itemId = 110, count = 2},
-			{itemId = 28, count = 1}
-		},
-		outputs = { {itemId = 1045, count = 1} }
-	},
-
-	-- ═══════════════════════════════════════════════════════════════════════════
-	-- TITANIUM TOOLS (Tier 6)
-	-- ═══════════════════════════════════════════════════════════════════════════
-
-	titanium_pickaxe = {
-		id = "titanium_pickaxe",
-		name = "Titanium Pickaxe",
-		category = RecipeConfig.Categories.TOOLS,
-		requiresWorkbench = true,
-		inputs = {
-			{itemId = 111, count = 3},  -- 3x Titanium Ingot
-			{itemId = 28, count = 2}
-		},
-		outputs = { {itemId = 1006, count = 1} }
-	},
-
-	titanium_axe = {
-		id = "titanium_axe",
-		name = "Titanium Axe",
-		category = RecipeConfig.Categories.TOOLS,
-		requiresWorkbench = true,
-		inputs = {
-			{itemId = 111, count = 3},
-			{itemId = 28, count = 2}
-		},
-		outputs = { {itemId = 1016, count = 1} }
-	},
-
-	titanium_shovel = {
-		id = "titanium_shovel",
-		name = "Titanium Shovel",
-		category = RecipeConfig.Categories.TOOLS,
-		requiresWorkbench = true,
-		inputs = {
-			{itemId = 111, count = 1},
-			{itemId = 28, count = 2}
-		},
-		outputs = { {itemId = 1026, count = 1} }
-	},
-
-	titanium_sword = {
-		id = "titanium_sword",
-		name = "Titanium Sword",
-		category = RecipeConfig.Categories.TOOLS,
-		requiresWorkbench = true,
-		inputs = {
-			{itemId = 111, count = 2},
-			{itemId = 28, count = 1}
-		},
-		outputs = { {itemId = 1046, count = 1} }
-	},
 
 	-- ═══════════════════════════════════════════════════════════════════════════
 	-- ARMOR RECIPES
@@ -655,73 +512,6 @@ RecipeConfig.Recipes = {
 		outputs = { {itemId = 3016, count = 1} }
 	},
 
-	-- TUNGSTEN ARMOR (Tier 5) - ID 110 = Tungsten Ingot
-	tungsten_helmet = {
-		id = "tungsten_helmet",
-		name = "Tungsten Helmet",
-		category = RecipeConfig.Categories.ARMOR,
-		requiresWorkbench = true,
-		inputs = { {itemId = 110, count = 5} },
-		outputs = { {itemId = 3017, count = 1} }
-	},
-	tungsten_chestplate = {
-		id = "tungsten_chestplate",
-		name = "Tungsten Chestplate",
-		category = RecipeConfig.Categories.ARMOR,
-		requiresWorkbench = true,
-		inputs = { {itemId = 110, count = 8} },
-		outputs = { {itemId = 3018, count = 1} }
-	},
-	tungsten_leggings = {
-		id = "tungsten_leggings",
-		name = "Tungsten Leggings",
-		category = RecipeConfig.Categories.ARMOR,
-		requiresWorkbench = true,
-		inputs = { {itemId = 110, count = 7} },
-		outputs = { {itemId = 3019, count = 1} }
-	},
-	tungsten_boots = {
-		id = "tungsten_boots",
-		name = "Tungsten Boots",
-		category = RecipeConfig.Categories.ARMOR,
-		requiresWorkbench = true,
-		inputs = { {itemId = 110, count = 4} },
-		outputs = { {itemId = 3020, count = 1} }
-	},
-
-	-- TITANIUM ARMOR (Tier 6) - ID 111 = Titanium Ingot
-	titanium_helmet = {
-		id = "titanium_helmet",
-		name = "Titanium Helmet",
-		category = RecipeConfig.Categories.ARMOR,
-		requiresWorkbench = true,
-		inputs = { {itemId = 111, count = 5} },
-		outputs = { {itemId = 3021, count = 1} }
-	},
-	titanium_chestplate = {
-		id = "titanium_chestplate",
-		name = "Titanium Chestplate",
-		category = RecipeConfig.Categories.ARMOR,
-		requiresWorkbench = true,
-		inputs = { {itemId = 111, count = 8} },
-		outputs = { {itemId = 3022, count = 1} }
-	},
-	titanium_leggings = {
-		id = "titanium_leggings",
-		name = "Titanium Leggings",
-		category = RecipeConfig.Categories.ARMOR,
-		requiresWorkbench = true,
-		inputs = { {itemId = 111, count = 7} },
-		outputs = { {itemId = 3023, count = 1} }
-	},
-	titanium_boots = {
-		id = "titanium_boots",
-		name = "Titanium Boots",
-		category = RecipeConfig.Categories.ARMOR,
-		requiresWorkbench = true,
-		inputs = { {itemId = 111, count = 4} },
-		outputs = { {itemId = 3024, count = 1} }
-	},
 
 	-- ═══════════════════════════════════════════════════════════════════════════
 	-- BUILDING BLOCKS
@@ -802,6 +592,19 @@ RecipeConfig.Recipes = {
 		},
 		outputs = {
 			{itemId = 35, count = 1}  -- 1x Furnace (BlockType.FURNACE)
+		}
+	},
+
+	bucket = {
+		id = "bucket",
+		name = "Bucket",
+		category = RecipeConfig.Categories.TOOLS,
+		requiresWorkbench = true,
+		inputs = {
+			{itemId = 33, count = 3}  -- 3x Iron Ingot (V-shape pattern)
+		},
+		outputs = {
+			{itemId = 382, count = 1}  -- 1x Bucket
 		}
 	},
 

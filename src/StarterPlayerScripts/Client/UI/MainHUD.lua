@@ -359,9 +359,19 @@ function MainHUD:CreateBottomLeftCurrency()
 	local currencyContainer = Instance.new("Frame")
 	currencyContainer.Name = "BottomLeftCurrency"
 	currencyContainer.Size = UDim2.new(0, 340, 0, 140) -- Larger to accommodate 64px text
-	currencyContainer.Position = UDim2.new(0, 4, 1, -140) -- Closer to bottom with no bottom padding
+	currencyContainer.AnchorPoint = Vector2.new(0, 1) -- Anchor to bottom-left
+	currencyContainer.Position = UDim2.new(0, 4, 1, -4) -- 4px from bottom and left edges
 	currencyContainer.BackgroundTransparency = 1
 	currencyContainer.Parent = hudGui
+
+	-- Add UIScale for independent scaling of currency display
+	local currencyScale = Instance.new("UIScale")
+	currencyScale.Name = "CurrencyScale"
+	currencyScale:SetAttribute("base_resolution", Vector2.new(1920, 1080))
+	currencyScale:SetAttribute("min_scale", 0.6)  -- Allow smaller scaling on mobile
+	currencyScale:SetAttribute("max_scale", 1.2)  -- Cap max size
+	currencyScale.Parent = currencyContainer
+	CollectionService:AddTag(currencyScale, "scale_component")
 
 	-- Ultra-minimal padding with no bottom padding
 	local padding = Instance.new("UIPadding")
@@ -463,7 +473,7 @@ function MainHUD:CreateBottomLeftCurrency()
 	moneyLabel.Font = BOLD_FONT -- Base font for RichText
 	moneyLabel.TextXAlignment = Enum.TextXAlignment.Left
 	moneyLabel.TextYAlignment = Enum.TextYAlignment.Center
-		moneyLabel.TextStrokeTransparency = 0 -- Maximum opacity for thickest stroke
+	moneyLabel.TextStrokeTransparency = 0 -- Maximum opacity for thickest stroke
 	moneyLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
 	moneyLabel.LayoutOrder = 2
 	moneyLabel.Parent = moneyContainer
