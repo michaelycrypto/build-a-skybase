@@ -35,12 +35,6 @@
 
     "ServerStorage": {
       "$className": "ServerStorage",
-      "MapTiles": {
-        "$path": "src/ServerStorage/MapTiles"
-      },
-      "Mobs": {
-        "$path": "src/ServerStorage/Mobs"
-      },
       "Schematics": {
         "$className": "Folder",
         "LittleIsland1_20": {

@@ -34,13 +34,9 @@ function PlayerService:Init()
 	-- Get EventManager instance
 	self._eventManager = require(game.ReplicatedStorage.Shared.EventManager)
 
-	-- Connect player events
-	self:_connectPlayerEvents()
-
-	-- Initialize any existing players
-	for _, player in pairs(Players:GetPlayers()) do
-		self:OnPlayerAdded(player)
-	end
+	-- NOTE: Player event connections are NOT set up here for single-place architecture.
+	-- Bootstrap controls when players are initialized based on server role (Router/Hub/World).
+	-- This prevents double-initialization and allows proper timing of data loading.
 
 	BaseService.Init(self)
 	self._logger.Debug("PlayerService initialized")
@@ -99,6 +95,12 @@ function PlayerService:OnPlayerAdded(player)
 	local playerData
 	if self.Deps.PlayerDataStoreService then
 		playerData = self.Deps.PlayerDataStoreService:LoadPlayerData(player)
+		
+		-- If nil, session is locked by another server (player will be kicked)
+		if not playerData then
+			self._logger.Warn("Failed to load player data (session locked)", {player = player.Name})
+			return
+		end
 	else
 		self._logger.Warn("PlayerDataStoreService not available, using local data")
 		-- Fallback to local data

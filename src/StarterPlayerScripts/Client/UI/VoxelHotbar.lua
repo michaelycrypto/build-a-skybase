@@ -658,7 +658,7 @@ function VoxelHotbar:UpdateSlotDisplay(index)
 				-- Render non-placeable items (buckets, etc.) as 2D images
 				local blockDef = BlockRegistry:GetBlock(itemId)
 				local textureId = blockDef and blockDef.textures and blockDef.textures.all or ""
-				
+
 				local image = Instance.new("ImageLabel")
 				image.Name = "ItemImage"
 				image.Size = UDim2.new(1, -8, 1, -8)

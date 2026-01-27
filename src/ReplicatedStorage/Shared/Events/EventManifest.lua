@@ -11,6 +11,7 @@ local Manifest = {
 		RequestCreateWorld = {"any"}, -- {slot?}
 		ReturnToLobby = {},           -- no args
 		RequestTeleportToHub = {},    -- Return to hub world from any place
+		RequestReturnHome = {},       -- Return from hub to player's own world
 		-- World management (lobby)
 		RequestWorldsList = {},       -- Request list of player's worlds and friends' worlds
 		DeleteWorld = {"any"},        -- {worldId}

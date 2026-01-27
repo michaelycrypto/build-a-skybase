@@ -258,7 +258,7 @@ local function updateSelectionBox()
 	end
 
 	local blockPos, faceNormal, preciseHitPos = getTargetedBlock()
-	
+
 	-- Helper to check if a block position is within interaction range
 	local function isBlockInRange(pos)
 		local character = player.Character
@@ -275,7 +275,7 @@ local function updateSelectionBox()
 		local maxReach = 4.5 * bs + 2 -- Same as server placement/breaking distance
 		return distance <= maxReach
 	end
-	
+
 	-- Use bridge assist if no block targeted OR target is out of range
 	local useBridgeAssist = (not blockPos) or (blockPos and not isBlockInRange(blockPos))
 	if useBridgeAssist and VoxelConfig and VoxelConfig.PLACEMENT and VoxelConfig.PLACEMENT.BRIDGE_ASSIST_ENABLED then
@@ -441,7 +441,7 @@ getBridgePlacementCandidate = function(lockedY, lockedDX, lockedDZ)
         local chunk = wm:GetChunk(chunkX, chunkZ)
         return chunk ~= nil
     end
-    
+
     local function _isAirAt(x, y, z)
         -- If chunk isn't loaded, treat as NOT air (be conservative)
         if not _isChunkLoaded(x, z) then
@@ -473,7 +473,7 @@ getBridgePlacementCandidate = function(lockedY, lockedDX, lockedDZ)
         -- Calculate from camera look direction
         local origin, direction = _computeAimRay()
         if not origin or not direction then return nil, nil, nil, nil end
-        
+
         local dir2 = Vector3.new(direction.X, 0, direction.Z)
         local mag2 = dir2.Magnitude
         if mag2 < 1e-3 then
@@ -492,11 +492,11 @@ getBridgePlacementCandidate = function(lockedY, lockedDX, lockedDZ)
     -- Get player's current block position as the starting point
     local playerBlockX = math.floor(rootPart.Position.X / bs)
     local playerBlockZ = math.floor(rootPart.Position.Z / bs)
-    
+
     -- Calculate how far into the current block the player is (0.0 to 1.0)
     local posInBlockX = (rootPart.Position.X / bs) - playerBlockX
     local posInBlockZ = (rootPart.Position.Z / bs) - playerBlockZ
-    
+
     -- Predictive placement: if player is >60% across current block in bridge direction, look ahead
     local predictiveOffset = 0
     if dx ~= 0 then
@@ -514,11 +514,11 @@ getBridgePlacementCandidate = function(lockedY, lockedDX, lockedDZ)
     -- Search along the cardinal direction only (no diagonal placement)
     -- Stop immediately if out of range (don't keep searching further)
     local maxReach = 4.5 * bs + 2
-    
+
     for s = 1, maxSteps do
         local cx = playerBlockX + (s + predictiveOffset) * dx
         local cz = playerBlockZ + (s + predictiveOffset) * dz
-        
+
         -- Check distance first - if this position is out of range, stop searching
         local blockCenter = Vector3.new(
             cx * bs + bs * 0.5,
@@ -784,7 +784,7 @@ local function interactOrPlace()
 		return false  -- Can't place water without a target
 	end
 	-- ═══════════════════════════════════════════════════════════════════════════
-	
+
 	-- Helper to check if a block position is within interaction range
 	local function isBlockInRange(pos)
 		local char = player.Character
@@ -801,7 +801,7 @@ local function interactOrPlace()
 		local maxReach = 4.5 * bs + 2
 		return distance <= maxReach
 	end
-	
+
 	-- Use bridge assist if no block targeted OR target is out of range
 	local useBridgeAssist = (not blockPos) or (blockPos and not isBlockInRange(blockPos))
 	if useBridgeAssist then
@@ -918,7 +918,7 @@ local function interactOrPlace()
 	local placeX, placeY, placeZ
 	local worldManager = blockAPI and blockAPI.worldManager
 	local targetBlockId = worldManager and worldManager:GetBlock(blockPos.X, blockPos.Y, blockPos.Z)
-	
+
 	if targetBlockId and BlockRegistry:IsReplaceable(targetBlockId) and targetBlockId ~= BLOCK.AIR then
 		-- Target is replaceable (water/flowing water) - place INTO the water position
 		placeX = blockPos.X
@@ -966,17 +966,17 @@ local function startPlacing()
     bridgeLockedDZ = nil
     bridgeLastBlockX = nil
     bridgeLastBlockZ = nil
-    
+
     -- Track last placed position to avoid duplicate requests
     local lastPlacedKey = nil
-    
+
     task.spawn(function()
         while isPlacing do
             local now = os.clock()
             if (now - lastPlaceTime) >= PLACE_COOLDOWN then
 				local blockPos, faceNormal, preciseHitPos = getTargetedBlock()
 				local usedBridgeAssist = false
-				
+
 				-- Helper to check if a block position is within interaction range
 				local function isBlockInRange(pos)
 					local char = player.Character
@@ -993,10 +993,10 @@ local function startPlacing()
 					local maxReach = 4.5 * bs + 2
 					return distance <= maxReach
 				end
-				
+
 				-- Determine if we should use bridge assist
 				local shouldUseBridgeAssist = false
-				
+
 				-- If already in bridge mode, ALWAYS use bridge assist with locked values
 				if bridgeModeActive then
 					shouldUseBridgeAssist = true
@@ -1006,7 +1006,7 @@ local function startPlacing()
 					if not (blockPos and faceNormal) or (blockPos and not isBlockInRange(blockPos)) then
 						shouldUseBridgeAssist = true
 					end
-					
+
 					-- Case 2: Targeting TOP of a block at feet level (would stack on bridge)
 					if not shouldUseBridgeAssist and blockPos and faceNormal and faceNormal.Y == 1 then
 						local character = player.Character
@@ -1021,7 +1021,7 @@ local function startPlacing()
 						end
 					end
 				end
-				
+
 				-- Apply bridge assist if needed
 				local bridgeAssistFailed = false
 				if shouldUseBridgeAssist and VoxelConfig and VoxelConfig.PLACEMENT and VoxelConfig.PLACEMENT.BRIDGE_ASSIST_ENABLED then
@@ -1032,13 +1032,13 @@ local function startPlacing()
 					else
 						placePos, supportPos, bFace, bHit = getBridgePlacementCandidate()
 					end
-					
+
 					if placePos and supportPos and bFace then
 						blockPos = supportPos
 						faceNormal = bFace
 						preciseHitPos = bHit
 						usedBridgeAssist = true
-						
+
 						-- If this is the first bridge assist placement, lock the values
 						if not bridgeModeActive then
 							local character = player.Character
@@ -1060,7 +1060,7 @@ local function startPlacing()
 						bridgeAssistFailed = true
 					end
 				end
-				
+
 				-- If we're in bridge mode and bridge assist failed, DON'T fall back to normal targeting
 				-- User must release mouse and click again to start a new placement
 				if bridgeModeActive and bridgeAssistFailed then
@@ -1068,7 +1068,7 @@ local function startPlacing()
 					task.wait(0.05)
 					continue
 				end
-				
+
 				-- Place block if we have valid target
 				if blockPos and faceNormal then
 					-- Determine placement position
@@ -1076,7 +1076,7 @@ local function startPlacing()
 					local worldManager = blockAPI and blockAPI.worldManager
 					local targetBlockId = worldManager and worldManager:GetBlock(blockPos.X, blockPos.Y, blockPos.Z)
 					local placeX, placeY, placeZ
-					
+
 					if targetBlockId and BlockRegistry:IsReplaceable(targetBlockId) and targetBlockId ~= Constants.BlockType.AIR then
 						-- Target is replaceable (water/flowing water) - place INTO the water position
 						placeX = blockPos.X
@@ -1088,9 +1088,9 @@ local function startPlacing()
 						placeY = blockPos.Y + faceNormal.Y
 						placeZ = blockPos.Z + faceNormal.Z
 					end
-					
+
 					local placeKey = string.format("%d,%d,%d", placeX, placeY, placeZ)
-					
+
 					-- Skip if we already sent a request for this exact position
 					if placeKey ~= lastPlacedKey then
 						local selectedBlock = GameState:Get("voxelWorld.selectedBlock")
@@ -1128,7 +1128,7 @@ local function startPlacing()
 									})
 									lastPlacedKey = placeKey
 									lastPlaceTime = now
-									
+
 									-- If we used bridge assist for this placement, activate bridge mode
 									if usedBridgeAssist then
 										bridgeModeActive = true

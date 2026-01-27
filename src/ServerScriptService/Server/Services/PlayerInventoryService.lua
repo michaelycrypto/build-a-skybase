@@ -353,7 +353,7 @@ function PlayerInventoryService:AddItemCount(player: Player, itemId: number, cou
 	if remaining > 0 then
 		-- Get the correct max stack for this item type
 		local maxStackForItem = ItemStack.GetMaxStackForItem(itemId)
-		
+
 		for i, stack in ipairs(playerInv.hotbar) do
 			if remaining <= 0 then break end
 			if stack:IsEmpty() then

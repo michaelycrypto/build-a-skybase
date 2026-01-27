@@ -48,7 +48,7 @@ local CHEST_CONFIG = {
 	SECTION_SPACING = 8,   -- Section spacing
 	LABEL_HEIGHT = 22,
 	LABEL_SPACING = 8,
-	
+
 	-- Panel structure (matching WorldsPanel)
 	HEADER_HEIGHT = 54,
 	SHADOW_HEIGHT = 18,
@@ -58,24 +58,24 @@ local CHEST_CONFIG = {
 	SLOT_BG_COLOR = Color3.fromRGB(31, 31, 31),   -- Slot background
 	SLOT_BG_TRANSPARENCY = 0.4,  -- 60% opacity
 	SHADOW_COLOR = Color3.fromRGB(43, 43, 43),
-	
+
 	-- Border colors (matching WorldsPanel)
 	COLUMN_BORDER_COLOR = Color3.fromRGB(77, 77, 77),  -- Column/panel border
 	COLUMN_BORDER_THICKNESS = 3,
 	SLOT_BORDER_COLOR = Color3.fromRGB(35, 35, 35),   -- Slot border
 	SLOT_BORDER_THICKNESS = 2,
-	
+
 	-- Hover state
 	HOVER_COLOR = Color3.fromRGB(80, 80, 80),
-	
+
 	-- Corner radius
 	CORNER_RADIUS = 8,
 	SLOT_CORNER_RADIUS = 4,
-	
+
 	-- Background image (matching inventory slots)
 	BACKGROUND_IMAGE = "rbxassetid://82824299358542",
 	BACKGROUND_IMAGE_TRANSPARENCY = 0.6,
-	
+
 	-- Text colors
 	TEXT_PRIMARY = Color3.fromRGB(255, 255, 255),
 	TEXT_MUTED = Color3.fromRGB(140, 140, 140),
@@ -197,18 +197,18 @@ function ChestUI:EnsureResponsiveScale(contentFrame)
 	if self.uiScale and self.uiScale.Parent then
 		return self.uiScale
 	end
-	
+
 	if not contentFrame then
 		return nil
 	end
-	
+
 	local target = contentFrame.Parent
 	if not (target and target:IsA("GuiBase2d")) then
 		target = contentFrame
 	end
-	
+
 	self.scaleTarget = target
-	
+
 	local existing = target:FindFirstChild("ResponsiveScale")
 	if existing and existing:IsA("UIScale") then
 		self.uiScale = existing
@@ -217,7 +217,7 @@ function ChestUI:EnsureResponsiveScale(contentFrame)
 		end
 		return existing
 	end
-	
+
 	local uiScale = Instance.new("UIScale")
 	uiScale.Name = "ResponsiveScale"
 	uiScale:SetAttribute("base_resolution", Vector2.new(1920, 1080))
@@ -225,7 +225,7 @@ function ChestUI:EnsureResponsiveScale(contentFrame)
 	uiScale.Parent = target
 	CollectionService:AddTag(uiScale, "scale_component")
 	self.uiScale = uiScale
-	
+
 	return uiScale
 end
 
@@ -233,19 +233,19 @@ function ChestUI:RegisterScrollingLayout(layout)
 	if not layout or not layout:IsA("UIListLayout") then
 		return
 	end
-	
+
 	if not (self.uiScale and self.uiScale.Parent) then
 		self:EnsureResponsiveScale(self.scaleTarget or self.gui or layout.Parent)
 	end
-	
+
 	if not (self.uiScale and self.uiScale.Parent) then
 		return
 	end
-	
+
 	if not CollectionService:HasTag(layout, "scrolling_frame_layout_component") then
 		CollectionService:AddTag(layout, "scrolling_frame_layout_component")
 	end
-	
+
 	local referral = layout:FindFirstChild("scale_component_referral")
 	if not referral then
 		referral = Instance.new("ObjectValue")
@@ -324,16 +324,16 @@ function ChestUI:CreatePanel()
 	local invHeight = CHEST_CONFIG.SLOT_SIZE * CHEST_CONFIG.INVENTORY_ROWS +
 	                  CHEST_CONFIG.SLOT_SPACING * (CHEST_CONFIG.INVENTORY_ROWS - 1)
 	local hotbarHeight = CHEST_CONFIG.SLOT_SIZE
-	
+
 	-- Calculate body height (panel content area)
 	local labelHeight = CHEST_CONFIG.LABEL_HEIGHT
 	local labelSpacing = CHEST_CONFIG.LABEL_SPACING
 	local bodyHeight = CHEST_CONFIG.PADDING + labelHeight + labelSpacing + chestHeight + CHEST_CONFIG.SECTION_SPACING + labelHeight + labelSpacing + invHeight + CHEST_CONFIG.SECTION_SPACING + labelHeight + labelSpacing + hotbarHeight + CHEST_CONFIG.PADDING
 	local panelWidth = slotWidth + CHEST_CONFIG.PADDING * 2
-	
+
 	-- Total container height (header + body - matching WorldsPanel)
 	local totalHeight = CHEST_CONFIG.HEADER_HEIGHT + bodyHeight
-	
+
 	-- Container frame (centers everything, transparent - matching WorldsPanel)
 	local container = Instance.new("Frame")
 	container.Name = "ChestContainer"
@@ -344,10 +344,10 @@ function ChestUI:CreatePanel()
 	container.BorderSizePixel = 0
 	container.Parent = self.gui
 	self.container = container
-	
+
 	-- Header (OUTSIDE panel, matching WorldsPanel)
 	self:CreateHeader(container, panelWidth)
-	
+
 	-- Body frame (transparent container for panel + shadow - matching WorldsPanel)
 	local bodyFrame = Instance.new("Frame")
 	bodyFrame.Name = "Body"
@@ -355,7 +355,7 @@ function ChestUI:CreatePanel()
 	bodyFrame.Position = UDim2.new(0, 0, 0, CHEST_CONFIG.HEADER_HEIGHT)
 	bodyFrame.BackgroundTransparency = 1
 	bodyFrame.Parent = container
-	
+
 	-- Main panel (with background color - matching WorldsPanel ContentPanel)
 	self.panel = Instance.new("Frame")
 	self.panel.Name = "ChestPanel"
@@ -381,7 +381,7 @@ function ChestUI:CreatePanel()
 	shadow.BorderSizePixel = 0
 	shadow.ZIndex = 0
 	shadow.Parent = bodyFrame
-	
+
 	local shadowCorner = Instance.new("UICorner")
 	shadowCorner.CornerRadius = UDim.new(0, CHEST_CONFIG.CORNER_RADIUS)
 	shadowCorner.Parent = shadow
@@ -484,7 +484,7 @@ function ChestUI:CreateHeader(parent, panelWidth)
 	headerFrame.Size = UDim2.new(0, panelWidth, 0, CHEST_CONFIG.HEADER_HEIGHT)
 	headerFrame.BackgroundTransparency = 1
 	headerFrame.Parent = parent
-	
+
 	-- Title (Upheaval font, size 54 - matching WorldsPanel)
 	local title = Instance.new("TextLabel")
 	title.Name = "Title"
@@ -498,14 +498,14 @@ function ChestUI:CreateHeader(parent, panelWidth)
 	title.TextYAlignment = Enum.TextYAlignment.Center
 	title.Parent = headerFrame
 	FontBinder.apply(title, CUSTOM_FONT_NAME)
-	
+
 	-- Close button (top-right corner - matching WorldsPanel)
 	local closeIcon = IconManager:CreateIcon(headerFrame, "UI", "X", {
 		size = UDim2.new(0, 44, 0, 44),
 		position = UDim2.new(1, 0, 0, 0),
 		anchorPoint = Vector2.new(1, 0)
 	})
-	
+
 	local closeBtn = Instance.new("ImageButton")
 	closeBtn.Name = "CloseButton"
 	closeBtn.Size = closeIcon.Size
@@ -516,7 +516,7 @@ function ChestUI:CreateHeader(parent, panelWidth)
 	closeBtn.ScaleType = closeIcon.ScaleType
 	closeBtn.Parent = headerFrame
 	closeIcon:Destroy()
-	
+
 	-- Close button animation (matching WorldsPanel)
 	local rotateInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 	closeBtn.MouseEnter:Connect(function()
@@ -1009,7 +1009,7 @@ function ChestUI:UpdateChestSlotDisplay(index)
 				end
 				local blockDef = BlockRegistry:GetBlock(itemId)
 				local textureId = blockDef and blockDef.textures and blockDef.textures.all or ""
-				
+
 				local image = Instance.new("ImageLabel")
 				image.Name = "ItemImage"
 				image.Size = UDim2.new(1, -6, 1, -6)
@@ -1160,7 +1160,7 @@ function ChestUI:UpdateInventorySlotDisplay(index)
 				end
 				local blockDef = BlockRegistry:GetBlock(itemId)
 				local textureId = blockDef and blockDef.textures and blockDef.textures.all or ""
-				
+
 				local image = Instance.new("ImageLabel")
 				image.Name = "ItemImage"
 				image.Size = UDim2.new(1, -6, 1, -6)
@@ -1291,7 +1291,7 @@ function ChestUI:UpdateHotbarSlotDisplay(index)
 				-- Render non-placeable items (buckets, etc.) as 2D images
 				local blockDef = BlockRegistry:GetBlock(itemId)
 				local textureId = blockDef and blockDef.textures and blockDef.textures.all or ""
-				
+
 				local image = Instance.new("ImageLabel")
 				image.Name = "ItemImage"
 				image.Size = UDim2.new(1, -6, 1, -6)
@@ -1494,7 +1494,7 @@ function ChestUI:UpdateCursorDisplay()
 				-- Render non-placeable items (buckets, etc.) as 2D images
 				local blockDef = BlockRegistry:GetBlock(itemId)
 				local textureId = blockDef and blockDef.textures and blockDef.textures.all or ""
-				
+
 				local image = Instance.new("ImageLabel")
 				image.Name = "ItemImage"
 				image.Size = UDim2.new(1, -6, 1, -6)

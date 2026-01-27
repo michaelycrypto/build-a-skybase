@@ -138,7 +138,7 @@ local GameConfig = {
 	-- Data Store settings
 	DataStore = {
 		PlayerData = {
-			DataStoreVersion = "PlayerData_v79", -- Keep in sync with PlayerDataStoreService (updated for 4-tier system)
+			DataStoreVersion = "PlayerData_v80", -- Keep in sync with PlayerDataStoreService (updated for 4-tier system)
 			SchemaVersion = 6, -- Increment to force migrations/default resets
 			AutoSaveInterval = 300 -- 5 minutes in seconds
 		},
@@ -621,8 +621,38 @@ local GameConfig = {
 	-- World system configuration
 	Worlds = {
 		MaxWorldsPerPlayer = 10, -- Maximum worlds a player can create
-		DataStoreVersion = "PlayerOwnedWorlds_v68" -- Updated for multi-world support
-	}
+		DataStoreVersion = "PlayerOwnedWorlds_v69" -- Updated for multi-world support
+	},
+
+	-- Single-Place Architecture Configuration
+	-- All server types run from the same PlaceId, differentiated by TeleportData.serverType
+	Places = {
+		-- The single PlaceId for all server types (Router, World, Hub)
+		-- In production, set this to your published game's PlaceId
+		PLACE_ID = 139848475014328,
+	},
+
+	-- Server type constants for TeleportData.serverType
+	-- Used by ServerRoleDetector to determine which systems to initialize
+	ServerTypes = {
+		ROUTER = "ROUTER",  -- Fast routing server (public entry point)
+		WORLD = "WORLD",    -- Player-owned world (reserved server)
+		HUB = "HUB",        -- Nexus/social hub (reserved, shared)
+	},
+
+	-- Hub pooling configuration
+	HubPool = {
+		MaxPlayersPerHub = 25,       -- Maximum players before creating new hub
+		IdleExpiryMinutes = 15,      -- Minutes of inactivity before hub expires
+		HeartbeatInterval = 15,      -- Seconds between hub heartbeats
+		EntryTTL = 30,               -- MemoryStore entry TTL in seconds
+	},
+
+	-- Router configuration
+	Router = {
+		MaxTeleportRetries = 2,      -- Retry attempts before fallback
+		TargetLatencySeconds = 2,    -- Target router lifetime per player
+	},
 }
 
 GameConfig.SOUND_LIBRARY = SOUND_LIBRARY

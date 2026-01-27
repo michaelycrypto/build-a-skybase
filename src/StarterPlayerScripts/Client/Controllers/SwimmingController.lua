@@ -1,14 +1,14 @@
 --[[
 	SwimmingController.lua
 	Handles swimming mechanics when player enters water blocks.
-	
+
 	Features:
 	- Detects when player enters water
 	- Modifies movement (reduced speed, gravity)
 	- Vertical swimming (Space to ascend, Shift to descend)
 	- Integrates with SprintController (disables sprint while swimming)
 	- Visual effects (underwater tint, fog)
-	
+
 	Minecraft-style swimming:
 	- Wading in shallow water (1 block) - slowed movement
 	- Swimming in deep water (2+ blocks) - floaty, reduced gravity
@@ -53,16 +53,16 @@ local config = {
 	SwimmingSpeed = 8,
 	AscendSpeed = 6,
 	DescendSpeed = 8,
-	
+
 	-- Physics
 	WaterGravityMultiplier = 0.3,
 	WaterDrag = 0.85,
 	SurfaceTension = 0.5,
 	CurrentPushStrength = 3,
-	
+
 	-- Thresholds
 	SwimDepthBlocks = 2,
-	
+
 	-- Visual effects
 	UnderwaterFogColor = Color3.fromRGB(32, 84, 164),
 	UnderwaterFogStart = 8,
@@ -119,17 +119,17 @@ end
 
 local function setState(newState)
 	if currentState == newState then return end
-	
+
 	previousState = currentState
 	currentState = newState
-	
+
 	-- Notify other systems of state change
 	if currentState == "Dry" then
 		SwimmingController:OnExitWater()
 	elseif previousState == "Dry" then
 		SwimmingController:OnEnterWater()
 	end
-	
+
 	-- Update swimming flag
 	isSwimming = (currentState == "Swimming" or currentState == "Submerged")
 end
@@ -140,7 +140,7 @@ end
 
 local function applyWadingMovement()
 	if not humanoid then return end
-	
+
 	local cfg = getSwimmingConfig()
 	humanoid.WalkSpeed = cfg.NormalWalkSpeed * cfg.WadingSpeedMultiplier
 	humanoid.JumpPower = cfg.NormalJumpPower * 0.8
@@ -148,22 +148,22 @@ end
 
 local function applySwimmingMovement()
 	if not humanoid then return end
-	
+
 	local cfg = getSwimmingConfig()
-	
+
 	-- Boost swimming speed when holding Space or Shift (swim sprint)
 	if spaceHeld or shiftHeld then
 		humanoid.WalkSpeed = cfg.SwimSprintSpeed or 14
 	else
 		humanoid.WalkSpeed = cfg.SwimmingSpeed
 	end
-	
+
 	humanoid.JumpPower = 0 -- Disable jump while swimming (use Space for ascend)
 end
 
 local function applyNormalMovement()
 	if not humanoid then return end
-	
+
 	local cfg = getSwimmingConfig()
 	humanoid.WalkSpeed = cfg.NormalWalkSpeed
 	humanoid.JumpPower = cfg.NormalJumpPower
@@ -171,13 +171,13 @@ end
 
 local function createBodyMovers()
 	if not rootPart then return end
-	
+
 	-- Clean up existing
 	if bodyVelocity then
 		bodyVelocity:Destroy()
 		bodyVelocity = nil
 	end
-	
+
 	-- Create BodyVelocity for vertical swimming
 	bodyVelocity = Instance.new("BodyVelocity")
 	bodyVelocity.Name = "SwimmingVelocity"
@@ -200,19 +200,19 @@ end
 
 local function updateSwimmingPhysics(dt)
 	if not isSwimming or not rootPart or not bodyVelocity then return end
-	
+
 	local cfg = getSwimmingConfig()
 	local verticalVelocity = 0
 	local horizontalVelocityX = 0
 	local horizontalVelocityZ = 0
-	
+
 	-- Check if in falling water (waterfall)
 	local inFallingWater = false
 	if WaterDetector and worldManager then
 		inFallingWater = WaterDetector.IsInFallingWater(worldManager, rootPart.Position)
 	end
 	isInFallingWater = inFallingWater
-	
+
 	-- Vertical swimming input
 	if isAscending then
 		-- Ascending in falling water is harder (fighting the current)
@@ -238,11 +238,11 @@ local function updateSwimmingPhysics(dt)
 			verticalVelocity = -2 * cfg.WaterGravityMultiplier
 		end
 	end
-	
+
 	-- Apply vertical force
 	bodyVelocity.MaxForce = Vector3.new(0, 10000, 0)
 	bodyVelocity.Velocity = Vector3.new(0, verticalVelocity, 0)
-	
+
 	-- Apply water current push (horizontal flow)
 	if WaterDetector and worldManager then
 		local flowDir = WaterDetector.GetFlowDirection(worldManager, rootPart.Position)
@@ -253,20 +253,20 @@ local function updateSwimmingPhysics(dt)
 			horizontalVelocityZ = currentVel.Z
 		end
 	end
-	
+
 	-- Apply combined forces if there's horizontal movement from currents
 	if horizontalVelocityX ~= 0 or horizontalVelocityZ ~= 0 then
 		bodyVelocity.MaxForce = Vector3.new(5000, 10000, 5000)
 		bodyVelocity.Velocity = Vector3.new(horizontalVelocityX, verticalVelocity, horizontalVelocityZ)
 	end
-	
+
 	-- Surface tension - resist breaking the surface (not in falling water)
 	if not inFallingWater and not isHeadUnderwater and WaterDetector and worldManager then
 		local surfaceY = WaterDetector.GetWaterSurfaceY(worldManager, rootPart.Position)
 		if surfaceY then
 			local headY = rootPart.Position.Y + 1.5
 			local distToSurface = surfaceY - headY
-			
+
 			-- Near surface, add resistance when trying to go up
 			if distToSurface > -1 and distToSurface < 1 and isAscending then
 				-- Reduce upward velocity near surface
@@ -275,7 +275,7 @@ local function updateSwimmingPhysics(dt)
 			end
 		end
 	end
-	
+
 	-- Update horizontal swim speed based on input state
 	applySwimmingMovement()
 end
@@ -296,19 +296,19 @@ end
 
 local function applyUnderwaterVisuals()
 	local cfg = getSwimmingConfig()
-	
+
 	-- Store original fog settings
 	if not originalFogColor then
 		originalFogColor = Lighting.FogColor
 		originalFogStart = Lighting.FogStart
 		originalFogEnd = Lighting.FogEnd
 	end
-	
+
 	-- Apply underwater fog
 	Lighting.FogColor = cfg.UnderwaterFogColor
 	Lighting.FogStart = cfg.UnderwaterFogStart
 	Lighting.FogEnd = cfg.UnderwaterFogEnd
-	
+
 	-- Apply color tint
 	if underwaterColorCorrection then
 		underwaterColorCorrection.TintColor = cfg.UnderwaterTintColor
@@ -329,7 +329,7 @@ local function removeUnderwaterVisuals()
 		originalFogStart = nil
 		originalFogEnd = nil
 	end
-	
+
 	-- Disable color tint
 	if underwaterColorCorrection then
 		underwaterColorCorrection.Enabled = false
@@ -342,7 +342,7 @@ end
 
 local function onInputBegan(input, gameProcessed)
 	if gameProcessed then return end
-	
+
 	if input.KeyCode == Enum.KeyCode.Space then
 		spaceHeld = true
 		if isSwimming then
@@ -401,21 +401,21 @@ local function update(dt)
 	if not character or not humanoid or not rootPart then return end
 	if not worldManager then return end
 	if not WaterDetector then return end
-	
+
 	-- Get swimming state from detector
 	local swimState = WaterDetector.GetSwimmingState(worldManager, rootPart.Position)
-	
+
 	-- Update head underwater state (for visuals)
 	local wasHeadUnderwater = isHeadUnderwater
 	isHeadUnderwater = swimState.headUnderwater
-	
+
 	-- Track previous state to detect transitions
 	local wasInWater = (currentState ~= "Dry")
-	
+
 	-- Update movement state based on water state
 	if swimState.state == WaterDetector.SwimState.DRY then
 		setState("Dry")
-		
+
 		-- Only apply normal movement when TRANSITIONING from water to dry
 		-- AND only if the player isn't sprinting (sprint controller manages sprint speed)
 		-- This prevents overwriting sprint speed every frame
@@ -426,32 +426,32 @@ local function update(dt)
 				applyNormalMovement()
 			end
 		end
-		
+
 		-- Disable swimming physics
 		if bodyVelocity then
 			bodyVelocity.MaxForce = Vector3.new(0, 0, 0)
 		end
-		
+
 	elseif swimState.state == WaterDetector.SwimState.WADING then
 		setState("Wading")
 		applyWadingMovement()
-		
+
 		-- Disable swimming physics in shallow water
 		if bodyVelocity then
 			bodyVelocity.MaxForce = Vector3.new(0, 0, 0)
 		end
-		
+
 	elseif swimState.state == WaterDetector.SwimState.SWIMMING then
 		setState("Swimming")
 		applySwimmingMovement()
 		updateSwimmingPhysics(dt)
-		
+
 	elseif swimState.state == WaterDetector.SwimState.SUBMERGED then
 		setState("Submerged")
 		applySwimmingMovement()
 		updateSwimmingPhysics(dt)
 	end
-	
+
 	-- Update visual effects for head underwater
 	if isHeadUnderwater and not wasHeadUnderwater then
 		applyUnderwaterVisuals()
@@ -469,12 +469,12 @@ end
 ]]
 function SwimmingController:OnEnterWater()
 	createBodyMovers()
-	
+
 	-- Notify sprint controller
 	if sprintController and sprintController.OnWaterStateChanged then
 		sprintController:OnWaterStateChanged(true)
 	end
-	
+
 	-- Could play splash sound here
 end
 
@@ -487,12 +487,12 @@ function SwimmingController:OnExitWater()
 	isAscending = false
 	isDescending = false
 	isInFallingWater = false
-	
+
 	-- Notify sprint controller (can resume sprinting)
 	if sprintController and sprintController.OnWaterStateChanged then
 		sprintController:OnWaterStateChanged(false)
 	end
-	
+
 	-- Could play drip/exit sound here
 end
 
@@ -558,7 +558,7 @@ local function setupCharacter(char)
 	character = char
 	humanoid = char:WaitForChild("Humanoid")
 	rootPart = char:WaitForChild("HumanoidRootPart")
-	
+
 	-- Reset state
 	currentState = "Dry"
 	previousState = "Dry"
@@ -567,15 +567,15 @@ local function setupCharacter(char)
 	isAscending = false
 	isDescending = false
 	isInFallingWater = false
-	
+
 	-- Reset input tracking
 	spaceHeld = false
 	shiftHeld = false
 	ctrlHeld = false
-	
+
 	-- Apply normal movement
 	applyNormalMovement()
-	
+
 	-- Clean up body movers
 	destroyBodyMovers()
 end
@@ -589,34 +589,34 @@ function SwimmingController:Initialize()
 		WaterDetector = require(ReplicatedStorage.Shared.VoxelWorld.World.WaterDetector)
 		Constants = require(ReplicatedStorage.Shared.VoxelWorld.Core.Constants)
 	end)
-	
+
 	if not success then
 		warn("[SwimmingController] Failed to load water detection modules:", err)
 		return
 	end
-	
+
 	-- Load config
 	getSwimmingConfig()
-	
+
 	-- Create visual effects
 	createUnderwaterEffects()
-	
+
 	-- Setup character
 	character = player.Character or player.CharacterAdded:Wait()
 	setupCharacter(character)
-	
+
 	-- Handle respawn
 	player.CharacterAdded:Connect(function(newCharacter)
 		setupCharacter(newCharacter)
 	end)
-	
+
 	-- Connect input
 	inputBeganConnection = InputService.InputBegan:Connect(onInputBegan)
 	inputEndedConnection = InputService.InputEnded:Connect(onInputEnded)
-	
+
 	-- Connect update loop
 	updateConnection = RunService.Heartbeat:Connect(update)
-	
+
 	print("[SwimmingController] Initialized")
 end
 
@@ -628,20 +628,20 @@ function SwimmingController:Cleanup()
 		updateConnection:Disconnect()
 		updateConnection = nil
 	end
-	
+
 	if inputBeganConnection then
 		inputBeganConnection:Disconnect()
 		inputBeganConnection = nil
 	end
-	
+
 	if inputEndedConnection then
 		inputEndedConnection:Disconnect()
 		inputEndedConnection = nil
 	end
-	
+
 	destroyBodyMovers()
 	removeUnderwaterVisuals()
-	
+
 	if underwaterColorCorrection then
 		underwaterColorCorrection:Destroy()
 		underwaterColorCorrection = nil

@@ -13,6 +13,46 @@ local Workspace = game:GetService("Workspace")
 
 local player = Players.LocalPlayer
 
+-- ═══════════════════════════════════════════════════════════════════════════
+-- ROUTER EARLY EXIT (Single-place architecture)
+-- ROUTER: Skip all init, wait for teleport
+-- WORLD/HUB: Full client initialization
+-- ═══════════════════════════════════════════════════════════════════════════
+local ServerRoleDetector = require(ReplicatedStorage.Shared.ServerRoleDetector)
+local serverRole = ServerRoleDetector.Detect()
+
+print("[GameClient] Server role:", serverRole)
+
+if ServerRoleDetector.IsRouter() then
+	-- Minimal UI while routing
+	pcall(function() StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, false) end)
+	
+	local gui = Instance.new("ScreenGui")
+	gui.Name = "RouterUI"
+	gui.ResetOnSpawn = false
+	gui.IgnoreGuiInset = true
+	gui.Parent = player:WaitForChild("PlayerGui")
+	
+	local bg = Instance.new("Frame")
+	bg.Size = UDim2.new(1, 0, 1, 0)
+	bg.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+	bg.BorderSizePixel = 0
+	bg.Parent = gui
+	
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.new(1, 0, 0, 50)
+	label.Position = UDim2.new(0, 0, 0.5, -25)
+	label.BackgroundTransparency = 1
+	label.Text = "Connecting..."
+	label.TextColor3 = Color3.new(1, 1, 1)
+	label.TextSize = 24
+	label.Font = Enum.Font.GothamBold
+	label.Parent = bg
+	
+	return -- Exit - server will teleport us
+end
+-- ═══════════════════════════════════════════════════════════════════════════
+
 -- Voxel world
 local VoxelWorld = require(ReplicatedStorage.Shared.VoxelWorld)
 local BoxMesher = require(ReplicatedStorage.Shared.VoxelWorld.Rendering.BoxMesher)
@@ -599,13 +639,13 @@ local function showWorldStatus(title, subtitle)
 end
 
 local function hideWorldStatus()
-	local handled = false
-	if LoadingScreen and LoadingScreen.IsActive and LoadingScreen:IsActive() and LoadingScreen.ReleaseWorldHold then
-		LoadingScreen:ReleaseWorldHold()
-		handled = true
-	end
-
-	if not handled and Client.managers.UIManager and Client.managers.UIManager.HideWorldStatus then
+	-- NOTE: Do NOT call LoadingScreen:ReleaseWorldHold() here!
+	-- The loading screen is released by the terrain loading system (onSpawnChunkReady)
+	-- after spawn chunks are actually meshed on the client.
+	-- WorldStateChanged just means the SERVER is ready, not that CLIENT terrain is loaded.
+	
+	-- Only hide UIManager status (for post-loading status messages)
+	if Client.managers.UIManager and Client.managers.UIManager.HideWorldStatus then
 		Client.managers.UIManager:HideWorldStatus()
 	end
 end
@@ -633,9 +673,9 @@ local function scheduleWorldReadyRetry(token, attempt)
 
 	if attempt > WORLD_READY_MAX_RETRIES then
 		print("❌ World ready handshake timed out.")
-		showWorldStatus("Unable to load world", "Please return to the hub and try again.")
+		showWorldStatus("Unable to load world", "Please rejoin the game and try again.")
 		if Client.managers.ToastManager then
-			Client.managers.ToastManager:Error("World failed to load. Please rejoin from the hub.", 6)
+			Client.managers.ToastManager:Error("World failed to load. Please rejoin the game.", 6)
 		end
 		return
 	end
@@ -1196,6 +1236,12 @@ local function initialize()
 	-- Register all events first (defines RemoteEvents with proper parameter signatures)
 	EventManager:RegisterAllEvents()
 
+	-- CRITICAL: Create loading screen and set world hold BEFORE event handlers are registered
+	-- This ensures PlayerEntitySpawned and other events can properly interact with the loading screen
+	local LoadingScreenEarly = require(script.Parent.UI.LoadingScreen)
+	LoadingScreenEarly:Create()
+	LoadingScreenEarly:HoldForWorldStatus("Loading", "Preparing world...")
+
 	-- Initialize unified input orchestration before gameplay controllers bind
 	InputService:Initialize()
 
@@ -1685,11 +1731,11 @@ local function initialize()
 
 	-- Start the asynchronous loading and initialization process
 	task.spawn(function()
-		-- Create and show loading screen
+		-- Loading screen was already created and world hold was set in initialize()
+		-- Now we just need to load assets
 		local LoadingScreen = require(script.Parent.UI.LoadingScreen)
-		LoadingScreen:Create()
 
-				-- Initialize IconManager and UIComponents
+		-- Initialize IconManager and UIComponents
 		IconManager:Initialize()
 		UIComponents:Initialize()
 

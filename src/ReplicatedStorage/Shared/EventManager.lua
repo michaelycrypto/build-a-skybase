@@ -594,36 +594,45 @@ function EventManager:CreateServerEventConfig(services)
 	self._services = services
 
 	local config = {
-		-- Cross-place lobby/world navigation
+		-- Single-place teleport navigation (World ↔ Hub)
 		{
 			name = "RequestJoinWorld",
 			handler = function(player, data)
-				if services.LobbyWorldTeleportService and services.LobbyWorldTeleportService.RequestJoinWorld then
-					services.LobbyWorldTeleportService:RequestJoinWorld(player, data)
+				if services.WorldTeleportService and services.WorldTeleportService.RequestJoinWorld then
+					services.WorldTeleportService:RequestJoinWorld(player, data)
 				end
 			end
 		},
 		{
 			name = "RequestCreateWorld",
 			handler = function(player, data)
-				if services.LobbyWorldTeleportService and services.LobbyWorldTeleportService.RequestCreateWorld then
-					services.LobbyWorldTeleportService:RequestCreateWorld(player, data)
+				if services.WorldTeleportService and services.WorldTeleportService.RequestCreateWorld then
+					services.WorldTeleportService:RequestCreateWorld(player, data)
 				end
 			end
 		},
 		{
 			name = "ReturnToLobby",
 			handler = function(player)
-				if services.CrossPlaceTeleportService and services.CrossPlaceTeleportService.ReturnToLobby then
-					services.CrossPlaceTeleportService:ReturnToLobby(player)
+				-- ReturnToLobby now means "Return Home" (to player's main world)
+				if services.ReservedServerTeleportService and services.ReservedServerTeleportService.ReturnHome then
+					services.ReservedServerTeleportService:ReturnHome(player)
 				end
 			end
 		},
 		{
 			name = "RequestTeleportToHub",
 			handler = function(player)
-				if services.CrossPlaceTeleportService and services.CrossPlaceTeleportService.TeleportToHub then
-					services.CrossPlaceTeleportService:TeleportToHub(player)
+				if services.ReservedServerTeleportService and services.ReservedServerTeleportService.TeleportToHub then
+					services.ReservedServerTeleportService:TeleportToHub(player)
+				end
+			end
+		},
+		{
+			name = "RequestReturnHome",
+			handler = function(player)
+				if services.ReservedServerTeleportService and services.ReservedServerTeleportService.ReturnHome then
+					services.ReservedServerTeleportService:ReturnHome(player)
 				end
 			end
 		},

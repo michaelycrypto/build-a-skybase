@@ -1182,16 +1182,16 @@ function VoxelWorldService:SetBlock(x, y, z, blockId, player, metadata)
 	-- Get current state
     local prevBlockId = self.worldManager:GetBlock(x, y, z)
     local prevMeta = self.worldManager:GetBlockMetadata(x, y, z) or 0
-    
+
     -- Determine if anything is actually changing
     local blockTypeChanged = (prevBlockId ~= blockId)
     local metadataChanged = (metadata ~= nil and metadata ~= prevMeta)
-    
+
     -- Early exit if nothing changed (prevents unnecessary network events, especially for water)
     if not blockTypeChanged and not metadataChanged then
     	return true -- Already set, no change needed
     end
-    
+
     -- Set block type if changed
     if blockTypeChanged then
     	local success = self.worldManager:SetBlock(x, y, z, blockId)

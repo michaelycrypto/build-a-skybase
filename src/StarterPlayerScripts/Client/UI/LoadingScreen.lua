@@ -221,12 +221,18 @@ end
 	Create the loading screen
 --]]
 function LoadingScreen:Create()
+	-- Guard against being called multiple times
+	if loadingGui then
+		return
+	end
+	
 	FontBinder.preload(CUSTOM_FONT_THEME)
 
 	loadingGui = Instance.new("ScreenGui")
 	loadingGui.Name = "LoadingScreen"
 	loadingGui.ResetOnSpawn = false
 	loadingGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+	loadingGui.DisplayOrder = 1000  -- Above all other UI (VoxelHotbar is 50)
 	loadingGui.IgnoreGuiInset = true
 	loadingGui.Parent = playerGui
 

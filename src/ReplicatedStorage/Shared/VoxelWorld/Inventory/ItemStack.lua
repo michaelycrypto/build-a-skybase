@@ -25,7 +25,7 @@ do
 	-- Minion item is non-stackable
 	MAX_STACK_SIZES[Constants.BlockType.COBBLESTONE_MINION] = 1
 	MAX_STACK_SIZES[Constants.BlockType.COAL_MINION] = 1
-	
+
 	-- Bucket stack sizes (Minecraft-style)
 	MAX_STACK_SIZES[Constants.BlockType.BUCKET] = 16  -- Empty buckets stack to 16
 	MAX_STACK_SIZES[Constants.BlockType.WATER_BUCKET] = 1  -- Water buckets don't stack
@@ -160,9 +160,9 @@ end
 function ItemStack:SetItem(itemId, count)
 	itemId = tonumber(itemId) or 0
 	count = tonumber(count) or 1
-	
+
 	self.itemId = itemId
-	
+
 	-- Resolve maxStack for the new item type
 	local explicit = MAX_STACK_SIZES[itemId]
 	if explicit then
@@ -172,7 +172,7 @@ function ItemStack:SetItem(itemId, count)
 	else
 		self.maxStack = DEFAULT_MAX_STACK
 	end
-	
+
 	-- Set count (will clamp and clear if needed)
 	self:SetCount(count)
 end

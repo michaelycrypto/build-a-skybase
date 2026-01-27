@@ -10,10 +10,11 @@
 local BaseService = require(script.Parent.BaseService)
 local Logger = require(game.ReplicatedStorage.Shared.Logger)
 local TutorialConfig = require(game.ReplicatedStorage.Configs.TutorialConfig)
+local GameConfig = require(game.ReplicatedStorage.Configs.GameConfig)
+local ServerRoleDetector = require(game.ReplicatedStorage.Shared.ServerRoleDetector)
 
--- Place detection
-local LOBBY_PLACE_ID = 139848475014328
-local IS_LOBBY = (game.PlaceId == LOBBY_PLACE_ID)
+-- Server role detection (single-place architecture)
+local IS_HUB = ServerRoleDetector.IsHub()
 
 local TutorialService = setmetatable({}, BaseService)
 TutorialService.__index = TutorialService
@@ -38,10 +39,10 @@ function TutorialService:Init()
 
 	BaseService.Init(self)
 
-	if IS_LOBBY then
-		self._logger.Debug("TutorialService initialized (DISABLED - Hub world)")
+	if IS_HUB then
+		self._logger.Debug("TutorialService initialized (DISABLED - Hub server)")
 	else
-		self._logger.Debug("TutorialService initialized (Player realms)")
+		self._logger.Debug("TutorialService initialized (World server)")
 	end
 end
 
@@ -65,8 +66,8 @@ end
 	@return boolean - True if tutorial should be active
 ]]
 function TutorialService:_isTutorialActiveFor(player)
-	-- Never active in the hub/lobby
-	if IS_LOBBY then
+	-- Never active in the hub server
+	if IS_HUB then
 		return false
 	end
 
