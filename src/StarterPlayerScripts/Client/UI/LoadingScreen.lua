@@ -1236,6 +1236,15 @@ function LoadingScreen:FadeOut(onComplete)
 		worldHoldActive = false
 		pendingFadeHandler = nil
 
+		-- Clean up any arriving teleport GUI from ReplicatedFirst
+		local playerGui = player:FindFirstChild("PlayerGui")
+		if playerGui then
+			local arrivingGui = playerGui:FindFirstChild("TeleportLoadingScreen")
+			if arrivingGui then
+				arrivingGui:Destroy()
+			end
+		end
+
 		if onComplete then
 			onComplete()
 		end

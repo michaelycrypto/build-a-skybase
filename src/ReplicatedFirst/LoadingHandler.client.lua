@@ -4,6 +4,7 @@
 	Runs before anything else loads.
 	- Removes Roblox's default loading screen
 	- Sets custom teleport GUI for seamless server transitions
+	- Handles arriving teleport GUI for seamless handoff
 ]]
 
 local ReplicatedFirst = game:GetService("ReplicatedFirst")
@@ -13,12 +14,18 @@ local Players = game:GetService("Players")
 -- Remove Roblox's default loading screen immediately
 ReplicatedFirst:RemoveDefaultLoadingScreen()
 
--- Create a simple black screen for teleport transitions
--- This shows during TeleportAsync instead of Roblox's default
-local function createTeleportGui()
+-- Check if we arrived via teleport (seamless transition)
+local arrivingGui = TeleportService:GetArrivingTeleportGui()
+if arrivingGui then
+	-- Player arrived via teleport - show the arriving GUI until game loads
 	local player = Players.LocalPlayer
-	if not player then return nil end
-	
+	local playerGui = player:WaitForChild("PlayerGui")
+	arrivingGui.Parent = playerGui
+	arrivingGui.Enabled = true
+end
+
+-- Create a simple black screen for future teleports
+local function createTeleportGui()
 	local gui = Instance.new("ScreenGui")
 	gui.Name = "TeleportLoadingScreen"
 	gui.ResetOnSpawn = false
@@ -35,8 +42,6 @@ local function createTeleportGui()
 	return gui
 end
 
--- Set the custom teleport GUI
+-- Set the custom teleport GUI for any future teleports from this server
 local teleportGui = createTeleportGui()
-if teleportGui then
-	TeleportService:SetTeleportGui(teleportGui)
-end
+TeleportService:SetTeleportGui(teleportGui)
