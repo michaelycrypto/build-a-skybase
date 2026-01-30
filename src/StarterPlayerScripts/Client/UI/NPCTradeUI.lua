@@ -634,8 +634,15 @@ function NPCTradeUI:CreateItemFrame(item, index, tradeType)
 	-- Text offset from icon
 	local textX = 12 + CONFIG.ICON_SIZE + 12
 
-	-- Item name
+	-- Check if this is a stack item (buy mode only)
+	local isStackItem = tradeType == "buy" and item.stackSize and item.stackSize > 1
+	local stackSize = item.stackSize or 1
+
+	-- Item name (append stack count for stack items)
 	local itemName = GetItemDisplayName(item.itemId) or "Unknown"
+	if isStackItem then
+		itemName = itemName .. " (×" .. stackSize .. ")"
+	end
 	local nameLabel = Instance.new("TextLabel")
 	nameLabel.Name = "ItemName"
 	nameLabel.Size = UDim2.new(1, -textX - CONFIG.BUTTON_WIDTH - 24, 0, 24)
@@ -650,15 +657,21 @@ function NPCTradeUI:CreateItemFrame(item, index, tradeType)
 	nameLabel.ZIndex = 3
 	nameLabel.Parent = card
 
-	-- Price display
+	-- Price display (show per-item price for stack items)
 	local price = tradeType == "buy" and item.price or item.sellPrice
 	local pricePrefix = tradeType == "buy" and "" or "+"
+	local priceText = pricePrefix .. tostring(price) .. " coins"
+	if isStackItem then
+		-- Show per-item price breakdown
+		local perItem = math.floor(price / stackSize)
+		priceText = priceText .. " (" .. perItem .. "/ea)"
+	end
 	local priceLabel = Instance.new("TextLabel")
 	priceLabel.Name = "PriceLabel"
 	priceLabel.Size = UDim2.new(1, -textX - CONFIG.BUTTON_WIDTH - 24, 0, 20)
 	priceLabel.Position = UDim2.new(0, textX, 0, 36)
 	priceLabel.BackgroundTransparency = 1
-	priceLabel.Text = pricePrefix .. tostring(price) .. " coins"
+	priceLabel.Text = priceText
 	priceLabel.TextSize = 14
 	priceLabel.Font = BOLD_FONT
 	priceLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -670,6 +683,29 @@ function NPCTradeUI:CreateItemFrame(item, index, tradeType)
 		priceLabel.TextColor3 = canAfford and CONFIG.TEXT_COINS or CONFIG.TEXT_INSUFFICIENT
 	else
 		priceLabel.TextColor3 = CONFIG.TEXT_COINS
+	end
+
+	-- Stack badge for stack items (shown on icon)
+	if isStackItem then
+		local stackBadge = Instance.new("TextLabel")
+		stackBadge.Name = "StackBadge"
+		stackBadge.Size = UDim2.new(0, 28, 0, 18)
+		stackBadge.Position = UDim2.new(1, -2, 1, -2)
+		stackBadge.AnchorPoint = Vector2.new(1, 1)
+		stackBadge.BackgroundColor3 = Color3.fromRGB(80, 180, 80)
+		stackBadge.BackgroundTransparency = 0.1
+		stackBadge.Text = tostring(stackSize)
+		stackBadge.TextColor3 = CONFIG.TEXT_PRIMARY
+		stackBadge.TextSize = 12
+		stackBadge.Font = BOLD_FONT
+		stackBadge.TextStrokeTransparency = 0
+		stackBadge.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+		stackBadge.ZIndex = 6
+		stackBadge.Parent = iconContainer
+
+		local badgeCorner = Instance.new("UICorner")
+		badgeCorner.CornerRadius = UDim.new(0, 4)
+		badgeCorner.Parent = stackBadge
 	end
 
 	-- Quantity for sell mode (on icon)
@@ -722,7 +758,7 @@ function NPCTradeUI:CreateItemFrame(item, index, tradeType)
 	actionButton.BorderSizePixel = 0
 	actionButton.Text = buttonText
 	actionButton.TextColor3 = CONFIG.TEXT_PRIMARY
-	actionButton.TextSize = 14
+	actionButton.TextSize = isStackItem and 12 or 14 -- Slightly smaller for stack items
 	actionButton.Font = BOLD_FONT
 	actionButton.AutoButtonColor = false
 	actionButton.ZIndex = 4
@@ -757,6 +793,8 @@ function NPCTradeUI:CreateItemFrame(item, index, tradeType)
 	item.frame = card
 	item.container = outerContainer
 	item.priceLabel = priceLabel
+	item.isStackItem = isStackItem
+	item.displayStackSize = stackSize
 
 	-- Button hover effects only (no card hover)
 	actionButton.MouseEnter:Connect(function()
@@ -911,14 +949,15 @@ function NPCTradeUI:Open(data)
 	self.playerCoins = data.playerCoins or 0
 
 	-- Set title and section label based on mode
+	-- Title uses NPC's display name (e.g., "FARMER", "BUILDER", "MERCHANT")
 	if self.mode == "buy" then
-		self.titleLabel.Text = "SHOP KEEPER"
+		self.titleLabel.Text = (data.shopTitle and data.shopTitle:upper()) or "SHOP"
 		if self.sectionLabel then
 			self.sectionLabel.Text = "ITEMS FOR SALE"
 		end
 		self.shopItems = data.items or {}
 	else
-		self.titleLabel.Text = "MERCHANT"
+		self.titleLabel.Text = (data.shopTitle and data.shopTitle:upper()) or "MERCHANT"
 		if self.sectionLabel then
 			self.sectionLabel.Text = "YOUR ITEMS"
 		end
@@ -988,7 +1027,8 @@ function NPCTradeUI:RegisterEvents()
 				mode = "buy",
 				npcId = data.npcId,
 				items = data.items or {},
-				playerCoins = data.playerCoins or 0
+				playerCoins = data.playerCoins or 0,
+				shopTitle = data.shopTitle,
 			})
 		end
 	end)
@@ -1000,7 +1040,8 @@ function NPCTradeUI:RegisterEvents()
 				mode = "sell",
 				npcId = data.npcId,
 				items = data.items or {},
-				playerCoins = data.playerCoins or 0
+				playerCoins = data.playerCoins or 0,
+				shopTitle = data.shopTitle,
 			})
 		end
 	end)

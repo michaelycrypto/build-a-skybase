@@ -898,7 +898,7 @@ function ShopPanel:UpdatePurchaseButtonStates()
 end
 
 --[[
-	Set up stock update listener
+	Set up stock update listener with retry logic
 --]]
 function ShopPanel:SetupStockListener()
 	-- Prevent multiple listeners
@@ -907,34 +907,53 @@ function ShopPanel:SetupStockListener()
 		return
 	end
 
-	-- Listen for stock updates from server
-	print("ShopPanel: Setting up ShopStockUpdated listener...")
-    local success, error = pcall(function()
-        ShopApi.OnStockUpdated(function(stockData)
-			local timestamp = os.date("%H:%M:%S")
-			print("ShopPanel: [" .. timestamp .. "] Received ShopStockUpdated event from server")
-			if stockData then
-				-- Log the specific stock levels for featured items
-				for _, featuredItem in ipairs(GameConfig.Shop.featuredItems) do
-					local itemId = featuredItem.itemId
-					local stockInfo = stockData.stock and stockData.stock[itemId]
-					if stockInfo then
-						print("ShopPanel: [" .. timestamp .. "] " .. itemId .. " stock:", stockInfo.current .. "/" .. stockInfo.max)
-					end
-				end
-				self:UpdateStockDisplay(stockData)
-			else
-				warn("ShopPanel: [" .. timestamp .. "] Received nil stock data in ShopStockUpdated event")
-			end
-        end)
-	end)
+	-- Retry logic for race condition with server event registration
+	local MAX_RETRIES = 5
+	local RETRY_DELAY = 2
 
-	if not success then
-		warn("ShopPanel: Failed to set up ShopStockUpdated listener:", error)
-	else
-		print("ShopPanel: Successfully set up ShopStockUpdated listener")
-		self._stockListenerSetup = true
+	local function attemptSetup(attempt)
+		print("ShopPanel: Setting up ShopStockUpdated listener (attempt " .. attempt .. "/" .. MAX_RETRIES .. ")...")
+		local success, err = pcall(function()
+			ShopApi.OnStockUpdated(function(stockData)
+				local timestamp = os.date("%H:%M:%S")
+				print("ShopPanel: [" .. timestamp .. "] Received ShopStockUpdated event from server")
+				if stockData then
+					-- Log the specific stock levels for featured items
+					for _, featuredItem in ipairs(GameConfig.Shop.featuredItems) do
+						local itemId = featuredItem.itemId
+						local stockInfo = stockData.stock and stockData.stock[itemId]
+						if stockInfo then
+							print("ShopPanel: [" .. timestamp .. "] " .. itemId .. " stock:", stockInfo.current .. "/" .. stockInfo.max)
+						end
+					end
+					self:UpdateStockDisplay(stockData)
+				else
+					warn("ShopPanel: [" .. timestamp .. "] Received nil stock data in ShopStockUpdated event")
+				end
+			end)
+		end)
+
+		if success then
+			print("ShopPanel: Successfully set up ShopStockUpdated listener")
+			self._stockListenerSetup = true
+			return true
+		else
+			warn("ShopPanel: Failed to set up ShopStockUpdated listener (attempt " .. attempt .. "):", err)
+			if attempt < MAX_RETRIES then
+				task.delay(RETRY_DELAY, function()
+					attemptSetup(attempt + 1)
+				end)
+			else
+				warn("ShopPanel: Max retries reached for ShopStockUpdated listener setup")
+			end
+			return false
+		end
 	end
+
+	-- Start first attempt in a separate task to not block initialization
+	task.spawn(function()
+		attemptSetup(1)
+	end)
 end
 
 --[[

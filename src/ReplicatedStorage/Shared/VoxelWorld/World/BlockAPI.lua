@@ -247,43 +247,52 @@ function BlockAPI:GetTargetedBlockFace(origin: Vector3, direction: Vector3, maxD
         local ROT_N, ROT_E, ROT_S, ROT_W = Constants.BlockMetadata.ROTATION_NORTH, Constants.BlockMetadata.ROTATION_EAST, Constants.BlockMetadata.ROTATION_SOUTH, Constants.BlockMetadata.ROTATION_WEST
         local SH = Constants.BlockMetadata
 
+        -- Minecraft coordinate system: North=-Z (zL), South=+Z (zH), East=+X (xH), West=-X (xL)
         local function addStraightTop()
             if rot == ROT_N then
-                addBox(baseX + 0, baseX + bs, stepY0, stepY1, baseZ + zH0, baseZ + zH1)
-            elseif rot == ROT_S then
+                -- North faces -Z, step in low Z half
                 addBox(baseX + 0, baseX + bs, stepY0, stepY1, baseZ + zL0, baseZ + zL1)
+            elseif rot == ROT_S then
+                -- South faces +Z, step in high Z half
+                addBox(baseX + 0, baseX + bs, stepY0, stepY1, baseZ + zH0, baseZ + zH1)
             elseif rot == ROT_E then
+                -- East faces +X, step in high X half
                 addBox(baseX + xH0, baseX + xH1, stepY0, stepY1, baseZ + 0, baseZ + bs)
             else -- ROT_W
+                -- West faces -X, step in low X half
                 addBox(baseX + xL0, baseX + xL1, stepY0, stepY1, baseZ + 0, baseZ + bs)
             end
         end
 
         local function addQuarterTop(isRight)
-            -- Quarter at (front + side)
+            -- Quarter at (front + side) - Minecraft coordinate system
             if rot == ROT_N then
+                -- North faces -Z
                 if isRight then
-                    addBox(baseX + xH0, baseX + xH1, stepY0, stepY1, baseZ + zH0, baseZ + zH1)
+                    addBox(baseX + xH0, baseX + xH1, stepY0, stepY1, baseZ + zL0, baseZ + zL1)
                 else
-                    addBox(baseX + xL0, baseX + xL1, stepY0, stepY1, baseZ + zH0, baseZ + zH1)
+                    addBox(baseX + xL0, baseX + xL1, stepY0, stepY1, baseZ + zL0, baseZ + zL1)
                 end
             elseif rot == ROT_E then
+                -- East faces +X
                 if isRight then
-                    addBox(baseX + xH0, baseX + xH1, stepY0, stepY1, baseZ + zL0, baseZ + zL1)
-                else
                     addBox(baseX + xH0, baseX + xH1, stepY0, stepY1, baseZ + zH0, baseZ + zH1)
+                else
+                    addBox(baseX + xH0, baseX + xH1, stepY0, stepY1, baseZ + zL0, baseZ + zL1)
                 end
             elseif rot == ROT_S then
-                if isRight then
-                    addBox(baseX + xL0, baseX + xL1, stepY0, stepY1, baseZ + zL0, baseZ + zL1)
-                else
-                    addBox(baseX + xH0, baseX + xH1, stepY0, stepY1, baseZ + zL0, baseZ + zL1)
-                end
-            else -- ROT_W
+                -- South faces +Z
                 if isRight then
                     addBox(baseX + xL0, baseX + xL1, stepY0, stepY1, baseZ + zH0, baseZ + zH1)
                 else
+                    addBox(baseX + xH0, baseX + xH1, stepY0, stepY1, baseZ + zH0, baseZ + zH1)
+                end
+            else -- ROT_W
+                -- West faces -X
+                if isRight then
                     addBox(baseX + xL0, baseX + xL1, stepY0, stepY1, baseZ + zL0, baseZ + zL1)
+                else
+                    addBox(baseX + xL0, baseX + xL1, stepY0, stepY1, baseZ + zH0, baseZ + zH1)
                 end
             end
         end

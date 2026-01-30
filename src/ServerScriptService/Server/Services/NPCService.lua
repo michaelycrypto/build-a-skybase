@@ -31,11 +31,11 @@ function NPCService.new()
 	self._activeNPCs = {}
 	self._npcFolder = nil
 	self._heartbeat = nil
-	
+
 	-- Shop stock management
 	self._shopStock = {} -- itemId -> currentStock
 	self._lastStockReplenish = 0
-	
+
 	return self
 end
 
@@ -388,7 +388,7 @@ function NPCService:ReplenishStock()
 	for _, item in ipairs(NPCTradeConfig.ShopItems) do
 		local maxStock = item.stock or 10
 		local currentStock = self._shopStock[item.itemId] or 0
-		
+
 		if currentStock < maxStock then
 			local toAdd = math.ceil(maxStock * replenishPercent)
 			self._shopStock[item.itemId] = math.min(maxStock, currentStock + toAdd)
@@ -402,16 +402,24 @@ function NPCService:ReplenishStock()
 	end
 end
 
-function NPCService:GetShopItemsForPlayer(player)
+-- Get shop items filtered by shop type (FARM, BUILDING)
+-- Items must have a matching shopType - items with nil shopType are not shown
+function NPCService:GetShopItemsForPlayer(player, shopFilter)
 	local items = {}
 	for _, item in ipairs(NPCTradeConfig.ShopItems) do
-		table.insert(items, {
-			itemId = item.itemId,
-			price = item.price,
-			stock = item.stock,
-			currentStock = self._shopStock[item.itemId] or 0,
-			category = item.category,
-		})
+		-- Only include items that have a shopType matching the filter
+		-- Items without shopType are not shown in any specialized shop
+		if item.shopType and item.shopType == shopFilter then
+			table.insert(items, {
+				itemId = item.itemId,
+				price = item.price,
+				stock = item.stock,
+				currentStock = self._shopStock[item.itemId] or 0,
+				category = item.category,
+				stackSize = item.stackSize or 1,
+				shopType = item.shopType,
+			})
+		end
 	end
 	return items
 end
@@ -426,14 +434,32 @@ function NPCService:OpenShopForPlayer(player, npcId)
 		return
 	end
 
+	-- Get NPC config to check for shop filter
+	local npcData = self._activeNPCs[npcId]
+	local shopFilter = nil
+	local shopTitle = "Shop"
+
+	if npcData and npcData.config then
+		shopFilter = npcData.config.shopFilter
+		shopTitle = npcData.config.displayName or "Shop"
+	end
+
 	local playerData = self.Deps.PlayerService:GetPlayerData(player)
 	local playerCoins = playerData and playerData.coins or 0
-	local shopItems = self:GetShopItemsForPlayer(player)
+	local shopItems = self:GetShopItemsForPlayer(player, shopFilter)
+
+	self._logger.Debug("Opening shop", {
+		player = player.Name,
+		npcId = npcId,
+		shopFilter = shopFilter,
+		itemCount = #shopItems
+	})
 
 	EventManager:FireEvent("NPCShopOpened", player, {
 		npcId = npcId,
 		items = shopItems,
 		playerCoins = playerCoins,
+		shopTitle = shopTitle,
 	})
 end
 
@@ -506,8 +532,12 @@ function NPCService:HandleNPCBuy(player, data)
 		})
 		return
 	end
-	
-	local itemAdded = self.Deps.PlayerInventoryService:AddItem(player, itemId, quantity)
+
+	-- Calculate actual item count to give (stackSize for stack items, quantity for individual)
+	local stackSize = shopItem.stackSize or 1
+	local itemsToGive = stackSize * quantity
+
+	local itemAdded = self.Deps.PlayerInventoryService:AddItem(player, itemId, itemsToGive)
 	if not itemAdded then
 		EventManager:FireEvent("NPCTradeResult", player, {
 			success = false,
@@ -515,12 +545,12 @@ function NPCService:HandleNPCBuy(player, data)
 		})
 		return
 	end
-	
+
 	-- Process payment
 	local success = self.Deps.PlayerService:RemoveCurrency(player, "coins", totalCost)
 	if not success then
-		-- Rollback: remove the item we just added
-		self.Deps.PlayerInventoryService:RemoveItem(player, itemId, quantity)
+		-- Rollback: remove the items we just added
+		self.Deps.PlayerInventoryService:RemoveItem(player, itemId, itemsToGive)
 		EventManager:FireEvent("NPCTradeResult", player, {
 			success = false,
 			message = "Transaction failed"
@@ -535,16 +565,24 @@ function NPCService:HandleNPCBuy(player, data)
 	local newPlayerData = self.Deps.PlayerService:GetPlayerData(player)
 	local newCoins = newPlayerData and newPlayerData.coins or 0
 
+	-- Create appropriate success message
+	local successMessage = "Purchase successful!"
+	if stackSize > 1 then
+		successMessage = string.format("Purchased %d items!", itemsToGive)
+	end
+
 	self._logger.Info("Purchase successful", {
 		player = player.Name,
 		itemId = itemId,
 		quantity = quantity,
+		stackSize = stackSize,
+		itemsGiven = itemsToGive,
 		cost = totalCost
 	})
 
 	EventManager:FireEvent("NPCTradeResult", player, {
 		success = true,
-		message = "Purchase successful!",
+		message = successMessage,
 		newCoins = newCoins,
 		itemId = itemId,
 	})
@@ -560,6 +598,13 @@ function NPCService:OpenMerchantForPlayer(player, npcId)
 		return
 	end
 
+	-- Get NPC display name
+	local npcData = self._activeNPCs[npcId]
+	local shopTitle = "Merchant"
+	if npcData and npcData.config then
+		shopTitle = npcData.config.displayName or "Merchant"
+	end
+
 	local playerData = self.Deps.PlayerService:GetPlayerData(player)
 	local playerCoins = playerData and playerData.coins or 0
 	local sellableItems = self:GetSellableItemsForPlayer(player)
@@ -568,6 +613,7 @@ function NPCService:OpenMerchantForPlayer(player, npcId)
 		npcId = npcId,
 		items = sellableItems,
 		playerCoins = playerCoins,
+		shopTitle = shopTitle,
 	})
 end
 
@@ -577,10 +623,10 @@ function NPCService:GetSellableItemsForPlayer(player)
 	end
 
 	local sellableItems = {}
-	
+
 	-- Get all item counts from PlayerInventoryService
 	local itemCounts = self.Deps.PlayerInventoryService:GetAllItemCounts(player)
-	
+
 	-- Build sellable items list
 	for itemId, count in pairs(itemCounts) do
 		if NPCTradeConfig.CanSellItem(itemId) then
@@ -633,7 +679,7 @@ function NPCService:HandleNPCSell(player, data)
 		self._logger.Error("PlayerInventoryService not available")
 		return
 	end
-	
+
 	if not self.Deps.PlayerService then
 		self._logger.Error("PlayerService not available")
 		return

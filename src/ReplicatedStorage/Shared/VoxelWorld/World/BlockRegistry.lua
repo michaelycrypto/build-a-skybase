@@ -468,7 +468,7 @@ BlockRegistry.Blocks = {
 
 	-- Stained Glass blocks (16 colors)
 	[Constants.BlockType.WHITE_STAINED_GLASS] = {
-		name = "White Stained Glass",
+		name = "White Glass",
 		solid = true,
 		transparent = true,
 		color = Color3.fromRGB(255, 255, 255),
@@ -479,7 +479,7 @@ BlockRegistry.Blocks = {
 	},
 
 	[Constants.BlockType.ORANGE_STAINED_GLASS] = {
-		name = "Orange Stained Glass",
+		name = "Orange Glass",
 		solid = true,
 		transparent = true,
 		color = Color3.fromRGB(249, 128, 29),
@@ -490,7 +490,7 @@ BlockRegistry.Blocks = {
 	},
 
 	[Constants.BlockType.MAGENTA_STAINED_GLASS] = {
-		name = "Magenta Stained Glass",
+		name = "Magenta Glass",
 		solid = true,
 		transparent = true,
 		color = Color3.fromRGB(189, 68, 179),
@@ -501,7 +501,7 @@ BlockRegistry.Blocks = {
 	},
 
 	[Constants.BlockType.LIGHT_BLUE_STAINED_GLASS] = {
-		name = "Light Blue Stained Glass",
+		name = "Light Blue Glass",
 		solid = true,
 		transparent = true,
 		color = Color3.fromRGB(58, 179, 218),
@@ -512,7 +512,7 @@ BlockRegistry.Blocks = {
 	},
 
 	[Constants.BlockType.YELLOW_STAINED_GLASS] = {
-		name = "Yellow Stained Glass",
+		name = "Yellow Glass",
 		solid = true,
 		transparent = true,
 		color = Color3.fromRGB(254, 216, 61),
@@ -523,7 +523,7 @@ BlockRegistry.Blocks = {
 	},
 
 	[Constants.BlockType.LIME_STAINED_GLASS] = {
-		name = "Lime Stained Glass",
+		name = "Lime Glass",
 		solid = true,
 		transparent = true,
 		color = Color3.fromRGB(128, 199, 31),
@@ -534,7 +534,7 @@ BlockRegistry.Blocks = {
 	},
 
 	[Constants.BlockType.PINK_STAINED_GLASS] = {
-		name = "Pink Stained Glass",
+		name = "Pink Glass",
 		solid = true,
 		transparent = true,
 		color = Color3.fromRGB(243, 139, 170),
@@ -545,7 +545,7 @@ BlockRegistry.Blocks = {
 	},
 
 	[Constants.BlockType.GRAY_STAINED_GLASS] = {
-		name = "Gray Stained Glass",
+		name = "Gray Glass",
 		solid = true,
 		transparent = true,
 		color = Color3.fromRGB(63, 63, 63),
@@ -556,7 +556,7 @@ BlockRegistry.Blocks = {
 	},
 
 	[Constants.BlockType.LIGHT_GRAY_STAINED_GLASS] = {
-		name = "Light Gray Stained Glass",
+		name = "Light Gray Glass",
 		solid = true,
 		transparent = true,
 		color = Color3.fromRGB(155, 155, 155),
@@ -567,7 +567,7 @@ BlockRegistry.Blocks = {
 	},
 
 	[Constants.BlockType.CYAN_STAINED_GLASS] = {
-		name = "Cyan Stained Glass",
+		name = "Cyan Glass",
 		solid = true,
 		transparent = true,
 		color = Color3.fromRGB(22, 156, 156),
@@ -578,7 +578,7 @@ BlockRegistry.Blocks = {
 	},
 
 	[Constants.BlockType.PURPLE_STAINED_GLASS] = {
-		name = "Purple Stained Glass",
+		name = "Purple Glass",
 		solid = true,
 		transparent = true,
 		color = Color3.fromRGB(122, 42, 173),
@@ -589,7 +589,7 @@ BlockRegistry.Blocks = {
 	},
 
 	[Constants.BlockType.BLUE_STAINED_GLASS] = {
-		name = "Blue Stained Glass",
+		name = "Blue Glass",
 		solid = true,
 		transparent = true,
 		color = Color3.fromRGB(60, 68, 170),
@@ -600,7 +600,7 @@ BlockRegistry.Blocks = {
 	},
 
 	[Constants.BlockType.BROWN_STAINED_GLASS] = {
-		name = "Brown Stained Glass",
+		name = "Brown Glass",
 		solid = true,
 		transparent = true,
 		color = Color3.fromRGB(106, 57, 9),
@@ -611,7 +611,7 @@ BlockRegistry.Blocks = {
 	},
 
 	[Constants.BlockType.GREEN_STAINED_GLASS] = {
-		name = "Green Stained Glass",
+		name = "Green Glass",
 		solid = true,
 		transparent = true,
 		color = Color3.fromRGB(84, 109, 27),
@@ -622,7 +622,7 @@ BlockRegistry.Blocks = {
 	},
 
 	[Constants.BlockType.RED_STAINED_GLASS] = {
-		name = "Red Stained Glass",
+		name = "Red Glass",
 		solid = true,
 		transparent = true,
 		color = Color3.fromRGB(142, 33, 33),
@@ -633,7 +633,7 @@ BlockRegistry.Blocks = {
 	},
 
 	[Constants.BlockType.BLACK_STAINED_GLASS] = {
-		name = "Black Stained Glass",
+		name = "Black Glass",
 		solid = true,
 		transparent = true,
 		color = Color3.fromRGB(20, 21, 25),

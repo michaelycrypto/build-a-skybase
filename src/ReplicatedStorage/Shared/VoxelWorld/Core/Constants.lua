@@ -652,11 +652,12 @@ local Constants = {
 	-- Block metadata format (single byte: 0-255)
 	BlockMetadata = {
 		-- Bits 0-1: Horizontal rotation (4 directions)
+		-- Minecraft coordinate system: +Z = South, -Z = North, +X = East, -X = West
 		ROTATION_MASK = 3,  -- 0b00000011
-		ROTATION_NORTH = 0,  -- 0b00 (faces +Z)
-		ROTATION_EAST = 1,   -- 0b01 (faces +X)
-		ROTATION_SOUTH = 2,  -- 0b10 (faces -Z)
-		ROTATION_WEST = 3,   -- 0b11 (faces -X)
+		ROTATION_NORTH = 0,  -- 0b00 (faces -Z, Minecraft North)
+		ROTATION_EAST = 1,   -- 0b01 (faces +X, Minecraft East)
+		ROTATION_SOUTH = 2,  -- 0b10 (faces +Z, Minecraft South)
+		ROTATION_WEST = 3,   -- 0b11 (faces -X, Minecraft West)
 
 		-- Bits 2-3: Vertical orientation (for stairs - upside down)
 		VERTICAL_MASK = 12,  -- 0b00001100

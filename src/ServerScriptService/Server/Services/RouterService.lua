@@ -7,7 +7,9 @@
 	- Router lifetime per player: <2 seconds
 	- No Workspace loading, no NPCs, no UI
 	- Resolve destination → Reserve server → Teleport
-	- Fallback to Hub on failure
+	
+	Default destination: Player's own world (slot 1)
+	Fallback: Hub on failure
 --]]
 
 local BaseService = require(script.Parent.BaseService)
@@ -25,6 +27,7 @@ local MAX_RETRIES = GameConfig.Router.MaxTeleportRetries or 2
 
 local WORLD_REGISTRY = "ActiveWorlds_v1"
 local HUB_POOL = "HubPool_v1"
+local REGISTRY_TTL = 30
 
 local RouterService = setmetatable({}, BaseService)
 RouterService.__index = RouterService
@@ -50,10 +53,71 @@ end
 function RouterService:Start()
 	if self._started then return end
 	BaseService.Start(self)
-	self._logger.Info("RouterService ready")
+	self._logger.Info("RouterService ready (routes to player world by default)")
 end
 
--- Get available hub from pool
+-- Get player's world ID (slot 1)
+local function getPlayerWorldId(player)
+	return string.format("%d:1", player.UserId)
+end
+
+-- Check if player's world is online
+function RouterService:_getActiveWorld(worldId)
+	if not self._worldRegistry then return nil end
+	local ok, value = pcall(function()
+		return self._worldRegistry:GetAsync(worldId)
+	end)
+	return ok and value or nil
+end
+
+-- Register world in registry
+function RouterService:_registerWorld(worldId, ownerUserId, ownerName, accessCode)
+	if not self._worldRegistry then return end
+	pcall(function()
+		self._worldRegistry:SetAsync(worldId, {
+			placeId = PLACE_ID,
+			ownerUserId = ownerUserId,
+			ownerName = ownerName,
+			accessCode = accessCode,
+			worldId = worldId,
+			slotId = 1,
+			updatedAt = os.time(),
+		}, REGISTRY_TTL)
+	end)
+end
+
+-- Reserve new server for player world
+function RouterService:_reserveWorldServer()
+	if IS_STUDIO then return nil end
+	
+	local ok, accessCode = pcall(function()
+		return TeleportService:ReserveServer(PLACE_ID)
+	end)
+	
+	return ok and accessCode or nil
+end
+
+-- Teleport to player's world
+function RouterService:_teleportToWorld(player, worldId, accessCode, ownerName)
+	local options = Instance.new("TeleportOptions")
+	options:SetTeleportData({
+		serverType = ServerTypes.WORLD,
+		worldId = worldId,
+		ownerUserId = player.UserId,
+		ownerName = ownerName,
+		slotId = 1,
+		accessCode = accessCode,
+		visitingAsOwner = true,
+	})
+	options.ReservedServerAccessCode = accessCode
+	
+	local ok = pcall(function()
+		TeleportService:TeleportAsync(PLACE_ID, { player }, options)
+	end)
+	return ok
+end
+
+-- Get available hub from pool (fallback)
 function RouterService:_getAvailableHub()
 	if not self._hubPool then return nil end
 	local maxPlayers = GameConfig.HubPool.MaxPlayersPerHub or 25
@@ -72,7 +136,7 @@ function RouterService:_getAvailableHub()
 	return nil
 end
 
--- Reserve new hub server
+-- Reserve new hub server (fallback)
 function RouterService:_reserveHub()
 	if IS_STUDIO then return nil end
 	
@@ -83,11 +147,8 @@ function RouterService:_reserveHub()
 	return ok and accessCode or nil
 end
 
--- Teleport to hub
+-- Teleport to hub (fallback)
 function RouterService:_teleportToHub(player, accessCode)
-	-- Router doesn't load player data, so no lock to release
-	-- But if we did load data, we'd release here
-	
 	local options = Instance.new("TeleportOptions")
 	options:SetTeleportData({
 		serverType = ServerTypes.HUB,
@@ -101,15 +162,19 @@ function RouterService:_teleportToHub(player, accessCode)
 	return ok
 end
 
--- Route player to Hub (default destination per PRD)
+-- Main routing function: Routes player to their world (slot 1)
 function RouterService:RoutePlayer(player)
 	if not player or not player:IsDescendantOf(game) then return end
 	if self._routing[player.UserId] then return end
 	
 	self._routing[player.UserId] = true
 	local startTime = os.clock()
+	local worldId = getPlayerWorldId(player)
 	
-	self._logger.Info("Routing player to Hub", { player = player.Name })
+	self._logger.Info("Routing player to their world", { 
+		player = player.Name, 
+		worldId = worldId 
+	})
 	
 	if IS_STUDIO then
 		self._logger.Warn("Router cannot teleport in Studio")
@@ -117,23 +182,62 @@ function RouterService:RoutePlayer(player)
 		return
 	end
 	
-	-- Get or reserve hub
-	local hub = self:_getAvailableHub()
-	local accessCode = hub and hub.accessCode or self:_reserveHub()
-	
-	-- Teleport with retries
+	-- Try to route to player's world first
 	local success = false
+	local accessCode = nil
+	
+	-- Check if world is already online
+	local activeWorld = self:_getActiveWorld(worldId)
+	if activeWorld and activeWorld.accessCode then
+		accessCode = activeWorld.accessCode
+		self._logger.Debug("Found active world", { worldId = worldId })
+	else
+		-- Reserve new server for player's world
+		accessCode = self:_reserveWorldServer()
+		if accessCode then
+			self:_registerWorld(worldId, player.UserId, player.Name, accessCode)
+			self._logger.Debug("Reserved new world server", { worldId = worldId })
+		end
+	end
+	
+	-- Attempt teleport to world with retries
 	for attempt = 1, MAX_RETRIES do
 		if not player:IsDescendantOf(game) then break end
 		
 		if accessCode then
-			success = self:_teleportToHub(player, accessCode)
+			success = self:_teleportToWorld(player, worldId, accessCode, player.Name)
 			if success then break end
 		end
 		
 		if attempt < MAX_RETRIES then
 			task.wait(0.5)
-			accessCode = self:_reserveHub()
+			-- Try reserving a new server
+			accessCode = self:_reserveWorldServer()
+			if accessCode then
+				self:_registerWorld(worldId, player.UserId, player.Name, accessCode)
+			end
+		end
+	end
+	
+	-- Fallback to Hub if world routing failed
+	if not success and player:IsDescendantOf(game) then
+		self._logger.Warn("World routing failed, falling back to Hub", { player = player.Name })
+		
+		local hub = self:_getAvailableHub()
+		local hubAccessCode = hub and hub.accessCode or self:_reserveHub()
+		
+		for attempt = 1, MAX_RETRIES do
+			if not player:IsDescendantOf(game) then break end
+			
+			if hubAccessCode then
+				success = self:_teleportToHub(player, hubAccessCode)
+				if success then break end
+			end
+			
+			if attempt < MAX_RETRIES then
+				task.wait(0.5)
+				hubAccessCode = self:_reserveHub()
+			end
 		end
 	end
 	
@@ -141,6 +245,7 @@ function RouterService:RoutePlayer(player)
 	self._logger.Info("Routing complete", {
 		player = player.Name,
 		success = success,
+		destination = success and "world" or "failed",
 		elapsedMs = string.format("%.0f", elapsed)
 	})
 	

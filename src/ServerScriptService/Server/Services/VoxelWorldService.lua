@@ -1910,11 +1910,12 @@ function VoxelWorldService:RequestBlockPlace(player, placeData)
 				local function rotLeft(r) return (r + 3) % 4 end
 				local function rotRight(r) return (r + 1) % 4 end
 				local function rotOpp(r) return (r + 2) % 4 end
+				-- Minecraft coordinate system: North=-Z, South=+Z, East=+X, West=-X
 				local function dirFromRot(r)
-					if r == ROT_N then return 0, 0, 1 end
-					if r == ROT_E then return 1, 0, 0 end
-					if r == ROT_S then return 0, 0, -1 end
-					return -1, 0, 0
+					if r == ROT_N then return 0, 0, -1 end  -- North faces -Z
+					if r == ROT_E then return 1, 0, 0 end   -- East faces +X
+					if r == ROT_S then return 0, 0, 1 end   -- South faces +Z
+					return -1, 0, 0                         -- West faces -X
 				end
 				local function isSameHalfStair(nx, ny, nz)
 					local nid = self.worldManager:GetBlock(nx, ny, nz)
@@ -1970,11 +1971,12 @@ function VoxelWorldService:RequestBlockPlace(player, placeData)
 				local function rotRight(r)
 					return (r + 1) % 4
 				end
+				-- Minecraft coordinate system: North=-Z, South=+Z, East=+X, West=-X
 				local function dirFromRot(r)
-					if r == Constants.BlockMetadata.ROTATION_NORTH then return 0, 0, 1 end
-					if r == Constants.BlockMetadata.ROTATION_EAST then return 1, 0, 0 end
-					if r == Constants.BlockMetadata.ROTATION_SOUTH then return 0, 0, -1 end
-					return -1, 0, 0 -- WEST
+					if r == Constants.BlockMetadata.ROTATION_NORTH then return 0, 0, -1 end  -- North faces -Z
+					if r == Constants.BlockMetadata.ROTATION_EAST then return 1, 0, 0 end   -- East faces +X
+					if r == Constants.BlockMetadata.ROTATION_SOUTH then return 0, 0, 1 end  -- South faces +Z
+					return -1, 0, 0 -- West faces -X
 				end
 				local function isSameStair(nx, ny, nz)
 					local nid = self.worldManager:GetBlock(nx, ny, nz)
@@ -2036,11 +2038,12 @@ function VoxelWorldService:RequestBlockPlace(player, placeData)
 				local function rotRight(r)
 					return (r + 1) % 4
 				end
+				-- Minecraft coordinate system: North=-Z, South=+Z, East=+X, West=-X
 				local function dirFromRot(r)
-					if r == Constants.BlockMetadata.ROTATION_NORTH then return 0, 0, 1 end
-					if r == Constants.BlockMetadata.ROTATION_EAST then return 1, 0, 0 end
-					if r == Constants.BlockMetadata.ROTATION_SOUTH then return 0, 0, -1 end
-					return -1, 0, 0
+					if r == Constants.BlockMetadata.ROTATION_NORTH then return 0, 0, -1 end  -- North faces -Z
+					if r == Constants.BlockMetadata.ROTATION_EAST then return 1, 0, 0 end   -- East faces +X
+					if r == Constants.BlockMetadata.ROTATION_SOUTH then return 0, 0, 1 end  -- South faces +Z
+					return -1, 0, 0                                                          -- West faces -X
 				end
 				local function getStairRot(nx, ny, nz)
 					local nid = self.worldManager:GetBlock(nx, ny, nz)
@@ -2379,11 +2382,12 @@ function VoxelWorldService:_recomputeStairShapeAt(x, y, z)
 	local function rotLeft(r) return (r + 3) % 4 end
 	local function rotRight(r) return (r + 1) % 4 end
 	local function rotOpp(r) return (r + 2) % 4 end
+	-- Minecraft coordinate system: North=-Z, South=+Z, East=+X, West=-X
 	local function dirFromRot(r)
-		if r == ROT_N then return 0, 0, 1 end
-		if r == ROT_E then return 1, 0, 0 end
-		if r == ROT_S then return 0, 0, -1 end
-		return -1, 0, 0
+		if r == ROT_N then return 0, 0, -1 end  -- North faces -Z
+		if r == ROT_E then return 1, 0, 0 end   -- East faces +X
+		if r == ROT_S then return 0, 0, 1 end   -- South faces +Z
+		return -1, 0, 0                          -- West faces -X
 	end
 	local function isSameHalfStair(nx, ny, nz)
 		local nid = self.worldManager:GetBlock(nx, ny, nz)

@@ -8,12 +8,32 @@ local NPCConfig = {}
 
 -- NPC type definitions
 NPCConfig.Types = {
+	-- Old general shop keeper (deprecated, use FARM_SHOP or BUILDING_SHOP)
 	SHOP_KEEPER = {
 		id = "SHOP_KEEPER",
 		displayName = "Shop Keeper",
 		description = "Buy items and tools",
 		interactionType = "SHOP",
+		shopFilter = nil, -- Shows all items
 		nameTagColor = Color3.fromRGB(50, 200, 50), -- Green
+	},
+	-- Farm shop - seeds, saplings, farming supplies
+	FARM_SHOP = {
+		id = "FARM_SHOP",
+		displayName = "Farmer",
+		description = "Seeds & Saplings",
+		interactionType = "SHOP",
+		shopFilter = "FARM", -- Only farm items
+		nameTagColor = Color3.fromRGB(120, 200, 80), -- Light green
+	},
+	-- Building shop - blocks, decorations, building materials
+	BUILDING_SHOP = {
+		id = "BUILDING_SHOP",
+		displayName = "Builder",
+		description = "Blocks & Materials",
+		interactionType = "SHOP",
+		shopFilter = "BUILDING", -- Only building items
+		nameTagColor = Color3.fromRGB(80, 160, 220), -- Sky blue
 	},
 	MERCHANT = {
 		id = "MERCHANT",

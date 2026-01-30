@@ -55,8 +55,8 @@ local function getRotatedFaceName(faceName, rotation)
 		return faceName
 	end
 
-	-- Map faces to directions: North=+Z, East=+X, South=-Z, West=-X
-	-- Front face default is South (-Z) in Minecraft convention
+	-- Rotation indices: 0=North(-Z), 1=East(+X), 2=South(+Z), 3=West(-X)
+	-- Roblox Front face is -Z, so rotation 0 (North) keeps "front" on Front
 	local faceToDir = {front = 2, right = 1, back = 0, left = 3}  -- In rotation units
 	local dirToFace = {"back", "right", "front", "left"}
 

@@ -1,403 +1,324 @@
 --[[
 	NPCTradeConfig.lua
-	Skyblock-Style Economy Configuration
+	Scarce Economy Configuration
 
 	=== DESIGN PRINCIPLES ===
-	1. Players EARN by selling farmed resources (crops, logs, raw blocks)
-	2. Players SPEND on expansion, utility, and decoratives (money sinks)
-	3. Sell price = 40-60% of buy price (NO ARBITRAGE)
-	4. Early game: Manual farming rewards
-	5. Mid game: Automation with diminishing returns
-	6. Late game: High-cost decoratives as inflation sinks
+	1. Currency is SCARCE - every coin matters
+	2. LOW MARGINS on farming - barely profitable, requires volume
+	3. Blocks are CHEAP - building should be accessible
+	4. NO ARBITRAGE - sell price always < buy price
+	5. WHITELIST ONLY - only items in SellPrices can be sold
 
-	=== ECONOMY TIERS ===
-	Tier 1 (Early): Basic farming - sell 1-5 coins
-	Tier 2 (Early-Mid): Better crops, ores - sell 5-15 coins
-	Tier 3 (Mid): Processed materials - sell 15-40 coins
-	Tier 4 (Late): Rare materials - sell 40-100+ coins
-	Tier 5 (End-game): Premium decoratives - money sink only
+	=== WHAT CAN BE SOLD ===
+	- Crops, logs, planks (farming income)
+	- Ores, ingots (mining income)
+	- Basic blocks, decoratives (building byproducts)
+
+	=== WHAT CANNOT BE SOLD ===
+	- Tools, weapons, armor (keep what you craft)
+	- Arrows, ammo (consumables)
+	- Utility blocks (crafting table, furnace, chest, minions)
 ]]
 
 local NPCTradeConfig = {}
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- ECONOMY CONSTANTS
+-- ITEM ID CONSTANTS (for readability)
 -- ═══════════════════════════════════════════════════════════════════════════
 
-local SELL_MULTIPLIER = {
-	RAW_RESOURCE = 0.50,    -- Raw blocks sell at 50% of buy (best for farmers)
-	PROCESSED = 0.45,       -- Processed materials at 45%
-	TOOL = 0.40,            -- Tools at 40% (prevent tool flipping)
-	DECORATION = 0.40,      -- Decoratives at 40% (money sinks)
-	UTILITY = 0.35,         -- Utility blocks at 35% (strong money sink)
+local B = {
+	-- Basic
+	DIRT = 2, STONE = 3, WOOD = 5, LEAVES = 6, SAND = 10,
+	STONE_BRICKS = 11, OAK_PLANKS = 12, COBBLESTONE = 14,
+	BRICKS = 15, OAK_SAPLING = 16, OAK_STAIRS = 17, STONE_STAIRS = 18,
+	OAK_SLAB = 22, STONE_SLAB = 23,
+	-- Ores & Materials
+	COAL_ORE = 29, IRON_ORE = 30, DIAMOND_ORE = 31, COAL = 32, IRON_INGOT = 33,
+	DIAMOND = 34, GLASS = 36, APPLE = 37,
+	-- Wood types
+	SPRUCE_LOG = 38, SPRUCE_PLANKS = 39, SPRUCE_SAPLING = 40,
+	JUNGLE_LOG = 43, JUNGLE_PLANKS = 44, JUNGLE_SAPLING = 45,
+	DARK_OAK_LOG = 48, DARK_OAK_PLANKS = 49, DARK_OAK_SAPLING = 50,
+	BIRCH_LOG = 53, BIRCH_PLANKS = 54, BIRCH_SAPLING = 55,
+	ACACIA_LOG = 58, ACACIA_PLANKS = 59, ACACIA_SAPLING = 60,
+	-- Leaves
+	OAK_LEAVES = 63, SPRUCE_LEAVES = 64, JUNGLE_LEAVES = 65,
+	DARK_OAK_LEAVES = 66, BIRCH_LEAVES = 67, ACACIA_LEAVES = 68,
+	-- Farming
+	WHEAT_SEEDS = 70, WHEAT = 71, POTATO = 72, CARROT = 73,
+	BEETROOT_SEEDS = 74, BEETROOT = 75,
+	-- Materials
+	COPPER_ORE = 98, BLUESTEEL_ORE = 101,
+	COPPER_INGOT = 105, STEEL_INGOT = 108, BLUESTEEL_INGOT = 109, BLUESTEEL_DUST = 115,
+	COPPER_BLOCK = 116, COAL_BLOCK = 117, IRON_BLOCK = 118, STEEL_BLOCK = 119, BLUESTEEL_BLOCK = 120,
+	-- Stained Glass
+	WHITE_STAINED_GLASS = 123, ORANGE_STAINED_GLASS = 124, MAGENTA_STAINED_GLASS = 125,
+	LIGHT_BLUE_STAINED_GLASS = 126, YELLOW_STAINED_GLASS = 127, LIME_STAINED_GLASS = 128,
+	BLUE_STAINED_GLASS = 134, GREEN_STAINED_GLASS = 136, RED_STAINED_GLASS = 137, BLACK_STAINED_GLASS = 138,
+	-- Terracotta
+	TERRACOTTA = 139, WHITE_TERRACOTTA = 140, ORANGE_TERRACOTTA = 141,
+	BLUE_TERRACOTTA = 151, RED_TERRACOTTA = 154, BLACK_TERRACOTTA = 155,
+	-- Wool
+	WHITE_WOOL = 156, ORANGE_WOOL = 157, MAGENTA_WOOL = 158, LIGHT_BLUE_WOOL = 159,
+	YELLOW_WOOL = 160, LIME_WOOL = 161, PINK_WOOL = 162, GRAY_WOOL = 163,
+	BLUE_WOOL = 167, GREEN_WOOL = 169, RED_WOOL = 170, BLACK_WOOL = 171,
+	-- Stone variants
+	GRAVEL = 173, SANDSTONE = 175,
+	DIORITE = 176, POLISHED_DIORITE = 177, ANDESITE = 178, POLISHED_ANDESITE = 179,
+	-- Concrete
+	WHITE_CONCRETE = 180, ORANGE_CONCRETE = 181, MAGENTA_CONCRETE = 182,
+	LIGHT_BLUE_CONCRETE = 183, YELLOW_CONCRETE = 184, LIME_CONCRETE = 185,
+	BLUE_CONCRETE = 191, RED_CONCRETE = 194, BLACK_CONCRETE = 195,
+	-- Premium
+	QUARTZ_BLOCK = 216, QUARTZ_PILLAR = 217, GRANITE = 221, POLISHED_GRANITE = 222,
+	OBSIDIAN = 271,
 }
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- SHOP ITEMS (What players can BUY from Shop Keeper)
--- Categories: Tools, Seeds, Utility, Materials, Building, Decoration
+-- SHOP ITEMS (What players can BUY)
+-- shopType: "FARM" = Farmer NPC, "BUILDING" = Builder NPC
 -- ═══════════════════════════════════════════════════════════════════════════
 
 NPCTradeConfig.ShopItems = {
 	-- ═══════════════════════════════════════════════════════════════════════
-	-- STARTER TOOLS (affordable, low stock to prevent hoarding)
-	-- ═══════════════════════════════════════════════════════════════════════
-	{ itemId = 1001, price = 50,   stock = 5,  category = "Tools" },   -- Copper Pickaxe
-	{ itemId = 1011, price = 50,   stock = 5,  category = "Tools" },   -- Copper Axe
-	{ itemId = 1021, price = 50,   stock = 5,  category = "Tools" },   -- Copper Shovel
-	{ itemId = 1041, price = 75,   stock = 3,  category = "Tools" },   -- Copper Sword
-
-	-- MID-TIER TOOLS (unlock after some farming)
-	{ itemId = 1002, price = 250,  stock = 3,  category = "Tools" },   -- Iron Pickaxe
-	{ itemId = 1012, price = 250,  stock = 3,  category = "Tools" },   -- Iron Axe
-	{ itemId = 1022, price = 250,  stock = 3,  category = "Tools" },   -- Iron Shovel
-	{ itemId = 1042, price = 350,  stock = 2,  category = "Tools" },   -- Iron Sword
-
-	-- ARROWS (ammo sink - tiered)
-	{ itemId = 2001, price = 5,    stock = 64, category = "Ammo" },    -- Copper Arrow
-	{ itemId = 2002, price = 10,   stock = 32, category = "Ammo" },    -- Iron Arrow
-	{ itemId = 2003, price = 20,   stock = 16, category = "Ammo" },    -- Steel Arrow
-	{ itemId = 2004, price = 40,   stock = 8,  category = "Ammo" },    -- Bluesteel Arrow
-
-	-- ═══════════════════════════════════════════════════════════════════════
-	-- SEEDS & FARMING (kickstart farming loop)
-	-- ═══════════════════════════════════════════════════════════════════════
-	{ itemId = 70,  price = 10,  stock = 16, category = "Seeds" },     -- Wheat Seeds
-	{ itemId = 74,  price = 15,  stock = 16, category = "Seeds" },     -- Beetroot Seeds
-	{ itemId = 72,  price = 20,  stock = 8,  category = "Seeds" },     -- Potato (plantable)
-	{ itemId = 73,  price = 20,  stock = 8,  category = "Seeds" },     -- Carrot (plantable)
-
-	-- SAPLINGS (tree farming)
-	{ itemId = 16,  price = 25,  stock = 8,  category = "Seeds" },     -- Oak Sapling
-	{ itemId = 40,  price = 30,  stock = 6,  category = "Seeds" },     -- Spruce Sapling
-	{ itemId = 55,  price = 30,  stock = 6,  category = "Seeds" },     -- Birch Sapling
-	{ itemId = 45,  price = 40,  stock = 4,  category = "Seeds" },     -- Jungle Sapling
-	{ itemId = 50,  price = 40,  stock = 4,  category = "Seeds" },     -- Dark Oak Sapling
-	{ itemId = 60,  price = 50,  stock = 4,  category = "Seeds" },     -- Acacia Sapling
-
-	-- ═══════════════════════════════════════════════════════════════════════
-	-- UTILITY BLOCKS (money sinks - essential for progression)
-	-- ═══════════════════════════════════════════════════════════════════════
-	{ itemId = 13,  price = 100,  stock = 3,  category = "Utility" },  -- Crafting Table
-	{ itemId = 35,  price = 150,  stock = 3,  category = "Utility" },  -- Furnace
-	{ itemId = 9,   price = 200,  stock = 5,  category = "Utility" },  -- Chest
-	{ itemId = 96,  price = 250,  stock = 2,  category = "Utility" },  -- Composter
-
-	-- AUTOMATION (expensive - late game money sink)
-	{ itemId = 97,  price = 2500, stock = 1,  category = "Utility" },  -- Cobblestone Minion
-	{ itemId = 123, price = 5000, stock = 1,  category = "Utility" },  -- Coal Minion
-
-	-- ═══════════════════════════════════════════════════════════════════════
-	-- RAW MATERIALS (buy price > sell price, for convenience)
-	-- ═══════════════════════════════════════════════════════════════════════
-	{ itemId = 14,  price = 4,    stock = 128, category = "Materials" }, -- Cobblestone
-	{ itemId = 3,   price = 6,    stock = 64,  category = "Materials" }, -- Stone
-	{ itemId = 2,   price = 3,    stock = 64,  category = "Materials" }, -- Dirt
-	{ itemId = 10,  price = 5,    stock = 64,  category = "Materials" }, -- Sand
-	{ itemId = 173, price = 4,    stock = 32,  category = "Materials" }, -- Gravel
-	{ itemId = 279, price = 8,    stock = 32,  category = "Materials" }, -- Clay Block
-
-	-- PROCESSED MATERIALS (convenience buy, sell at loss)
-	{ itemId = 32,  price = 10,   stock = 32,  category = "Materials" }, -- Coal
-	{ itemId = 105, price = 30,   stock = 16,  category = "Materials" }, -- Copper Ingot
-	{ itemId = 33,  price = 50,   stock = 16,  category = "Materials" }, -- Iron Ingot
-	{ itemId = 108, price = 80,   stock = 8,   category = "Materials" }, -- Steel Ingot
-
-	-- ═══════════════════════════════════════════════════════════════════════
-	-- BUILDING BLOCKS (island expansion - major money sink)
-	-- ═══════════════════════════════════════════════════════════════════════
-	{ itemId = 15,  price = 8,    stock = 64,  category = "Building" },  -- Bricks
-	{ itemId = 11,  price = 10,   stock = 64,  category = "Building" },  -- Stone Bricks
-	{ itemId = 36,  price = 12,   stock = 64,  category = "Building" },  -- Glass
-	{ itemId = 175, price = 15,   stock = 32,  category = "Building" },  -- Sandstone
-	{ itemId = 172, price = 20,   stock = 32,  category = "Building" },  -- Nether Bricks
-
-	-- STAIRS & SLABS (building details)
-	{ itemId = 17,  price = 6,    stock = 32,  category = "Building" },  -- Oak Stairs
-	{ itemId = 18,  price = 8,    stock = 32,  category = "Building" },  -- Stone Stairs
-	{ itemId = 22,  price = 4,    stock = 32,  category = "Building" },  -- Oak Slab
-	{ itemId = 23,  price = 5,    stock = 32,  category = "Building" },  -- Stone Slab
-
-	-- ═══════════════════════════════════════════════════════════════════════
-	-- DECORATIVE BLOCKS (pure money sinks - late game inflation control)
+	-- FARM SHOP - Seeds & Saplings (stack of 8)
 	-- ═══════════════════════════════════════════════════════════════════════
 
-	-- COLORED WOOL (Tier 1 decoration)
-	{ itemId = 156, price = 15,   stock = 16, category = "Decoration" }, -- White Wool
-	{ itemId = 157, price = 15,   stock = 16, category = "Decoration" }, -- Orange Wool
-	{ itemId = 158, price = 15,   stock = 16, category = "Decoration" }, -- Magenta Wool
-	{ itemId = 159, price = 15,   stock = 16, category = "Decoration" }, -- Light Blue Wool
-	{ itemId = 160, price = 15,   stock = 16, category = "Decoration" }, -- Yellow Wool
-	{ itemId = 161, price = 15,   stock = 16, category = "Decoration" }, -- Lime Wool
-	{ itemId = 162, price = 15,   stock = 16, category = "Decoration" }, -- Pink Wool
-	{ itemId = 163, price = 15,   stock = 16, category = "Decoration" }, -- Gray Wool
-	{ itemId = 170, price = 15,   stock = 16, category = "Decoration" }, -- Red Wool
-	{ itemId = 167, price = 15,   stock = 16, category = "Decoration" }, -- Blue Wool
-	{ itemId = 169, price = 15,   stock = 16, category = "Decoration" }, -- Green Wool
-	{ itemId = 171, price = 15,   stock = 16, category = "Decoration" }, -- Black Wool
+	{ itemId = B.WHEAT_SEEDS,    price = 160,   stock = 32, stackSize = 8, category = "Seeds", shopType = "FARM" },     -- 20/ea
+	{ itemId = B.BEETROOT_SEEDS, price = 800,   stock = 24, stackSize = 8, category = "Seeds", shopType = "FARM" },     -- 100/ea
+	{ itemId = B.POTATO,         price = 4000,  stock = 16, stackSize = 8, category = "Seeds", shopType = "FARM" },     -- 500/ea
+	{ itemId = B.CARROT,         price = 20000, stock = 12, stackSize = 8, category = "Seeds", shopType = "FARM" },     -- 2500/ea
 
-	-- STAINED GLASS (Tier 2 decoration)
-	{ itemId = 123, price = 25,   stock = 16, category = "Decoration" }, -- White Stained Glass
-	{ itemId = 124, price = 25,   stock = 16, category = "Decoration" }, -- Orange Stained Glass
-	{ itemId = 125, price = 25,   stock = 16, category = "Decoration" }, -- Magenta Stained Glass
-	{ itemId = 126, price = 25,   stock = 16, category = "Decoration" }, -- Light Blue Stained Glass
-	{ itemId = 127, price = 25,   stock = 16, category = "Decoration" }, -- Yellow Stained Glass
-	{ itemId = 128, price = 25,   stock = 16, category = "Decoration" }, -- Lime Stained Glass
-	{ itemId = 134, price = 25,   stock = 16, category = "Decoration" }, -- Blue Stained Glass
-	{ itemId = 137, price = 25,   stock = 16, category = "Decoration" }, -- Red Stained Glass
-	{ itemId = 136, price = 25,   stock = 16, category = "Decoration" }, -- Green Stained Glass
-	{ itemId = 138, price = 25,   stock = 16, category = "Decoration" }, -- Black Stained Glass
+	{ itemId = B.OAK_SAPLING,      price = 800,   stock = 4, stackSize = 8, category = "Saplings", shopType = "FARM" }, -- 100/ea
+	{ itemId = B.SPRUCE_SAPLING,   price = 1600,  stock = 3, stackSize = 8, category = "Saplings", shopType = "FARM" }, -- 200/ea
+	{ itemId = B.BIRCH_SAPLING,    price = 3200,  stock = 3, stackSize = 8, category = "Saplings", shopType = "FARM" }, -- 400/ea
+	{ itemId = B.JUNGLE_SAPLING,   price = 6400,  stock = 2, stackSize = 8, category = "Saplings", shopType = "FARM" }, -- 800/ea
+	{ itemId = B.DARK_OAK_SAPLING, price = 12000, stock = 2, stackSize = 8, category = "Saplings", shopType = "FARM" }, -- 1500/ea
+	{ itemId = B.ACACIA_SAPLING,   price = 24000, stock = 2, stackSize = 8, category = "Saplings", shopType = "FARM" }, -- 3000/ea
 
-	-- TERRACOTTA (Tier 2 decoration)
-	{ itemId = 139, price = 20,   stock = 16, category = "Decoration" }, -- Terracotta
-	{ itemId = 140, price = 25,   stock = 16, category = "Decoration" }, -- White Terracotta
-	{ itemId = 141, price = 25,   stock = 16, category = "Decoration" }, -- Orange Terracotta
-	{ itemId = 151, price = 25,   stock = 16, category = "Decoration" }, -- Blue Terracotta
-	{ itemId = 154, price = 25,   stock = 16, category = "Decoration" }, -- Red Terracotta
-	{ itemId = 155, price = 25,   stock = 16, category = "Decoration" }, -- Black Terracotta
+	-- ═══════════════════════════════════════════════════════════════════════
+	-- BUILDING SHOP - Blocks ONLY
+	-- ═══════════════════════════════════════════════════════════════════════
 
-	-- CONCRETE (Tier 3 decoration - clean modern look)
-	{ itemId = 180, price = 35,   stock = 16, category = "Decoration" }, -- White Concrete
-	{ itemId = 181, price = 35,   stock = 16, category = "Decoration" }, -- Orange Concrete
-	{ itemId = 182, price = 35,   stock = 16, category = "Decoration" }, -- Magenta Concrete
-	{ itemId = 183, price = 35,   stock = 16, category = "Decoration" }, -- Light Blue Concrete
-	{ itemId = 184, price = 35,   stock = 16, category = "Decoration" }, -- Yellow Concrete
-	{ itemId = 185, price = 35,   stock = 16, category = "Decoration" }, -- Lime Concrete
-	{ itemId = 191, price = 35,   stock = 16, category = "Decoration" }, -- Blue Concrete
-	{ itemId = 194, price = 35,   stock = 16, category = "Decoration" }, -- Red Concrete
-	{ itemId = 195, price = 35,   stock = 16, category = "Decoration" }, -- Black Concrete
+	-- BASIC MATERIALS (stack of 64, 2/ea)
+	{ itemId = B.DIRT,              price = 128,  stock = 10, stackSize = 64, category = "Building", shopType = "BUILDING" },
+	{ itemId = B.COBBLESTONE,       price = 128,  stock = 10, stackSize = 64, category = "Building", shopType = "BUILDING" },
+	{ itemId = B.SAND,              price = 128,  stock = 8,  stackSize = 64, category = "Building", shopType = "BUILDING" },
+	{ itemId = B.GRAVEL,            price = 128,  stock = 8,  stackSize = 64, category = "Building", shopType = "BUILDING" },
+	{ itemId = B.ANDESITE,          price = 128,  stock = 8,  stackSize = 64, category = "Building", shopType = "BUILDING" },
+	{ itemId = B.POLISHED_ANDESITE, price = 128,  stock = 8,  stackSize = 64, category = "Building", shopType = "BUILDING" },
+	{ itemId = B.DIORITE,           price = 128,  stock = 8,  stackSize = 64, category = "Building", shopType = "BUILDING" },
+	{ itemId = B.POLISHED_DIORITE,  price = 128,  stock = 8,  stackSize = 64, category = "Building", shopType = "BUILDING" },
+	{ itemId = B.GRANITE,           price = 128,  stock = 8,  stackSize = 64, category = "Building", shopType = "BUILDING" },
+	{ itemId = B.POLISHED_GRANITE,  price = 128,  stock = 8,  stackSize = 64, category = "Building", shopType = "BUILDING" },
 
-	-- PREMIUM DECORATIVES (Tier 4 - expensive money sinks)
-	{ itemId = 216, price = 100,  stock = 8,  category = "Premium" },    -- Quartz Block
-	{ itemId = 217, price = 120,  stock = 8,  category = "Premium" },    -- Quartz Pillar
-	{ itemId = 241, price = 150,  stock = 8,  category = "Premium" },    -- Prismarine
-	{ itemId = 242, price = 180,  stock = 8,  category = "Premium" },    -- Prismarine Bricks
-	{ itemId = 243, price = 200,  stock = 8,  category = "Premium" },    -- Dark Prismarine
-	{ itemId = 244, price = 250,  stock = 8,  category = "Premium" },    -- Purpur Block
-	{ itemId = 240, price = 300,  stock = 4,  category = "Premium" },    -- Sea Lantern
-	{ itemId = 237, price = 350,  stock = 4,  category = "Premium" },    -- Glowstone
+	-- STONE VARIANTS (stack of 64, 3-6/ea)
+	{ itemId = B.STONE,        price = 192,  stock = 6, stackSize = 64, category = "Building", shopType = "BUILDING" },
+	{ itemId = B.STONE_BRICKS, price = 256,  stock = 6, stackSize = 64, category = "Building", shopType = "BUILDING" },
+	{ itemId = B.SANDSTONE,    price = 384,  stock = 4, stackSize = 64, category = "Building", shopType = "BUILDING" },
+	{ itemId = B.BRICKS,       price = 384,  stock = 6, stackSize = 64, category = "Building", shopType = "BUILDING" },
 
-	-- ULTRA PREMIUM (Tier 5 - end-game wealth sinks)
-	{ itemId = 271, price = 500,  stock = 4,  category = "Premium" },    -- Obsidian
-	{ itemId = 246, price = 750,  stock = 4,  category = "Premium" },    -- End Stone
-	{ itemId = 247, price = 1000, stock = 2,  category = "Premium" },    -- End Stone Bricks
-	{ itemId = 310, price = 1500, stock = 2,  category = "Premium" },    -- Crying Obsidian
-	{ itemId = 305, price = 2000, stock = 2,  category = "Premium" },    -- Amethyst Block
-	{ itemId = 344, price = 10000,stock = 1,  category = "Premium" },    -- Beacon
+	-- LOGS (stack of 16, priced above sell)
+	{ itemId = B.WOOD,         price = 80,   stock = 6, stackSize = 16, category = "Building", shopType = "BUILDING" },
+	{ itemId = B.SPRUCE_LOG,   price = 128,  stock = 6, stackSize = 16, category = "Building", shopType = "BUILDING" },
+	{ itemId = B.BIRCH_LOG,    price = 240,  stock = 6, stackSize = 16, category = "Building", shopType = "BUILDING" },
+	{ itemId = B.JUNGLE_LOG,   price = 480,  stock = 4, stackSize = 16, category = "Building", shopType = "BUILDING" },
+	{ itemId = B.DARK_OAK_LOG, price = 960,  stock = 4, stackSize = 16, category = "Building", shopType = "BUILDING" },
+	{ itemId = B.ACACIA_LOG,   price = 1920, stock = 4, stackSize = 16, category = "Building", shopType = "BUILDING" },
+
+	-- GLASS & STAIRS/SLABS (stack of 16)
+	{ itemId = B.GLASS,        price = 320,  stock = 6, stackSize = 16, category = "Building", shopType = "BUILDING" },
+	{ itemId = B.OAK_STAIRS,   price = 320,  stock = 4, stackSize = 16, category = "Building", shopType = "BUILDING" },
+	{ itemId = B.STONE_STAIRS, price = 320,  stock = 4, stackSize = 16, category = "Building", shopType = "BUILDING" },
+	{ itemId = B.OAK_SLAB,     price = 320,  stock = 4, stackSize = 16, category = "Building", shopType = "BUILDING" },
+	{ itemId = B.STONE_SLAB,   price = 320,  stock = 4, stackSize = 16, category = "Building", shopType = "BUILDING" },
+
+	-- WOOL (stack of 16, 20/ea)
+	{ itemId = B.WHITE_WOOL,      price = 320,  stock = 4, stackSize = 16, category = "Decoration", shopType = "BUILDING" },
+	{ itemId = B.ORANGE_WOOL,     price = 320,  stock = 4, stackSize = 16, category = "Decoration", shopType = "BUILDING" },
+	{ itemId = B.MAGENTA_WOOL,    price = 320,  stock = 4, stackSize = 16, category = "Decoration", shopType = "BUILDING" },
+	{ itemId = B.LIGHT_BLUE_WOOL, price = 320,  stock = 4, stackSize = 16, category = "Decoration", shopType = "BUILDING" },
+	{ itemId = B.YELLOW_WOOL,     price = 320,  stock = 4, stackSize = 16, category = "Decoration", shopType = "BUILDING" },
+	{ itemId = B.LIME_WOOL,       price = 320,  stock = 4, stackSize = 16, category = "Decoration", shopType = "BUILDING" },
+	{ itemId = B.PINK_WOOL,       price = 320,  stock = 4, stackSize = 16, category = "Decoration", shopType = "BUILDING" },
+	{ itemId = B.GRAY_WOOL,       price = 320,  stock = 4, stackSize = 16, category = "Decoration", shopType = "BUILDING" },
+	{ itemId = B.RED_WOOL,        price = 320,  stock = 4, stackSize = 16, category = "Decoration", shopType = "BUILDING" },
+	{ itemId = B.BLUE_WOOL,       price = 320,  stock = 4, stackSize = 16, category = "Decoration", shopType = "BUILDING" },
+	{ itemId = B.GREEN_WOOL,      price = 320,  stock = 4, stackSize = 16, category = "Decoration", shopType = "BUILDING" },
+	{ itemId = B.BLACK_WOOL,      price = 320,  stock = 4, stackSize = 16, category = "Decoration", shopType = "BUILDING" },
+
+	-- STAINED GLASS (stack of 16, 40/ea)
+	{ itemId = B.WHITE_STAINED_GLASS,      price = 640,  stock = 4, stackSize = 16, category = "Decoration", shopType = "BUILDING" },
+	{ itemId = B.ORANGE_STAINED_GLASS,     price = 640,  stock = 4, stackSize = 16, category = "Decoration", shopType = "BUILDING" },
+	{ itemId = B.MAGENTA_STAINED_GLASS,    price = 640,  stock = 4, stackSize = 16, category = "Decoration", shopType = "BUILDING" },
+	{ itemId = B.LIGHT_BLUE_STAINED_GLASS, price = 640,  stock = 4, stackSize = 16, category = "Decoration", shopType = "BUILDING" },
+	{ itemId = B.YELLOW_STAINED_GLASS,     price = 640,  stock = 4, stackSize = 16, category = "Decoration", shopType = "BUILDING" },
+	{ itemId = B.LIME_STAINED_GLASS,       price = 640,  stock = 4, stackSize = 16, category = "Decoration", shopType = "BUILDING" },
+	{ itemId = B.BLUE_STAINED_GLASS,       price = 640,  stock = 4, stackSize = 16, category = "Decoration", shopType = "BUILDING" },
+	{ itemId = B.RED_STAINED_GLASS,        price = 640,  stock = 4, stackSize = 16, category = "Decoration", shopType = "BUILDING" },
+	{ itemId = B.GREEN_STAINED_GLASS,      price = 640,  stock = 4, stackSize = 16, category = "Decoration", shopType = "BUILDING" },
+	{ itemId = B.BLACK_STAINED_GLASS,      price = 640,  stock = 4, stackSize = 16, category = "Decoration", shopType = "BUILDING" },
+
+	-- TERRACOTTA (stack of 16, 40/ea)
+	{ itemId = B.TERRACOTTA,        price = 640,  stock = 4, stackSize = 16, category = "Decoration", shopType = "BUILDING" },
+	{ itemId = B.WHITE_TERRACOTTA,  price = 640,  stock = 4, stackSize = 16, category = "Decoration", shopType = "BUILDING" },
+	{ itemId = B.ORANGE_TERRACOTTA, price = 640,  stock = 4, stackSize = 16, category = "Decoration", shopType = "BUILDING" },
+	{ itemId = B.BLUE_TERRACOTTA,   price = 640,  stock = 4, stackSize = 16, category = "Decoration", shopType = "BUILDING" },
+	{ itemId = B.RED_TERRACOTTA,    price = 640,  stock = 4, stackSize = 16, category = "Decoration", shopType = "BUILDING" },
+	{ itemId = B.BLACK_TERRACOTTA,  price = 640,  stock = 4, stackSize = 16, category = "Decoration", shopType = "BUILDING" },
+
+	-- CONCRETE (stack of 16, 50/ea)
+	{ itemId = B.WHITE_CONCRETE,      price = 800,  stock = 4, stackSize = 16, category = "Decoration", shopType = "BUILDING" },
+	{ itemId = B.ORANGE_CONCRETE,     price = 800,  stock = 4, stackSize = 16, category = "Decoration", shopType = "BUILDING" },
+	{ itemId = B.MAGENTA_CONCRETE,    price = 800,  stock = 4, stackSize = 16, category = "Decoration", shopType = "BUILDING" },
+	{ itemId = B.LIGHT_BLUE_CONCRETE, price = 800,  stock = 4, stackSize = 16, category = "Decoration", shopType = "BUILDING" },
+	{ itemId = B.YELLOW_CONCRETE,     price = 800,  stock = 4, stackSize = 16, category = "Decoration", shopType = "BUILDING" },
+	{ itemId = B.LIME_CONCRETE,       price = 800,  stock = 4, stackSize = 16, category = "Decoration", shopType = "BUILDING" },
+	{ itemId = B.BLUE_CONCRETE,       price = 800,  stock = 4, stackSize = 16, category = "Decoration", shopType = "BUILDING" },
+	{ itemId = B.RED_CONCRETE,        price = 800,  stock = 4, stackSize = 16, category = "Decoration", shopType = "BUILDING" },
+	{ itemId = B.BLACK_CONCRETE,      price = 800,  stock = 4, stackSize = 16, category = "Decoration", shopType = "BUILDING" },
+
+	-- PREMIUM (stack of 16)
+	{ itemId = B.QUARTZ_BLOCK,  price = 2048,  stock = 4, stackSize = 16, category = "Premium", shopType = "BUILDING" },
+	{ itemId = B.QUARTZ_PILLAR, price = 2048,  stock = 4, stackSize = 16, category = "Premium", shopType = "BUILDING" },
+	{ itemId = B.OBSIDIAN,      price = 2048,  stock = 2, stackSize = 16, category = "Premium", shopType = "BUILDING" },
 }
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- SELL PRICES (What Merchant buys FROM players)
--- Prices set at 40-60% of buy price to prevent arbitrage
--- Higher margin for farmable resources (encourages farming)
+-- SELL PRICES (WHITELIST - only these items can be sold to merchant)
+-- Tools, arrows, armor, utility blocks CANNOT be sold
 -- ═══════════════════════════════════════════════════════════════════════════
 
 NPCTradeConfig.SellPrices = {
-	-- ═══════════════════════════════════════════════════════════════════════
-	-- TIER 1: BASIC FARMABLES (best margins - core income source)
-	-- ═══════════════════════════════════════════════════════════════════════
+	-- CROPS (core farming income)
+	[B.WHEAT]    = 3,
+	[B.BEETROOT] = 4,
+	[B.POTATO]   = 4,
+	[B.CARROT]   = 5,
+	[B.APPLE]    = 5,
 
-	-- Basic Blocks (always available, consistent income)
-	[14] = 2,    -- Cobblestone (buy 4, sell 2 = 50%)
-	[3]  = 3,    -- Stone (buy 6, sell 3 = 50%)
-	[2]  = 1,    -- Dirt (buy 3, sell 1 = 33%)
-	[10] = 2,    -- Sand (buy 5, sell 2 = 40%)
-	[173] = 2,   -- Gravel (buy 4, sell 2 = 50%)
+	-- LOGS (tree farming income)
+	[B.WOOD]         = 4,
+	[B.SPRUCE_LOG]   = 7,
+	[B.BIRCH_LOG]    = 14,
+	[B.JUNGLE_LOG]   = 28,
+	[B.DARK_OAK_LOG] = 55,
+	[B.ACACIA_LOG]   = 110,
 
-	-- Logs (renewable via saplings - good income)
-	[5]   = 4,   -- Oak Log
-	[38]  = 5,   -- Spruce Log
-	[53]  = 5,   -- Birch Log
-	[43]  = 6,   -- Jungle Log
-	[48]  = 6,   -- Dark Oak Log
-	[58]  = 7,   -- Acacia Log
+	-- PLANKS (crafting byproduct)
+	[B.OAK_PLANKS]      = 1,
+	[B.SPRUCE_PLANKS]   = 2,
+	[B.BIRCH_PLANKS]    = 3,
+	[B.JUNGLE_PLANKS]   = 7,
+	[B.DARK_OAK_PLANKS] = 13,
+	[B.ACACIA_PLANKS]   = 27,
 
-	-- Planks (processed from logs - lower margin)
-	[12]  = 1,   -- Oak Planks
-	[39]  = 1,   -- Spruce Planks
-	[54]  = 1,   -- Birch Planks
-	[44]  = 2,   -- Jungle Planks
-	[49]  = 2,   -- Dark Oak Planks
-	[59]  = 2,   -- Acacia Planks
+	-- SAPLINGS (low value - prevent exploit)
+	[B.OAK_SAPLING]      = 5,
+	[B.SPRUCE_SAPLING]   = 10,
+	[B.BIRCH_SAPLING]    = 20,
+	[B.JUNGLE_SAPLING]   = 40,
+	[B.DARK_OAK_SAPLING] = 75,
+	[B.ACACIA_SAPLING]   = 150,
 
-	-- Leaves (byproduct - minimal value)
-	[6]   = 1,   -- Oak Leaves
-	[63]  = 1,   -- Oak Leaves (alternate ID)
-	[64]  = 1,   -- Spruce Leaves
-	[65]  = 1,   -- Jungle Leaves
-	[66]  = 1,   -- Dark Oak Leaves
-	[67]  = 1,   -- Birch Leaves
-	[68]  = 1,   -- Acacia Leaves
+	-- LEAVES (minimal value)
+	[B.LEAVES]          = 1,
+	[B.OAK_LEAVES]      = 1,
+	[B.SPRUCE_LEAVES]   = 1,
+	[B.JUNGLE_LEAVES]   = 1,
+	[B.DARK_OAK_LEAVES] = 1,
+	[B.BIRCH_LEAVES]    = 1,
+	[B.ACACIA_LEAVES]   = 1,
 
-	-- ═══════════════════════════════════════════════════════════════════════
-	-- TIER 1: CROPS (core farming income)
-	-- ═══════════════════════════════════════════════════════════════════════
-	[71]  = 3,   -- Wheat (main early crop)
-	[72]  = 4,   -- Potato
-	[73]  = 4,   -- Carrot
-	[75]  = 5,   -- Beetroot
-	[37]  = 5,   -- Apple (tree drop)
+	-- BASIC BLOCKS (mining byproduct)
+	[B.COBBLESTONE] = 1,
+	[B.STONE]       = 1,
+	[B.DIRT]        = 1,
+	[B.SAND]        = 1,
+	[B.GRAVEL]      = 1,
 
-	-- ═══════════════════════════════════════════════════════════════════════
-	-- TIER 2: ORES (mining income - scales with tools)
-	-- ═══════════════════════════════════════════════════════════════════════
-	[29]  = 5,   -- Coal Ore
-	[98]  = 8,   -- Copper Ore
-	[30]  = 12,  -- Iron Ore
-	[101] = 20,  -- Bluesteel Ore
-	[31]  = 100, -- Diamond Ore
+	-- ORES (mining income)
+	[B.COAL_ORE]      = 3,
+	[B.COPPER_ORE]    = 5,
+	[B.IRON_ORE]      = 8,
+	[B.BLUESTEEL_ORE] = 12,
+	[B.DIAMOND_ORE]   = 50,
 
-	-- ═══════════════════════════════════════════════════════════════════════
-	-- TIER 3: PROCESSED MATERIALS (lower margin - convenience tax)
-	-- ═══════════════════════════════════════════════════════════════════════
-	[32]  = 4,   -- Coal (buy 10, sell 4 = 40%)
-	[105] = 12,  -- Copper Ingot (buy 30, sell 12 = 40%)
-	[33]  = 20,  -- Iron Ingot (buy 50, sell 20 = 40%)
-	[108] = 32,  -- Steel Ingot (buy 80, sell 32 = 40%)
-	[34]  = 200, -- Diamond
-	[109] = 50,  -- Bluesteel Ingot
-	[115] = 15,  -- Bluesteel Dust
+	-- PROCESSED MATERIALS
+	[B.COAL]            = 2,
+	[B.COPPER_INGOT]    = 6,
+	[B.IRON_INGOT]      = 12,
+	[B.STEEL_INGOT]     = 20,
+	[B.DIAMOND]         = 100,
+	[B.BLUESTEEL_INGOT] = 25,
+	[B.BLUESTEEL_DUST]  = 8,
 
-	-- ═══════════════════════════════════════════════════════════════════════
-	-- TIER 3: STORAGE BLOCKS (bulk selling - slight discount)
-	-- 9 ingots = block, but sell at 8x ingot price (incentive to sell ingots)
-	-- ═══════════════════════════════════════════════════════════════════════
-	[117] = 30,   -- Coal Block (8x4 = 32, sell 30)
-	[116] = 90,   -- Copper Block (8x12 = 96, sell 90)
-	[118] = 150,  -- Iron Block (8x20 = 160, sell 150)
-	[119] = 240,  -- Steel Block (8x32 = 256, sell 240)
-	[120] = 375,  -- Bluesteel Block
+	-- STORAGE BLOCKS
+	[B.COAL_BLOCK]      = 15,
+	[B.COPPER_BLOCK]    = 45,
+	[B.IRON_BLOCK]      = 90,
+	[B.STEEL_BLOCK]     = 150,
+	[B.BLUESTEEL_BLOCK] = 190,
 
-	-- ═══════════════════════════════════════════════════════════════════════
-	-- TIER 2: FOOD (farming byproducts)
-	-- ═══════════════════════════════════════════════════════════════════════
-	[348] = 5,   -- Bread (3 wheat = 1 bread worth 5)
-	[349] = 6,   -- Baked Potato
-	[350] = 8,   -- Cooked Beef
-	[351] = 8,   -- Cooked Porkchop
-	[352] = 6,   -- Cooked Chicken
-	[353] = 7,   -- Cooked Mutton
-	[355] = 5,   -- Cooked Cod
-	[356] = 6,   -- Cooked Salmon
+	-- FOOD
+	[348] = 3,  -- Bread
+	[349] = 4,  -- Baked Potato
+	[350] = 5,  -- Cooked Beef
+	[351] = 5,  -- Cooked Porkchop
+	[352] = 4,  -- Cooked Chicken
+	[353] = 4,  -- Cooked Mutton
+	[355] = 3,  -- Cooked Cod
+	[356] = 4,  -- Cooked Salmon
+	[357] = 2, [358] = 2, [359] = 1, [360] = 2, [362] = 1, [363] = 2,  -- Raw meat
 
-	-- Raw Meat (less value than cooked - incentive to smelt)
-	[357] = 3,   -- Raw Beef
-	[358] = 3,   -- Raw Porkchop
-	[359] = 2,   -- Raw Chicken
-	[360] = 3,   -- Raw Mutton
-	[362] = 2,   -- Raw Cod
-	[363] = 3,   -- Raw Salmon
+	-- BUILDING BLOCKS
+	[B.BRICKS]       = 1,
+	[B.STONE_BRICKS] = 1,
+	[B.GLASS]        = 1,
+	[B.SANDSTONE]    = 1,
+	[279] = 1,  -- Clay Block
+	[B.OAK_STAIRS] = 1, [B.STONE_STAIRS] = 1, [B.OAK_SLAB] = 1, [B.STONE_SLAB] = 1,
 
-	-- ═══════════════════════════════════════════════════════════════════════
-	-- BUILDING BLOCKS (sell at ~40% of buy - money sink)
-	-- ═══════════════════════════════════════════════════════════════════════
-	[15]  = 3,   -- Bricks (buy 8, sell 3 = 37.5%)
-	[11]  = 4,   -- Stone Bricks (buy 10, sell 4 = 40%)
-	[36]  = 5,   -- Glass (buy 12, sell 5 = 42%)
-	[175] = 6,   -- Sandstone (buy 15, sell 6 = 40%)
-	[172] = 8,   -- Nether Bricks (buy 20, sell 8 = 40%)
-	[279] = 3,   -- Clay Block (buy 8, sell 3 = 37.5%)
+	-- WOOL
+	[B.WHITE_WOOL] = 1, [B.ORANGE_WOOL] = 1, [B.MAGENTA_WOOL] = 1, [B.LIGHT_BLUE_WOOL] = 1,
+	[B.YELLOW_WOOL] = 1, [B.LIME_WOOL] = 1, [B.PINK_WOOL] = 1, [B.GRAY_WOOL] = 1,
+	[B.RED_WOOL] = 1, [B.BLUE_WOOL] = 1, [B.GREEN_WOOL] = 1, [B.BLACK_WOOL] = 1,
 
-	-- Stairs & Slabs
-	[17]  = 2,   -- Oak Stairs
-	[18]  = 3,   -- Stone Stairs
-	[22]  = 1,   -- Oak Slab
-	[23]  = 2,   -- Stone Slab
+	-- STAINED GLASS
+	[B.WHITE_STAINED_GLASS] = 1, [B.ORANGE_STAINED_GLASS] = 1, [B.MAGENTA_STAINED_GLASS] = 1,
+	[B.LIGHT_BLUE_STAINED_GLASS] = 1, [B.YELLOW_STAINED_GLASS] = 1, [B.LIME_STAINED_GLASS] = 1,
+	[B.BLUE_STAINED_GLASS] = 1, [B.RED_STAINED_GLASS] = 1, [B.GREEN_STAINED_GLASS] = 1,
+	[B.BLACK_STAINED_GLASS] = 1,
 
-	-- ═══════════════════════════════════════════════════════════════════════
-	-- DECORATIVES (very low sell - pure money sink category)
-	-- ═══════════════════════════════════════════════════════════════════════
+	-- TERRACOTTA
+	[B.TERRACOTTA] = 1, [B.WHITE_TERRACOTTA] = 1, [B.ORANGE_TERRACOTTA] = 1,
+	[B.BLUE_TERRACOTTA] = 1, [B.RED_TERRACOTTA] = 1, [B.BLACK_TERRACOTTA] = 1,
 
-	-- Wool (buy 15, sell 5 = 33%)
-	[156] = 5, [157] = 5, [158] = 5, [159] = 5, [160] = 5,
-	[161] = 5, [162] = 5, [163] = 5, [167] = 5, [169] = 5,
-	[170] = 5, [171] = 5,
+	-- CONCRETE
+	[B.WHITE_CONCRETE] = 2, [B.ORANGE_CONCRETE] = 2, [B.MAGENTA_CONCRETE] = 2,
+	[B.LIGHT_BLUE_CONCRETE] = 2, [B.YELLOW_CONCRETE] = 2, [B.LIME_CONCRETE] = 2,
+	[B.BLUE_CONCRETE] = 2, [B.RED_CONCRETE] = 2, [B.BLACK_CONCRETE] = 2,
 
-	-- Stained Glass (buy 25, sell 8 = 32%)
-	[123] = 8, [124] = 8, [125] = 8, [126] = 8, [127] = 8,
-	[128] = 8, [134] = 8, [136] = 8, [137] = 8, [138] = 8,
+	-- PREMIUM BLOCKS
+	[B.QUARTZ_BLOCK]  = 2,
+	[B.QUARTZ_PILLAR] = 3,
+	[B.OBSIDIAN]      = 5,
 
-	-- Terracotta (buy 20-25, sell 7-8 = 32-35%)
-	[139] = 7, [140] = 8, [141] = 8, [151] = 8, [154] = 8, [155] = 8,
-
-	-- Concrete (buy 35, sell 12 = 34%)
-	[180] = 12, [181] = 12, [182] = 12, [183] = 12, [184] = 12,
-	[185] = 12, [191] = 12, [194] = 12, [195] = 12,
-
-	-- ═══════════════════════════════════════════════════════════════════════
-	-- PREMIUM BLOCKS (very low sell % - end-game money sinks)
-	-- ═══════════════════════════════════════════════════════════════════════
-	[216] = 30,  -- Quartz Block (buy 100, sell 30 = 30%)
-	[217] = 35,  -- Quartz Pillar
-	[241] = 45,  -- Prismarine
-	[242] = 55,  -- Prismarine Bricks
-	[243] = 60,  -- Dark Prismarine
-	[244] = 75,  -- Purpur Block
-	[240] = 90,  -- Sea Lantern
-	[237] = 100, -- Glowstone
-	[271] = 150, -- Obsidian
-	[246] = 225, -- End Stone
-	[247] = 300, -- End Stone Bricks
-	[310] = 450, -- Crying Obsidian
-	[305] = 600, -- Amethyst Block
-	[344] = 3000,-- Beacon (buy 10000, sell 3000 = 30%)
-
-	-- ═══════════════════════════════════════════════════════════════════════
-	-- UTILITY BLOCKS (very low sell - discourage selling)
-	-- ═══════════════════════════════════════════════════════════════════════
-	[13]  = 30,  -- Crafting Table (buy 100, sell 30 = 30%)
-	[35]  = 45,  -- Furnace (buy 150, sell 45 = 30%)
-	[9]   = 60,  -- Chest (buy 200, sell 60 = 30%)
-	[96]  = 75,  -- Composter
-
-	-- Minions (automation - very low resale)
-	[97]  = 500,  -- Cobblestone Minion (buy 2500, sell 500 = 20%)
-
-	-- ═══════════════════════════════════════════════════════════════════════
-	-- MISC DROPS & ITEMS
-	-- ═══════════════════════════════════════════════════════════════════════
+	-- MISC FARMING
 	[28]  = 1,   -- Stick
-	[266] = 20,  -- Bookshelf
-	[254] = 15,  -- Hay Block
-	[248] = 20,  -- Melon
-	[249] = 15,  -- Pumpkin
-	[252] = 10,  -- Cactus
-
-	-- Arrows (tiered)
-	[2001] = 2,   -- Copper Arrow (buy 5, sell 2 = 40%)
-	[2002] = 4,   -- Iron Arrow (buy 10, sell 4 = 40%)
-	[2003] = 8,   -- Steel Arrow (buy 20, sell 8 = 40%)
-	[2004] = 16,  -- Bluesteel Arrow (buy 40, sell 16 = 40%)
+	[254] = 8,   -- Hay Block
+	[248] = 10,  -- Melon
+	[249] = 8,   -- Pumpkin
+	[252] = 5,   -- Cactus
 }
-
--- Tool sell multiplier (% of shop price)
-NPCTradeConfig.ToolSellMultiplier = 0.40
-
--- Armor sell multiplier (% of crafting value)
-NPCTradeConfig.ArmorSellMultiplier = 0.30
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- STOCK REPLENISHMENT
 -- ═══════════════════════════════════════════════════════════════════════════
 
 NPCTradeConfig.Stock = {
-	replenishInterval = 300,     -- 5 minutes
-	replenishPercent = 0.25,     -- 25% of max stock per cycle
-}
-
--- ═══════════════════════════════════════════════════════════════════════════
--- ITEMS THAT CANNOT BE SOLD (prevent exploits)
--- ═══════════════════════════════════════════════════════════════════════════
-
-NPCTradeConfig.UnsellableItems = {
-	[0]   = true, -- Air
-	[4]   = true, -- Bedrock
-	[1]   = true, -- Grass Block (unobtainable)
-	[7]   = true, -- Tall Grass
-	[8]   = true, -- Flower
-	[69]  = true, -- Farmland
-	[70]  = true, -- Wheat Seeds (too easy to farm)
-	[74]  = true, -- Beetroot Seeds
-	[270] = true, -- Spawner
+	replenishInterval = 300,  -- 5 minutes
+	replenishPercent = 0.25,  -- 25% of max stock per cycle
 }
 
 -- ═══════════════════════════════════════════════════════════════════════════
@@ -417,52 +338,43 @@ function NPCTradeConfig.GetShopItem(itemId)
 	return nil
 end
 
-function NPCTradeConfig.GetSellPrice(itemId)
-	-- Check explicit sell prices
-	local basePrice = NPCTradeConfig.SellPrices[itemId]
-	if basePrice then
-		return basePrice
+function NPCTradeConfig.GetStackSize(itemId)
+	local item = NPCTradeConfig.GetShopItem(itemId)
+	if item and item.stackSize then
+		return item.stackSize
 	end
-
-	-- Check if it's a tool (sell at 40% of shop price)
-	local shopItem = NPCTradeConfig.GetShopItem(itemId)
-	if shopItem then
-		return math.floor(shopItem.price * NPCTradeConfig.ToolSellMultiplier)
-	end
-
-	-- Default: 1 coin (for unlisted items)
 	return 1
 end
 
+function NPCTradeConfig.IsStackItem(itemId)
+	local item = NPCTradeConfig.GetShopItem(itemId)
+	return item and item.stackSize and item.stackSize > 1
+end
+
+-- WHITELIST: Only items in SellPrices can be sold
+function NPCTradeConfig.GetSellPrice(itemId)
+	return NPCTradeConfig.SellPrices[itemId]
+end
+
+-- WHITELIST: Only returns true if item is explicitly in SellPrices
 function NPCTradeConfig.CanSellItem(itemId)
-	-- Check unsellable list
-	if NPCTradeConfig.UnsellableItems[itemId] then
-		return false
-	end
-
-	-- Items with explicit sell prices can be sold
-	if NPCTradeConfig.SellPrices[itemId] then
-		return true
-	end
-
-	-- Tools from shop can be sold
-	if NPCTradeConfig.GetShopItem(itemId) then
-		return true
-	end
-
-	-- Exclude spawn eggs and special items
-	if itemId >= 4000 then
-		return false
-	end
-
-	-- Allow most items to be sold for 1 coin
-	return true
+	return NPCTradeConfig.SellPrices[itemId] ~= nil
 end
 
 function NPCTradeConfig.GetShopItemsByCategory(category)
 	local items = {}
 	for _, item in ipairs(NPCTradeConfig.ShopItems) do
 		if item.category == category then
+			table.insert(items, item)
+		end
+	end
+	return items
+end
+
+function NPCTradeConfig.GetShopItemsByShopType(shopType)
+	local items = {}
+	for _, item in ipairs(NPCTradeConfig.ShopItems) do
+		if item.shopType == shopType then
 			table.insert(items, item)
 		end
 	end
@@ -481,16 +393,21 @@ function NPCTradeConfig.GetCategories()
 	return categories
 end
 
--- Debug: Check for arbitrage opportunities
 function NPCTradeConfig.ValidateNoArbitrage()
 	local issues = {}
 	for _, shopItem in ipairs(NPCTradeConfig.ShopItems) do
-		local sellPrice = NPCTradeConfig.GetSellPrice(shopItem.itemId)
-		if sellPrice >= shopItem.price then
-			table.insert(issues, string.format(
-				"ARBITRAGE: Item %d - Buy %d, Sell %d",
-				shopItem.itemId, shopItem.price, sellPrice
-			))
+		if shopItem.shopType then
+			local sellPrice = NPCTradeConfig.GetSellPrice(shopItem.itemId)
+			if sellPrice then
+				local stackSize = shopItem.stackSize or 1
+				local totalSellValue = sellPrice * stackSize
+				if totalSellValue >= shopItem.price then
+					table.insert(issues, string.format(
+						"ARBITRAGE: Item %d - Buy %d (stack %d), Sell %d each = %d total",
+						shopItem.itemId, shopItem.price, stackSize, sellPrice, totalSellValue
+					))
+				end
+			end
 		end
 	end
 	return issues

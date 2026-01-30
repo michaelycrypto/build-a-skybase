@@ -627,12 +627,13 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 						local function rotRight(r)
 							return (r + 1) % 4
 						end
-						-- Helper: get grid dir from rotation
+						-- Helper: get grid dir from rotation (Minecraft coordinate system)
+						-- North = -Z, South = +Z, East = +X, West = -X
 						local function dirFromRot(r)
-							if r == ROT_N then return 0, 0, 1 end
-							if r == ROT_E then return 1, 0, 0 end
-							if r == ROT_S then return 0, 0, -1 end
-							return -1, 0, 0 -- WEST
+							if r == ROT_N then return 0, 0, -1 end  -- North faces -Z
+							if r == ROT_E then return 1, 0, 0 end   -- East faces +X
+							if r == ROT_S then return 0, 0, 1 end   -- South faces +Z
+							return -1, 0, 0 -- West faces -X
 						end
                         local fx, _, fz = dirFromRot(rotation)
                         local bx, bz = -fx, -fz -- opposite of facing (behind)
@@ -707,60 +708,62 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 						end
 
 						-- Compute top step geometry
-						-- Straight: half block along facing
+						-- Straight: half block along facing direction
 						-- Outer: single quarter at (front+side)
 						-- Inner: straight half + additional quarter to form L
+						-- Minecraft coordinate system: North=-Z, South=+Z, East=+X, West=-X
 						local topSizeX, topSizeZ, stepOffset
 						if shape == "straight" then
 							if rotation == ROT_N then
-								-- Step at back (-Z side) - Z axis flipped
+								-- North faces -Z, step at -Z side
 								topSizeX = bottomSizeX
 								topSizeZ = Constants.BLOCK_SIZE / 2
 								stepOffset = Vector3.new(0, 0, -Constants.BLOCK_SIZE / 4)
 							elseif rotation == ROT_E then
-								-- Step at right (+X side)
+								-- East faces +X, step at +X side
 								topSizeX = Constants.BLOCK_SIZE / 2
 								topSizeZ = bottomSizeZ
 								stepOffset = Vector3.new(Constants.BLOCK_SIZE / 4, 0, 0)
 							elseif rotation == ROT_S then
-								-- Step at front (+Z side) - Z axis flipped
+								-- South faces +Z, step at +Z side
 								topSizeX = bottomSizeX
 								topSizeZ = Constants.BLOCK_SIZE / 2
 								stepOffset = Vector3.new(0, 0, Constants.BLOCK_SIZE / 4)
 							else
-								-- WEST: Step at left (-X side)
+								-- West faces -X, step at -X side
 								topSizeX = Constants.BLOCK_SIZE / 2
 								topSizeZ = bottomSizeZ
 								stepOffset = Vector3.new(-Constants.BLOCK_SIZE / 4, 0, 0)
 							end
 						elseif shape == "outer_left" or shape == "outer_right" then
 							-- Outer: quarter step at forward+side quadrant
+							-- Uses dirFromRot which now returns correct Minecraft directions
 							topSizeX = Constants.BLOCK_SIZE / 2
 							topSizeZ = Constants.BLOCK_SIZE / 2
 							local qx = (shape == "outer_right") and rx or lx
 							local qz = (shape == "outer_right") and rz or lz
 							local offX = (qx + fx) * (Constants.BLOCK_SIZE / 4)
 							local offZ = (qz + fz) * (Constants.BLOCK_SIZE / 4)
-							-- Flip Z axis for North/South rotations
-							if rotation == ROT_N or rotation == ROT_S then
-								offZ = -offZ
-							end
 							stepOffset = Vector3.new(offX, 0, offZ)
 						else
 							-- Inner: straight half-block geometry (L will be formed by adding a quarter below)
 							if rotation == ROT_N then
+								-- North faces -Z, step at -Z side
 								topSizeX = bottomSizeX
 								topSizeZ = Constants.BLOCK_SIZE / 2
-								stepOffset = Vector3.new(0, 0, -Constants.BLOCK_SIZE / 4) -- Z axis flipped
+								stepOffset = Vector3.new(0, 0, -Constants.BLOCK_SIZE / 4)
 							elseif rotation == ROT_E then
+								-- East faces +X, step at +X side
 								topSizeX = Constants.BLOCK_SIZE / 2
 								topSizeZ = bottomSizeZ
 								stepOffset = Vector3.new(Constants.BLOCK_SIZE / 4, 0, 0)
 							elseif rotation == ROT_S then
+								-- South faces +Z, step at +Z side
 								topSizeX = bottomSizeX
 								topSizeZ = Constants.BLOCK_SIZE / 2
-								stepOffset = Vector3.new(0, 0, Constants.BLOCK_SIZE / 4) -- Z axis flipped
+								stepOffset = Vector3.new(0, 0, Constants.BLOCK_SIZE / 4)
 							else
+								-- West faces -X, step at -X side
 								topSizeX = Constants.BLOCK_SIZE / 2
 								topSizeZ = bottomSizeZ
 								stepOffset = Vector3.new(-Constants.BLOCK_SIZE / 4, 0, 0)
@@ -838,10 +841,6 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 								offX, _, offZ = rx * q, 0, rz * q
 							else
 								offX, _, offZ = lx * q, 0, lz * q
-							end
-							-- Flip Z axis for North/South rotations
-							if rotation == ROT_N or rotation == ROT_S then
-								offZ = -offZ
 							end
 							extraOffset = Vector3.new(offX, 0, offZ)
 
