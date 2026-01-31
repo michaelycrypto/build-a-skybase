@@ -191,11 +191,11 @@ NPCTradeConfig.ShopItems = {
 
 NPCTradeConfig.SellPrices = {
 	-- CROPS (core farming income)
-	[B.WHEAT]    = 3,
-	[B.BEETROOT] = 4,
-	[B.POTATO]   = 4,
-	[B.CARROT]   = 5,
-	[B.APPLE]    = 5,
+	[B.WHEAT]    = 4,
+	[B.BEETROOT] = 8,
+	[B.POTATO]   = 16,
+	[B.CARROT]   = 24,
+	[B.APPLE]    = 10,
 
 	-- LOGS (tree farming income)
 	[B.WOOD]         = 4,

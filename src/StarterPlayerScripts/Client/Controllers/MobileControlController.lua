@@ -262,17 +262,27 @@ function MobileControlController:SetupActionBarCallbacks()
 end
 
 --[[
-	Setup character references
+	Setup character references (non-blocking - character may not exist yet)
 ]]
 function MobileControlController:SetupCharacter()
-	self.character = self.player.Character or self.player.CharacterAdded:Wait()
-	self.humanoid = self.character:WaitForChild("Humanoid")
-
-	-- Handle respawn
+	-- Handle character spawn/respawn
 	self.player.CharacterAdded:Connect(function(newCharacter)
 		self.character = newCharacter
 		self.humanoid = newCharacter:WaitForChild("Humanoid")
 	end)
+	
+	-- Setup existing character if present
+	if self.player.Character then
+		self.character = self.player.Character
+		local humanoid = self.character:FindFirstChild("Humanoid")
+		if humanoid then
+			self.humanoid = humanoid
+		else
+			task.spawn(function()
+				self.humanoid = self.character:WaitForChild("Humanoid", 5)
+			end)
+		end
+	end
 end
 
 --[[

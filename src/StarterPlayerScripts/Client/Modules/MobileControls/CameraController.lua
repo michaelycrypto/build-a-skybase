@@ -64,17 +64,26 @@ function MobileCameraController:Initialize()
 
 	self.enabled = true
 
-	-- Setup character
-	self.character = self.player.Character or self.player.CharacterAdded:Wait()
-	self.humanoid = self.character:WaitForChild("Humanoid")
-
-	-- Handle respawn
+	-- Handle character spawn/respawn (non-blocking - character may not exist yet)
 	self.player.CharacterAdded:Connect(function(newCharacter)
 		self.character = newCharacter
 		self.humanoid = newCharacter:WaitForChild("Humanoid")
 		self.cameraRotation = Vector2.new(0, 0)
 		self.targetRotation = Vector2.new(0, 0)
 	end)
+	
+	-- Setup existing character if present
+	if self.player.Character then
+		self.character = self.player.Character
+		local humanoid = self.character:FindFirstChild("Humanoid")
+		if humanoid then
+			self.humanoid = humanoid
+		else
+			task.spawn(function()
+				self.humanoid = self.character:WaitForChild("Humanoid", 5)
+			end)
+		end
+	end
 
 	-- Setup input handling
 	self:SetupInputHandling()

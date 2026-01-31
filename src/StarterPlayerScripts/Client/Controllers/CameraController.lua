@@ -31,6 +31,7 @@ local MOUSE_LOCK_ENABLED = GameConfig.IsFeatureEnabled and GameConfig.IsFeatureE
 local MOUSE_SENSITIVITY = 0.6
 
 -- State definitions (declarative configuration)
+-- targetingMode: "crosshair" = center screen targeting, "direct" = input position targeting
 local STATES = {
 	FIRST_PERSON = {
 		name = "FIRST_PERSON",
@@ -44,6 +45,7 @@ local STATES = {
 		cameraOffset = Vector3.new(0, 0, 0),
 		enableBobbing = true,
 		characterRotation = "auto",
+		targetingMode = "crosshair", -- Aim with crosshair (center screen)
 	},
 	THIRD_PERSON_LOCK = {
 		name = "THIRD_PERSON_LOCK",
@@ -57,6 +59,7 @@ local STATES = {
 		cameraOffset = Vector3.new(1.5, 1, 0),
 		enableBobbing = false,
 		characterRotation = "camera-forward",
+		targetingMode = "crosshair", -- Aim with crosshair (center screen)
 	},
 	THIRD_PERSON_FREE = {
 		name = "THIRD_PERSON_FREE",
@@ -70,6 +73,7 @@ local STATES = {
 		cameraOffset = Vector3.new(0, 1, 0),
 		enableBobbing = false,
 		characterRotation = "mouse-raycast",
+		targetingMode = "direct", -- Click/tap directly on target
 	},
 }
 
@@ -180,9 +184,12 @@ local function enforceSettings(state)
 		_player.CameraMaxZoomDistance = state.zoomDistance
 		_player.CameraMinZoomDistance = state.zoomDistance
 	end
-	-- Continuously enforce cursor mode to counteract Roblox's PlayerModule interference
-	-- This mirrors UIBackdrop's approach of enforcing cursor state every frame
-	_inputService:SetGameplayCursorMode(state.cursorMode, state.cursorOptions)
+	-- Only enforce cursor mode continuously for LOCK modes where we need to fight
+	-- Roblox's PlayerModule. For FREE mode, let Roblox control MouseBehavior
+	-- during right-click camera rotation.
+	if state.cursorMode == "gameplay-lock" then
+		_inputService:SetGameplayCursorMode(state.cursorMode, state.cursorOptions)
+	end
 end
 
 local function updateBobbing(deltaTime, state)
@@ -295,8 +302,9 @@ function CameraController:TransitionTo(stateName)
 
 	applyState(state)
 
-	-- Update GameState for external consumers (BlockInteraction, ViewmodelController, etc.)
+	-- Update GameState for external consumers (BlockInteraction, ViewmodelController, Crosshair, etc.)
 	GameState:Set("camera.isFirstPerson", stateName == "FIRST_PERSON")
+	GameState:Set("camera.targetingMode", state.targetingMode) -- "crosshair" or "direct"
 
 	if previousStateName ~= stateName then
 		CameraController.StateChanged:Fire(stateName, previousStateName)
@@ -351,18 +359,29 @@ function CameraController:Initialize()
 	_player = Players.LocalPlayer
 	_camera = workspace.CurrentCamera
 
-	-- Setup character
-	_character = _player.Character or _player.CharacterAdded:Wait()
-	setupCharacter(_character)
-
-	-- Handle respawn
+	-- Setup character (non-blocking - character may not exist yet with CharacterAutoLoads = false)
+	local function onCharacterReady(character)
+		_character = character
+		setupCharacter(character)
+		-- Only transition to first person on first spawn, not here (respawn handler does it)
+	end
+	
+	-- Handle respawn (and initial spawn)
 	_player.CharacterAdded:Connect(function(newCharacter)
 		_character = newCharacter
 		setupCharacter(newCharacter)
-		self:TransitionTo("FIRST_PERSON")
+		-- Transition to first person when character spawns/respawns
+		if _initialized then
+			self:TransitionTo("FIRST_PERSON")
+		end
 	end)
+	
+	-- Setup existing character if present, otherwise wait for CharacterAdded
+	if _player.Character then
+		onCharacterReady(_player.Character)
+	end
 
-	-- Start in first person
+	-- Start in first person (will apply when character exists)
 	self:TransitionTo("FIRST_PERSON")
 
 	-- Listen to backdrop active state to freeze/unfreeze camera

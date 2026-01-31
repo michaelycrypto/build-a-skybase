@@ -705,16 +705,20 @@ local function startWorldReadyWatchdog()
 end
 
 local function handleWorldStateChanged(worldState)
+	print("[Client] 📥 WorldStateChanged received!")
 	worldState = worldState or {}
+	print("[Client] 📊 WorldState:", "status=" .. tostring(worldState.status), "isReady=" .. tostring(worldState.isReady))
 	GameState:ApplyWorldState(worldState)
 
 	local status = worldState.status or (worldState.isReady and "ready" or "loading")
 
 	if worldState.isReady then
+		print("[Client] ✅ World is ready! Setting Client.worldReady = true")
 		Client.worldReady = true
 		worldReadyWatchdogToken += 1
 		tryFinalizeInitialization("world_ready_event")
 	else
+		print("[Client] ⏳ World NOT ready, status:", status)
 		Client.worldReady = false
 		if status == "shutting_down" then
 			showWorldStatus("World shutting down", worldState.message or "Saving progress...")
@@ -845,14 +849,13 @@ local function completeInitialization(EmoteManager)
 				Client.voxelInventory:UpdateHotbarSlotDisplay(slotIndex, slotFrame.frame, slotFrame.iconContainer, slotFrame.countLabel, slotFrame.selectionBorder)
 			end
 		end
-		-- Tutorial: track item collection from hotbar
+		-- Tutorial: track item added to hotbar
 		if Client.managers.TutorialManager then
 			local stack = inventoryManager:GetHotbarSlot(slotIndex)
 			if stack and not stack:IsEmpty() then
 				Client.managers.TutorialManager:OnItemCollected(stack:GetItemId(), stack:GetCount())
-				if Client.voxelHotbar and Client.voxelHotbar.selectedSlot == slotIndex then
-					Client.managers.TutorialManager:OnItemEquipped(stack:GetItemId())
-				end
+				-- Trigger equip when item is placed in ANY hotbar slot (not just selected)
+				Client.managers.TutorialManager:OnItemEquipped(stack:GetItemId())
 			end
 		end
 	end)
@@ -1207,8 +1210,10 @@ local function completeInitialization(EmoteManager)
 	end
 
 	-- Signal server that client is ready (AFTER event handlers are registered)
+	print("[Client] 📤 Sending ClientReady to server...")
 	EventManager:SendToServer("ClientReady")
 	EventManager:SendToServer("RequestDataRefresh")
+	print("[Client] ✅ ClientReady sent, waiting for WorldStateChanged...")
 
 	bootstrapComplete = true
 	if Client.worldReady then
@@ -1374,7 +1379,9 @@ local function initialize()
 		end
 	end)
 
+	print("[Client] 🔧 Registering WorldStateChanged handler...")
 	EventManager:RegisterEvent(WORLD_READY_EVENT, handleWorldStateChanged)
+	print("[Client] ✅ WorldStateChanged handler registered")
 
 	-- Batched chunk remeshing system
 	-- Collects all affected chunks and processes them together to avoid border flicker
@@ -1620,8 +1627,8 @@ local function initialize()
             localPlayer.ReplicationFocus = rootPart
         end)
 
-        -- Send initial position to server and request chunks
-        EventManager:SendToServer("VoxelPlayerPositionUpdate", { x = pos.X, z = pos.Z })
+        -- Request initial chunks from server
+        -- NOTE: Position updates are no longer sent - server reads from character directly
         EventManager:SendToServer("VoxelRequestInitialChunks")
 
         -- Hold loading screen until minimum chunks are loaded
@@ -1690,22 +1697,8 @@ local function initialize()
     --     end
     -- end)
 
-    -- Set up regular position updates (use camera since we have custom entity)
-    RunService.Heartbeat:Connect(function()
-        local cam = workspace.CurrentCamera
-        if not cam then return end
-
-        local Config = require(game.ReplicatedStorage.Shared.VoxelWorld.Core.Config)
-        -- Update server with player position (rate limited)
-        if tick() - (lastPositionUpdate or 0) >= 1/Config.NETWORK.POSITION_UPDATE_RATE then
-            lastPositionUpdate = tick()
-            local p = cam.CFrame.Position
-            EventManager:SendToServer("VoxelPlayerPositionUpdate", {
-                x = p.X,
-                z = p.Z
-            })
-        end
-    end)
+    -- NOTE: Position updates removed - server now reads position directly from character
+    -- This eliminates remote queue exhaustion and makes position tracking server-authoritative
 
 	-- Load and initialize managers (except UI)
 	local GameState = require(script.Parent.Managers.GameState)

@@ -135,8 +135,8 @@ local DEFAULT_TEMPLATES = {
 		decorations = {
 			{
 				kind = "tree",
-				offsetX = 1,
-				offsetZ = -1,
+				offsetX = 2,
+				offsetZ = -2,
 				trunkHeight = 4,
 				canopyRadius = 1,
 				baseOffset = 1,
@@ -144,9 +144,30 @@ local DEFAULT_TEMPLATES = {
 			},
 			{
 				kind = "chest",
-				offsetX = -1,
+				offsetX = 2,
 				offsetZ = 2,
 				raise = 1,
+			},
+			{
+				-- Minecraft-style Nether portal to hub
+				kind = "portal",
+				offsetX = -3,
+				offsetZ = 0,
+				baseOffset = 1,
+				orientation = "z",
+				innerHalfWidth = 1,
+				innerHeight = 3,
+				frameBlockId = BlockType.OBSIDIAN,
+				innerBlockId = BlockType.PURPLE_STAINED_GLASS,
+			},
+			{
+				-- Pre-built 3x3 farmland with water center
+				kind = "farmland",
+				offsetX = 0,
+				offsetZ = 2,
+				raise = 0,
+				size = 3, -- 3x3 grid
+				waterCenter = true,
 			},
 		},
 	},
@@ -228,6 +249,7 @@ function SkyblockGenerator:_planDecorations()
 		trees = {},
 		chests = {},
 		portals = {},
+		farmlands = {},
 	}
 
 	for _, template in ipairs(self._templates) do
@@ -264,6 +286,14 @@ function SkyblockGenerator:_planDecorations()
 							innerHeight = math.max(decoration.innerHeight or 3, 2),
 							frameBlockId = decoration.frameBlockId or BlockType.STONE_BRICKS,
 							innerBlockId = decoration.innerBlockId or BlockType.GLASS,
+						})
+					elseif decoration.kind == "farmland" then
+						table.insert(plans.farmlands, {
+							centerX = wx,
+							centerZ = wz,
+							y = surface.surfaceY + (decoration.raise or 0),
+							size = decoration.size or 3,
+							waterCenter = decoration.waterCenter or false,
 						})
 					end
 				end
@@ -333,6 +363,7 @@ function SkyblockGenerator:PostProcessChunk(chunk, chunkWorldX, chunkWorldZ)
 	self:_placeTrees(chunk, chunkWorldX, chunkWorldZ)
 	self:_placeChests(chunk, chunkWorldX, chunkWorldZ)
 	self:_placePortals(chunk, chunkWorldX, chunkWorldZ)
+	self:_placeFarmlands(chunk, chunkWorldX, chunkWorldZ)
 end
 
 function SkyblockGenerator:_placeTrees(chunk, chunkWorldX, chunkWorldZ)
@@ -415,6 +446,28 @@ function SkyblockGenerator:_placePortals(chunk, chunkWorldX, chunkWorldZ)
 					self:_setChunkBlockAndHeight(chunk, chunkWorldX, chunkWorldZ, wx, wy, wz, portal.frameBlockId)
 				elseif math.abs(offset) <= portal.innerHalfWidth and dy >= 1 and dy <= portal.innerHeight then
 					self:_setChunkBlockAndHeight(chunk, chunkWorldX, chunkWorldZ, wx, wy, wz, portal.innerBlockId)
+				end
+			end
+		end
+	end
+end
+
+function SkyblockGenerator:_placeFarmlands(chunk, chunkWorldX, chunkWorldZ)
+	for _, farm in ipairs(self._decorPlans.farmlands or {}) do
+		local halfSize = math.floor(farm.size / 2)
+		for dx = -halfSize, halfSize do
+			for dz = -halfSize, halfSize do
+				local wx = farm.centerX + dx
+				local wz = farm.centerZ + dz
+				local lx = wx - chunkWorldX
+				local lz = wz - chunkWorldZ
+				if lx >= 0 and lx < Constants.CHUNK_SIZE_X and lz >= 0 and lz < Constants.CHUNK_SIZE_Z then
+					-- Water in center if enabled
+					if farm.waterCenter and dx == 0 and dz == 0 then
+						self:_setChunkBlockAndHeight(chunk, chunkWorldX, chunkWorldZ, wx, farm.y, wz, BlockType.WATER_SOURCE)
+					else
+						self:_setChunkBlockAndHeight(chunk, chunkWorldX, chunkWorldZ, wx, farm.y, wz, BlockType.FARMLAND)
+					end
 				end
 			end
 		end

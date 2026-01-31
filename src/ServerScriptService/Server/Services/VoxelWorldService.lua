@@ -1150,6 +1150,28 @@ function VoxelWorldService:StreamChunksToPlayers()
 	end
 
 	for player, state in pairs(self.players) do
+		-- Read position directly from character (server-authoritative)
+		-- This eliminates dependency on client position updates
+		local character = player.Character
+		if character then
+			local hrp = character:FindFirstChild("HumanoidRootPart")
+			if hrp then
+				local pos = hrp.Position
+				-- Update internal state with actual position
+				local prevPos = state.position
+				state.prevPosition = prevPos
+				state.position = Vector3.new(pos.X, pos.Y, pos.Z)
+				
+				-- Calculate movement direction for predictive streaming
+				local dx = state.position.X - prevPos.X
+				local dz = state.position.Z - prevPos.Z
+				local mag = math.sqrt(dx*dx + dz*dz)
+				if mag > 1e-3 then
+					state.moveDir = Vector3.new(dx / mag, 0, dz / mag)
+				end
+			end
+		end
+		
 		self:StreamChunksToPlayer(player, state)
 
 		-- Unload far chunks
@@ -2465,40 +2487,12 @@ function VoxelWorldService:_updateNeighborStairShapes(x, y, z)
     return changed
 end
 
--- Update player position
+-- DEPRECATED: Server now reads position directly from HumanoidRootPart in StreamChunksToPlayers
+-- This method is kept for backwards compatibility with old clients but does nothing.
+-- Position tracking is now server-authoritative to prevent remote queue exhaustion.
 function VoxelWorldService:UpdatePlayerPosition(player, positionOrX, maybeZ)
-	local character = player.Character
-	if not character then return end
-
-	local rootPart = character:FindFirstChild("HumanoidRootPart")
-	if not rootPart then return end
-
-	local characterPos = rootPart.Position
-	local x, z = characterPos.X, characterPos.Z
-	local now = os.clock()
-
-	local state = self.players[player]
-	if not state then
-		self.players[player] = {
-			position = Vector3.new(x, characterPos.Y, z),
-			prevPosition = Vector3.new(x, characterPos.Y, z),
-			moveDir = Vector3.new(),
-			chunks = {},
-			lastUpdate = now
-		}
-	else
-		local prev = state.position
-		state.prevPosition = prev
-		state.position = Vector3.new(x, characterPos.Y, z)
-		state.lastUpdate = now
-
-		local dx = state.position.X - prev.X
-		local dz = state.position.Z - prev.Z
-		local mag = math.sqrt(dx*dx + dz*dz)
-		if mag > 1e-3 then
-			state.moveDir = Vector3.new(dx / mag, 0, dz / mag)
-		end
-	end
+	-- No-op: position is read directly from character in StreamChunksToPlayers
+	return
 end
 
 -- Handle player joining

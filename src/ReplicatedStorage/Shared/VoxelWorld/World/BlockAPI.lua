@@ -362,6 +362,105 @@ function BlockAPI:GetTargetedBlockFace(origin: Vector3, direction: Vector3, maxD
         return false, nil, nil
     end
 
+    -- Crop hitbox heights by growth stage (pixel-based: 16px = full block)
+    -- Early crops have smaller hitboxes so they don't block targeting adjacent farmland
+    local CROP_HITBOX_HEIGHTS = {
+        -- Wheat (8 stages: 0-7) - grows 2px per stage
+        [Constants.BlockType.WHEAT_CROP_0] = 2/16,   -- 2px
+        [Constants.BlockType.WHEAT_CROP_1] = 4/16,   -- 4px
+        [Constants.BlockType.WHEAT_CROP_2] = 6/16,   -- 6px
+        [Constants.BlockType.WHEAT_CROP_3] = 8/16,   -- 8px
+        [Constants.BlockType.WHEAT_CROP_4] = 10/16,  -- 10px
+        [Constants.BlockType.WHEAT_CROP_5] = 12/16,  -- 12px
+        [Constants.BlockType.WHEAT_CROP_6] = 14/16,  -- 14px
+        [Constants.BlockType.WHEAT_CROP_7] = 16/16,  -- 16px (full)
+
+        -- Potato (4 stages: 0-3)
+        [Constants.BlockType.POTATO_CROP_0] = 2/16,   -- 2px
+        [Constants.BlockType.POTATO_CROP_1] = 6/16,   -- 6px
+        [Constants.BlockType.POTATO_CROP_2] = 10/16,  -- 10px
+        [Constants.BlockType.POTATO_CROP_3] = 16/16,  -- 16px (full)
+
+        -- Carrot (4 stages: 0-3)
+        [Constants.BlockType.CARROT_CROP_0] = 2/16,   -- 2px
+        [Constants.BlockType.CARROT_CROP_1] = 6/16,   -- 6px
+        [Constants.BlockType.CARROT_CROP_2] = 10/16,  -- 10px
+        [Constants.BlockType.CARROT_CROP_3] = 16/16,  -- 16px (full)
+
+        -- Beetroot (4 stages: 0-3)
+        [Constants.BlockType.BEETROOT_CROP_0] = 2/16,  -- 2px
+        [Constants.BlockType.BEETROOT_CROP_1] = 4/16,  -- 4px
+        [Constants.BlockType.BEETROOT_CROP_2] = 6/16,  -- 6px
+        [Constants.BlockType.BEETROOT_CROP_3] = 16/16, -- 16px (full)
+    }
+
+    -- Helper function: test ray against cross-shaped block with height-based hitbox
+    -- Crops have reduced hitbox heights based on growth stage
+    -- Returns: (intersects:boolean, tEnter:number|nil, faceNormal:Vector3|nil)
+    local function testCrossShapeIntersection(blockX, blockY, blockZ, blockId, metadata)
+        local def = BlockRegistry:GetBlock(blockId)
+        if not (def and def.crossShape) then
+            return true, nil, nil -- not cross-shaped; treat as full block
+        end
+
+        -- Get hitbox height ratio (default to 0.9 for non-crop cross-shapes like flowers)
+        local heightRatio = CROP_HITBOX_HEIGHTS[blockId] or 0.9
+
+        local bs = Constants.BLOCK_SIZE
+
+        -- Define crop hitbox bounds in world space
+        -- Crops sit on bottom of block, height varies by growth stage
+        local minX = blockX * bs
+        local maxX = (blockX + 1) * bs
+        local minY = blockY * bs
+        local maxY = blockY * bs + bs * heightRatio
+        local minZ = blockZ * bs
+        local maxZ = (blockZ + 1) * bs
+
+        -- Ray-AABB intersection test
+        local function axisEntryExit(minV, maxV, o, d)
+            if math.abs(d) < 0.001 then
+                if o < minV or o > maxV then
+                    return math.huge, -math.huge -- no intersection on this axis
+                else
+                    return -math.huge, math.huge -- inside bounds along this axis
+                end
+            end
+            local t1 = (minV - o) / d
+            local t2 = (maxV - o) / d
+            if t1 > t2 then t1, t2 = t2, t1 end
+            return t1, t2
+        end
+
+        local tx1, tx2 = axisEntryExit(minX, maxX, rayOrigin.X, rayDirection.X)
+        local ty1, ty2 = axisEntryExit(minY, maxY, rayOrigin.Y, rayDirection.Y)
+        local tz1, tz2 = axisEntryExit(minZ, maxZ, rayOrigin.Z, rayDirection.Z)
+
+        local tEnter = math.max(tx1, math.max(ty1, tz1))
+        local tExit  = math.min(tx2, math.min(ty2, tz2))
+
+        if tEnter > tExit or tExit < 0 then
+            return false, nil, nil -- no intersection in front
+        end
+
+        -- Determine which axis we entered through (largest entry time)
+        local face
+        if tEnter == tx1 then
+            face = Vector3.new(rayDirection.X > 0 and -1 or 1, 0, 0)
+        elseif tEnter == ty1 then
+            face = Vector3.new(0, rayDirection.Y > 0 and -1 or 1, 0)
+        else
+            face = Vector3.new(0, 0, rayDirection.Z > 0 and -1 or 1)
+        end
+
+        -- Clamp tEnter to be non-negative
+        if tEnter < 0 then
+            tEnter = 0
+        end
+
+        return true, tEnter, face
+    end
+
     -- Helper function: test ray against fence composite AABBs (post + rails based on neighbors)
     -- Returns: (intersects:boolean, tEnter:number|nil, faceNormal:Vector3|nil)
     local function testFenceIntersection(blockX, blockY, blockZ, blockId, metadata)
@@ -555,6 +654,9 @@ function BlockAPI:GetTargetedBlockFace(origin: Vector3, direction: Vector3, maxD
                 intersects, tHit, hitFace = testStairIntersection(currentX, currentY, currentZ, block, metadata)
             elseif def and def.fenceShape then
                 intersects, tHit, hitFace = testFenceIntersection(currentX, currentY, currentZ, block, metadata)
+            elseif def and def.crossShape then
+                -- Crops and flowers have height-based hitboxes
+                intersects, tHit, hitFace = testCrossShapeIntersection(currentX, currentY, currentZ, block, metadata)
             else
                 intersects = true -- treat as full block
             end

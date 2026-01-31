@@ -601,14 +601,16 @@ function SwimmingController:Initialize()
 	-- Create visual effects
 	createUnderwaterEffects()
 
-	-- Setup character
-	character = player.Character or player.CharacterAdded:Wait()
-	setupCharacter(character)
-
-	-- Handle respawn
+	-- Handle character spawn/respawn (non-blocking - character may not exist yet)
 	player.CharacterAdded:Connect(function(newCharacter)
 		setupCharacter(newCharacter)
 	end)
+	
+	-- Setup existing character if present
+	if player.Character then
+		character = player.Character
+		setupCharacter(character)
+	end
 
 	-- Connect input
 	inputBeganConnection = InputService.InputBegan:Connect(onInputBegan)

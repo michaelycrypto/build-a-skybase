@@ -101,7 +101,17 @@ function TutorialManager:_registerEventHandlers()
 		tutorialData = data.tutorial
 		settings = data.config and data.config.settings or settings
 
-		-- Check if tutorial is disabled (not in own realm)
+		-- Check if tutorial is complete
+		if tutorialData and tutorialData.completed then
+			isDisabled = true
+			currentStep = nil
+			if TutorialUI then
+				TutorialUI:HideAll()
+			end
+			return
+		end
+
+		-- Check if tutorial is disabled for current step on this server
 		if tutorialData and tutorialData.disabled then
 			isDisabled = true
 			isOwnRealm = false
@@ -112,17 +122,10 @@ function TutorialManager:_registerEventHandlers()
 			return
 		end
 
-		-- Check if we're in own realm
+		-- Tutorial is active (either on own realm or hub with hub-specific step)
 		isOwnRealm = data.isOwnRealm == true
-		isDisabled = not isOwnRealm
-
-		if isDisabled then
-			currentStep = nil
-			if TutorialUI then
-				TutorialUI:HideAll()
-			end
-			return
-		end
+		local isHub = data.isHub == true
+		isDisabled = false -- Tutorial is active for current step
 
 		if tutorialData and not tutorialData.completed then
 			currentStep = data.config and data.config.currentStep
@@ -183,38 +186,51 @@ function TutorialManager:_setupTrackingHooks()
 		end
 	end)
 
-	-- Track movement
-	local character = player.Character or player.CharacterAdded:Wait()
-	local humanoidRootPart = character:WaitForChild("HumanoidRootPart", 5)
+	-- Track movement (non-blocking setup - character may not exist yet)
+	local function setupMovementTracking(character)
+		local humanoidRootPart = character:WaitForChild("HumanoidRootPart", 5)
+		if humanoidRootPart then
+			moveStartPosition = humanoidRootPart.Position
+		end
+	end
+	
+	-- Setup existing character if present
+	if player.Character then
+		setupMovementTracking(player.Character)
+	end
+	
+	-- Handle respawn
+	player.CharacterAdded:Connect(function(newCharacter)
+		task.spawn(function()
+			setupMovementTracking(newCharacter)
+		end)
+	end)
+	
+	-- Movement tracking heartbeat (safe if character doesn't exist yet)
+	RunService.Heartbeat:Connect(function()
+		-- Skip tracking if tutorial is disabled (not in own realm)
+		if isDisabled or not currentStep or tutorialData and tutorialData.completed then
+			return
+		end
 
-	if humanoidRootPart then
-		moveStartPosition = humanoidRootPart.Position
+		local newChar = player.Character
+		local newHRP = newChar and newChar:FindFirstChild("HumanoidRootPart")
+		if newHRP then
+			local currentPos = newHRP.Position
+			local distance = (currentPos - (moveStartPosition or currentPos)).Magnitude
+			if distance > 0.5 then -- Ignore tiny movements
+				totalMoveDistance = totalMoveDistance + distance
+				moveStartPosition = currentPos
 
-		RunService.Heartbeat:Connect(function()
-			-- Skip tracking if tutorial is disabled (not in own realm)
-			if isDisabled or not currentStep or tutorialData and tutorialData.completed then
-				return
-			end
-
-			local newChar = player.Character
-			local newHRP = newChar and newChar:FindFirstChild("HumanoidRootPart")
-			if newHRP then
-				local currentPos = newHRP.Position
-				local distance = (currentPos - (moveStartPosition or currentPos)).Magnitude
-				if distance > 0.5 then -- Ignore tiny movements
-					totalMoveDistance = totalMoveDistance + distance
-					moveStartPosition = currentPos
-
-					-- Check movement objective
-					if currentStep and currentStep.objective and currentStep.objective.type == "move" then
-						if totalMoveDistance >= (currentStep.objective.distance or 10) then
-							self:_reportProgress("move", {distance = totalMoveDistance})
-						end
+				-- Check movement objective
+				if currentStep and currentStep.objective and currentStep.objective.type == "move" then
+					if totalMoveDistance >= (currentStep.objective.distance or 10) then
+						self:_reportProgress("move", {distance = totalMoveDistance})
 					end
 				end
 			end
-		end)
-	end
+		end
+	end)
 
 	-- Track camera rotation
 	local camera = workspace.CurrentCamera
@@ -688,12 +704,26 @@ end
 	@param count: number - Amount sold
 ]]
 function TutorialManager:OnItemSold(itemId, count)
-	-- Skip if tutorial disabled (not in own realm)
+	-- Skip if tutorial disabled
 	if isDisabled or not currentStep or tutorialData and tutorialData.completed then
 		return
 	end
 
 	self:_reportProgress("sell_item", {itemId = itemId, count = count or 1})
+end
+
+--[[
+	Called when player buys an item from shop
+	@param itemId: number - The item ID bought
+	@param count: number - Amount bought
+]]
+function TutorialManager:OnItemBought(itemId, count)
+	-- Skip if tutorial disabled
+	if isDisabled or not currentStep or tutorialData and tutorialData.completed then
+		return
+	end
+
+	self:_reportProgress("buy_item", {itemId = itemId, count = count or 1})
 end
 
 --[[

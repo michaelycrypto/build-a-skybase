@@ -16,6 +16,7 @@ local TweenService = game:GetService("TweenService")
 local GuiService = game:GetService("GuiService")
 local RunService = game:GetService("RunService")
 local SoundService = game:GetService("SoundService")
+local CollectionService = game:GetService("CollectionService")
 
 -- Import dependencies
 local Config = require(game:GetService("ReplicatedStorage").Shared.Config)
@@ -45,16 +46,16 @@ local TOAST_CONFIG = {
 
 	-- Positioning
 	container = {
-		size = UDim2.new(0, 320, 0, 400),
-		position = UDim2.new(1, -340, 1, -420)
+		size = UDim2.new(0, 380, 0, 400),
+		position = UDim2.new(1, -400, 1, -420)
 	},
 
 	-- Standardized toast dimensions
 	toast = {
-		width = 300,
-		height = 44,        -- Slightly taller for better readability
-		cornerRadius = 8,   -- Consistent rounded corners
-		padding = 12        -- Internal padding
+		width = 360,        -- Wider for more text
+		height = 38,        -- Compact height
+		cornerRadius = 6,   -- Consistent rounded corners
+		padding = 8         -- Reduced padding for more text space
 	},
 
 	-- Standardized animation parameters (uniform across all toast types)
@@ -101,12 +102,12 @@ local TOAST_CONFIG = {
 		shadowColor = Color3.fromRGB(0, 0, 0),
 		shadowThickness = 1,
 		shadowTransparency = 0.8,
-		-- Typography - using Config typography system with fallbacks
-		iconSize = 21,
+		-- Typography - compact for more text visibility
+		iconSize = 18,            -- Smaller icon
 		iconFont = BOLD_FONT,
-		textSize = TOAST_TEXT_SIZE,  -- Fallback handled when deriving size
+		textSize = 14,            -- Smaller text for more content
 		textFont = BOLD_FONT,     -- Bold for better visibility
-		closeButtonSize = BODY_BASE_TEXT_SIZE,  -- Fallback handled when deriving size
+		closeButtonSize = 14,     -- Smaller close button
 		closeButtonFont = BOLD_FONT
 	},
 
@@ -212,6 +213,13 @@ function ToastManager:CreateToastContainer()
 	toastGui.ZIndexBehavior = Enum.ZIndexBehavior.Global -- Allow explicit z-index control
 	toastGui.DisplayOrder = TOAST_CONFIG.displayOrder -- High priority display
 	toastGui.Parent = playerGui
+
+	-- Add UIScale for responsive scaling (managed by UIScaler)
+	local uiScale = Instance.new("UIScale")
+	uiScale.Name = "ToastUIScale"
+	uiScale:SetAttribute("base_resolution", Vector2.new(1920, 1080))
+	uiScale.Parent = toastGui
+	CollectionService:AddTag(uiScale, "scale_component")
 
 	-- Create container frame
 	toastContainer = Instance.new("Frame")

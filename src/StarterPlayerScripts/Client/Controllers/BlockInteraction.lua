@@ -50,10 +50,12 @@ local CLICK_MOVEMENT_THRESHOLD = 5 -- Max mouse movement in pixels for a "click"
 
 -- Mobile touch detection (distinguish tap, hold, drag)
 local activeTouches = {} -- Track multiple touches
-local lastTapPosition = nil -- Last tap position for targeting
 local TAP_TIME_THRESHOLD = 0.2 -- Max time for a "tap" (seconds)
 local HOLD_TIME_THRESHOLD = 0.3 -- Min time before "hold" action triggers (seconds)
 local DRAG_MOVEMENT_THRESHOLD = 10 -- Min movement in pixels to be considered a "drag"
+
+-- Input position for direct targeting mode (click/tap position)
+local lastInputPosition = nil -- Stores mouse click or tap position for direct targeting
 
 -- Constants
 local BREAK_INTERVAL = 0.1 -- How often to send punch events (server allows >=0.1s)
@@ -196,30 +198,23 @@ end
 local getTargetedBlock
 local getBridgePlacementCandidate
 
--- Compute an aim ray (origin, direction) based on device/camera mode
+-- Compute an aim ray (origin, direction) based on targeting mode
+-- targetingMode: "crosshair" = center screen, "direct" = input position (click/tap)
 local function _computeAimRay()
     if not camera then return nil, nil end
 
-    local origin
-    local direction
-    local isMobile = InputService.TouchEnabled and not InputService.KeyboardEnabled
-    local isFirstPerson = GameState:Get("camera.isFirstPerson")
+    local targetingMode = GameState:Get("camera.targetingMode") or "crosshair"
 
-    if isMobile then
-        local viewportSize = camera.ViewportSize
-        local ray = camera:ViewportPointToRay(viewportSize.X/2, viewportSize.Y/2)
-        origin = ray.Origin
-        direction = ray.Direction
-    elseif isFirstPerson then
-        origin = camera.CFrame.Position
-        direction = camera.CFrame.LookVector
+    if targetingMode == "direct" and lastInputPosition then
+        -- Direct mode: Ray through click/tap position
+        local ray = camera:ViewportPointToRay(lastInputPosition.X, lastInputPosition.Y)
+        return ray.Origin, ray.Direction
     else
-        local mousePos = InputService:GetMouseLocation()
-        local ray = camera:ViewportPointToRay(mousePos.X, mousePos.Y)
-        origin = ray.Origin
-        direction = ray.Direction
+        -- Crosshair mode: Ray through center of screen
+        local viewportSize = camera.ViewportSize
+        local ray = camera:ViewportPointToRay(viewportSize.X / 2, viewportSize.Y / 2)
+        return ray.Origin, ray.Direction
     end
-    return origin, direction
 end
 
 -- Create selection box for visual feedback
@@ -343,42 +338,24 @@ local function updateSelectionBox()
 end
 
 -- Raycast to find targeted block
--- PC First person: Center of screen (camera)
--- PC Third person: Mouse cursor position
--- Mobile: Center of screen (like first person)
+-- Uses camera.targetingMode from GameState:
+--   "crosshair" = center of screen (for FIRST_PERSON, THIRD_PERSON_LOCK)
+--   "direct" = input position (for THIRD_PERSON_FREE - click/tap where you want)
 -- Returns: blockPos, faceNormal, preciseHitPos
 getTargetedBlock = function()
 	if not BlockInteraction.isReady or not blockAPI or not camera then
 		return nil, nil, nil
 	end
 
-	-- Compute picking ray based on platform and camera mode
-	local origin
-	local direction
-	local isMobile = InputService.TouchEnabled and not InputService.KeyboardEnabled
-	local isFirstPerson = GameState:Get("camera.isFirstPerson")
-
-	if isMobile then
-		-- Mobile: Always use center of screen (Minecraft PE style)
-		-- This ensures targeting stays aligned with camera view during rotation
-		local viewportSize = camera.ViewportSize
-		local ray = camera:ViewportPointToRay(viewportSize.X/2, viewportSize.Y/2)
-		origin = ray.Origin
-		direction = ray.Direction
-	elseif isFirstPerson then
-		-- PC First person: Center-of-screen ray (mouse is locked)
-		origin = camera.CFrame.Position
-		direction = camera.CFrame.LookVector
-	else
-		-- PC Third person: Ray through mouse cursor position
-		local mousePos = InputService:GetMouseLocation()
-		local ray = camera:ViewportPointToRay(mousePos.X, mousePos.Y)
-		origin = ray.Origin
-		direction = ray.Direction
+	-- Compute picking ray based on targeting mode
+	local origin, direction = _computeAimRay()
+	if not origin or not direction then
+		return nil, nil, nil
 	end
+
 	local maxDistance = 100
 
-	-- Find block at center of screen
+	-- Find block along ray
 	local hitPos, faceNormal, preciseHitPos = blockAPI:GetTargetedBlockFace(origin, direction, maxDistance)
 	if not hitPos then return nil, nil, nil end
 
@@ -1166,20 +1143,18 @@ end
 
 -- Update selection box and handle mode switching
 task.spawn(function()
-	local lastFirstPersonState = nil
 	local lastCameraPos = Vector3.new(0, 0, 0)
 	local lastCameraLook = Vector3.new(0, 0, 1)
 	local lastMousePos = Vector2.new(0, 0)
-	local CAMERA_MOVE_THRESHOLD = 1.0 -- studs (increased for mobile)
+	local CAMERA_MOVE_THRESHOLD = 1.0 -- studs
 	local CAMERA_ANGLE_THRESHOLD = 0.05 -- radians
-	local MOUSE_MOVE_THRESHOLD = 5 -- pixels (for third person)
+	local MOUSE_MOVE_THRESHOLD = 5 -- pixels (for direct targeting mode)
 
 	while true do
-		-- Reduced from 0.05 to 0.1 for 50% less CPU usage (10Hz instead of 20Hz)
+		-- 10Hz update rate for performance
 		task.wait(0.1)
 
-	local isMobile = InputService.TouchEnabled and not InputService.KeyboardEnabled
-		local isFirstPerson = GameState:Get("camera.isFirstPerson")
+		local targetingMode = GameState:Get("camera.targetingMode") or "crosshair"
 
 		-- Check if camera moved/rotated significantly (dirty checking)
 		local currentPos = camera.CFrame.Position
@@ -1188,25 +1163,24 @@ task.spawn(function()
 		local cameraMoved = (currentPos - lastCameraPos).Magnitude > CAMERA_MOVE_THRESHOLD
 		local cameraRotated = math.acos(math.clamp(currentLook:Dot(lastCameraLook), -1, 1)) > CAMERA_ANGLE_THRESHOLD
 
-		-- In third person on desktop, also check mouse movement (cursor can move independently)
+		-- In direct targeting mode, also check mouse movement (cursor can move independently)
 		local mouseMoved = false
-		if not isMobile and not isFirstPerson then
+		if targetingMode == "direct" then
 			local currentMousePos = InputService:GetMouseLocation()
 			mouseMoved = (currentMousePos - lastMousePos).Magnitude > MOUSE_MOVE_THRESHOLD
 			if mouseMoved then
 				lastMousePos = currentMousePos
+				-- Update lastInputPosition so selection box follows cursor
+				lastInputPosition = currentMousePos
 			end
 		end
 
-		-- Update if camera changed OR mouse moved (in third person)
+		-- Update if camera changed OR mouse moved (in direct mode)
 		if cameraMoved or cameraRotated or mouseMoved then
 			updateSelectionBox()
 			lastCameraPos = currentPos
 			lastCameraLook = currentLook
 		end
-
-		-- No special handling needed on camera mode switch
-		lastFirstPersonState = isFirstPerson
 	end
 end)
 
@@ -1265,8 +1239,8 @@ function BlockInteraction:Initialize(voxelWorldHandle)
 
 		-- MOBILE: Touch handling (tap vs hold vs drag)
 		if input.UserInputType == Enum.UserInputType.Touch then
-			-- Store tap position for targeting
-			lastTapPosition = Vector2.new(input.Position.X, input.Position.Y)
+			-- Store input position for direct targeting mode
+			lastInputPosition = Vector2.new(input.Position.X, input.Position.Y)
 
 			-- Track touch for gesture detection
 			local touchData = {
@@ -1284,17 +1258,21 @@ function BlockInteraction:Initialize(voxelWorldHandle)
 				if activeTouches[input] and not activeTouches[input].moved then
 					-- Still holding and haven't moved = HOLD action (break blocks)
 					activeTouches[input].holdTriggered = true
-					print("📱 Hold detected at", lastTapPosition, "- Start breaking")
 					startBreaking()
 				end
 			end)
 		end
 
+		-- Store input position for direct targeting mode (mouse clicks)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.MouseButton2 then
+			lastInputPosition = InputService:GetMouseLocation()
+		end
+
 		-- Right-click in third person: Track for click vs hold detection
 		if input.UserInputType == Enum.UserInputType.MouseButton2 then
-			local isFirstPerson = GameState:Get("camera.isFirstPerson")
-			if not isFirstPerson then
-				-- Track right-click for third person smart detection
+			local targetingMode = GameState:Get("camera.targetingMode") or "crosshair"
+			if targetingMode == "direct" then
+				-- Direct mode: Track right-click for click vs camera pan detection
 				isRightClickHeld = true
 				rightClickStartTime = tick()
 				rightClickStartPos = InputService:GetMouseLocation()
@@ -1340,21 +1318,16 @@ function BlockInteraction:Initialize(voxelWorldHandle)
 		if input.UserInputType == Enum.UserInputType.Touch then
 			local touchData = activeTouches[input]
 			if touchData then
-				local duration = tick() - touchData.startTime
-
 				if touchData.holdTriggered then
 					-- Was a hold action (breaking) - stop it
-					print("📱 Hold ended - Stop breaking")
 					stopBreaking()
 				elseif touchData.moved then
 					-- Was a drag (camera rotation) - do nothing
-					-- print("📱 Drag gesture - Camera rotated")
 				else
-					-- Tap or short press without movement = interact/place (remove deadzone)
-					if not touchData.holdTriggered then
-						print("📱 Tap detected at", lastTapPosition, "- Place/Interact")
-						interactOrPlace()
-					end
+					-- Tap = interact/place
+					-- Update input position to final tap position for accurate targeting
+					lastInputPosition = touchData.startPos
+					interactOrPlace()
 				end
 
 				-- Clean up touch data
@@ -1367,10 +1340,10 @@ function BlockInteraction:Initialize(voxelWorldHandle)
 			stopBreaking()
 		end
 
-		-- PC: Right-click release in third person (detect click vs camera pan)
+		-- PC: Right-click release in direct mode (detect click vs camera pan)
 		if input.UserInputType == Enum.UserInputType.MouseButton2 then
-			local isFirstPerson = GameState:Get("camera.isFirstPerson")
-			if not isFirstPerson and isRightClickHeld then
+			local targetingMode = GameState:Get("camera.targetingMode") or "crosshair"
+			if targetingMode == "direct" and isRightClickHeld then
 				isRightClickHeld = false
 
 				local holdDuration = tick() - rightClickStartTime
@@ -1378,7 +1351,8 @@ function BlockInteraction:Initialize(voxelWorldHandle)
 				local mouseMovement = (currentMousePos - rightClickStartPos).Magnitude
 
 				if holdDuration < CLICK_TIME_THRESHOLD and mouseMovement < CLICK_MOVEMENT_THRESHOLD then
-					print("🖱️ Right-click detected (quick click)")
+					-- Update input position for accurate targeting
+					lastInputPosition = currentMousePos
 					interactOrPlace()
 				end
 			end
@@ -1462,12 +1436,12 @@ function BlockInteraction:Initialize(voxelWorldHandle)
 		return Enum.ContextActionResult.Sink
 	end
 
-	-- Function to update right-click binding based on camera mode
+	-- Function to update right-click binding based on targeting mode
 	local function updateRightClickBinding()
-		local isFirstPerson = GameState:Get("camera.isFirstPerson")
+		local targetingMode = GameState:Get("camera.targetingMode") or "crosshair"
 
-		if isFirstPerson then
-			-- First person: Bind right-click for block placement
+		if targetingMode == "crosshair" then
+			-- Crosshair mode (first person, third person lock): Bind right-click for block placement
 			ContextActionService:BindAction(
 				"BlockPlacement",
 				handleRightClick,
@@ -1475,7 +1449,7 @@ function BlockInteraction:Initialize(voxelWorldHandle)
 				Enum.UserInputType.MouseButton2
 			)
 		else
-			-- Third person: Unbind completely to allow Roblox camera
+			-- Direct mode (third person free): Unbind to allow right-click detection via InputEnded
 			ContextActionService:UnbindAction("BlockPlacement")
 		end
 	end
@@ -1483,16 +1457,13 @@ function BlockInteraction:Initialize(voxelWorldHandle)
 	-- Set initial binding
 	updateRightClickBinding()
 
-	-- Listen for camera mode changes
-	GameState:OnPropertyChanged("camera.isFirstPerson", function(newValue, oldValue)
+	-- Listen for targeting mode changes
+	GameState:OnPropertyChanged("camera.targetingMode", function(newValue, oldValue)
 		updateRightClickBinding()
 	end)
 
-	-- Note: Mouse lock is now managed dynamically by CameraController
-	-- based on camera mode (first person = locked, third person = free)
-
-	-- Note: Crosshair is managed by Crosshair.lua (in MainHUD)
-	-- It automatically shows only in first person mode
+	-- Note: Mouse lock is managed by CameraController based on camera mode
+	-- Note: Crosshair visibility is managed by Crosshair.lua based on targetingMode
 
 	return true
 end

@@ -4,15 +4,14 @@
 	The crosshair is composed of a vertical and horizontal bar in light grey,
 	flat, matching Minecraft's minimal aesthetic.
 
-	NOTE: Crosshair shown in FIRST PERSON and THIRD PERSON LOCK modes.
+	Visibility is controlled by camera.targetingMode in GameState:
+	  - "crosshair" mode: Crosshair VISIBLE (first person, third person lock)
+	  - "direct" mode: Crosshair HIDDEN (third person free - click/tap targeting)
 --]]
 
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local InputService = require(script.Parent.Parent.Input.InputService)
-local CameraController = require(script.Parent.Parent.Controllers.CameraController)
+local GameState = require(script.Parent.Parent.Managers.GameState)
 
 local Crosshair = {}
 
@@ -73,25 +72,18 @@ function Crosshair:Create(parentHudGui)
 	createBar(crosshairContainer, true)
 	createBar(crosshairContainer, false)
 
-	-- Update visibility based on camera mode
+	-- Update visibility based on targeting mode
 	local function updateVisibility()
 		if not crosshairContainer then return end
 
-		local isMobile = InputService.TouchEnabled and not InputService.KeyboardEnabled
-		local currentState = CameraController:GetCurrentState()
-
-		-- Show crosshair:
-		-- - In first person mode
-		-- - In third person lock mode (mouse locked, aiming with camera)
-		-- - On mobile devices (for tap targeting)
-		local shouldShow = (currentState == "FIRST_PERSON")
-			or (currentState == "THIRD_PERSON_LOCK")
-			or isMobile
-		crosshairContainer.Visible = shouldShow
+		-- Show crosshair only in "crosshair" targeting mode
+		-- Hide in "direct" mode (user clicks/taps directly on targets)
+		local targetingMode = GameState:Get("camera.targetingMode") or "crosshair"
+		crosshairContainer.Visible = (targetingMode == "crosshair")
 	end
 
-	-- Update on camera state change
-	CameraController.StateChanged:Connect(updateVisibility)
+	-- Update on targeting mode change
+	GameState:OnPropertyChanged("camera.targetingMode", updateVisibility)
 
 	-- Initial update
 	updateVisibility()

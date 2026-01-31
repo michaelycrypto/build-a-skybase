@@ -59,15 +59,42 @@ function TutorialService:Destroy()
 	self._logger.Info("TutorialService destroyed")
 end
 
+-- Steps that can progress on hub servers (hub-specific objectives)
+local HUB_ALLOWED_STEPS = {
+	use_portal = true,      -- Completes when entering hub
+	find_merchant = true,   -- NPC interaction
+	sell_crops = true,      -- Selling items
+	visit_farm_shop = true, -- NPC interaction
+	buy_seeds = true,       -- Buying items
+	return_home = true,     -- Completes when returning to player world
+}
+
+-- Objective types that can be tracked on hub servers
+local HUB_ALLOWED_OBJECTIVES = {
+	enter_world = true,
+	npc_interact = true,
+	sell_item = true,
+	buy_item = true,
+}
+
 --[[
 	Check if tutorial should be active for a player
-	Tutorial only applies in player's OWN realm (not hub, not other players' realms)
+	Tutorial applies in player's OWN realm AND in hub for hub-specific steps
 	@param player: Player - The player to check
+	@param stepId: string? - Optional step ID for hub-specific checks
 	@return boolean - True if tutorial should be active
 ]]
-function TutorialService:_isTutorialActiveFor(player)
-	-- Never active in the hub server
+function TutorialService:_isTutorialActiveFor(player, stepId)
+	-- In hub: only allow hub-specific steps
 	if IS_HUB then
+		if stepId then
+			return HUB_ALLOWED_STEPS[stepId] == true
+		end
+		-- If no stepId provided, check current step
+		local data = self._playerTutorials[player.UserId]
+		if data and data.currentStep then
+			return HUB_ALLOWED_STEPS[data.currentStep] == true
+		end
 		return false
 	end
 
@@ -83,6 +110,18 @@ function TutorialService:_isTutorialActiveFor(player)
 		end
 	end
 
+	return true
+end
+
+--[[
+	Check if an objective type can be tracked on the current server
+	@param objectiveType: string - The objective type
+	@return boolean - True if tracking is allowed
+]]
+function TutorialService:_canTrackObjective(objectiveType)
+	if IS_HUB then
+		return HUB_ALLOWED_OBJECTIVES[objectiveType] == true
+	end
 	return true
 end
 
@@ -134,24 +173,37 @@ end
 	Send tutorial data to client
 ]]
 function TutorialService:SendTutorialData(player)
-	-- Check if tutorial is active for this player
-	local isActive = self:_isTutorialActiveFor(player)
-
-	if not isActive then
-		-- Send disabled state to client
+	local data = self:_ensurePlayerData(player)
+	
+	-- Check if tutorial is already complete
+	if data.completed then
 		if self._eventManager then
 			self._eventManager:FireEvent("TutorialDataUpdated", player, {
-				tutorial = {
-					completed = true,  -- Treat as completed so UI doesn't show
-					disabled = true,   -- Flag that tutorial is disabled (not in own realm)
-				},
+				tutorial = data,
 				config = nil,
 			})
 		end
 		return
 	end
 
-	local data = self:_ensurePlayerData(player)
+	-- Check if tutorial is active for this player (considering current step)
+	local isActive = self:_isTutorialActiveFor(player, data.currentStep)
+
+	if not isActive then
+		-- Send disabled state to client (not in correct realm for current step)
+		if self._eventManager then
+			self._eventManager:FireEvent("TutorialDataUpdated", player, {
+				tutorial = {
+					completed = false,
+					disabled = true,   -- Flag that tutorial is disabled for current step
+					currentStep = data.currentStep,
+				},
+				config = nil,
+				isHub = IS_HUB,
+			})
+		end
+		return
+	end
 
 	if self._eventManager then
 		self._eventManager:FireEvent("TutorialDataUpdated", player, {
@@ -161,7 +213,8 @@ function TutorialService:SendTutorialData(player)
 				currentStep = self._config.GetStep(data.currentStep),
 				settings = self._config.Settings,
 			},
-			isOwnRealm = true,  -- Confirm this is their own realm
+			isOwnRealm = not IS_HUB,  -- Only true on player's own world server
+			isHub = IS_HUB,
 		})
 	end
 end
@@ -213,6 +266,18 @@ function TutorialService:CompleteStep(player, stepId)
 		player = player.Name,
 		stepId = stepId
 	})
+
+	-- Special action: Instantly grow crops when plant_seeds completes
+	if stepId == "plant_seeds" and TutorialConfig.Settings.instantGrowCropsOnPlant then
+		local cropService = self.Deps and self.Deps.CropService
+		if cropService and cropService.InstantGrowAllCrops then
+			local grownCount = cropService:InstantGrowAllCrops()
+			self._logger.Info("Tutorial: Instantly grew crops", {
+				player = player.Name,
+				count = grownCount
+			})
+		end
+	end
 
 	-- Grant reward if any
 	if step.reward then
@@ -381,12 +446,22 @@ end
 	@param progressData: table - Data about the progress
 ]]
 function TutorialService:TrackProgress(player, progressType, progressData)
-	-- Check if tutorial is active for this player
-	if not self:_isTutorialActiveFor(player) then
+	local data = self:_ensurePlayerData(player)
+	
+	-- Check if this objective type can be tracked on this server
+	if not self:_canTrackObjective(progressType) then
+		self._logger.Debug("Objective type not trackable on this server", {
+			player = player.Name,
+			progressType = progressType,
+			isHub = IS_HUB,
+		})
 		return
 	end
 
-	local data = self:_ensurePlayerData(player)
+	-- Check if tutorial is active for this player's current step
+	if not self:_isTutorialActiveFor(player, data.currentStep) then
+		return
+	end
 
 	-- Skip if tutorial completed
 	if data.completed then
@@ -586,6 +661,24 @@ function TutorialService:TrackProgress(player, progressType, progressData)
 		data.sellProgressCount = (data.sellProgressCount or 0) + count
 		isComplete = data.sellProgressCount >= (objective.count or 1)
 		progressData.count = data.sellProgressCount
+
+	elseif progressType == "buy_item" then
+		local count = progressData.count or 1
+		-- Track cumulative buy progress
+		data.buyProgressCount = (data.buyProgressCount or 0) + count
+		isComplete = data.buyProgressCount >= (objective.count or 1)
+		progressData.count = data.buyProgressCount
+
+	elseif progressType == "enter_world" then
+		local worldType = progressData.worldType
+		if objective.worldType and worldType == objective.worldType then
+			isComplete = true
+			self._logger.Info("Tutorial enter_world objective met", {
+				player = player.Name,
+				stepId = data.currentStep,
+				worldType = worldType,
+			})
+		end
 	end
 
 	-- Complete step if objective met

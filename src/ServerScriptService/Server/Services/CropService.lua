@@ -163,6 +163,56 @@ function CropService:OnChunkStreamed(cx, cz)
 	self._iterDirty = true
 end
 
+--[[
+	Instantly grow all tracked crops to their mature stage.
+	Used by tutorial to skip waiting for crop growth.
+]]
+function CropService:InstantGrowAllCrops()
+	local vws = self.Deps and self.Deps.VoxelWorldService
+	local vm = vws and vws.worldManager
+	if not vm then return 0 end
+
+	-- Mapping from any crop stage to its mature stage
+	local MATURE_STAGE = {
+		-- Wheat (stage 7 is mature)
+		[BLOCK.WHEAT_CROP_0] = BLOCK.WHEAT_CROP_7,
+		[BLOCK.WHEAT_CROP_1] = BLOCK.WHEAT_CROP_7,
+		[BLOCK.WHEAT_CROP_2] = BLOCK.WHEAT_CROP_7,
+		[BLOCK.WHEAT_CROP_3] = BLOCK.WHEAT_CROP_7,
+		[BLOCK.WHEAT_CROP_4] = BLOCK.WHEAT_CROP_7,
+		[BLOCK.WHEAT_CROP_5] = BLOCK.WHEAT_CROP_7,
+		[BLOCK.WHEAT_CROP_6] = BLOCK.WHEAT_CROP_7,
+		-- Potato (stage 3 is mature)
+		[BLOCK.POTATO_CROP_0] = BLOCK.POTATO_CROP_3,
+		[BLOCK.POTATO_CROP_1] = BLOCK.POTATO_CROP_3,
+		[BLOCK.POTATO_CROP_2] = BLOCK.POTATO_CROP_3,
+		-- Carrot (stage 3 is mature)
+		[BLOCK.CARROT_CROP_0] = BLOCK.CARROT_CROP_3,
+		[BLOCK.CARROT_CROP_1] = BLOCK.CARROT_CROP_3,
+		[BLOCK.CARROT_CROP_2] = BLOCK.CARROT_CROP_3,
+		-- Beetroot (stage 3 is mature)
+		[BLOCK.BEETROOT_CROP_0] = BLOCK.BEETROOT_CROP_3,
+		[BLOCK.BEETROOT_CROP_1] = BLOCK.BEETROOT_CROP_3,
+		[BLOCK.BEETROOT_CROP_2] = BLOCK.BEETROOT_CROP_3,
+	}
+
+	local grownCount = 0
+	for key in pairs(self._crops) do
+		local x, y, z = string.match(key, "(-?%d+),(-?%d+),(-?%d+)")
+		x = tonumber(x) y = tonumber(y) z = tonumber(z)
+		if x and y and z then
+			local id = vm:GetBlock(x, y, z)
+			local matureId = MATURE_STAGE[id]
+			if matureId then
+				vws:SetBlock(x, y, z, matureId)
+				grownCount = grownCount + 1
+			end
+		end
+	end
+
+	return grownCount
+end
+
 return CropService
 
 

@@ -138,61 +138,40 @@ local GameConfig = {
 	-- Data Store settings
 	DataStore = {
 		PlayerData = {
-			DataStoreVersion = "PlayerData_v80", -- Keep in sync with PlayerDataStoreService (updated for 4-tier system)
+			DataStoreVersion = "PlayerData_v83", -- Keep in sync with PlayerDataStoreService (updated for 4-tier system)
 			SchemaVersion = 6, -- Increment to force migrations/default resets
 			AutoSaveInterval = 300 -- 5 minutes in seconds
 		},
 	},
 
 	-- ═══════════════════════════════════════════════════════════════════════════
-	-- STARTER INVENTORY (Skyblock-style minimal loadout)
+	-- STARTER INVENTORY (Farming-First Skyblock loadout)
 	--
-	-- Design: Minimal resources to kickstart the farming loop
-	-- - Basic tools to get started
-	-- - Starting currency to buy seeds
-	-- - Small food supply for early survival
-	-- - One sapling to begin tree farming
+	-- Design: Optimized for the farming tutorial flow
+	-- - Seeds in hotbar for immediate planting
+	-- - Tools ready but farming comes first
+	-- - Food supply for early survival
+	-- - Saplings for tree farming
 	-- ═══════════════════════════════════════════════════════════════════════════
 	Inventory = {
-		-- Hotbar: Essential tools ready to use
+		-- Hotbar: Tools ready, seeds in inventory for tutorial
 		StarterHotbar = {
-			{slot = 1, itemId = 1001, count = 1},  -- Copper Pickaxe (mining)
+			{slot = 1, itemId = 1021, count = 1},  -- Copper Shovel (make farmland)
 			{slot = 2, itemId = 1011, count = 1},  -- Copper Axe (woodcutting)
-			{slot = 3, itemId = 1021, count = 1},  -- Copper Shovel (digging)
+			{slot = 3, itemId = 1001, count = 1},  -- Copper Pickaxe (mining)
 			{slot = 4, itemId = 1041, count = 1},  -- Copper Sword (defense)
-			{slot = 5, itemId = 1051, count = 1},  -- Bow (ranged)
-			{slot = 6, itemId = 348, count = 16},  -- Bread (food)
-			{slot = 7, itemId = 380, count = 32},  -- Water Source Block
-			{slot = 8, itemId = 382, count = 4},   -- Bucket (water collection)
+			{slot = 5, itemId = 348, count = 16},  -- Bread (food)
 		},
 
 		-- Inventory: Starter resources
 		StarterInventory = {
 			-- ═══════════════════════════════════════════════════════════════
-			-- STARTER KIT - Just enough to begin
+			-- FARMING SUPPLIES - Seeds in inventory (tutorial teaches moving to hotbar)
 			-- ═══════════════════════════════════════════════════════════════
 
-			-- Ammo (for bow)
-			{itemId = 2001, count = 64},  -- Copper Arrows
-
-			-- Saplings (start tree farming immediately)
-			{itemId = 16, count = 4},   -- Oak Saplings
-
-			-- Seeds (start crop farming)
+			-- Wheat seeds (player must move to hotbar - tutorial step!)
 			{itemId = 70, count = 8},   -- Wheat Seeds
-			{itemId = 72, count = 4},   -- Potatoes (plantable)
-			{itemId = 73, count = 4},   -- Carrots (plantable)
 
-			-- Basic Materials (to get started)
-			{itemId = 2, count = 64},   -- Dirt (for farming)
-			{itemId = 14, count = 64},  -- Cobblestone (basic building)
-			{itemId = 12, count = 64},   -- Oak Planks (crafting)
-
-			-- Food (survive first few minutes)
-			{itemId = 37, count = 8},   -- Apples
-
-			-- Utility (one of each to demonstrate crafting goals)
-			{itemId = 13, count = 1},   -- Crafting Table
 		}
 	},
 
@@ -621,7 +600,7 @@ local GameConfig = {
 	-- World system configuration
 	Worlds = {
 		MaxWorldsPerPlayer = 10, -- Maximum worlds a player can create
-		DataStoreVersion = "PlayerOwnedWorlds_v69" -- Updated for multi-world support
+		DataStoreVersion = "PlayerOwnedWorlds_v70" -- Updated for multi-world support
 	},
 
 	-- Single-Place Architecture Configuration

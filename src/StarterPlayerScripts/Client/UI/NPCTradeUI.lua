@@ -1064,6 +1064,10 @@ function NPCTradeUI:RegisterEvents()
 						break
 					end
 				end
+				-- Notify tutorial system of item bought
+				if TutorialManager and TutorialManager.OnItemBought then
+					TutorialManager:OnItemBought(data.itemId, 1)
+				end
 			end
 
 			if self.mode == "sell" then

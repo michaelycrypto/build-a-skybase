@@ -118,17 +118,19 @@ function SprintController:OnWaterStateChanged(isInWater)
 end
 
 function SprintController:Initialize()
-	-- Setup character
-	character = player.Character or player.CharacterAdded:Wait()
-	humanoid = setupCharacter(character)
-
-	-- Handle respawn
+	-- Handle character spawn/respawn (non-blocking - character may not exist yet)
 	player.CharacterAdded:Connect(function(newCharacter)
 		character = newCharacter
 		humanoid = setupCharacter(newCharacter)
 		isSprinting = false
 		sprintInputHeld = false
 	end)
+	
+	-- Setup existing character if present
+	if player.Character then
+		character = player.Character
+		humanoid = setupCharacter(character)
+	end
 
 	-- Handle sprint input (Left Shift)
 	InputService.InputBegan:Connect(function(input, gameProcessed)
