@@ -45,7 +45,7 @@ local B = {
 	OAK_LEAVES = 63, SPRUCE_LEAVES = 64, JUNGLE_LEAVES = 65,
 	DARK_OAK_LEAVES = 66, BIRCH_LEAVES = 67, ACACIA_LEAVES = 68,
 	-- Farming
-	WHEAT_SEEDS = 70, WHEAT = 71, POTATO = 72, CARROT = 73,
+	FARMLAND = 69, WHEAT_SEEDS = 70, WHEAT = 71, POTATO = 72, CARROT = 73,
 	BEETROOT_SEEDS = 74, BEETROOT = 75,
 	-- Materials
 	COPPER_ORE = 98, BLUESTEEL_ORE = 101,
@@ -99,6 +99,9 @@ NPCTradeConfig.ShopItems = {
 	-- ═══════════════════════════════════════════════════════════════════════
 	-- BUILDING SHOP - Blocks ONLY
 	-- ═══════════════════════════════════════════════════════════════════════
+
+	-- FARMLAND (first for tutorial - cheap!)
+	{ itemId = B.FARMLAND,          price = 64,   stock = 16, stackSize = 16, category = "Farming", shopType = "BUILDING" },  -- 4/ea
 
 	-- BASIC MATERIALS (stack of 64, 2/ea)
 	{ itemId = B.DIRT,              price = 128,  stock = 10, stackSize = 64, category = "Building", shopType = "BUILDING" },

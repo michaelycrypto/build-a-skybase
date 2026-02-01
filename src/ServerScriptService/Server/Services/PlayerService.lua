@@ -161,7 +161,9 @@ function PlayerService:OnPlayerAdded(player)
 		lastSave = playerData.lastSave,
 		-- Hunger/Saturation system (Minecraft-style)
 		hunger = playerData.profile.hunger or 20,
-		saturation = playerData.profile.saturation or 20
+		saturation = playerData.profile.saturation or 20,
+		-- Tutorial progress
+		tutorial = playerData.tutorial,
 	}
 
 	-- IMPORTANT: Create inventory structure FIRST (before loading data)
@@ -435,6 +437,11 @@ function PlayerService:SavePlayerData(player)
 		self.Deps.PlayerDataStoreService:UpdatePlayerData(player, {"dungeonData"}, data.dungeonData)
 		self.Deps.PlayerDataStoreService:UpdatePlayerData(player, {"dailyRewards"}, data.dailyRewards)
 		self.Deps.PlayerDataStoreService:UpdatePlayerData(player, {"settings"}, data.settings)
+		
+		-- Save tutorial progress
+		if data.tutorial then
+			self.Deps.PlayerDataStoreService:UpdatePlayerData(player, {"tutorial"}, data.tutorial)
+		end
 
 		-- Actually save to DataStore
 		self.Deps.PlayerDataStoreService:SavePlayerData(player)

@@ -21,6 +21,7 @@ local ToastManager = nil
 local SoundManager = nil
 local TutorialConfig = nil
 local TutorialUI = nil
+local TutorialWaypoint = nil  -- Waypoint rendering for hub guidance
 local InventoryManager = nil  -- For counting items across slots
 
 -- State
@@ -75,6 +76,14 @@ function TutorialManager:Initialize(deps)
 		warn("TutorialManager: Failed to load TutorialUI:", uiResult)
 	end
 
+	-- Load TutorialWaypoint
+	local wpSuccess, wpResult = pcall(function()
+		TutorialWaypoint = require(script.Parent.Parent.UI.TutorialWaypoint)
+	end)
+	if not wpSuccess then
+		warn("TutorialManager: Failed to load TutorialWaypoint:", wpResult)
+	end
+
 	-- Register event handlers
 	self:_registerEventHandlers()
 
@@ -108,6 +117,9 @@ function TutorialManager:_registerEventHandlers()
 			if TutorialUI then
 				TutorialUI:HideAll()
 			end
+			if TutorialWaypoint then
+				TutorialWaypoint:Hide()
+			end
 			return
 		end
 
@@ -118,6 +130,9 @@ function TutorialManager:_registerEventHandlers()
 			currentStep = nil
 			if TutorialUI then
 				TutorialUI:HideAll()
+			end
+			if TutorialWaypoint then
+				TutorialWaypoint:Hide()
 			end
 			return
 		end
@@ -133,6 +148,9 @@ function TutorialManager:_registerEventHandlers()
 		else
 			if TutorialUI then
 				TutorialUI:HideAll()
+			end
+			if TutorialWaypoint then
+				TutorialWaypoint:Hide()
 			end
 		end
 	end)
@@ -153,6 +171,9 @@ function TutorialManager:_registerEventHandlers()
 		currentStep = nil
 		if TutorialUI then
 			TutorialUI:HideAll()
+		end
+		if TutorialWaypoint then
+			TutorialWaypoint:Hide()
 		end
 		if ToastManager then
 			ToastManager:Info("Tutorial skipped. Good luck on your adventure!", 3)
@@ -348,6 +369,9 @@ function TutorialManager:_showCurrentStep()
 		if TutorialUI then
 			TutorialUI:HideAll()
 		end
+		if TutorialWaypoint then
+			TutorialWaypoint:Hide()
+		end
 		return
 	end
 
@@ -410,6 +434,11 @@ function TutorialManager:_showCurrentStep()
 		end
 	end
 
+	-- Show waypoint if step has one configured
+	if TutorialWaypoint and currentStep.waypoint then
+		self:_showWaypoint(currentStep.waypoint)
+	end
+
 	-- Play notification sound
 	if SoundManager and SoundManager.PlaySFX then
 		SoundManager:PlaySFX("notification")
@@ -417,12 +446,70 @@ function TutorialManager:_showCurrentStep()
 end
 
 --[[
+	Show a waypoint for the current tutorial step
+	@param waypointName: string - Name of the waypoint from TutorialConfig.Waypoints
+]]
+function TutorialManager:_showWaypoint(waypointName)
+	if not TutorialWaypoint or not TutorialConfig then return end
+	
+	local waypointConfig = TutorialConfig.GetWaypoint(waypointName)
+	if not waypointConfig then
+		warn("TutorialManager: Unknown waypoint:", waypointName)
+		return
+	end
+	
+	if waypointConfig.type == "npc" then
+		-- Show waypoint for an NPC
+		TutorialWaypoint:ShowForNPC(waypointConfig.npcId, {
+			label = waypointConfig.label,
+			color = waypointConfig.color,
+		})
+	elseif waypointConfig.type == "block_area" then
+		-- Show waypoint at a block position relative to spawn
+		-- For portal waypoint, calculate position from spawn offset
+		local character = player.Character
+		if character then
+			local hrp = character:FindFirstChild("HumanoidRootPart")
+			if hrp then
+				-- For island portal, use the offset from spawn
+				-- Note: In a real implementation, we'd get the actual portal position
+				local targetPos = waypointConfig.offsetFromSpawn
+				if targetPos then
+					-- Convert block offset to world coordinates
+					local Constants = require(ReplicatedStorage.Shared.VoxelWorld.Core.Constants)
+					local worldPos = Vector3.new(
+						targetPos.X * Constants.BLOCK_SIZE,
+						hrp.Position.Y,  -- Keep at player height
+						targetPos.Z * Constants.BLOCK_SIZE
+					)
+					TutorialWaypoint:Show({
+						worldPosition = worldPos,
+						label = waypointConfig.label,
+						color = waypointConfig.color,
+					})
+				end
+			end
+		end
+	elseif waypointConfig.type == "position" then
+		-- Direct world position
+		TutorialWaypoint:Show({
+			worldPosition = waypointConfig.position,
+			label = waypointConfig.label,
+			color = waypointConfig.color,
+		})
+	end
+end
+
+--[[
 	Handle step completed event
 ]]
 function TutorialManager:_onStepCompleted(data)
-	-- Hide current step UI
+	-- Hide current step UI and waypoint
 	if TutorialUI then
 		TutorialUI:HideAll()
+	end
+	if TutorialWaypoint then
+		TutorialWaypoint:Hide()
 	end
 
 	-- Show reward notification
@@ -473,6 +560,9 @@ end
 function TutorialManager:_onStepSkipped(data)
 	if TutorialUI then
 		TutorialUI:HideAll()
+	end
+	if TutorialWaypoint then
+		TutorialWaypoint:Hide()
 	end
 
 	if ToastManager then
@@ -793,6 +883,9 @@ end
 function TutorialManager:Cleanup()
 	if TutorialUI then
 		TutorialUI:HideAll()
+	end
+	if TutorialWaypoint then
+		TutorialWaypoint:Cleanup()
 	end
 	isInitialized = false
 	tutorialData = nil

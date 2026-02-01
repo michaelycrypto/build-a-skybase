@@ -364,6 +364,8 @@ local EVENT_DEFINITIONS = {
 	SkipTutorialStep = {},
 	SkipTutorial = {},
 	TutorialProgress = {"any"}, -- {stepId:string, progressType:string, progressData:table}
+	DebugSetTutorialStep = {"any"}, -- {stepId:string} - Debug: set tutorial to specific step
+	DebugResetTutorial = {}, -- Debug: reset tutorial to beginning
 
     -- Client-to-server events (with parameters)
 	PurchaseItem = {"any", "any"}, -- itemId, quantity
@@ -760,6 +762,31 @@ function EventManager:CreateServerEventConfig(services)
 			handler = function(player, data)
 				if services.TutorialService and services.TutorialService.TrackProgress then
 					services.TutorialService:TrackProgress(player, data.progressType, data.progressData)
+				end
+			end
+		},
+
+		-- Debug: Set tutorial step (for testing)
+		{
+			name = "DebugSetTutorialStep",
+			handler = function(player, data)
+				if services.TutorialService and services.TutorialService.SetTutorialStep then
+					local stepId = data and data.stepId
+					if stepId then
+						services.TutorialService:SetTutorialStep(player, stepId)
+						print("[Tutorial Debug] Set step for", player.Name, "to", stepId)
+					end
+				end
+			end
+		},
+
+		-- Debug: Reset tutorial (for testing)
+		{
+			name = "DebugResetTutorial",
+			handler = function(player)
+				if services.TutorialService and services.TutorialService.ResetTutorial then
+					services.TutorialService:ResetTutorial(player)
+					print("[Tutorial Debug] Reset tutorial for", player.Name)
 				end
 			end
 		},

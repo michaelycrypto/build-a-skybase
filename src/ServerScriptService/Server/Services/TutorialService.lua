@@ -61,12 +61,14 @@ end
 
 -- Steps that can progress on hub servers (hub-specific objectives)
 local HUB_ALLOWED_STEPS = {
-	use_portal = true,      -- Completes when entering hub
-	find_merchant = true,   -- NPC interaction
-	sell_crops = true,      -- Selling items
-	visit_farm_shop = true, -- NPC interaction
-	buy_seeds = true,       -- Buying items
-	return_home = true,     -- Completes when returning to player world
+	use_portal = true,          -- Completes when entering hub
+	find_merchant = true,       -- NPC interaction
+	sell_crops = true,          -- Selling items
+	visit_building_shop = true, -- NPC interaction (Builder)
+	buy_soil = true,            -- Buying soil/farmland
+	visit_farm_shop = true,     -- NPC interaction (Farmer)
+	buy_seeds = true,           -- Buying seeds
+	return_home = true,         -- Completes when returning to player world
 }
 
 -- Objective types that can be tracked on hub servers
@@ -138,7 +140,8 @@ function TutorialService:_ensurePlayerData(player)
 			savedData = playerData and playerData.tutorial
 		end
 
-		if savedData and savedData.currentStep then
+		-- Check if saved data exists (completed tutorials have currentStep = nil, so check completed flag too)
+		if savedData and (savedData.currentStep or savedData.completed) then
 			self._logger.Info("Loaded saved tutorial data for player", {
 				player = player.Name,
 				currentStep = savedData.currentStep,
@@ -174,9 +177,17 @@ end
 ]]
 function TutorialService:SendTutorialData(player)
 	local data = self:_ensurePlayerData(player)
-	
+
+	self._logger.Info("SendTutorialData", {
+		player = player.Name,
+		currentStep = data.currentStep,
+		completed = data.completed,
+		isHub = IS_HUB,
+	})
+
 	-- Check if tutorial is already complete
 	if data.completed then
+		self._logger.Debug("Tutorial already complete, sending completion state")
 		if self._eventManager then
 			self._eventManager:FireEvent("TutorialDataUpdated", player, {
 				tutorial = data,
@@ -191,6 +202,12 @@ function TutorialService:SendTutorialData(player)
 
 	if not isActive then
 		-- Send disabled state to client (not in correct realm for current step)
+		self._logger.Info("Tutorial disabled for current step", {
+			player = player.Name,
+			currentStep = data.currentStep,
+			isHub = IS_HUB,
+			hubAllowed = HUB_ALLOWED_STEPS[data.currentStep] or false,
+		})
 		if self._eventManager then
 			self._eventManager:FireEvent("TutorialDataUpdated", player, {
 				tutorial = {
@@ -204,6 +221,11 @@ function TutorialService:SendTutorialData(player)
 		end
 		return
 	end
+
+	self._logger.Info("Tutorial active, sending step data", {
+		player = player.Name,
+		currentStep = data.currentStep,
+	})
 
 	if self._eventManager then
 		self._eventManager:FireEvent("TutorialDataUpdated", player, {
@@ -447,7 +469,7 @@ end
 ]]
 function TutorialService:TrackProgress(player, progressType, progressData)
 	local data = self:_ensurePlayerData(player)
-	
+
 	-- Check if this objective type can be tracked on this server
 	if not self:_canTrackObjective(progressType) then
 		self._logger.Debug("Objective type not trackable on this server", {
@@ -741,10 +763,27 @@ end
 	Save tutorial data to player profile
 ]]
 function TutorialService:_saveTutorialData(player, data)
-	if self.Deps.PlayerService and self.Deps.PlayerService.SavePlayerData then
-		local playerData = self.Deps.PlayerService:GetPlayerData(player) or {}
-		playerData.tutorial = data
-		self.Deps.PlayerService:SavePlayerData(player, playerData)
+	-- Always update the local cache in PlayerService first
+	if self.Deps.PlayerService then
+		local playerData = self.Deps.PlayerService:GetPlayerData(player)
+		if playerData then
+			playerData.tutorial = data
+		end
+	end
+
+	-- Then persist to DataStore
+	if self.Deps.PlayerDataStoreService then
+		self.Deps.PlayerDataStoreService:UpdatePlayerData(player, {"tutorial"}, data)
+		self.Deps.PlayerDataStoreService:SavePlayerData(player)
+		self._logger.Info("Tutorial data saved to DataStore", {
+			player = player.Name,
+			currentStep = data.currentStep,
+		})
+	else
+		self._logger.Warn("PlayerDataStoreService not available, tutorial data only in local cache", {
+			player = player.Name,
+			currentStep = data.currentStep,
+		})
 	end
 end
 
@@ -779,6 +818,49 @@ function TutorialService:ResetTutorial(player)
 	end
 
 	self._logger.Info("Tutorial reset", {player = player.Name})
+end
+
+--[[
+	Set tutorial to a specific step (for testing/debugging)
+	@param player: Player - The player
+	@param stepId: string - The step ID to set as current
+]]
+function TutorialService:SetTutorialStep(player, stepId)
+	-- Validate step exists
+	local step = self._config.GetStep(stepId)
+	if not step then
+		self._logger.Warn("SetTutorialStep: Invalid step ID", {player = player.Name, stepId = stepId})
+		return false
+	end
+
+	local userId = player.UserId
+	local data = self:_ensurePlayerData(player)
+
+	-- Set the current step
+	data.currentStep = stepId
+	data.completed = false
+	data.skipped = false
+
+	-- Save the change
+	self:_saveTutorialData(player, data)
+
+	-- Notify client
+	if self._eventManager then
+		self:SendTutorialData(player)
+	end
+
+	self._logger.Info("Tutorial step set", {player = player.Name, stepId = stepId})
+	return true
+end
+
+--[[
+	Get current tutorial step for a player (for debugging)
+	@param player: Player - The player
+	@return string|nil - Current step ID or nil if completed
+]]
+function TutorialService:GetCurrentStep(player)
+	local data = self:_ensurePlayerData(player)
+	return data.currentStep
 end
 
 --[[

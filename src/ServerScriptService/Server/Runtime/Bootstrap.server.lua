@@ -207,6 +207,11 @@ if IS_HUB then
 		dependencies = {"WorldsListService"},
 		mixins = {}
 	})
+	-- TutorialService for hub-specific tutorial steps (no WorldOwnershipService/CropService in hub)
+	Injector:Bind("TutorialService", script.Parent.Parent.Services.TutorialService, {
+		dependencies = {"PlayerService", "PlayerDataStoreService"},
+		mixins = {}
+	})
 elseif IS_WORLD then
 	-- WORLD-specific services
 	Injector:Bind("WorldOwnershipService", script.Parent.Parent.Services.WorldOwnershipService, {
@@ -214,7 +219,7 @@ elseif IS_WORLD then
 		mixins = {}
 	})
 	Injector:Bind("TutorialService", script.Parent.Parent.Services.TutorialService, {
-		dependencies = {"PlayerService", "WorldOwnershipService", "CropService"},
+		dependencies = {"PlayerService", "PlayerDataStoreService", "WorldOwnershipService", "CropService"},
 		mixins = {}
 	})
 	Injector:Bind("VoxelWorldService", script.Parent.Parent.Services.VoxelWorldService, {
@@ -270,7 +275,7 @@ local playerDataStoreService = Injector:Resolve("PlayerDataStoreService")
 local playerService = Injector:Resolve("PlayerService")
 local shopService = Injector:Resolve("ShopService")
 local questService = Injector:Resolve("QuestService")
-local tutorialService = IS_WORLD and Injector:Resolve("TutorialService") or nil
+local tutorialService = Injector:Resolve("TutorialService") -- Available in both HUB and WORLD
 local playerInventoryService = Injector:Resolve("PlayerInventoryService")
 local craftingService = Injector:Resolve("CraftingService")
 local bowService = Injector:Resolve("BowService")

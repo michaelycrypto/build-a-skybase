@@ -321,6 +321,12 @@ end
 	Hide the popup and restore input/camera state
 ]]
 function TutorialUI:HidePopup()
+	-- Only clean up if there was actually an active popup
+	-- This prevents interfering with UIBackdrop used by other systems (UIVisibilityManager, etc.)
+	if not activePopup and not overlayReleaseFunc then
+		return
+	end
+
 	if activePopup then
 		TweenService:Create(activePopup.popup, ANIMATION.fadeOut, {BackgroundTransparency = 1}):Play()
 
@@ -329,10 +335,10 @@ function TutorialUI:HidePopup()
 			if popup.popup then popup.popup:Destroy() end
 		end)
 		activePopup = nil
-	end
 
-	-- Hide backdrop
-	UIBackdrop:Hide()
+		-- Only hide backdrop if we showed one for this popup
+		UIBackdrop:Hide()
+	end
 
 	-- Release input overlay (restores cursor and gameplay)
 	if overlayReleaseFunc then
