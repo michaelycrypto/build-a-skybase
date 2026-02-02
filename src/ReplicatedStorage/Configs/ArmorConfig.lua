@@ -60,7 +60,7 @@ ArmorConfig.TierKnockbackResist = {
 
 ArmorConfig.Items = {}
 
-for key, armor in pairs(ItemDefinitions.Armor) do
+for _, armor in pairs(ItemDefinitions.Armor) do
 	ArmorConfig.Items[armor.id] = {
 		name = armor.name,
 		icon = SLOT_ICONS[armor.slot] or "🛡️",
@@ -145,7 +145,7 @@ function ArmorConfig.CalculateTotalDefense(equippedArmor)
 	local totalDefense = 0
 	local totalToughness = 0
 
-	for slot, itemId in pairs(equippedArmor) do
+	for _, itemId in pairs(equippedArmor) do
 		local armor = ArmorConfig.Items[itemId]
 		if armor then
 			totalDefense = totalDefense + (armor.defense or 0)

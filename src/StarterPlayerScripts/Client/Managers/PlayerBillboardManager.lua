@@ -20,7 +20,7 @@ local updateConnection = nil
 
 -- Configuration
 local BILLBOARD_OFFSET = Vector3.new(0, 50, 0)
-local BILLBOARD_SIZE = UDim2.new(24, 0, 6, 0)
+local BILLBOARD_SIZE = UDim2.fromScale(24, 6)
 local UPDATE_INTERVAL = 2
 
 --[[
@@ -59,8 +59,8 @@ local function createBillboard(player, centerPart)
 	-- Player image (square, left side)
 	local playerImage = Instance.new("ImageLabel")
 	playerImage.Name = "PlayerImage"
-	playerImage.Size = UDim2.new(0.25, 0, 1, 0)
-	playerImage.Position = UDim2.new(0, 0, 0, 0)
+	playerImage.Size = UDim2.fromScale(0.25, 1)
+	playerImage.Position = UDim2.fromScale(0, 0)
 	playerImage.BackgroundTransparency = 1
 	playerImage.Image = "rbxthumb://type=AvatarHeadShot&id=" .. player.UserId .. "&w=420&h=420"
 	playerImage.ScaleType = Enum.ScaleType.Crop
@@ -73,8 +73,8 @@ local function createBillboard(player, centerPart)
 	-- Player name (right side)
 	local nameLabel = Instance.new("TextLabel")
 	nameLabel.Name = "NameLabel"
-	nameLabel.Size = UDim2.new(0.7, 0, 1, 0)
-	nameLabel.Position = UDim2.new(0.3, 0, 0, 0)
+	nameLabel.Size = UDim2.fromScale(0.7, 1)
+	nameLabel.Position = UDim2.fromScale(0.3, 0)
 	nameLabel.BackgroundTransparency = 1
 	nameLabel.Text = player.DisplayName
 	nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -161,7 +161,7 @@ function PlayerBillboardManager:Cleanup()
 		updateConnection = nil
 	end
 
-	for player, billboard in pairs(billboards) do
+	for _, billboard in pairs(billboards) do
 		billboard:Destroy()
 	end
 	billboards = {}

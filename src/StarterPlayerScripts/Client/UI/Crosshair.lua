@@ -30,13 +30,13 @@ local function createBar(parent, isHorizontal)
 	bar.BackgroundColor3 = CROSSHAIR_COLOR
 	bar.BorderSizePixel = 0
 	bar.AnchorPoint = Vector2.new(0.5, 0.5)
-	bar.Position = UDim2.new(0.5, 0, 0.5, 0)
+	bar.Position = UDim2.fromScale(0.5, 0.5)
 	bar.ZIndex = 10
 
 	if isHorizontal then
-		bar.Size = UDim2.new(0, CROSSHAIR_LENGTH, 0, CROSSHAIR_THICKNESS)
+		bar.Size = UDim2.fromOffset(CROSSHAIR_LENGTH, CROSSHAIR_THICKNESS)
 	else
-		bar.Size = UDim2.new(0, CROSSHAIR_THICKNESS, 0, CROSSHAIR_LENGTH)
+		bar.Size = UDim2.fromOffset(CROSSHAIR_THICKNESS, CROSSHAIR_LENGTH)
 	end
 
 	bar.Parent = parent
@@ -53,8 +53,8 @@ function Crosshair:Create(parentHudGui)
 	crosshairContainer.BorderSizePixel = 0
 	crosshairContainer.ZIndex = 10
 	crosshairContainer.AnchorPoint = Vector2.new(0.5, 0.5)
-	crosshairContainer.Size = UDim2.new(0, 0, 0, 0)
-	crosshairContainer.Position = UDim2.new(0.5, 0, 0.5, 0)
+	crosshairContainer.Size = UDim2.fromScale(0, 0)
+	crosshairContainer.Position = UDim2.fromScale(0.5, 0.5)
 
 	-- Parent to the HUD if provided; otherwise attach to PlayerGui
 	if parentHudGui then

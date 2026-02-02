@@ -188,7 +188,7 @@ function VoxelHotbar:CreateHotbar()
 	-- Container frame
 	self.container = Instance.new("Frame")
 	self.container.Name = "HotbarContainer"
-	self.container.Size = UDim2.new(0, totalWidth, 0, visualSlotSize)  -- Use visual size for height
+	self.container.Size = UDim2.fromOffset(totalWidth, visualSlotSize)  -- Use visual size for height
 	self.container.Position = UDim2.new(0.5, 0, 1, -math.floor(HOTBAR_CONFIG.BOTTOM_OFFSET / (HOTBAR_CONFIG.SCALE or 1) + 0.5))
 	self.container.AnchorPoint = Vector2.new(0.5, 1)
 	self.container.BackgroundColor3 = HOTBAR_CONFIG.BG_COLOR
@@ -224,8 +224,8 @@ function VoxelHotbar:CreateSlotUI(index)
 	-- Slot frame
 	local slot = Instance.new("TextButton")
 	slot.Name = "Slot" .. index
-	slot.Size = UDim2.new(0, 56, 0, 56)  -- Frame size (visual is 60px with 2px border)
-	slot.Position = UDim2.new(0, xPos, 0, 8)
+	slot.Size = UDim2.fromOffset(56, 56)  -- Frame size (visual is 60px with 2px border)
+	slot.Position = UDim2.fromOffset(xPos, 8)
 	slot.BackgroundColor3 = Color3.fromRGB(31, 31, 31)  -- Matching inventory
 	slot.BackgroundTransparency = 0.5  -- Default state: 50% transparent
 	slot.BorderSizePixel = 0
@@ -241,8 +241,8 @@ function VoxelHotbar:CreateSlotUI(index)
 	-- Background image at opacity (matching inventory)
 	local bgImage = Instance.new("ImageLabel")
 	bgImage.Name = "BackgroundImage"
-	bgImage.Size = UDim2.new(1, 0, 1, 0)
-	bgImage.Position = UDim2.new(0, 0, 0, 0)
+	bgImage.Size = UDim2.fromScale(1, 1)
+	bgImage.Position = UDim2.fromScale(0, 0)
 	bgImage.BackgroundTransparency = 1
 	bgImage.Image = "rbxassetid://82824299358542"
 	bgImage.ImageTransparency = 0.6  -- Matching inventory
@@ -281,8 +281,8 @@ function VoxelHotbar:CreateSlotUI(index)
 	-- Create container for viewport - fills entire slot
 	local iconContainer = Instance.new("Frame")
 	iconContainer.Name = "IconContainer"
-	iconContainer.Size = UDim2.new(1, 0, 1, 0)
-	iconContainer.Position = UDim2.new(0, 0, 0, 0)
+	iconContainer.Size = UDim2.fromScale(1, 1)
+	iconContainer.Position = UDim2.fromScale(0, 0)
 	iconContainer.BackgroundTransparency = 1
 	iconContainer.ZIndex = 3  -- Above background image (ZIndex 1)
 	iconContainer.Parent = slot
@@ -290,7 +290,7 @@ function VoxelHotbar:CreateSlotUI(index)
 	-- Stack count label overlays in bottom right
 	local countLabel = Instance.new("TextLabel")
 	countLabel.Name = "CountLabel"
-	countLabel.Size = UDim2.new(0, 40, 0, 20)
+	countLabel.Size = UDim2.fromOffset(40, 20)
 	countLabel.Position = UDim2.new(1, -4, 1, -4)
 	countLabel.AnchorPoint = Vector2.new(1, 1)
 	countLabel.BackgroundTransparency = 1
@@ -306,8 +306,8 @@ function VoxelHotbar:CreateSlotUI(index)
 	-- Number indicator overlays in top left
 	local number = Instance.new("TextLabel")
 	number.Name = "Number"
-	number.Size = UDim2.new(0, 20, 0, 20)
-	number.Position = UDim2.new(0, 4, 0, 4)
+	number.Size = UDim2.fromOffset(20, 20)
+	number.Position = UDim2.fromOffset(4, 4)
 	number.BackgroundTransparency = 1
 	number.Font = BOLD_FONT
 	number.TextSize = 14
@@ -360,8 +360,8 @@ function VoxelHotbar:CreateWorldButton()
 	-- World button frame (matching hotbar slot styling)
 	local button = Instance.new("TextButton")
 	button.Name = "WorldButton"
-	button.Size = UDim2.new(0, buttonSize, 0, buttonSize)  -- 42x42px (25% smaller)
-	button.Position = UDim2.new(0, xPos, 0, buttonY)
+	button.Size = UDim2.fromOffset(buttonSize, buttonSize)  -- 42x42px (25% smaller)
+	button.Position = UDim2.fromOffset(xPos, buttonY)
 	button.BackgroundColor3 = Color3.fromRGB(31, 31, 31)  -- Matching inventory
 	button.BackgroundTransparency = 0.5  -- Default state: 50% transparent
 	button.BorderSizePixel = 0
@@ -377,8 +377,8 @@ function VoxelHotbar:CreateWorldButton()
 	-- Background image (matching hotbar slots)
 	local bgImage = Instance.new("ImageLabel")
 	bgImage.Name = "BackgroundImage"
-	bgImage.Size = UDim2.new(1, 0, 1, 0)
-	bgImage.Position = UDim2.new(0, 0, 0, 0)
+	bgImage.Size = UDim2.fromScale(1, 1)
+	bgImage.Position = UDim2.fromScale(0, 0)
 	bgImage.BackgroundTransparency = 1
 	bgImage.Image = "rbxassetid://82824299358542"
 	bgImage.ImageTransparency = 0.6  -- Matching inventory
@@ -399,7 +399,7 @@ function VoxelHotbar:CreateWorldButton()
 	local iconContainer = Instance.new("Frame")
 	iconContainer.Name = "IconContainer"
 	iconContainer.Size = UDim2.new(1, -8, 1, -8)
-	iconContainer.Position = UDim2.new(0.5, 0, 0.5, 0)
+	iconContainer.Position = UDim2.fromScale(0.5, 0.5)
 	iconContainer.AnchorPoint = Vector2.new(0.5, 0.5)
 	iconContainer.BackgroundTransparency = 1
 	iconContainer.ZIndex = 3  -- Above background image
@@ -407,16 +407,16 @@ function VoxelHotbar:CreateWorldButton()
 
 	-- Create planet icon using IconManager
 	local globeIcon = IconManager:CreateIcon(iconContainer, "Nature", "Globe", {
-		size = UDim2.new(1, 0, 1, 0),
-		position = UDim2.new(0.5, 0, 0.5, 0),
+		size = UDim2.fromScale(1, 1),
+		position = UDim2.fromScale(0.5, 0.5),
 		anchorPoint = Vector2.new(0.5, 0.5),
 	})
 
 	-- B text label at top left (matching hotbar number indicator style)
 	local bLabel = Instance.new("TextLabel")
 	bLabel.Name = "BLabel"
-	bLabel.Size = UDim2.new(0, 20, 0, 20)
-	bLabel.Position = UDim2.new(0, 4, 0, 4)
+	bLabel.Size = UDim2.fromOffset(20, 20)
+	bLabel.Position = UDim2.fromOffset(4, 4)
 	bLabel.BackgroundTransparency = 1
 	bLabel.Font = BOLD_FONT
 	bLabel.TextSize = 14
@@ -489,8 +489,8 @@ function VoxelHotbar:CreateInventoryButton()
 	-- Inventory button frame (matching hotbar slot styling)
 	local button = Instance.new("TextButton")
 	button.Name = "InventoryButton"
-	button.Size = UDim2.new(0, buttonSize, 0, buttonSize)  -- 42x42px (25% smaller)
-	button.Position = UDim2.new(0, xPos, 0, buttonY)
+	button.Size = UDim2.fromOffset(buttonSize, buttonSize)  -- 42x42px (25% smaller)
+	button.Position = UDim2.fromOffset(xPos, buttonY)
 	button.BackgroundColor3 = Color3.fromRGB(31, 31, 31)  -- Matching inventory
 	button.BackgroundTransparency = 0.5  -- Default state: 50% transparent
 	button.BorderSizePixel = 0
@@ -506,8 +506,8 @@ function VoxelHotbar:CreateInventoryButton()
 	-- Background image (matching hotbar slots)
 	local bgImage = Instance.new("ImageLabel")
 	bgImage.Name = "BackgroundImage"
-	bgImage.Size = UDim2.new(1, 0, 1, 0)
-	bgImage.Position = UDim2.new(0, 0, 0, 0)
+	bgImage.Size = UDim2.fromScale(1, 1)
+	bgImage.Position = UDim2.fromScale(0, 0)
 	bgImage.BackgroundTransparency = 1
 	bgImage.Image = "rbxassetid://82824299358542"
 	bgImage.ImageTransparency = 0.6  -- Matching inventory
@@ -528,7 +528,7 @@ function VoxelHotbar:CreateInventoryButton()
 	local iconContainer = Instance.new("Frame")
 	iconContainer.Name = "IconContainer"
 	iconContainer.Size = UDim2.new(1, -8, 1, -8)
-	iconContainer.Position = UDim2.new(0.5, 0, 0.5, 0)
+	iconContainer.Position = UDim2.fromScale(0.5, 0.5)
 	iconContainer.AnchorPoint = Vector2.new(0.5, 0.5)
 	iconContainer.BackgroundTransparency = 1
 	iconContainer.ZIndex = 3  -- Above background image
@@ -536,16 +536,16 @@ function VoxelHotbar:CreateInventoryButton()
 
 	-- Create backpack icon using IconManager
 	local backpackIcon = IconManager:CreateIcon(iconContainer, "Clothing", "Backpack", {
-		size = UDim2.new(1, 0, 1, 0),
-		position = UDim2.new(0.5, 0, 0.5, 0),
+		size = UDim2.fromScale(1, 1),
+		position = UDim2.fromScale(0.5, 0.5),
 		anchorPoint = Vector2.new(0.5, 0.5),
 	})
 
 	-- E text label at top left (matching hotbar number indicator style)
 	local eLabel = Instance.new("TextLabel")
 	eLabel.Name = "ELabel"
-	eLabel.Size = UDim2.new(0, 20, 0, 20)
-	eLabel.Position = UDim2.new(0, 4, 0, 4)
+	eLabel.Size = UDim2.fromOffset(20, 20)
+	eLabel.Position = UDim2.fromOffset(4, 4)
 	eLabel.BackgroundTransparency = 1
 	eLabel.Font = BOLD_FONT
 	eLabel.TextSize = 14
@@ -589,7 +589,9 @@ end
 
 function VoxelHotbar:UpdateSlotDisplay(index)
 	local slotFrame = self.slotFrames[index]
-	if not slotFrame then return end
+	if not slotFrame then
+		return
+	end
 
 	local stack = self.slots[index]
 	local currentItemId = slotFrame.currentItemId  -- Store in table, not as attribute
@@ -613,7 +615,7 @@ function VoxelHotbar:UpdateSlotDisplay(index)
 				local image = Instance.new("ImageLabel")
 				image.Name = "ToolImage"
 				image.Size = UDim2.new(1, -8, 1, -8)
-				image.Position = UDim2.new(0.5, 0, 0.5, 0)
+				image.Position = UDim2.fromScale(0.5, 0.5)
 				image.AnchorPoint = Vector2.new(0.5, 0.5)
 				image.BackgroundTransparency = 1
 				image.Image = itemDef and itemDef.image or ""
@@ -625,7 +627,7 @@ function VoxelHotbar:UpdateSlotDisplay(index)
 				local image = Instance.new("ImageLabel")
 				image.Name = "ArmorImage"
 				image.Size = UDim2.new(1, -8, 1, -8)
-				image.Position = UDim2.new(0.5, 0, 0.5, 0)
+				image.Position = UDim2.fromScale(0.5, 0.5)
 				image.AnchorPoint = Vector2.new(0.5, 0.5)
 				image.BackgroundTransparency = 1
 				image.Image = info and info.image or ""
@@ -640,7 +642,7 @@ function VoxelHotbar:UpdateSlotDisplay(index)
 					local overlay = Instance.new("ImageLabel")
 					overlay.Name = "ArmorOverlay"
 					overlay.Size = UDim2.new(1, -8, 1, -8)
-					overlay.Position = UDim2.new(0.5, 0, 0.5, 0)
+					overlay.Position = UDim2.fromScale(0.5, 0.5)
 					overlay.AnchorPoint = Vector2.new(0.5, 0.5)
 					overlay.BackgroundTransparency = 1
 					overlay.Image = info.imageOverlay
@@ -651,7 +653,7 @@ function VoxelHotbar:UpdateSlotDisplay(index)
 			elseif SpawnEggConfig.IsSpawnEgg(itemId) then
 				-- Render spawn egg (two-layer)
 				local icon = SpawnEggIcon.Create(itemId, UDim2.new(1, -8, 1, -8))
-				icon.Position = UDim2.new(0.5, 0, 0.5, 0)
+				icon.Position = UDim2.fromScale(0.5, 0.5)
 				icon.AnchorPoint = Vector2.new(0.5, 0.5)
 				icon.Parent = slotFrame.iconContainer
 			elseif BlockRegistry:IsBucket(itemId) or BlockRegistry:IsPlaceable(itemId) == false then
@@ -662,7 +664,7 @@ function VoxelHotbar:UpdateSlotDisplay(index)
 				local image = Instance.new("ImageLabel")
 				image.Name = "ItemImage"
 				image.Size = UDim2.new(1, -8, 1, -8)
-				image.Position = UDim2.new(0.5, 0, 0.5, 0)
+				image.Position = UDim2.fromScale(0.5, 0.5)
 				image.AnchorPoint = Vector2.new(0.5, 0.5)
 				image.BackgroundTransparency = 1
 				image.Image = textureId
@@ -673,7 +675,7 @@ function VoxelHotbar:UpdateSlotDisplay(index)
 				BlockViewportCreator.CreateBlockViewport(
 					slotFrame.iconContainer,
 					itemId,
-					UDim2.new(1, 0, 1, 0)
+					UDim2.fromScale(1, 1)
 				)
 			end
 
@@ -703,7 +705,9 @@ function VoxelHotbar:GetSlot(index)
 end
 
 function VoxelHotbar:SetSlot(index, itemStack)
-	if index < 1 or index > HOTBAR_CONFIG.SLOT_COUNT then return end
+	if index < 1 or index > HOTBAR_CONFIG.SLOT_COUNT then
+		return
+	end
 
 	self.slots[index] = itemStack or ItemStack.new(0, 0)
 	self:UpdateSlotDisplay(index)
@@ -715,7 +719,9 @@ function VoxelHotbar:SetSlot(index, itemStack)
 end
 
 function VoxelHotbar:SelectSlot(index)
-	if index < 1 or index > HOTBAR_CONFIG.SLOT_COUNT then return end
+	if index < 1 or index > HOTBAR_CONFIG.SLOT_COUNT then
+		return
+	end
 
 	-- Deselect previous slot (reset to default state)
 	if self.slotFrames[self.selectedSlot] then
@@ -869,7 +875,9 @@ end
 function VoxelHotbar:BindInput()
 	-- Number keys 1-9
 	self.connections[#self.connections + 1] = InputService.InputBegan:Connect(function(input, gpe)
-		if gpe then return end
+		if gpe then
+			return
+		end
 
 		-- Check for number keys
 		if input.KeyCode.Value >= Enum.KeyCode.One.Value and input.KeyCode.Value <= Enum.KeyCode.Nine.Value then
@@ -887,7 +895,9 @@ function VoxelHotbar:BindInput()
 
 	-- Mouse wheel scrolling
 	self.connections[#self.connections + 1] = InputService.InputChanged:Connect(function(input, gpe)
-		if gpe then return end
+		if gpe then
+			return
+		end
 
 		if input.UserInputType == Enum.UserInputType.MouseWheel then
 			local delta = input.Position.Z
@@ -895,10 +905,14 @@ function VoxelHotbar:BindInput()
 
 			if delta > 0 then
 				newSlot = newSlot - 1
-				if newSlot < 1 then newSlot = HOTBAR_CONFIG.SLOT_COUNT end
+				if newSlot < 1 then
+					newSlot = HOTBAR_CONFIG.SLOT_COUNT
+				end
 			elseif delta < 0 then
 				newSlot = newSlot + 1
-				if newSlot > HOTBAR_CONFIG.SLOT_COUNT then newSlot = 1 end
+				if newSlot > HOTBAR_CONFIG.SLOT_COUNT then
+					newSlot = 1
+				end
 			end
 
 			self:SelectSlot(newSlot)

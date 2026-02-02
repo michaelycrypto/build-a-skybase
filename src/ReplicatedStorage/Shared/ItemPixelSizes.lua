@@ -148,10 +148,7 @@ end
 	@return: table - Copy of ITEM_PX_SIZES
 ]]
 function ItemPixelSizes.GetAllSizes()
-	local copy = {}
-	for key, value in pairs(ITEM_PX_SIZES) do
-		copy[key] = value
-	end
+	local copy = table.clone(ITEM_PX_SIZES)
 	return copy
 end
 

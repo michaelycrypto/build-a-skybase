@@ -10,7 +10,7 @@
 local BaseService = require(script.Parent.BaseService)
 local Logger = require(game.ReplicatedStorage.Shared.Logger)
 local TutorialConfig = require(game.ReplicatedStorage.Configs.TutorialConfig)
-local GameConfig = require(game.ReplicatedStorage.Configs.GameConfig)
+local _GameConfig = require(game.ReplicatedStorage.Configs.GameConfig)
 local ServerRoleDetector = require(game.ReplicatedStorage.Shared.ServerRoleDetector)
 
 -- Server role detection (single-place architecture)
@@ -596,7 +596,7 @@ function TutorialService:TrackProgress(player, progressType, progressData)
 
 	elseif progressType == "break_block" then
 		local blockType = progressData.blockType
-		local count = progressData.count or 1
+		local _count = progressData.count or 1
 		if objective.blockTypes then
 			for _, targetType in ipairs(objective.blockTypes) do
 				if blockType == targetType then
@@ -625,7 +625,7 @@ function TutorialService:TrackProgress(player, progressType, progressData)
 		isComplete = data.progressRotation >= (objective.degrees or 180)
 
 	elseif progressType == "camera_cycle" then
-		local count = progressData.count or 0
+		local _count = progressData.count or 0
 		local mode = progressData.mode
 
 		-- Initialize visited modes set if not exists
@@ -833,7 +833,7 @@ function TutorialService:SetTutorialStep(player, stepId)
 		return false
 	end
 
-	local userId = player.UserId
+	local _userId = player.UserId
 	local data = self:_ensurePlayerData(player)
 
 	-- Set the current step

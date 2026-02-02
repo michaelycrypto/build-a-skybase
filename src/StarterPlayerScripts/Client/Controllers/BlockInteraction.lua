@@ -15,7 +15,7 @@ local Constants = require(ReplicatedStorage.Shared.VoxelWorld.Core.Constants)
 local VoxelConfig = require(ReplicatedStorage.Shared.VoxelWorld.Core.Config)
 local GameState = require(script.Parent.Parent.Managers.GameState)
 local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
-local GameConfig = require(ReplicatedStorage.Configs.GameConfig)
+local _GameConfig = require(ReplicatedStorage.Configs.GameConfig)  -- Preload for cache
 local BlockBreakFeedbackConfig = require(ReplicatedStorage.Configs.BlockBreakFeedbackConfig)
 local BlockAPI = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockAPI)
 local BlockRegistry = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockRegistry)
@@ -50,7 +50,7 @@ local CLICK_MOVEMENT_THRESHOLD = 5 -- Max mouse movement in pixels for a "click"
 
 -- Mobile touch detection (distinguish tap, hold, drag)
 local activeTouches = {} -- Track multiple touches
-local TAP_TIME_THRESHOLD = 0.2 -- Max time for a "tap" (seconds)
+local _TAP_TIME_THRESHOLD = 0.2 -- Max time for a "tap" (seconds) (reserved for future use)
 local HOLD_TIME_THRESHOLD = 0.3 -- Min time before "hold" action triggers (seconds)
 local DRAG_MOVEMENT_THRESHOLD = 10 -- Min movement in pixels to be considered a "drag"
 
@@ -67,11 +67,13 @@ local bridgeModeActive = false
 local bridgeLockedY = nil        -- Locked Y-level for bridge building
 local bridgeLockedDX = nil       -- Locked X direction (-1, 0, or 1)
 local bridgeLockedDZ = nil       -- Locked Z direction (-1, 0, or 1)
-local bridgeLastBlockX = nil     -- Last block X player was on
-local bridgeLastBlockZ = nil     -- Last block Z player was on
+local _bridgeLastBlockX = nil     -- Last block X player was on (reserved for future use)
+local _bridgeLastBlockZ = nil     -- Last block Z player was on (reserved for future use)
 
 local function _blockKey(vec3)
-	if not vec3 then return nil end
+	if not vec3 then
+		return nil
+	end
 	return string.format("%d,%d,%d", vec3.X, vec3.Y, vec3.Z)
 end
 
@@ -95,7 +97,9 @@ local hitSoundTimestamps = {}
 
 local function isBowEquipped()
 	local holding = GameState:Get("voxelWorld.isHoldingTool") == true
-	if not holding then return false end
+	if not holding then
+		return false
+	end
 	local itemId = GameState:Get("voxelWorld.selectedToolItemId")
 	if not itemId or not ToolConfig.IsTool(itemId) then
 		return false
@@ -107,26 +111,35 @@ end
 -- Check if player is holding an empty bucket
 local function isEmptyBucketEquipped()
 	local selectedBlock = GameState:Get("voxelWorld.selectedBlock")
-	if not selectedBlock or not selectedBlock.id then return false end
+	if not selectedBlock or not selectedBlock.id then
+		return false
+	end
 	return selectedBlock.id == Constants.BlockType.BUCKET
 end
 
 -- Check if player is holding a water bucket
 local function isWaterBucketEquipped()
 	local selectedBlock = GameState:Get("voxelWorld.selectedBlock")
-	if not selectedBlock or not selectedBlock.id then return false end
+	if not selectedBlock or not selectedBlock.id then
+		return false
+	end
 	return selectedBlock.id == Constants.BlockType.WATER_BUCKET
 end
 
 -- Check if player is holding any bucket (empty or filled)
-local function isBucketEquipped()
+-- Note: Function defined but reserved for future use (currently relies on specific bucket checks)
+local function _isBucketEquipped()
 	return isEmptyBucketEquipped() or isWaterBucketEquipped()
 end
 
 local function sendCancelForBlock(blockPos)
-	if not blockPos then return end
+	if not blockPos then
+		return
+	end
 	local key = _blockKey(blockPos)
-	if not key then return end
+	if not key then
+		return
+	end
 	local now = os.clock()
 	if lastCancelKey == key and (now - lastCancelAt) < 0.05 then
 		return
@@ -167,7 +180,9 @@ local function playBlockHitSound(blockPos)
 	end
 
 	local soundId = soundPool[math.random(1, #soundPool)]
-	if not soundId then return end
+	if not soundId then
+		return
+	end
 
 	if key then
 		hitSoundTimestamps[key] = now
@@ -180,7 +195,7 @@ local function playBlockHitSound(blockPos)
 	anchor.Anchored = true
 	anchor.Size = Vector3.new(0.1, 0.1, 0.1)
 	anchor.CFrame = CFrame.new(_blockWorldCenter(blockPos))
-	anchor.Parent = Workspace
+	anchor.Parent = workspace
 
 	local sound = Instance.new("Sound")
 	sound.SoundId = soundId
@@ -201,7 +216,9 @@ local getBridgePlacementCandidate
 -- Compute an aim ray (origin, direction) based on targeting mode
 -- targetingMode: "crosshair" = center screen, "direct" = input position (click/tap)
 local function _computeAimRay()
-    if not camera then return nil, nil end
+    if not camera then
+    	return nil, nil
+    end
 
     local targetingMode = GameState:Get("camera.targetingMode") or "crosshair"
 
@@ -252,14 +269,18 @@ local function updateSelectionBox()
 		return
 	end
 
-	local blockPos, faceNormal, preciseHitPos = getTargetedBlock()
+	local blockPos, _faceNormal, _preciseHitPos = getTargetedBlock()
 
 	-- Helper to check if a block position is within interaction range
 	local function isBlockInRange(pos)
 		local character = player.Character
-		if not character then return false end
+		if not character then
+			return false
+		end
 		local head = character:FindFirstChild("Head")
-		if not head then return false end
+		if not head then
+			return false
+		end
 		local bs = Constants.BLOCK_SIZE
 		local blockCenter = Vector3.new(
 			pos.X * bs + bs * 0.5,
@@ -357,7 +378,9 @@ getTargetedBlock = function()
 
 	-- Find block along ray
 	local hitPos, faceNormal, preciseHitPos = blockAPI:GetTargetedBlockFace(origin, direction, maxDistance)
-	if not hitPos then return nil, nil, nil end
+	if not hitPos then
+		return nil, nil, nil
+	end
 
 	-- Convert to block coordinates
 	local blockX = math.floor(hitPos.X / Constants.BLOCK_SIZE)
@@ -379,10 +402,14 @@ getBridgePlacementCandidate = function(lockedY, lockedDX, lockedDZ)
     end
 
     local character = player.Character
-    if not character then return nil, nil, nil, nil end
+    if not character then
+    	return nil, nil, nil, nil
+    end
     local head = character:FindFirstChild("Head")
     local rootPart = character:FindFirstChild("HumanoidRootPart")
-    if not head or not rootPart then return nil, nil, nil, nil end
+    if not head or not rootPart then
+    	return nil, nil, nil, nil
+    end
 
     local bs = Constants.BLOCK_SIZE
     local worldHeight = Constants.WORLD_HEIGHT or 128
@@ -395,7 +422,9 @@ getBridgePlacementCandidate = function(lockedY, lockedDX, lockedDZ)
     else
         -- Calculate from player position
         local origin, direction = _computeAimRay()
-        if not origin or not direction then return nil, nil, nil, nil end
+        if not origin or not direction then
+        	return nil, nil, nil, nil
+        end
 
         -- Only check look direction if NOT in locked bridge mode
         if direction.Y > 0.2 then
@@ -404,12 +433,18 @@ getBridgePlacementCandidate = function(lockedY, lockedDX, lockedDZ)
 
         local footY = rootPart.Position.Y - 2.5
         yBlock = math.floor(footY / bs) - 1
-        if yBlock < 0 then yBlock = 0 end
-        if yBlock >= worldHeight then yBlock = worldHeight - 1 end
+        if yBlock < 0 then
+        	yBlock = 0
+        end
+        if yBlock >= worldHeight then
+        	yBlock = worldHeight - 1
+        end
     end
 
     local wm = blockAPI and blockAPI.worldManager
-    if not wm then return nil, nil, nil, nil end
+    if not wm then
+    	return nil, nil, nil, nil
+    end
 
     -- Check if chunk at position is loaded (to avoid false AIR at chunk borders)
     local function _isChunkLoaded(x, z)
@@ -438,7 +473,9 @@ getBridgePlacementCandidate = function(lockedY, lockedDX, lockedDZ)
     end
 
     local maxSteps = (VoxelConfig.PLACEMENT.BRIDGE_ASSIST_MAX_STEPS or 3)
-    if maxSteps < 0 then maxSteps = 0 end
+    if maxSteps < 0 then
+    	maxSteps = 0
+    end
 
     -- Determine direction
     local dx, dz
@@ -449,7 +486,9 @@ getBridgePlacementCandidate = function(lockedY, lockedDX, lockedDZ)
     else
         -- Calculate from camera look direction
         local origin, direction = _computeAimRay()
-        if not origin or not direction then return nil, nil, nil, nil end
+        if not origin or not direction then
+        	return nil, nil, nil, nil
+        end
 
         local dir2 = Vector3.new(direction.X, 0, direction.Z)
         local mag2 = dir2.Magnitude
@@ -532,22 +571,29 @@ end
 -- Break block (left click)
 local function startBreaking()
 	-- Guard: Don't allow breaking until system is ready
-	if not BlockInteraction.isReady then return end
-	if isBreaking then return end
-	if isBowEquipped() then return end
+	if not BlockInteraction.isReady then
+		return
+	end
+	if isBreaking then
+		return
+	end
+	if isBowEquipped() then
+		return
+	end
 
 	-- Block interactions when UI is open (inventory, chest, worlds, minion, etc.)
-	if InputService:IsGameplayBlocked() then return end
+	if InputService:IsGameplayBlocked() then
+		return
+	end
 
 	-- Prevent breaking when a sword is equipped (PvP mode)
-	local GameState = require(script.Parent.Parent.Managers.GameState)
-	local selectedSlot = GameState:Get("voxelWorld.selectedSlot") or 1
-	local invMgr = require(script.Parent.Parent.Managers.ClientInventoryManager)
+	-- Note: Uses the file-scoped GameState, ToolConfig, BlockProperties rather than re-requiring
+	-- The following variables are reserved for future sword block logic
+	local _selectedSlot = GameState:Get("voxelWorld.selectedSlot") or 1
+	local _invMgr = require(script.Parent.Parent.Managers.ClientInventoryManager)
 	-- Without direct instance, rely on tool equip server state; locally approximate via selectedBlock nil
-	local toolType = nil
-	local ReplicatedStorage = game:GetService("ReplicatedStorage")
-	local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
-	local BlockProperties = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockProperties)
+	local _toolType = nil
+	-- Note: BlockProperties already required at file scope
 	-- If currently selected is a Tool (from hotbar), and type is SWORD, block mining
 	-- We do not have the stack here; keep this lightweight client-side guard by checking GameState flag if set in hotbar
 	-- Fallback: allow breaking; server still authoritative
@@ -559,7 +605,9 @@ local function startBreaking()
 	end
 
 	local blockPos, _, _ = getTargetedBlock()
-	if not blockPos then return end
+	if not blockPos then
+		return
+	end
 
 	-- Water source blocks cannot be broken - they must be picked up with a bucket
 	local worldManager = blockAPI and blockAPI.worldManager
@@ -653,11 +701,17 @@ end
 -- Interact with block or place block (right click)
 local function interactOrPlace()
 	-- Guard: Don't allow actions until system is ready
-	if not BlockInteraction.isReady or not blockAPI then return end
-	if isBowEquipped() then return end
+	if not BlockInteraction.isReady or not blockAPI then
+		return
+	end
+	if isBowEquipped() then
+		return
+	end
 
 	-- Block interactions when UI is open (inventory, chest, worlds, minion, etc.)
-	if InputService:IsGameplayBlocked() then return end
+	if InputService:IsGameplayBlocked() then
+		return
+	end
 
 	-- Try interacting with a minion mob model under mouse
 	do
@@ -710,7 +764,9 @@ local function interactOrPlace()
 	end
 
 	local now = os.clock()
-	if (now - lastPlaceTime) < PLACE_COOLDOWN then return end
+	if (now - lastPlaceTime) < PLACE_COOLDOWN then
+		return
+	end
 	lastPlaceTime = now
 
 	local blockPos, faceNormal, preciseHitPos = getTargetedBlock()
@@ -718,7 +774,7 @@ local function interactOrPlace()
 	-- ═══════════════════════════════════════════════════════════════════════════
 	-- BUCKET HANDLING (Minecraft-style water pickup/placement)
 	-- ═══════════════════════════════════════════════════════════════════════════
-	local selectedBlock = GameState:Get("voxelWorld.selectedBlock")
+	local _selectedBlock = GameState:Get("voxelWorld.selectedBlock")
 	local selectedSlot = GameState:Get("voxelWorld.selectedSlot") or 1
 
 	-- Empty bucket + targeting water source = pick up water
@@ -765,9 +821,13 @@ local function interactOrPlace()
 	-- Helper to check if a block position is within interaction range
 	local function isBlockInRange(pos)
 		local char = player.Character
-		if not char then return false end
+		if not char then
+			return false
+		end
 		local head = char:FindFirstChild("Head")
-		if not head then return false end
+		if not head then
+			return false
+		end
 		local bs = Constants.BLOCK_SIZE
 		local blockCenter = Vector3.new(
 			pos.X * bs + bs * 0.5,
@@ -848,7 +908,9 @@ local function interactOrPlace()
 	end
 
 	-- Not interacting with anything, try to open minion UI (if a minion is anchored here), else place a block or use spawn egg
-	if not faceNormal then return false end
+	if not faceNormal then
+		return false
+	end
 
 	-- Only entity right-click opens minion UI; do not fallback-open by block position
 
@@ -929,8 +991,12 @@ end
 -- Start continuous placement while right mouse is held
 local function startPlacing()
     -- Guard
-    if not BlockInteraction.isReady or not blockAPI then return end
-    if isPlacing then return end
+    if not BlockInteraction.isReady or not blockAPI then
+    	return
+    end
+    if isPlacing then
+    	return
+    end
 
     -- Initial attempt (includes interactions like chest/water)
     interactOrPlace()
@@ -941,8 +1007,8 @@ local function startPlacing()
     bridgeLockedY = nil
     bridgeLockedDX = nil
     bridgeLockedDZ = nil
-    bridgeLastBlockX = nil
-    bridgeLastBlockZ = nil
+    _bridgeLastBlockX = nil
+    _bridgeLastBlockZ = nil
 
     -- Track last placed position to avoid duplicate requests
     local lastPlacedKey = nil
@@ -957,9 +1023,13 @@ local function startPlacing()
 				-- Helper to check if a block position is within interaction range
 				local function isBlockInRange(pos)
 					local char = player.Character
-					if not char then return false end
+					if not char then
+						return false
+					end
 					local head = char:FindFirstChild("Head")
-					if not head then return false end
+					if not head then
+						return false
+					end
 					local bs = Constants.BLOCK_SIZE
 					local blockCenter = Vector3.new(
 						pos.X * bs + bs * 0.5,
@@ -1024,12 +1094,14 @@ local function startPlacing()
 								local bs = Constants.BLOCK_SIZE
 								local footY = rootPart.Position.Y - 2.5
 								bridgeLockedY = math.floor(footY / bs) - 1
-								if bridgeLockedY < 0 then bridgeLockedY = 0 end
+								if bridgeLockedY < 0 then
+									bridgeLockedY = 0
+								end
 								-- Lock direction from face normal
 								bridgeLockedDX = math.floor(bFace.X + 0.5)
 								bridgeLockedDZ = math.floor(bFace.Z + 0.5)
-								bridgeLastBlockX = math.floor(rootPart.Position.X / bs)
-								bridgeLastBlockZ = math.floor(rootPart.Position.Z / bs)
+								_bridgeLastBlockX = math.floor(rootPart.Position.X / bs)
+								_bridgeLastBlockZ = math.floor(rootPart.Position.Z / bs)
 							end
 						end
 					else
@@ -1137,8 +1209,8 @@ local function stopPlacing()
     bridgeLockedY = nil
     bridgeLockedDX = nil
     bridgeLockedDZ = nil
-    bridgeLastBlockX = nil
-    bridgeLastBlockZ = nil
+    _bridgeLastBlockX = nil
+    _bridgeLastBlockZ = nil
 end
 
 -- Update selection box and handle mode switching
@@ -1233,7 +1305,9 @@ function BlockInteraction:Initialize(voxelWorldHandle)
 	InputService.InputBegan:Connect(function(input, gameProcessed)
 		-- CRITICAL: Check gameProcessed FIRST for all inputs
 		-- This ensures we don't interfere with Roblox's native camera controls or UI
-		if gameProcessed then return end
+		if gameProcessed then
+			return
+		end
 
 		-- F key: (unused)
 
@@ -1288,7 +1362,7 @@ function BlockInteraction:Initialize(voxelWorldHandle)
 	end)
 
 	-- Track touch movement to detect drag vs tap/hold
-	InputService.InputChanged:Connect(function(input, gameProcessed)
+	InputService.InputChanged:Connect(function(input, _gameProcessed)
 		if input.UserInputType == Enum.UserInputType.Touch then
 			local touchData = activeTouches[input]
 			if touchData then
@@ -1312,7 +1386,9 @@ function BlockInteraction:Initialize(voxelWorldHandle)
 
 	InputService.InputEnded:Connect(function(input, gameProcessed)
 		-- CRITICAL: Check gameProcessed FIRST to avoid interfering with Roblox camera/UI
-		if gameProcessed then return end
+		if gameProcessed then
+			return
+		end
 
 		-- MOBILE: Touch release - Determine gesture and action
 		if input.UserInputType == Enum.UserInputType.Touch then
@@ -1321,9 +1397,7 @@ function BlockInteraction:Initialize(voxelWorldHandle)
 				if touchData.holdTriggered then
 					-- Was a hold action (breaking) - stop it
 					stopBreaking()
-				elseif touchData.moved then
-					-- Was a drag (camera rotation) - do nothing
-				else
+				elseif not touchData.moved then
 					-- Tap = interact/place
 					-- Update input position to final tap position for accurate targeting
 					lastInputPosition = touchData.startPos
@@ -1363,7 +1437,7 @@ function BlockInteraction:Initialize(voxelWorldHandle)
 
 	-- Setup right-click for placing/interacting using ContextActionService
 	-- Dynamically bind/unbind based on camera mode
-	local function handleRightClick(actionName, inputState, inputObject)
+	local function handleRightClick(_actionName, inputState, _inputObject)
 		-- Block interactions when UI is open (inventory, chest, worlds, minion, etc.)
 		if InputService:IsGameplayBlocked() then
 			return Enum.ContextActionResult.Pass
@@ -1414,7 +1488,7 @@ function BlockInteraction:Initialize(voxelWorldHandle)
 			end
 		end
 		-- Check if clicking on an interactable block first
-			local blockPos, faceNormal, preciseHitPos = getTargetedBlock()
+			local blockPos, _faceNormal, _preciseHitPos = getTargetedBlock()
 			if blockPos then
 				local worldManager = blockAPI and blockAPI.worldManager
 				if worldManager then
@@ -1458,7 +1532,7 @@ function BlockInteraction:Initialize(voxelWorldHandle)
 	updateRightClickBinding()
 
 	-- Listen for targeting mode changes
-	GameState:OnPropertyChanged("camera.targetingMode", function(newValue, oldValue)
+	GameState:OnPropertyChanged("camera.targetingMode", function(_newValue, _oldValue)
 		updateRightClickBinding()
 	end)
 
@@ -1497,7 +1571,7 @@ end
 	Try to place a block at the targeted position (for mobile action bar)
 ]]
 function BlockInteraction:TryPlace()
-	tryPlaceBlock()
+	interactOrPlace()
 end
 
 --[[

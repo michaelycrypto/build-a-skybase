@@ -18,8 +18,12 @@ local function normalizeBlocksTable(src)
         for k, _ in pairs(t) do
             local n = tonumber(k)
             if n ~= nil then
-                if n < minK then minK = n end
-                if n > maxK then maxK = n end
+                if n < minK then
+                    minK = n
+                end
+                if n > maxK then
+                    maxK = n
+                end
             end
         end
         if minK == math.huge then return nil, nil end
@@ -33,8 +37,12 @@ local function normalizeBlocksTable(src)
     local dst = {}
     for kx, vx in pairs(src) do
         local xi = tonumber(kx)
-        if xi ~= nil then xi = xi + shiftX end
-        if xi == nil then xi = kx end
+        if xi ~= nil then
+            xi = xi + shiftX
+        end
+        if xi == nil then
+            xi = kx
+        end
         local inX = (type(xi) ~= "number") or (xi >= 0 and xi < Constants.CHUNK_SIZE_X)
         if inX then
             dst[xi] = dst[xi] or {}
@@ -44,8 +52,12 @@ local function normalizeBlocksTable(src)
                 local shiftY = (minY == 1 and maxY == Constants.CHUNK_SIZE_Y) and -1 or 0
                 for ky, vy in pairs(vx) do
                     local yi = tonumber(ky)
-                    if yi ~= nil then yi = yi + shiftY end
-                    if yi == nil then yi = ky end
+                    if yi ~= nil then
+                        yi = yi + shiftY
+                    end
+                    if yi == nil then
+                        yi = ky
+                    end
                     local inY = (type(yi) ~= "number") or (yi >= 0 and yi < Constants.CHUNK_SIZE_Y)
                     if inY then
                         dst[xi][yi] = dst[xi][yi] or {}
@@ -55,8 +67,12 @@ local function normalizeBlocksTable(src)
                             local shiftZ = (minZ == 1 and maxZ == Constants.CHUNK_SIZE_Z) and -1 or 0
                             for kz, blockId in pairs(vy) do
                                 local zi = tonumber(kz)
-                                if zi ~= nil then zi = zi + shiftZ end
-                                if zi == nil then zi = kz end
+                                if zi ~= nil then
+                                    zi = zi + shiftZ
+                                end
+                                if zi == nil then
+                                    zi = kz
+                                end
                                 local inZ = (type(zi) ~= "number") or (zi >= 0 and zi < Constants.CHUNK_SIZE_Z)
                                 if inZ then
                                     dst[xi][yi][zi] = blockId
@@ -194,12 +210,12 @@ function Chunk:setBlock(x: number, y: number, z: number, blockId: number)
     elseif oldBlockId ~= Constants.BlockType.AIR and blockId == Constants.BlockType.AIR then
         self.numNonAirBlocks = math.max(0, (self.numNonAirBlocks or 0) - 1)
     end
-    
+
     -- Track water Y bounds for efficient WaterMesher scanning
     -- This avoids scanning 256 Y levels when water only exists in a small range
     local wasWater = isWaterBlock(oldBlockId)
     local isWater = isWaterBlock(blockId)
-    
+
     if isWater then
         -- Water placed - extend bounds
         if self.waterMinY == nil or y < self.waterMinY then
@@ -343,7 +359,7 @@ function Chunk:deserializeLinear(data)
     local flatMeta = data.flatMeta or {}  -- NEW: Deserialize metadata
     local i = 1
     local count = 0
-    
+
     -- Track highest block per column during deserialization (optimize heightMap rebuild)
     local columnHeights = {}  -- [x + z*sx] = highest y
     for lx = 0, sx - 1 do
@@ -351,7 +367,7 @@ function Chunk:deserializeLinear(data)
             columnHeights[lx + lz * sx] = 0
         end
     end
-    
+
     for y = 0, sy - 1 do
         for z = 0, sz - 1 do
             for x = 0, sx - 1 do
@@ -371,7 +387,7 @@ function Chunk:deserializeLinear(data)
             end
         end
     end
-    
+
     -- Copy optimized heightMap
     for lx = 0, sx - 1 do
         for lz = 0, sz - 1 do

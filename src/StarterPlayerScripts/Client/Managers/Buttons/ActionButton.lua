@@ -8,6 +8,8 @@ local ActionButton = {}
 ActionButton.__index = ActionButton
 setmetatable(ActionButton, BaseButton)
 
+local COMPONENT_CONFIGS = BaseButton.COMPONENT_CONFIGS
+
 -- Services
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -39,9 +41,8 @@ function ActionButton:CreateUI()
 	-- Create border frame
 	self.borderFrame = Instance.new("Frame")
 	self.borderFrame.Name = self.name .. "Frame"
-	self.borderFrame.Size = UDim2.new(0, self.width + (COMPONENT_CONFIGS.button.borderOffset * 2),
-		0, self.height + (COMPONENT_CONFIGS.button.borderOffset * 2))
-	self.borderFrame.Position = self.position or UDim2.new(0, 0, 0, 0)
+	self.borderFrame.Size = UDim2.fromOffset(self.width + (COMPONENT_CONFIGS.button.borderOffset * 2), self.height + (COMPONENT_CONFIGS.button.borderOffset * 2))
+	self.borderFrame.Position = self.position or UDim2.fromScale(0, 0)
 	self.borderFrame.AnchorPoint = self.anchorPoint or Vector2.new(0, 0)
 	self.borderFrame.BackgroundColor3 = borderColor
 	self.borderFrame.BackgroundTransparency = Config.UI_SETTINGS.designSystem.transparency.heavy
@@ -54,9 +55,8 @@ function ActionButton:CreateUI()
 	-- Create main button
 	self.button = Instance.new("TextButton")
 	self.button.Name = self.name
-	self.button.Size = UDim2.new(0, self.width, 0, self.height)
-	self.button.Position = UDim2.new(0, COMPONENT_CONFIGS.button.borderOffset,
-		0, COMPONENT_CONFIGS.button.borderOffset)
+	self.button.Size = UDim2.fromOffset(self.width, self.height)
+	self.button.Position = UDim2.fromOffset(COMPONENT_CONFIGS.button.borderOffset, COMPONENT_CONFIGS.button.borderOffset)
 	self.button.BackgroundColor3 = buttonColor
 	self.button.BackgroundTransparency = Config.UI_SETTINGS.designSystem.transparency.light
 	self.button.Text = text

@@ -7,7 +7,7 @@
 	- Bridges mobile thumbsticks/action buttons into the same event surface
 ]]
 
-local Players = game:GetService("Players")
+local _Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local ContextActionService = game:GetService("ContextActionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")

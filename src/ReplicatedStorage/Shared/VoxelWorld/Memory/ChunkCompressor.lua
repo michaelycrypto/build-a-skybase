@@ -49,7 +49,7 @@ local function rleDecode(runs)
 		local pair = runs[i]
 		local v = pair[1]
 		local n = pair[2]
-		for j = 1, n do
+		for _ = 1, n do
 			out[k] = v
 			k += 1
 		end
@@ -109,7 +109,9 @@ function ChunkCompressor.DecompressToLinear(compressed)
 			total = #flat
 		end
 		flatMeta = table.create(total)
-		for i = 1, total do flatMeta[i] = 0 end
+		for i = 1, total do
+			flatMeta[i] = 0
+		end
 	end
 
 	return { flat = flat, flatMeta = flatMeta, dims = dims }

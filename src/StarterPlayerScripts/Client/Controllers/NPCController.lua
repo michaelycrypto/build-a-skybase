@@ -22,7 +22,9 @@ end
 
 -- Handle server interaction response
 local function handleInteraction(data)
-	if not data then return end
+	if not data then
+		return
+	end
 
 	if data.interactionType == "WARP" and worldsPanel then
 		worldsPanel:Open()

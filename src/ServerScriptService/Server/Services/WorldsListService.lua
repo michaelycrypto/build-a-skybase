@@ -51,10 +51,7 @@ local function cloneWorldsList(list)
 	end
 	local copy = {}
 	for i, entry in ipairs(list) do
-		local entryCopy = {}
-		for k, v in pairs(entry) do
-			entryCopy[k] = v
-		end
+		local entryCopy = table.clone(entry)
 		copy[i] = entryCopy
 	end
 	return copy

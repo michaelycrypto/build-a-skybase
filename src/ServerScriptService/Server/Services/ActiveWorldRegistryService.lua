@@ -181,7 +181,7 @@ function ActiveWorldRegistryService:Start()
 	self._logger.Info("ActiveWorldRegistryService started")
 end
 
-function ActiveWorldRegistryService:_writeHeartbeat(force)
+function ActiveWorldRegistryService:_writeHeartbeat(_force)
 	if not self._configured or not self._map or not self._worldId then
 		return
 	end

@@ -5,8 +5,6 @@
 	Provides utilities for ordered initialization and dependency management.
 --]]
 
-local RunService = game:GetService("RunService")
-
 local Initializer = {}
 Initializer.__index = Initializer
 

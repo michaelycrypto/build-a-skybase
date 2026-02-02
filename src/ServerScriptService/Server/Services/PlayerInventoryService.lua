@@ -5,7 +5,7 @@
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Players = game:GetService("Players")
+local _Players = game:GetService("Players")
 
 local BaseService = require(script.Parent.BaseService)
 local Logger = require(game.ReplicatedStorage.Shared.Logger)
@@ -14,7 +14,7 @@ local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
 local GameConfig = require(ReplicatedStorage.Configs.GameConfig)
 local EventManager = require(ReplicatedStorage.Shared.EventManager)
 local InventoryValidator = require(ReplicatedStorage.Shared.VoxelWorld.Inventory.InventoryValidator)
-local Constants = require(ReplicatedStorage.Shared.VoxelWorld.Core.Constants)
+local _Constants = require(ReplicatedStorage.Shared.VoxelWorld.Core.Constants)
 
 local PlayerInventoryService = setmetatable({}, BaseService)
 PlayerInventoryService.__index = PlayerInventoryService
@@ -87,7 +87,9 @@ end
 
 -- Add craft credit for a player and item (used for toCursor crafts)
 function PlayerInventoryService:AddCraftCredit(player: Player, itemId: number, amount: number)
-	if amount <= 0 then return end
+	if amount <= 0 then
+		return
+	end
 	self.craftCredits[player] = self.craftCredits[player] or {}
 	self.craftCredits[player][itemId] = (self.craftCredits[player][itemId] or 0) + amount
 	self._logger.Debug("Added craft credit", {player = player.Name, itemId = itemId, amount = amount, total = self.craftCredits[player][itemId]})
@@ -196,7 +198,9 @@ end
 function PlayerInventoryService:GetItemCount(player: Player, itemId: number): number
 	itemId = tonumber(itemId) or 0
 	local playerInv = self.inventories[player]
-	if not playerInv then return 0 end
+	if not playerInv then
+		return 0
+	end
 
 	local total = 0
 
@@ -218,7 +222,9 @@ end
 -- Get all items with their total counts (for selling, etc.)
 function PlayerInventoryService:GetAllItemCounts(player: Player): {[number]: number}
 	local playerInv = self.inventories[player]
-	if not playerInv then return {} end
+	if not playerInv then
+		return {}
+	end
 
 	local counts = {} -- {[itemId] = count}
 
@@ -243,7 +249,9 @@ end
 function PlayerInventoryService:ConsumeFromHotbar(player: Player, slotIndex: number, itemId: number): boolean
 	itemId = tonumber(itemId) or 0
 	local playerInv = self.inventories[player]
-	if not playerInv or slotIndex < 1 or slotIndex > 9 then return false end
+	if not playerInv or slotIndex < 1 or slotIndex > 9 then
+		return false
+	end
 
 	local stack = playerInv.hotbar[slotIndex]
 
@@ -288,7 +296,9 @@ function PlayerInventoryService:AddItemCount(player: Player, itemId: number, cou
 	itemId = tonumber(itemId) or 0
 	count = tonumber(count) or 0
 	local playerInv = self.inventories[player]
-	if not playerInv then return 0 end
+	if not playerInv then
+		return 0
+	end
 
 	local remaining = count
 	local addedTotal = 0
@@ -301,7 +311,9 @@ function PlayerInventoryService:AddItemCount(player: Player, itemId: number, cou
 	-- Exception: Arrows are stackable ammo items
 	if ToolConfig.IsTool(itemId) and not isArrow then
 		for i, stack in ipairs(playerInv.hotbar) do
-			if remaining <= 0 then break end
+			if remaining <= 0 then
+				break
+			end
 			if stack:IsEmpty() then
 				-- Use SetItem to properly set itemId AND maxStack
 				stack:SetItem(itemId, 1)
@@ -311,7 +323,9 @@ function PlayerInventoryService:AddItemCount(player: Player, itemId: number, cou
 			end
 		end
 		for i, stack in ipairs(playerInv.inventory) do
-			if remaining <= 0 then break end
+			if remaining <= 0 then
+				break
+			end
 			if stack:IsEmpty() then
 				-- Use SetItem to properly set itemId AND maxStack
 				stack:SetItem(itemId, 1)
@@ -326,7 +340,9 @@ function PlayerInventoryService:AddItemCount(player: Player, itemId: number, cou
 
 	-- Try to stack with existing items first
 	for i, stack in ipairs(playerInv.hotbar) do
-		if remaining <= 0 then break end
+		if remaining <= 0 then
+			break
+		end
 		if stack:GetItemId() == itemId and not stack:IsFull() then
 			local space = stack:GetRemainingSpace()
 			local toAdd = math.min(space, remaining)
@@ -338,7 +354,9 @@ function PlayerInventoryService:AddItemCount(player: Player, itemId: number, cou
 	end
 
 	for i, stack in ipairs(playerInv.inventory) do
-		if remaining <= 0 then break end
+		if remaining <= 0 then
+			break
+		end
 		if stack:GetItemId() == itemId and not stack:IsFull() then
 			local space = stack:GetRemainingSpace()
 			local toAdd = math.min(space, remaining)
@@ -355,7 +373,9 @@ function PlayerInventoryService:AddItemCount(player: Player, itemId: number, cou
 		local maxStackForItem = ItemStack.GetMaxStackForItem(itemId)
 
 		for i, stack in ipairs(playerInv.hotbar) do
-			if remaining <= 0 then break end
+			if remaining <= 0 then
+				break
+			end
 			if stack:IsEmpty() then
 				local toAdd = math.min(maxStackForItem, remaining)
 				-- Use SetItem to properly set itemId AND resolve maxStack
@@ -367,7 +387,9 @@ function PlayerInventoryService:AddItemCount(player: Player, itemId: number, cou
 		end
 
 		for i, stack in ipairs(playerInv.inventory) do
-			if remaining <= 0 then break end
+			if remaining <= 0 then
+				break
+			end
 			if stack:IsEmpty() then
 				local toAdd = math.min(maxStackForItem, remaining)
 				-- Use SetItem to properly set itemId AND resolve maxStack
@@ -388,7 +410,9 @@ function PlayerInventoryService:RemoveItem(player: Player, itemId: number, count
 	itemId = tonumber(itemId) or 0
 	count = tonumber(count) or 0
 	local playerInv = self.inventories[player]
-	if not playerInv then return false end
+	if not playerInv then
+		return false
+	end
 
 	-- First, check if player has enough of the item
 	local totalCount = self:GetItemCount(player, itemId)
@@ -400,7 +424,9 @@ function PlayerInventoryService:RemoveItem(player: Player, itemId: number, count
 
 	-- Remove from hotbar first (track which slots changed)
 	for i, stack in ipairs(playerInv.hotbar) do
-		if remaining <= 0 then break end
+		if remaining <= 0 then
+			break
+		end
 		if stack:GetItemId() == itemId then
 			local toRemove = math.min(stack:GetCount(), remaining)
 			stack:RemoveCount(toRemove)
@@ -412,7 +438,9 @@ function PlayerInventoryService:RemoveItem(player: Player, itemId: number, count
 
 	-- Remove from inventory if still needed (track which slots changed)
 	for i, stack in ipairs(playerInv.inventory) do
-		if remaining <= 0 then break end
+		if remaining <= 0 then
+			break
+		end
 		if stack:GetItemId() == itemId then
 			local toRemove = math.min(stack:GetCount(), remaining)
 			stack:RemoveCount(toRemove)
@@ -431,7 +459,9 @@ end
 -- Remove item from a specific hotbar slot
 function PlayerInventoryService:RemoveItemFromHotbarSlot(player: Player, slotIndex: number, count: number): boolean
 	local playerInv = self.inventories[player]
-	if not playerInv or slotIndex < 1 or slotIndex > 9 then return false end
+	if not playerInv or slotIndex < 1 or slotIndex > 9 then
+		return false
+	end
 
 	local stack = playerInv.hotbar[slotIndex]
 	if stack:IsEmpty() or stack:GetCount() < count then
@@ -448,7 +478,9 @@ end
 -- Update hotbar slot from client request (with validation)
 function PlayerInventoryService:UpdateHotbarSlot(player: Player, slotIndex: number, itemStack: any)
 	local playerInv = self.inventories[player]
-	if not playerInv or slotIndex < 1 or slotIndex > 9 then return end
+	if not playerInv or slotIndex < 1 or slotIndex > 9 then
+		return
+	end
 
 	-- TODO: Add anti-cheat validation here
 	-- For now, trust client (creative mode style)
@@ -476,7 +508,9 @@ end
 -- Update inventory slot from client request (with validation)
 function PlayerInventoryService:UpdateInventorySlot(player: Player, slotIndex: number, itemStack: any)
 	local playerInv = self.inventories[player]
-	if not playerInv or slotIndex < 1 or slotIndex > 27 then return end
+	if not playerInv or slotIndex < 1 or slotIndex > 27 then
+		return
+	end
 
 	-- TODO: Add anti-cheat validation
 
@@ -501,7 +535,9 @@ end
 -- Sync entire inventory to client
 function PlayerInventoryService:SyncInventoryToClient(player: Player)
 	local playerInv = self.inventories[player]
-	if not playerInv then return end
+	if not playerInv then
+		return
+	end
 
 	local hotbarData = {}
 	for i, stack in ipairs(playerInv.hotbar) do
@@ -522,7 +558,9 @@ end
 -- Sync single hotbar slot to client
 function PlayerInventoryService:SyncHotbarSlotToClient(player: Player, slotIndex: number)
 	local playerInv = self.inventories[player]
-	if not playerInv or slotIndex < 1 or slotIndex > 9 then return end
+	if not playerInv or slotIndex < 1 or slotIndex > 9 then
+		return
+	end
 
 	EventManager:FireEvent("HotbarSlotUpdate", player, {
 		slotIndex = slotIndex,
@@ -533,7 +571,9 @@ end
 -- Sync single inventory slot to client (granular sync)
 function PlayerInventoryService:SyncInventorySlotToClient(player: Player, slotIndex: number)
 	local playerInv = self.inventories[player]
-	if not playerInv or slotIndex < 1 or slotIndex > 27 then return end
+	if not playerInv or slotIndex < 1 or slotIndex > 27 then
+		return
+	end
 
 	EventManager:FireEvent("InventorySlotUpdate", player, {
 		slotIndex = slotIndex,
@@ -573,7 +613,9 @@ function PlayerInventoryService:ScheduleGranularSync(player: Player)
 
 	-- Use RunService.Heartbeat for next-frame sync (batches changes within same frame)
 	task.defer(function()
-		if not self.syncScheduled[player] then return end
+		if not self.syncScheduled[player] then
+			return
+		end
 
 		self:ExecuteGranularSync(player)
 		self.syncScheduled[player] = false
@@ -583,10 +625,14 @@ end
 -- Execute sync of only modified slots
 function PlayerInventoryService:ExecuteGranularSync(player: Player)
 	local pending = self.pendingSyncs[player]
-	if not pending then return end
+	if not pending then
+		return
+	end
 
 	local playerInv = self.inventories[player]
-	if not playerInv then return end
+	if not playerInv then
+		return
+	end
 
 	local hotbarCount = 0
 	local inventoryCount = 0
@@ -629,7 +675,9 @@ end
 function PlayerInventoryService:AddItemWithMetadata(player: Player, itemId: number, metadata: any): boolean
 	itemId = tonumber(itemId) or 0
 	local playerInv = self.inventories[player]
-	if not playerInv then return false end
+	if not playerInv then
+		return false
+	end
 
 	-- Construct a 1-count stack with resolved maxStack (ItemStack will clamp)
 	local stack = ItemStack.new(itemId, 1)
@@ -730,7 +778,7 @@ function PlayerInventoryService:HandleInventoryUpdate(player: Player, updateData
 
     local newTotals = {}
     if newInventory then
-        for i, stackData in pairs(newInventory) do
+        for _, stackData in pairs(newInventory) do
             local itemId = tonumber(stackData.itemId or stackData.id) or 0
             if itemId > 0 then
                 newTotals[itemId] = (newTotals[itemId] or 0) + (tonumber(stackData.count) or 0)
@@ -738,7 +786,7 @@ function PlayerInventoryService:HandleInventoryUpdate(player: Player, updateData
         end
     end
     if newHotbar then
-        for i, stackData in pairs(newHotbar) do
+        for _, stackData in pairs(newHotbar) do
             local itemId = tonumber(stackData.itemId or stackData.id) or 0
             if itemId > 0 then
                 newTotals[itemId] = (newTotals[itemId] or 0) + (tonumber(stackData.count) or 0)
@@ -818,14 +866,18 @@ end
 -- Get hotbar slot for validation
 function PlayerInventoryService:GetHotbarSlot(player: Player, slotIndex: number)
 	local playerInv = self.inventories[player]
-	if not playerInv or slotIndex < 1 or slotIndex > 9 then return nil end
+	if not playerInv or slotIndex < 1 or slotIndex > 9 then
+		return nil
+	end
 	return playerInv.hotbar[slotIndex]
 end
 
 -- Serialize for DataStore saving
 function PlayerInventoryService:SerializeInventory(player: Player)
 	local playerInv = self.inventories[player]
-	if not playerInv then return nil end
+	if not playerInv then
+		return nil
+	end
 
 	local data = {
 		hotbar = {},
@@ -845,10 +897,14 @@ end
 
 -- Deserialize from DataStore
 function PlayerInventoryService:LoadInventory(player: Player, data: any)
-	if not data then return end
+	if not data then
+		return
+	end
 
 	local playerInv = self.inventories[player]
-	if not playerInv then return end
+	if not playerInv then
+		return
+	end
 
 	if data.hotbar then
 		for i, stackData in pairs(data.hotbar) do

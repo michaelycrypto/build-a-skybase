@@ -29,7 +29,7 @@ local ICONS = {
 ToolConfig.Items = {}
 
 -- Add Tools (mining)
-for key, tool in pairs(ItemDefinitions.Tools) do
+for _, tool in pairs(ItemDefinitions.Tools) do
 	ToolConfig.Items[tool.id] = {
 		name = tool.name,
 		icon = ICONS[tool.toolType] or "🔧",
@@ -41,7 +41,7 @@ for key, tool in pairs(ItemDefinitions.Tools) do
 end
 
 -- Add Weapons (swords)
-for key, weapon in pairs(ItemDefinitions.Weapons) do
+for _, weapon in pairs(ItemDefinitions.Weapons) do
 	ToolConfig.Items[weapon.id] = {
 		name = weapon.name,
 		icon = ICONS[weapon.weaponType] or "🗡️",
@@ -53,7 +53,7 @@ for key, weapon in pairs(ItemDefinitions.Weapons) do
 end
 
 -- Add Ranged (bow)
-for key, ranged in pairs(ItemDefinitions.Ranged) do
+for _, ranged in pairs(ItemDefinitions.Ranged) do
 	ToolConfig.Items[ranged.id] = {
 		name = ranged.name,
 		icon = ICONS.bow,
@@ -65,7 +65,7 @@ for key, ranged in pairs(ItemDefinitions.Ranged) do
 end
 
 -- Add Arrows
-for key, arrow in pairs(ItemDefinitions.Arrows) do
+for _, arrow in pairs(ItemDefinitions.Arrows) do
 	ToolConfig.Items[arrow.id] = {
 		name = arrow.name,
 		icon = ICONS.arrow,
@@ -78,7 +78,7 @@ end
 
 -- Add Utility Tools (shears, fishing rod, etc.)
 if ItemDefinitions.UtilityTools then
-	for key, tool in pairs(ItemDefinitions.UtilityTools) do
+	for _, tool in pairs(ItemDefinitions.UtilityTools) do
 		ToolConfig.Items[tool.id] = {
 			name = tool.name,
 			icon = "🔧",
@@ -105,7 +105,7 @@ end
 
 -- Tier names
 ToolConfig.TierNames = {}
-for tier, name in pairs(ItemDefinitions.TierNames) do
+for _, name in pairs(ItemDefinitions.TierNames) do
 	local tierKey = name:upper()
 	if BlockProperties.ToolTier[tierKey] then
 		ToolConfig.TierNames[BlockProperties.ToolTier[tierKey]] = name

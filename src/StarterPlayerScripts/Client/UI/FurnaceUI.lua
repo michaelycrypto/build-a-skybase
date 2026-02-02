@@ -152,7 +152,7 @@ local function CreateStyledButton(config)
 	-- Create button
 	local button = Instance.new("TextButton")
 	button.Name = config.name or "Button"
-	button.Size = config.size or UDim2.new(0, 160, 0, 56)
+	button.Size = config.size or UDim2.fromOffset(160, 56)
 	if config.position then
 		button.Position = config.position
 	end
@@ -188,12 +188,12 @@ local function CreateStyledButton(config)
 	if useBackgroundImage then
 		local bgImage = Instance.new("ImageLabel")
 		bgImage.Name = "BackgroundImage"
-		bgImage.Size = UDim2.new(1, 0, 1, 0)
+		bgImage.Size = UDim2.fromScale(1, 1)
 		bgImage.BackgroundTransparency = 1
 		bgImage.Image = FURNACE_LAYOUT.BACKGROUND_IMAGE
 		bgImage.ImageTransparency = FURNACE_LAYOUT.BACKGROUND_IMAGE_TRANSPARENCY
 		bgImage.ScaleType = Enum.ScaleType.Tile
-		bgImage.TileSize = UDim2.new(0, 128, 0, 128)
+		bgImage.TileSize = UDim2.fromOffset(128, 128)
 		bgImage.ZIndex = 0
 		bgImage.Parent = button
 
@@ -360,7 +360,7 @@ function FurnaceUI:CreatePanel()
 	-- Main panel (transparent container)
 	self.panel = Instance.new("Frame")
 	self.panel.Name = "FurnacePanel"
-	self.panel.Size = UDim2.new(0, totalWidth, 0, totalHeight)
+	self.panel.Size = UDim2.fromOffset(totalWidth, totalHeight)
 	self.panel.Position = UDim2.new(0.5, 0, 0.5, -FURNACE_LAYOUT.HEADER_HEIGHT)
 	self.panel.AnchorPoint = Vector2.new(0.5, 0.5)
 	self.panel.BackgroundTransparency = 1
@@ -377,7 +377,7 @@ end
 function FurnaceUI:CreateHeader(parent)
 	local headerFrame = Instance.new("Frame")
 	headerFrame.Name = "Header"
-	headerFrame.Size = UDim2.new(0, FURNACE_LAYOUT.TOTAL_WIDTH, 0, FURNACE_LAYOUT.HEADER_HEIGHT)
+	headerFrame.Size = UDim2.fromOffset(FURNACE_LAYOUT.TOTAL_WIDTH, FURNACE_LAYOUT.HEADER_HEIGHT)
 	headerFrame.BackgroundTransparency = 1
 	headerFrame.Parent = parent
 
@@ -385,7 +385,7 @@ function FurnaceUI:CreateHeader(parent)
 	local title = Instance.new("TextLabel")
 	title.Name = "Title"
 	title.Size = UDim2.new(1, -50, 1, 0)
-	title.Position = UDim2.new(0, 0, 0, 0)
+	title.Position = UDim2.fromScale(0, 0)
 	title.BackgroundTransparency = 1
 	title.Text = "FURNACE"
 	title.TextColor3 = FURNACE_LAYOUT.TEXT_PRIMARY
@@ -399,8 +399,8 @@ function FurnaceUI:CreateHeader(parent)
 
 	-- Close button using IconManager
 	local closeIcon = IconManager:CreateIcon(headerFrame, "UI", "X", {
-		size = UDim2.new(0, 44, 0, 44),
-		position = UDim2.new(1, 0, 0, 0),
+		size = UDim2.fromOffset(44, 44),
+		position = UDim2.fromScale(1, 0),
 		anchorPoint = Vector2.new(1, 0)
 	})
 
@@ -430,8 +430,8 @@ end
 function FurnaceUI:CreateBody(parent)
 	local bodyFrame = Instance.new("Frame")
 	bodyFrame.Name = "Body"
-	bodyFrame.Size = UDim2.new(0, FURNACE_LAYOUT.TOTAL_WIDTH, 0, FURNACE_LAYOUT.BODY_HEIGHT)
-	bodyFrame.Position = UDim2.new(0, 0, 0, FURNACE_LAYOUT.HEADER_HEIGHT)
+	bodyFrame.Size = UDim2.fromOffset(FURNACE_LAYOUT.TOTAL_WIDTH, FURNACE_LAYOUT.BODY_HEIGHT)
+	bodyFrame.Position = UDim2.fromOffset(0, FURNACE_LAYOUT.HEADER_HEIGHT)
 	bodyFrame.BackgroundTransparency = 1
 	bodyFrame.Parent = parent
 
@@ -447,8 +447,8 @@ function FurnaceUI:CreateContentColumn(parent)
 	-- Main content frame
 	local column = Instance.new("Frame")
 	column.Name = "ContentColumn"
-	column.Size = UDim2.new(0, columnWidth, 0, columnHeight)
-	column.Position = UDim2.new(0, 3, 0, 3)
+	column.Size = UDim2.fromOffset(columnWidth, columnHeight)
+	column.Position = UDim2.fromOffset(3, 3)
 	column.BackgroundColor3 = FURNACE_LAYOUT.PANEL_BG_COLOR
 	column.BackgroundTransparency = 0
 	column.BorderSizePixel = 0
@@ -463,9 +463,9 @@ function FurnaceUI:CreateContentColumn(parent)
 	-- Shadow (decorative element at bottom)
 	local shadow = Instance.new("Frame")
 	shadow.Name = "Shadow"
-	shadow.Size = UDim2.new(0, columnWidth, 0, shadowHeight)
+	shadow.Size = UDim2.fromOffset(columnWidth, shadowHeight)
 	shadow.AnchorPoint = Vector2.new(0, 0.5)
-	shadow.Position = UDim2.new(0, 3, 0, columnHeight + 3)
+	shadow.Position = UDim2.fromOffset(3, columnHeight + 3)
 	shadow.BackgroundColor3 = FURNACE_LAYOUT.SHADOW_COLOR
 	shadow.BackgroundTransparency = 0
 	shadow.BorderSizePixel = 0
@@ -516,15 +516,15 @@ function FurnaceUI:CreateRecipeSection(parent)
 	local gridContainer = Instance.new("Frame")
 	gridContainer.Name = "RecipeGrid"
 	gridContainer.Size = UDim2.new(1, 0, 0, 140)
-	gridContainer.Position = UDim2.new(0, 0, 0, FURNACE_LAYOUT.LABEL_HEIGHT + FURNACE_LAYOUT.LABEL_SPACING)
+	gridContainer.Position = UDim2.fromOffset(0, FURNACE_LAYOUT.LABEL_HEIGHT + FURNACE_LAYOUT.LABEL_SPACING)
 	gridContainer.BackgroundTransparency = 1
 	gridContainer.Parent = parent
 	self.recipeGrid = gridContainer
 
 	-- Grid layout
 	local gridLayout = Instance.new("UIGridLayout")
-	gridLayout.CellSize = UDim2.new(0, FURNACE_LAYOUT.RECIPE_CELL_SIZE, 0, FURNACE_LAYOUT.RECIPE_CELL_SIZE)
-	gridLayout.CellPadding = UDim2.new(0, FURNACE_LAYOUT.RECIPE_SPACING, 0, FURNACE_LAYOUT.RECIPE_SPACING)
+	gridLayout.CellSize = UDim2.fromOffset(FURNACE_LAYOUT.RECIPE_CELL_SIZE, FURNACE_LAYOUT.RECIPE_CELL_SIZE)
+	gridLayout.CellPadding = UDim2.fromOffset(FURNACE_LAYOUT.RECIPE_SPACING, FURNACE_LAYOUT.RECIPE_SPACING)
 	gridLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
 	gridLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	gridLayout.Parent = gridContainer
@@ -535,7 +535,7 @@ function FurnaceUI:CreateRecipeInfo(parent)
 	local infoFrame = Instance.new("Frame")
 	infoFrame.Name = "RecipeInfo"
 	infoFrame.Size = UDim2.new(1, 0, 0, 200)
-	infoFrame.Position = UDim2.new(0, 0, 0, FURNACE_LAYOUT.LABEL_HEIGHT + FURNACE_LAYOUT.LABEL_SPACING + 145)
+	infoFrame.Position = UDim2.fromOffset(0, FURNACE_LAYOUT.LABEL_HEIGHT + FURNACE_LAYOUT.LABEL_SPACING + 145)
 	infoFrame.BackgroundColor3 = FURNACE_LAYOUT.SLOT_BG_COLOR
 	infoFrame.BackgroundTransparency = FURNACE_LAYOUT.SLOT_BG_TRANSPARENCY
 	infoFrame.BorderSizePixel = 0
@@ -577,7 +577,7 @@ function FurnaceUI:CreateRecipeInfo(parent)
 	local reqLabel = Instance.new("TextLabel")
 	reqLabel.Name = "RequirementsLabel"
 	reqLabel.Size = UDim2.new(1, 0, 0, FURNACE_LAYOUT.LABEL_HEIGHT)
-	reqLabel.Position = UDim2.new(0, 0, 0, 36)
+	reqLabel.Position = UDim2.fromOffset(0, 36)
 	reqLabel.BackgroundTransparency = 1
 	reqLabel.Font = Enum.Font.Code
 	reqLabel.TextSize = 18
@@ -591,7 +591,7 @@ function FurnaceUI:CreateRecipeInfo(parent)
 	local ingredientsFrame = Instance.new("Frame")
 	ingredientsFrame.Name = "Ingredients"
 	ingredientsFrame.Size = UDim2.new(1, 0, 0, 50)
-	ingredientsFrame.Position = UDim2.new(0, 0, 0, 58)
+	ingredientsFrame.Position = UDim2.fromOffset(0, 58)
 	ingredientsFrame.BackgroundTransparency = 1
 	ingredientsFrame.Parent = infoFrame
 	self.ingredientsFrame = ingredientsFrame
@@ -620,7 +620,7 @@ function FurnaceUI:CreateMiniGamePanel()
 	-- Full-screen immersive mini-game
 	local miniGameRoot = Instance.new("Frame")
 	miniGameRoot.Name = "MiniGameRoot"
-	miniGameRoot.Size = UDim2.new(1, 0, 1, 0)
+	miniGameRoot.Size = UDim2.fromScale(1, 1)
 	miniGameRoot.BackgroundTransparency = 1
 	miniGameRoot.Visible = false
 	miniGameRoot.Parent = self.gui
@@ -631,8 +631,8 @@ function FurnaceUI:CreateMiniGamePanel()
 	local centerHeight = 200
 	local centerContainer = Instance.new("Frame")
 	centerContainer.Name = "CenterContainer"
-	centerContainer.Size = UDim2.new(0, centerWidth, 0, centerHeight)
-	centerContainer.Position = UDim2.new(0.5, 0, 0.5, 0)
+	centerContainer.Size = UDim2.fromOffset(centerWidth, centerHeight)
+	centerContainer.Position = UDim2.fromScale(0.5, 0.5)
 	centerContainer.AnchorPoint = Vector2.new(0.5, 0.5)
 	centerContainer.BackgroundTransparency = 1
 	centerContainer.Parent = miniGameRoot
@@ -640,7 +640,7 @@ function FurnaceUI:CreateMiniGamePanel()
 	-- Header close button (matches other UI headers)
 	local headerFrame = Instance.new("Frame")
 	headerFrame.Name = "MiniGameHeader"
-	headerFrame.Size = UDim2.new(0, FURNACE_LAYOUT.TOTAL_WIDTH, 0, FURNACE_LAYOUT.HEADER_HEIGHT)
+	headerFrame.Size = UDim2.fromOffset(FURNACE_LAYOUT.TOTAL_WIDTH, FURNACE_LAYOUT.HEADER_HEIGHT)
 	headerFrame.Position = UDim2.new(0.5, 0, 0.5, -centerHeight / 2)
 	headerFrame.AnchorPoint = Vector2.new(0.5, 0)
 	headerFrame.BackgroundTransparency = 1
@@ -649,8 +649,8 @@ function FurnaceUI:CreateMiniGamePanel()
 	-- === ITEM PREVIEW - Small, contextual ===
 	local itemFrame = Instance.new("Frame")
 	itemFrame.Name = "ItemFrame"
-	itemFrame.Size = UDim2.new(0, 64, 0, 64)
-	itemFrame.Position = UDim2.new(0.5, 0, 0, 0)
+	itemFrame.Size = UDim2.fromOffset(64, 64)
+	itemFrame.Position = UDim2.fromScale(0.5, 0)
 	itemFrame.AnchorPoint = Vector2.new(0.5, 0)
 	itemFrame.BackgroundColor3 = FURNACE_LAYOUT.SLOT_BG_COLOR
 	itemFrame.BackgroundTransparency = 0.3
@@ -660,8 +660,8 @@ function FurnaceUI:CreateMiniGamePanel()
 
 	-- Close button (matching completion UI)
 	local closeIcon = IconManager:CreateIcon(headerFrame, "UI", "X", {
-		size = UDim2.new(0, 44, 0, 44),
-		position = UDim2.new(1, 0, 0, 0),
+		size = UDim2.fromOffset(44, 44),
+		position = UDim2.fromScale(1, 0),
 		anchorPoint = Vector2.new(1, 0)
 	})
 
@@ -704,7 +704,7 @@ function FurnaceUI:CreateMiniGamePanel()
 	local itemViewport = Instance.new("Frame")
 	itemViewport.Name = "ItemViewport"
 	itemViewport.Size = UDim2.new(1, -12, 1, -12)
-	itemViewport.Position = UDim2.new(0.5, 0, 0.5, 0)
+	itemViewport.Position = UDim2.fromScale(0.5, 0.5)
 	itemViewport.AnchorPoint = Vector2.new(0.5, 0.5)
 	itemViewport.BackgroundTransparency = 1
 	itemViewport.Parent = itemFrame
@@ -732,7 +732,7 @@ function FurnaceUI:CreateMiniGamePanel()
 	local zoneFrame = Instance.new("Frame")
 	zoneFrame.Name = "OptimalZone"
 	zoneFrame.Size = UDim2.new(0.25, 0, 1, -4)
-	zoneFrame.Position = UDim2.new(0.375, 0, 0.5, 0)
+	zoneFrame.Position = UDim2.fromScale(0.375, 0.5)
 	zoneFrame.AnchorPoint = Vector2.new(0, 0.5)
 	zoneFrame.BackgroundColor3 = FURNACE_LAYOUT.ZONE_COLOR
 	zoneFrame.BackgroundTransparency = 0.55
@@ -750,7 +750,7 @@ function FurnaceUI:CreateMiniGamePanel()
 	local indicatorFrame = Instance.new("Frame")
 	indicatorFrame.Name = "Indicator"
 	indicatorFrame.Size = UDim2.new(0, 4, 1, -4)
-	indicatorFrame.Position = UDim2.new(0.4, 0, 0.5, 0)
+	indicatorFrame.Position = UDim2.fromScale(0.4, 0.5)
 	indicatorFrame.AnchorPoint = Vector2.new(0.5, 0.5)
 	indicatorFrame.BackgroundColor3 = FURNACE_LAYOUT.TEXT_PRIMARY
 	indicatorFrame.BorderSizePixel = 0
@@ -781,7 +781,7 @@ function FurnaceUI:CreateMiniGamePanel()
 
 	local progressFill = Instance.new("Frame")
 	progressFill.Name = "Fill"
-	progressFill.Size = UDim2.new(0, 0, 1, 0)
+	progressFill.Size = UDim2.fromScale(0, 1)
 	progressFill.BackgroundColor3 = FURNACE_LAYOUT.ZONE_COLOR
 	progressFill.BorderSizePixel = 0
 	progressFill.Parent = progressBar
@@ -818,7 +818,7 @@ function FurnaceUI:CreateMiniGamePanel()
 
 	local hintLabel = Instance.new("TextLabel")
 	hintLabel.Name = "HintLabel"
-	hintLabel.Size = UDim2.new(0.5, 0, 1, 0)
+	hintLabel.Size = UDim2.fromScale(0.5, 1)
 	hintLabel.BackgroundTransparency = 1
 	hintLabel.Font = BOLD_FONT
 	hintLabel.TextSize = 11
@@ -834,8 +834,8 @@ function FurnaceUI:CreateCompletionPanel()
 	-- Completion root (full screen container)
 	local completionRoot = Instance.new("Frame")
 	completionRoot.Name = "CompletionRoot"
-	completionRoot.Size = UDim2.new(1, 0, 1, 0)
-	completionRoot.Position = UDim2.new(0, 0, 0, 0)
+	completionRoot.Size = UDim2.fromScale(1, 1)
+	completionRoot.Position = UDim2.fromScale(0, 0)
 	completionRoot.BackgroundTransparency = 1
 	completionRoot.Visible = false
 	completionRoot.Parent = self.gui
@@ -867,8 +867,8 @@ function FurnaceUI:CreateCompletionPanel()
 
 	local contentContainer = Instance.new("Frame")
 	contentContainer.Name = "ContentContainer"
-	contentContainer.Size = UDim2.new(0, FURNACE_LAYOUT.TOTAL_WIDTH, 0, contentHeight)
-	contentContainer.Position = UDim2.new(0.5, 0, 0.5, 0)
+	contentContainer.Size = UDim2.fromOffset(FURNACE_LAYOUT.TOTAL_WIDTH, contentHeight)
+	contentContainer.Position = UDim2.fromScale(0.5, 0.5)
 	contentContainer.AnchorPoint = Vector2.new(0.5, 0.5)
 	contentContainer.BackgroundTransparency = 1
 	contentContainer.Parent = completionRoot
@@ -878,7 +878,7 @@ function FurnaceUI:CreateCompletionPanel()
 	local headerFrame = Instance.new("Frame")
 	headerFrame.Name = "Header"
 	headerFrame.Size = UDim2.new(1, 0, 0, completionLayout.headerHeight)
-	headerFrame.Position = UDim2.new(0, 0, 0, completionLayout.topPadding)
+	headerFrame.Position = UDim2.fromOffset(0, completionLayout.topPadding)
 	headerFrame.BackgroundTransparency = 1
 	headerFrame.BorderSizePixel = 0
 	headerFrame.Parent = contentContainer
@@ -886,7 +886,7 @@ function FurnaceUI:CreateCompletionPanel()
 	local title = Instance.new("TextLabel")
 	title.Name = "Title"
 	title.Size = UDim2.new(1, -50, 1, 0)
-	title.Position = UDim2.new(0, 0, 0, 0)
+	title.Position = UDim2.fromScale(0, 0)
 	title.BackgroundTransparency = 1
 	title.Font = Enum.Font.Code
 	title.TextSize = HEADING_SIZE
@@ -902,7 +902,7 @@ function FurnaceUI:CreateCompletionPanel()
 	-- Centered output item frame
 	local outputFrame = Instance.new("Frame")
 	outputFrame.Name = "OutputFrame"
-	outputFrame.Size = UDim2.new(0, completionLayout.itemSize, 0, completionLayout.itemSize)
+	outputFrame.Size = UDim2.fromOffset(completionLayout.itemSize, completionLayout.itemSize)
 	outputFrame.Position = UDim2.new(0.5, 0, 0, completionLayout.topPadding + completionLayout.headerHeight + completionLayout.headerToItem)
 	outputFrame.AnchorPoint = Vector2.new(0.5, 0)
 	outputFrame.BackgroundColor3 = FURNACE_LAYOUT.SLOT_BG_COLOR
@@ -925,7 +925,7 @@ function FurnaceUI:CreateCompletionPanel()
 	local outputContainer = Instance.new("Frame")
 	outputContainer.Name = "OutputContainer"
 	outputContainer.Size = UDim2.new(1, -16, 1, -16)
-	outputContainer.Position = UDim2.new(0.5, 0, 0.5, 0)
+	outputContainer.Position = UDim2.fromScale(0.5, 0.5)
 	outputContainer.AnchorPoint = Vector2.new(0.5, 0.5)
 	outputContainer.BackgroundTransparency = 1
 	outputContainer.Parent = outputFrame
@@ -934,7 +934,7 @@ function FurnaceUI:CreateCompletionPanel()
 	-- Item count badge - positioned at bottom right
 	local countBadge = Instance.new("Frame")
 	countBadge.Name = "CountBadge"
-	countBadge.Size = UDim2.new(0, 32, 0, 32)
+	countBadge.Size = UDim2.fromOffset(32, 32)
 	countBadge.Position = UDim2.new(1, 6, 1, 6)
 	countBadge.AnchorPoint = Vector2.new(1, 1)
 	countBadge.BackgroundColor3 = FURNACE_LAYOUT.BTN_ACCENT
@@ -949,7 +949,7 @@ function FurnaceUI:CreateCompletionPanel()
 
 	local countText = Instance.new("TextLabel")
 	countText.Name = "CountText"
-	countText.Size = UDim2.new(1, 0, 1, 0)
+	countText.Size = UDim2.fromScale(1, 1)
 	countText.BackgroundTransparency = 1
 	countText.Font = BOLD_FONT
 	countText.TextSize = 18
@@ -991,7 +991,7 @@ function FurnaceUI:CreateCompletionPanel()
 	-- === BOTTOM: Action Buttons ===
 	local btnContainer = Instance.new("Frame")
 	btnContainer.Name = "ButtonContainer"
-	btnContainer.Size = UDim2.new(0, 360, 0, completionLayout.buttonsHeight)
+	btnContainer.Size = UDim2.fromOffset(360, completionLayout.buttonsHeight)
 	btnContainer.Position = UDim2.new(0.5, 0, 0, completionLayout.topPadding + completionLayout.headerHeight + completionLayout.headerToItem + completionLayout.itemSize + completionLayout.itemToLabel + completionLayout.labelHeight + completionLayout.labelToEff + completionLayout.effHeight + completionLayout.effToButtons)
 	btnContainer.AnchorPoint = Vector2.new(0.5, 0)
 	btnContainer.BackgroundTransparency = 1
@@ -1002,8 +1002,8 @@ function FurnaceUI:CreateCompletionPanel()
 	self.smeltAgainBtn = CreateStyledButton({
 		name = "SmeltAgain",
 		text = "SMELT AGAIN",
-		size = UDim2.new(0, 150, 0, 44),
-		position = UDim2.new(0, 0, 0, 0),
+		size = UDim2.fromOffset(150, 44),
+		position = UDim2.fromScale(0, 0),
 		style = "accent",
 		parent = btnContainer,
 		onClick = function()
@@ -1015,8 +1015,8 @@ function FurnaceUI:CreateCompletionPanel()
 	self.autoSmeltBtn = CreateStyledButton({
 		name = "AutoSmelt",
 		text = "AUTO: OFF",
-		size = UDim2.new(0, 90, 0, 44),
-		position = UDim2.new(0, 160, 0, 0),
+		size = UDim2.fromOffset(90, 44),
+		position = UDim2.fromOffset(160, 0),
 		style = "default",
 		parent = btnContainer,
 		onClick = function()
@@ -1028,8 +1028,8 @@ function FurnaceUI:CreateCompletionPanel()
 	self.recipesBtn = CreateStyledButton({
 		name = "Recipes",
 		text = "RECIPES",
-		size = UDim2.new(0, 110, 0, 44),
-		position = UDim2.new(0, 250, 0, 0),
+		size = UDim2.fromOffset(110, 44),
+		position = UDim2.fromOffset(250, 0),
 		style = "default",
 		parent = btnContainer,
 		onClick = function()
@@ -1039,8 +1039,8 @@ function FurnaceUI:CreateCompletionPanel()
 
 	-- Close button (matching inventory/worlds UI)
 	local closeIcon = IconManager:CreateIcon(headerFrame, "UI", "X", {
-		size = UDim2.new(0, 44, 0, 44),
-		position = UDim2.new(1, 0, 0, 0),
+		size = UDim2.fromOffset(44, 44),
+		position = UDim2.fromScale(1, 0),
 		anchorPoint = Vector2.new(1, 0)
 	})
 
@@ -1073,7 +1073,7 @@ end
 function FurnaceUI:CreateRecipeCard(recipe, index)
 	local card = Instance.new("TextButton")
 	card.Name = "Recipe_" .. recipe.recipeId
-	card.Size = UDim2.new(0, FURNACE_LAYOUT.RECIPE_CELL_SIZE, 0, FURNACE_LAYOUT.RECIPE_CELL_SIZE)
+	card.Size = UDim2.fromOffset(FURNACE_LAYOUT.RECIPE_CELL_SIZE, FURNACE_LAYOUT.RECIPE_CELL_SIZE)
 	card.BackgroundColor3 = FURNACE_LAYOUT.SLOT_BG_COLOR
 	card.BackgroundTransparency = recipe.canCraft and FURNACE_LAYOUT.SLOT_BG_TRANSPARENCY or 0.6
 	card.BorderSizePixel = 0
@@ -1098,18 +1098,18 @@ function FurnaceUI:CreateRecipeCard(recipe, index)
 	local iconContainer = Instance.new("Frame")
 	iconContainer.Name = "IconContainer"
 	iconContainer.Size = UDim2.new(1, -8, 1, -8)
-	iconContainer.Position = UDim2.new(0.5, 0, 0.5, 0)
+	iconContainer.Position = UDim2.fromScale(0.5, 0.5)
 	iconContainer.AnchorPoint = Vector2.new(0.5, 0.5)
 	iconContainer.BackgroundTransparency = 1
 	iconContainer.Parent = card
 
 	-- Create block viewport for output item
-	BlockViewportCreator.CreateBlockViewport(iconContainer, recipe.outputItemId, UDim2.new(1, 0, 1, 0))
+	BlockViewportCreator.CreateBlockViewport(iconContainer, recipe.outputItemId, UDim2.fromScale(1, 1))
 
 	-- Fuel cost indicator (small coal icon with number)
 	local fuelBadge = Instance.new("Frame")
 	fuelBadge.Name = "FuelBadge"
-	fuelBadge.Size = UDim2.new(0, 24, 0, 14)
+	fuelBadge.Size = UDim2.fromOffset(24, 14)
 	fuelBadge.Position = UDim2.new(1, -4, 1, -4)
 	fuelBadge.AnchorPoint = Vector2.new(1, 1)
 	fuelBadge.BackgroundColor3 = recipe.hasEnoughFuel and FURNACE_LAYOUT.SLOT_BG_COLOR or Color3.fromRGB(100, 40, 40)
@@ -1124,7 +1124,7 @@ function FurnaceUI:CreateRecipeCard(recipe, index)
 
 	local fuelText = Instance.new("TextLabel")
 	fuelText.Name = "FuelText"
-	fuelText.Size = UDim2.new(1, 0, 1, 0)
+	fuelText.Size = UDim2.fromScale(1, 1)
 	fuelText.BackgroundTransparency = 1
 	fuelText.Font = Enum.Font.GothamBold
 	fuelText.TextSize = 10
@@ -1137,7 +1137,7 @@ function FurnaceUI:CreateRecipeCard(recipe, index)
 	if not recipe.canCraft then
 		local overlay = Instance.new("Frame")
 		overlay.Name = "DisabledOverlay"
-		overlay.Size = UDim2.new(1, 0, 1, 0)
+		overlay.Size = UDim2.fromScale(1, 1)
 		overlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 		overlay.BackgroundTransparency = 0.5
 		overlay.BorderSizePixel = 0
@@ -1217,7 +1217,7 @@ function FurnaceUI:UpdateRecipeInfo(recipe)
 	for i, ing in ipairs(recipe.ingredients) do
 		local ingFrame = Instance.new("Frame")
 		ingFrame.Name = "Ingredient" .. i
-		ingFrame.Size = UDim2.new(0, 80, 0, 44)
+		ingFrame.Size = UDim2.fromOffset(80, 44)
 		ingFrame.BackgroundTransparency = 1
 		ingFrame.LayoutOrder = i
 		ingFrame.Parent = self.ingredientsFrame
@@ -1225,19 +1225,19 @@ function FurnaceUI:UpdateRecipeInfo(recipe)
 		-- Icon
 		local iconFrame = Instance.new("Frame")
 		iconFrame.Name = "Icon"
-		iconFrame.Size = UDim2.new(0, 36, 0, 36)
-		iconFrame.Position = UDim2.new(0, 0, 0.5, 0)
+		iconFrame.Size = UDim2.fromOffset(36, 36)
+		iconFrame.Position = UDim2.fromScale(0, 0.5)
 		iconFrame.AnchorPoint = Vector2.new(0, 0.5)
 		iconFrame.BackgroundTransparency = 1
 		iconFrame.Parent = ingFrame
 
-		BlockViewportCreator.CreateBlockViewport(iconFrame, ing.itemId, UDim2.new(1, 0, 1, 0))
+		BlockViewportCreator.CreateBlockViewport(iconFrame, ing.itemId, UDim2.fromScale(1, 1))
 
 		-- Count label
 		local countLabel = Instance.new("TextLabel")
 		countLabel.Name = "Count"
 		countLabel.Size = UDim2.new(0, 40, 1, 0)
-		countLabel.Position = UDim2.new(0, 40, 0, 0)
+		countLabel.Position = UDim2.fromOffset(40, 0)
 		countLabel.BackgroundTransparency = 1
 		countLabel.Font = BOLD_FONT
 		countLabel.TextSize = 16
@@ -1253,7 +1253,7 @@ function FurnaceUI:UpdateRecipeInfo(recipe)
 
 	local fuelFrame = Instance.new("Frame")
 	fuelFrame.Name = "FuelDisplay"
-	fuelFrame.Size = UDim2.new(0, 120, 0, 44)
+	fuelFrame.Size = UDim2.fromOffset(120, 44)
 	fuelFrame.BackgroundTransparency = 1
 	fuelFrame.LayoutOrder = 100 -- After ingredients
 	fuelFrame.Parent = self.ingredientsFrame
@@ -1261,8 +1261,8 @@ function FurnaceUI:UpdateRecipeInfo(recipe)
 	-- Divider
 	local divider = Instance.new("Frame")
 	divider.Name = "Divider"
-	divider.Size = UDim2.new(0, 1, 0, 32)
-	divider.Position = UDim2.new(0, 0, 0.5, 0)
+	divider.Size = UDim2.fromOffset(1, 32)
+	divider.Position = UDim2.fromScale(0, 0.5)
 	divider.AnchorPoint = Vector2.new(0, 0.5)
 	divider.BackgroundColor3 = FURNACE_LAYOUT.COLUMN_BORDER_COLOR
 	divider.BorderSizePixel = 0
@@ -1271,18 +1271,18 @@ function FurnaceUI:UpdateRecipeInfo(recipe)
 	-- Fuel icon (coal)
 	local fuelIcon = Instance.new("Frame")
 	fuelIcon.Name = "FuelIcon"
-	fuelIcon.Size = UDim2.new(0, 28, 0, 28)
+	fuelIcon.Size = UDim2.fromOffset(28, 28)
 	fuelIcon.Position = UDim2.new(0, 10, 0.5, 0)
 	fuelIcon.AnchorPoint = Vector2.new(0, 0.5)
 	fuelIcon.BackgroundTransparency = 1
 	fuelIcon.Parent = fuelFrame
-	BlockViewportCreator.CreateBlockViewport(fuelIcon, 32, UDim2.new(1, 0, 1, 0)) -- 32 = COAL
+	BlockViewportCreator.CreateBlockViewport(fuelIcon, 32, UDim2.fromScale(1, 1)) -- 32 = COAL
 
 	-- Fuel label with savings hint
 	local fuelLabel = Instance.new("TextLabel")
 	fuelLabel.Name = "FuelLabel"
 	fuelLabel.Size = UDim2.new(0, 75, 1, 0)
-	fuelLabel.Position = UDim2.new(0, 42, 0, 0)
+	fuelLabel.Position = UDim2.fromOffset(42, 0)
 	fuelLabel.BackgroundTransparency = 1
 	fuelLabel.Font = BOLD_FONT
 	fuelLabel.TextSize = 14
@@ -1344,7 +1344,7 @@ function FurnaceUI:StartMiniGame(smeltConfig)
 			child:Destroy()
 		end
 		if smeltConfig.outputItemId then
-			BlockViewportCreator.CreateBlockViewport(self.itemViewport, smeltConfig.outputItemId, UDim2.new(1, 0, 1, 0))
+			BlockViewportCreator.CreateBlockViewport(self.itemViewport, smeltConfig.outputItemId, UDim2.fromScale(1, 1))
 		end
 	end
 
@@ -1356,10 +1356,10 @@ function FurnaceUI:StartMiniGame(smeltConfig)
 		self.itemGlow.Transparency = 0.2
 	end
 	if self.itemFrame then
-		self.itemFrame.Size = UDim2.new(0, 64, 0, 64)
+		self.itemFrame.Size = UDim2.fromOffset(64, 64)
 	end
 	if self.progressFill then
-		self.progressFill.Size = UDim2.new(0, 0, 1, 0)
+		self.progressFill.Size = UDim2.fromScale(0, 1)
 		self.progressFill.BackgroundColor3 = FURNACE_LAYOUT.BAR_IDLE_COLOR
 	end
 	if self.progressBar then
@@ -1372,7 +1372,7 @@ function FurnaceUI:StartMiniGame(smeltConfig)
 
 	-- Reset indicator position
 	if self.indicatorFrame then
-		self.indicatorFrame.Position = UDim2.new(SmeltingConfig.Gauge.START_POSITION / 100, 0, 0.5, 0)
+		self.indicatorFrame.Position = UDim2.fromScale(SmeltingConfig.Gauge.START_POSITION / 100, 0.5)
 		self.indicatorFrame.BackgroundColor3 = FURNACE_LAYOUT.COLD_COLOR
 	end
 
@@ -1460,7 +1460,7 @@ function FurnaceUI:UpdateMiniGameUI()
 	self.zoneFrame.Size = UDim2.new(zoneWidth, 0, 1, -4)
 
 	-- Smooth zone drift
-	local targetZonePos = UDim2.new(zonePos, 0, 0.5, 0)
+	local targetZonePos = UDim2.fromScale(zonePos, 0.5)
 	local currentZonePos = self.zoneFrame.Position
 	self.zoneFrame.Position = UDim2.new(
 		currentZonePos.X.Scale + (targetZonePos.X.Scale - currentZonePos.X.Scale) * 0.15,
@@ -1471,7 +1471,7 @@ function FurnaceUI:UpdateMiniGameUI()
 	local indicatorPos = self.indicator / 100
 	local currentPos = self.indicatorFrame.Position.X.Scale
 	local smoothPos = currentPos + (indicatorPos - currentPos) * 0.25
-	self.indicatorFrame.Position = UDim2.new(smoothPos, 0, 0.5, 0)
+	self.indicatorFrame.Position = UDim2.fromScale(smoothPos, 0.5)
 
 	-- Zone check
 	local zoneMin = self.zoneCenter - (self.smeltConfig.zoneWidth / 2)
@@ -1520,7 +1520,7 @@ function FurnaceUI:UpdateMiniGameUI()
 	local speedColor = self.isHeating and FURNACE_LAYOUT.BAR_ACTIVE_COLOR or FURNACE_LAYOUT.BAR_IDLE_COLOR
 	local targetSize = self.progress / 100
 	local currentSize = self.progressFill.Size.X.Scale
-	self.progressFill.Size = UDim2.new(currentSize + (targetSize - currentSize) * 0.15, 0, 1, 0)
+	self.progressFill.Size = UDim2.fromScale(currentSize + (targetSize - currentSize) * 0.15, 1)
 	self.progressFill.BackgroundColor3 = self.progressFill.BackgroundColor3:Lerp(speedColor, 0.1)
 
 	-- Near completion excitement (progress > 90%)
@@ -1563,12 +1563,12 @@ function FurnaceUI:OnEnterZone()
 	-- Quick pulse on item frame (subtle)
 	if self.itemFrame then
 		TweenService:Create(self.itemFrame, TweenInfo.new(0.08, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-			Size = UDim2.new(0, 70, 0, 70)
+			Size = UDim2.fromOffset(70, 70)
 		}):Play()
 		task.delay(0.08, function()
 			if self.itemFrame then
 				TweenService:Create(self.itemFrame, TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-					Size = UDim2.new(0, 64, 0, 64)
+					Size = UDim2.fromOffset(64, 64)
 				}):Play()
 			end
 		end)
@@ -1588,7 +1588,7 @@ function FurnaceUI:OnExitZone()
 
 	if self.itemFrame then
 		TweenService:Create(self.itemFrame, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			Size = UDim2.new(0, 64, 0, 64)
+			Size = UDim2.fromOffset(64, 64)
 		}):Play()
 	end
 	if self.itemGlow then
@@ -1680,7 +1680,7 @@ function FurnaceUI:ShowCompletion(data)
 	-- Get data
 	local stats = data.stats
 	local ratingColor = Color3.fromRGB(stats.color[1], stats.color[2], stats.color[3])
-	local efficiencyPercent = math.floor(stats.efficiencyPercent)
+	local _efficiencyPercent = math.floor(stats.efficiencyPercent)
 	local blockDef = BlockRegistry.Blocks[data.outputItemId]
 	local itemName = blockDef and blockDef.name or "Item"
 
@@ -1699,7 +1699,7 @@ function FurnaceUI:ShowCompletion(data)
 			child:Destroy()
 		end
 	end
-	BlockViewportCreator.CreateBlockViewport(self.outputContainer, data.outputItemId, UDim2.new(1, 0, 1, 0))
+	BlockViewportCreator.CreateBlockViewport(self.outputContainer, data.outputItemId, UDim2.fromScale(1, 1))
 
 	self:UpdateAutoSmeltButton()
 
@@ -1717,8 +1717,8 @@ function FurnaceUI:PlayParticleBurstEffect(parent, color, particleCount)
 
 	for i = 1, particleCount do
 		local particle = Instance.new("Frame")
-		particle.Size = UDim2.new(0, 8, 0, 8)
-		particle.Position = UDim2.new(0.5, 0, 0.5, 0)
+		particle.Size = UDim2.fromOffset(8, 8)
+		particle.Position = UDim2.fromScale(0.5, 0.5)
 		particle.AnchorPoint = Vector2.new(0.5, 0.5)
 		particle.BackgroundColor3 = color
 		particle.BorderSizePixel = 0
@@ -1739,7 +1739,7 @@ function FurnaceUI:PlayParticleBurstEffect(parent, color, particleCount)
 		local tween = TweenService:Create(particle, TweenInfo.new(0.7, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 			Position = UDim2.new(0.5, targetX, 0.5, targetY),
 			BackgroundTransparency = 1,
-			Size = UDim2.new(0, 2, 0, 2)
+			Size = UDim2.fromOffset(2, 2)
 		})
 		tween:Play()
 
@@ -1758,9 +1758,9 @@ function FurnaceUI:PlayShimmerEffect(parent)
 	for i = 1, 6 do
 		task.delay(i * 0.1, function()
 			local sparkle = Instance.new("Frame")
-			sparkle.Size = UDim2.new(0, 4, 0, 4)
+			sparkle.Size = UDim2.fromOffset(4, 4)
 			-- Random position within the parent
-			sparkle.Position = UDim2.new(math.random() * 0.8 + 0.1, 0, math.random() * 0.8 + 0.1, 0)
+			sparkle.Position = UDim2.fromScale(math.random() * 0.8 + 0.1, math.random() * 0.8 + 0.1)
 			sparkle.AnchorPoint = Vector2.new(0.5, 0.5)
 			sparkle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 			sparkle.BorderSizePixel = 0
@@ -1774,7 +1774,7 @@ function FurnaceUI:PlayShimmerEffect(parent)
 
 			-- Animate: grow then shrink with fade
 			local growTween = TweenService:Create(sparkle, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-				Size = UDim2.new(0, 10, 0, 10),
+				Size = UDim2.fromOffset(10, 10),
 				BackgroundTransparency = 0
 			})
 			growTween:Play()
@@ -1782,7 +1782,7 @@ function FurnaceUI:PlayShimmerEffect(parent)
 			task.delay(0.15, function()
 				if sparkle and sparkle.Parent then
 					local fadeTween = TweenService:Create(sparkle, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-						Size = UDim2.new(0, 2, 0, 2),
+						Size = UDim2.fromOffset(2, 2),
 						BackgroundTransparency = 1
 					})
 					fadeTween:Play()
@@ -1803,8 +1803,8 @@ function FurnaceUI:PlayGlowPulseEffect(frame, color)
 
 	-- Create expanding ring
 	local ring = Instance.new("Frame")
-	ring.Size = UDim2.new(1, 0, 1, 0)
-	ring.Position = UDim2.new(0.5, 0, 0.5, 0)
+	ring.Size = UDim2.fromScale(1, 1)
+	ring.Position = UDim2.fromScale(0.5, 0.5)
 	ring.AnchorPoint = Vector2.new(0.5, 0.5)
 	ring.BackgroundTransparency = 1
 	ring.BorderSizePixel = 0
@@ -1824,7 +1824,7 @@ function FurnaceUI:PlayGlowPulseEffect(frame, color)
 
 	-- Animate ring expanding and fading
 	local expandTween = TweenService:Create(ring, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-		Size = UDim2.new(1.6, 0, 1.6, 0)
+		Size = UDim2.fromScale(1.6, 1.6)
 	})
 	local fadeTween = TweenService:Create(ringStroke, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 		Transparency = 1
@@ -1842,15 +1842,15 @@ end
 
 -- Enhanced animated reveal sequence with visual effects
 function FurnaceUI:PlayRevealAnimation()
-	local BOUNCE = TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+	local _BOUNCE = TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 	local BOUNCE_BIG = TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out, 0, false, 0)
 	local FADE = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
 	-- Reset states
 	self.completionTitle.TextTransparency = 1
-	self.outputFrame.Size = UDim2.new(0, 0, 0, 0)
+	self.outputFrame.Size = UDim2.fromScale(0, 0)
 	self.outputFrame.Rotation = -10
-	self.countBadge.Size = UDim2.new(0, 0, 0, 0)
+	self.countBadge.Size = UDim2.fromScale(0, 0)
 	self.outputLabel.TextTransparency = 1
 	self.efficiencyLabel.TextTransparency = 1
 	self.smeltAgainBtn.BackgroundTransparency = 1
@@ -1884,7 +1884,7 @@ function FurnaceUI:PlayRevealAnimation()
 		self:PlayGlowPulseEffect(self.outputFrame, self.outputBorder.Color)
 
 		TweenService:Create(self.outputFrame, BOUNCE_BIG, {
-			Size = UDim2.new(0, 100, 0, 100),
+			Size = UDim2.fromOffset(100, 100),
 			Rotation = 0
 		}):Play()
 
@@ -1913,13 +1913,13 @@ function FurnaceUI:PlayRevealAnimation()
 	task.delay(0.3, function()
 		-- Initial overshoot
 		TweenService:Create(self.countBadge, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-			Size = UDim2.new(0, 38, 0, 38)
+			Size = UDim2.fromOffset(38, 38)
 		}):Play()
 
 		-- Settle to final size
 		task.delay(0.2, function()
 			TweenService:Create(self.countBadge, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-				Size = UDim2.new(0, 32, 0, 32)
+				Size = UDim2.fromOffset(32, 32)
 			}):Play()
 		end)
 	end)
@@ -2146,10 +2146,10 @@ function FurnaceUI:ShowRecipeSelection()
 		self.completionTitle.TextTransparency = 0
 	end
 	if self.outputFrame then
-		self.outputFrame.Size = UDim2.new(0, 120, 0, 120)
+		self.outputFrame.Size = UDim2.fromOffset(120, 120)
 	end
 	if self.countBadge then
-		self.countBadge.Size = UDim2.new(0, 36, 0, 36)
+		self.countBadge.Size = UDim2.fromOffset(36, 36)
 	end
 	if self.outputLabel then
 		self.outputLabel.TextTransparency = 0
@@ -2263,7 +2263,7 @@ function FurnaceUI:BindInput()
 	end))
 
 	-- Mouse/Touch for heating
-	table.insert(self.connections, UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	table.insert(self.connections, UserInputService.InputBegan:Connect(function(input, _gameProcessed)
 		if not self.isSmelting then return end
 
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or
@@ -2272,7 +2272,7 @@ function FurnaceUI:BindInput()
 		end
 	end))
 
-	table.insert(self.connections, UserInputService.InputEnded:Connect(function(input, gameProcessed)
+	table.insert(self.connections, UserInputService.InputEnded:Connect(function(input, _gameProcessed)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or
 		   input.UserInputType == Enum.UserInputType.Touch then
 			self.isHeating = false
@@ -2327,7 +2327,7 @@ function FurnaceUI:RegisterEvents()
 	end)
 
 	-- Smelt cancelled
-	EventManager:RegisterEvent("SmeltCancelled", function(data)
+	EventManager:RegisterEvent("SmeltCancelled", function(_data)
 		-- Cancelled - just reset state (already handled in OnCancelSmelt)
 	end)
 end

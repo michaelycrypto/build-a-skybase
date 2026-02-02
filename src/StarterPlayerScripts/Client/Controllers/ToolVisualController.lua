@@ -9,8 +9,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
 local GameState = require(script.Parent.Parent.Managers.GameState)
-local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
-local BlockProperties = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockProperties)
+local _ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
+local _BlockProperties = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockProperties)
 local EventManager = require(ReplicatedStorage.Shared.EventManager)
 local HeldItemRenderer = require(ReplicatedStorage.Shared.HeldItemRenderer)
 
@@ -45,9 +45,13 @@ local TWEEN_DOWN = TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirecti
 ----------------------------------------------------------------
 
 local function getShoulderMotor()
-    if shoulderMotor and shoulderMotor.Parent then return shoulderMotor end
+    if shoulderMotor and shoulderMotor.Parent then
+    	return shoulderMotor
+    end
     local char = player.Character
-    if not char then return nil end
+    if not char then
+    	return nil
+    end
 
     local upperArm = char:FindFirstChild("RightUpperArm")
     if upperArm then
@@ -73,9 +77,13 @@ end
 
 local function setArmRaised(raised)
     local motor = getShoulderMotor()
-    if not motor or not originalShoulderC0 then return end
+    if not motor or not originalShoulderC0 then
+    	return
+    end
 
-    if armTween then armTween:Cancel() end
+    if armTween then
+    	armTween:Cancel()
+    end
 
     local angle = raised and BOW_RAISE_ANGLE or 0
     local tweenInfo = raised and TWEEN_UP or TWEEN_DOWN
@@ -86,7 +94,9 @@ local function setArmRaised(raised)
 end
 
 local function resetArm()
-    if armTween then armTween:Cancel(); armTween = nil end
+    if armTween then
+    	armTween:Cancel(); armTween = nil
+    end
     if shoulderMotor and originalShoulderC0 then
         shoulderMotor.C0 = originalShoulderC0
     end
@@ -110,14 +120,20 @@ end
 
 local function attachLocalItem(itemId)
     local char = player.Character
-    if not char then return end
+    if not char then
+    	return
+    end
 
     -- Check if same item already attached
-    if itemId == currentItemId then return end
+    if itemId == currentItemId then
+    	return
+    end
 
     clearLocalItem()
 
-    if not itemId or itemId == 0 then return end
+    if not itemId or itemId == 0 then
+    	return
+    end
 
     local handle = HeldItemRenderer.AttachItem(char, itemId)
     if handle then
@@ -172,7 +188,9 @@ local function onCharacterAdded(char)
         end
     end)
     char:GetPropertyChangedSignal("Parent"):Connect(function()
-        if not char.Parent then clearLocalItem() end
+        if not char.Parent then
+        	clearLocalItem()
+        end
     end)
 end
 
@@ -182,7 +200,9 @@ end
 
 local function getRemotePlayerCharacter(userId)
     local remotePlayer = Players:GetPlayerByUserId(userId)
-    if not remotePlayer then return nil end
+    if not remotePlayer then
+    	return nil
+    end
     return remotePlayer.Character
 end
 
@@ -195,19 +215,25 @@ local function cleanupRemotePlayerItem(userId)
 end
 
 local function createRemotePlayerItem(userId, itemId)
-    if userId == player.UserId then return end
+    if userId == player.UserId then
+    	return
+    end
     if not itemId or itemId == 0 then
         cleanupRemotePlayerItem(userId)
         return
     end
 
     -- Check if same item
-    if remotePlayerItems[userId] == itemId then return end
+    if remotePlayerItems[userId] == itemId then
+    	return
+    end
 
     cleanupRemotePlayerItem(userId)
 
     local char = getRemotePlayerCharacter(userId)
-    if not char then return end
+    if not char then
+    	return
+    end
 
     local handle = HeldItemRenderer.AttachItem(char, itemId)
     if handle then
@@ -216,22 +242,30 @@ local function createRemotePlayerItem(userId, itemId)
 end
 
 local function onPlayerHeldItemChanged(data)
-    if not data or not data.userId then return end
+    if not data or not data.userId then
+    	return
+    end
     createRemotePlayerItem(data.userId, data.itemId)
 end
 
 local function onPlayerToolEquipped(data)
-    if not data or not data.userId or not data.itemId then return end
+    if not data or not data.userId or not data.itemId then
+    	return
+    end
     createRemotePlayerItem(data.userId, data.itemId)
 end
 
 local function onPlayerToolUnequipped(data)
-    if not data or not data.userId then return end
+    if not data or not data.userId then
+    	return
+    end
     cleanupRemotePlayerItem(data.userId)
 end
 
 local function onToolSync(data)
-    if not data then return end
+    if not data then
+    	return
+    end
     for userIdStr, itemId in pairs(data) do
         local userId = tonumber(userIdStr)
         if userId and userId ~= player.UserId then
@@ -247,12 +281,16 @@ local function onPlayerRemoving(leavingPlayer)
 end
 
 local function onRemoteCharacterAdded(remotePlayer)
-    if remotePlayer == player then return end
+    if remotePlayer == player then
+    	return
+    end
     local itemId = remotePlayerItems[remotePlayer.UserId]
     if itemId then
         task.spawn(function()
             local char = remotePlayer.Character
-            if not char then return end
+            if not char then
+            	return
+            end
             local hand = char:WaitForChild("RightHand", 5) or char:WaitForChild("Right Arm", 5)
             if hand then
                 task.wait(0.1)
@@ -263,7 +301,9 @@ local function onRemoteCharacterAdded(remotePlayer)
 end
 
 local function setupRemotePlayerTracking(remotePlayer)
-    if remotePlayer == player then return end
+    if remotePlayer == player then
+    	return
+    end
     remotePlayer.CharacterAdded:Connect(function()
         onRemoteCharacterAdded(remotePlayer)
     end)
@@ -299,14 +339,18 @@ function controller:Initialize()
     GameState:OnPropertyChanged("camera.isFirstPerson", refresh)
 
     player.CharacterAdded:Connect(onCharacterAdded)
-    if player.Character then onCharacterAdded(player.Character) end
+    if player.Character then
+    	onCharacterAdded(player.Character)
+    end
 
     initializeRemoteItems()
 end
 
 function controller:SetBowPullStage(stage)
     local isFirstPerson = GameState:Get("camera.isFirstPerson") == true
-    if isFirstPerson then return end
+    if isFirstPerson then
+    	return
+    end
 
     local isCharging = stage ~= nil
     if isCharging ~= isBowCharging then

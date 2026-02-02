@@ -50,7 +50,7 @@ local SWING_DURATION = GameConfig.Combat.SWING_COOLDOWN
 local isSwingHeld = false -- Track if mouse is held for continuous swinging
 
 local function destroyBowViewmodelParts()
-	for key, part in pairs(bowViewmodelParts) do
+	for _, part in pairs(bowViewmodelParts) do
 		if part and part.Parent then
 			part:Destroy()
 		end
@@ -77,6 +77,28 @@ local function clearConns(list)
 	while #list > 0 do table.remove(list) end
 end
 
+-- === TOOL MESH RENDERING ===
+local STUDS_PER_PIXEL = 3/16
+local VM_TOOL_SCALE = 0.5 -- shrink first-person tool meshes to 50% of true scale
+
+local function scaleMeshToPixels(part, itemName)
+	local px = ItemPixelSizes.GetSize(itemName)
+	if not px then
+		return
+	end
+	local longestPx = math.max(px.x or 0, px.y or 0)
+	if longestPx <= 0 then
+		return
+	end
+	local targetStuds = longestPx * STUDS_PER_PIXEL
+	local size = part.Size
+	local maxDim = math.max(size.X, size.Y, size.Z)
+	if maxDim > 0 then
+		local s = (targetStuds / maxDim) * VM_TOOL_SCALE
+		part.Size = Vector3.new(size.X * s, size.Y * s, size.Z * s)
+	end
+end
+
 local function shouldShow()
     -- In first person we always show a viewmodel (tool/block/arm)
     return isFirstPerson
@@ -84,7 +106,9 @@ end
 
 local function buildBlockModel(itemId)
 	local def = BlockRegistry.Blocks[itemId]
-	if not def then return nil end
+	if not def then
+		return nil
+	end
 
 	-- Try to use 3D model from Tools folder (unified lookup)
 	local itemName = ItemRegistry.GetItemName(itemId)
@@ -216,7 +240,9 @@ local function buildFlatItem(itemId)
 	-- Get texture from ItemRegistry (unified lookup)
 	local itemDef = ItemRegistry.GetItem(itemId)
 	local image = itemDef and itemDef.image
-	if not image then return nil end
+	if not image then
+		return nil
+	end
     local p = Instance.new("Part")
 	p.Name = "ItemCard"
 	p.Size = Vector3.new(1.2, 1.2, 0.05)
@@ -254,27 +280,12 @@ local function buildFlatItem(itemId)
 	return p
 end
 
--- === TOOL MESH RENDERING ===
-local STUDS_PER_PIXEL = 3/16
-local VM_TOOL_SCALE = 0.5 -- shrink first-person tool meshes to 50% of true scale
-
-local function scaleMeshToPixels(part, itemName)
-	local px = ItemPixelSizes.GetSize(itemName)
-	if not px then return end
-	local longestPx = math.max(px.x or 0, px.y or 0)
-	if longestPx <= 0 then return end
-	local targetStuds = longestPx * STUDS_PER_PIXEL
-	local size = part.Size
-	local maxDim = math.max(size.X, size.Y, size.Z)
-	if maxDim > 0 then
-		local s = (targetStuds / maxDim) * VM_TOOL_SCALE
-		part.Size = Vector3.new(size.X * s, size.Y * s, size.Z * s)
-	end
-end
 
 local function createBowViewmodelMesh(assetName, itemId)
 	local mesh = ItemModelLoader.GetModelTemplate(assetName, itemId)
-	if not mesh then return nil end
+	if not mesh then
+		return nil
+	end
 
 	local p = mesh:Clone()
 	p.Name = "BowVM_" .. assetName
@@ -310,7 +321,9 @@ local function createAllBowViewmodelParts(itemId)
 	destroyBowViewmodelParts()
 
 	local cam = workspace.CurrentCamera
-	if not cam then return end
+	if not cam then
+		return
+	end
 
 	-- Create all 4 bow states
 	bowViewmodelParts.idle = createBowViewmodelMesh("Bow", itemId)
@@ -319,7 +332,7 @@ local function createAllBowViewmodelParts(itemId)
 	bowViewmodelParts[2] = createBowViewmodelMesh("Bow_pulling_2", itemId)
 
 	-- Parent all to camera
-	for key, part in pairs(bowViewmodelParts) do
+	for _, part in pairs(bowViewmodelParts) do
 		if part then
 			part.Parent = cam
 		end
@@ -335,7 +348,9 @@ local function createAllBowViewmodelParts(itemId)
 end
 
 local function updateBowViewmodelStage()
-	if not isBowViewmodelActive then return end
+	if not isBowViewmodelActive then
+		return
+	end
 
 	local stage = GameState:Get("voxelWorld.bowPullStage")
 	local targetKey = stage
@@ -344,10 +359,12 @@ local function updateBowViewmodelStage()
 	end
 
 	-- Skip if already showing this stage
-	if currentBowVMStage == targetKey then return end
+	if currentBowVMStage == targetKey then
+		return
+	end
 
 	-- Hide all
-	for key, part in pairs(bowViewmodelParts) do
+	for _, part in pairs(bowViewmodelParts) do
 		if part and part.Parent then
 			part.Transparency = 1
 		end
@@ -374,10 +391,14 @@ local function buildToolMesh(itemId)
 
 	-- Get item name for model lookup
 	local itemName = ItemRegistry.GetItemName(itemId)
-	if not itemName or itemName == "Unknown" then return nil end
+	if not itemName or itemName == "Unknown" then
+		return nil
+	end
 
 	local mesh = ItemModelLoader.GetModelTemplate(itemName, itemId)
-	if not mesh then return nil end
+	if not mesh then
+		return nil
+	end
 
 	local p = mesh:Clone()
 	p.Name = "ToolVM_" .. itemName
@@ -410,7 +431,9 @@ end
 
 local function buildFlatBlockItem(itemId)
     local def = BlockRegistry.Blocks[itemId]
-    if not def then return nil end
+    if not def then
+    	return nil
+    end
 
     -- Try to use 3D model from Tools folder (unified lookup)
     local itemName = ItemRegistry.GetItemName(itemId)
@@ -449,11 +472,17 @@ local function buildFlatBlockItem(itemId)
     end
 
     -- Fallback: use flat sprite with texture
-    if not def.textures then return nil end
+    if not def.textures then
+    	return nil
+    end
     local textureName = def.textures.all or def.textures.side or def.textures.top or def.textures.lower
-    if not textureName then return nil end
+    if not textureName then
+    	return nil
+    end
     local textureId = TextureManager:GetTextureId(textureName)
-    if not textureId then return nil end
+    if not textureId then
+    	return nil
+    end
     local p = Instance.new("Part")
     p.Name = "ItemCard"
     p.Size = Vector3.new(1.2, 1.2, 0.05)
@@ -617,7 +646,9 @@ end
 
 local function pulseSwing()
 	-- Block if swing is already in progress - must complete before next one
-	if swingTimer > 0 then return false end
+	if swingTimer > 0 then
+		return false
+	end
 	swingTimer = SWING_DURATION
 	return true
 end
@@ -627,9 +658,13 @@ local function connectInputs()
 
 	-- Track mouse down for continuous swinging
 	inputConns[#inputConns+1] = InputService.InputBegan:Connect(function(input, gp)
-		if gp then return end
+		if gp then
+			return
+		end
 		-- Skip swing pulse for bow (charging handled elsewhere)
-		if isBowEquipped() then return end
+		if isBowEquipped() then
+			return
+		end
 		if input.UserInputType == Enum.UserInputType.MouseButton1 then
 			isSwingHeld = true
 			pulseSwing() -- Initial swing
@@ -637,7 +672,7 @@ local function connectInputs()
 	end)
 
 	-- Track mouse up to stop continuous swinging
-	inputConns[#inputConns+1] = InputService.InputEnded:Connect(function(input, gp)
+	inputConns[#inputConns+1] = InputService.InputEnded:Connect(function(input, _gp)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 then
 			isSwingHeld = false
 		end
@@ -645,7 +680,9 @@ local function connectInputs()
 end
 
 local function update(dt)
-	if not currentInstance or not workspace.CurrentCamera then return end
+	if not currentInstance or not workspace.CurrentCamera then
+		return
+	end
 	timeAcc += dt
 	if swingTimer > 0 then
 		swingTimer = math.max(0, swingTimer - dt)
@@ -659,9 +696,9 @@ local function update(dt)
 	local cam = workspace.CurrentCamera
 	local char = player.Character
 	local hum = char and char:FindFirstChildOfClass("Humanoid")
-	local isMoving = false
+	local _isMoving = false
 	if hum then
-		isMoving = hum.MoveDirection.Magnitude > 0.1
+		_isMoving = hum.MoveDirection.Magnitude > 0.1
 	end
 
     -- Normalize swing progress a ∈ [0,1]
@@ -671,7 +708,9 @@ local function update(dt)
     end
 
     local humCamOff = Vector3.new()
-    if hum and hum.CameraOffset then humCamOff = hum.CameraOffset end
+    if hum and hum.CameraOffset then
+    	humCamOff = hum.CameraOffset
+    end
 
     local cf
     if not holdingTool and not holdingItem then
@@ -705,7 +744,9 @@ local function update(dt)
         local b = math.sin(a * 2.718) * 2
         local b2 = math.sin(a * 2.8) * 1.24
         local c = math.sin(-a * 4.7)
-        if c < 0 then c = c * 1.5 end
+        if c < 0 then
+        	c = c * 1.5
+        end
         local d = math.sin((a^(1/3)) * 1.6)
         local pre = CFrame.new(-humCamOff/2.9 * 3)
         -- Lower base Y offset
@@ -720,7 +761,7 @@ local function update(dt)
 
 	-- For bow viewmodel, move all mesh parts (so switching is instant)
 	if isBowViewmodelActive then
-		for key, part in pairs(bowViewmodelParts) do
+		for _, part in pairs(bowViewmodelParts) do
 			if part and part.Parent then
 				part.CFrame = cf
 			end
@@ -757,8 +798,12 @@ function Controller:Initialize()
 end
 
 function Controller:Cleanup()
-	if rsConn then pcall(function() rsConn:Disconnect() end) rsConn = nil end
-	if respawnConn then pcall(function() respawnConn:Disconnect() end) respawnConn = nil end
+	if rsConn then
+		pcall(function() rsConn:Disconnect() end) rsConn = nil
+	end
+	if respawnConn then
+		pcall(function() respawnConn:Disconnect() end) respawnConn = nil
+	end
 	clearConns(camChangedConns)
 	clearConns(inputConns)
 	destroyCurrent()

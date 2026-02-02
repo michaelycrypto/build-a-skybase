@@ -138,7 +138,7 @@ function Randomizable.Methods:SelectMultipleRandom(poolId, count, allowDuplicate
 	local selected = {}
 	local usedItems = {}
 
-	for i = 1, count do
+	for _ = 1, count do
 		local item = self:SelectRandom(poolId, player)
 
 		if item then
@@ -232,7 +232,7 @@ function Randomizable.Methods:RollDice(sides, count, player)
 	assert(type(count) == "number" and count > 0, "Count must be a positive number")
 
 	local total = 0
-	for i = 1, count do
+	for _ = 1, count do
 		total = total + self:RandomRange(1, sides, player)
 	end
 

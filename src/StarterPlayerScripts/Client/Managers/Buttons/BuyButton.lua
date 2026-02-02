@@ -41,9 +41,9 @@ function BuyButton:CreateUI()
 	-- Create border frame
 	self.borderFrame = Instance.new("Frame")
 	self.borderFrame.Name = self.name .. "Border"
-	self.borderFrame.Size = UDim2.new(0, self.width + 4, 0, self.height + 4) -- 2px border on all sides
+	self.borderFrame.Size = UDim2.fromOffset(self.width + 4, self.height + 4) -- 2px border on all sides
 	self.borderFrame.Position = self.position and UDim2.new(self.position.X.Scale, self.position.X.Offset - 2,
-		self.position.Y.Scale, self.position.Y.Offset - 2) or UDim2.new(0, -2, 0, -2)
+		self.position.Y.Scale, self.position.Y.Offset - 2) or UDim2.fromOffset(-2, -2)
 	self.borderFrame.BackgroundColor3 = borderColor
 	self.borderFrame.BorderSizePixel = 0
 	self.borderFrame.Parent = self.parent
@@ -55,8 +55,8 @@ function BuyButton:CreateUI()
 	-- Create main button
 	self.button = Instance.new("TextButton")
 	self.button.Name = self.name
-	self.button.Size = UDim2.new(0, self.width, 0, self.height)
-	self.button.Position = UDim2.new(0, 2, 0, 2) -- Offset by border thickness
+	self.button.Size = UDim2.fromOffset(self.width, self.height)
+	self.button.Position = UDim2.fromOffset(2, 2) -- Offset by border thickness
 	self.button.BackgroundColor3 = buttonColor
 	self.button.BackgroundTransparency = self.enabled and
 		Config.UI_SETTINGS.designSystem.transparency.light or
@@ -73,7 +73,7 @@ function BuyButton:CreateUI()
 	-- Create content container
 	self.contentContainer = Instance.new("Frame")
 	self.contentContainer.Name = "ContentContainer"
-	self.contentContainer.Size = UDim2.new(1, 0, 1, 0)
+	self.contentContainer.Size = UDim2.fromScale(1, 1)
 	self.contentContainer.BackgroundTransparency = 1
 	self.contentContainer.Parent = self.button
 
@@ -89,14 +89,14 @@ function BuyButton:CreateUI()
 	-- Create currency icon
 	self.currencyIcon = IconManager:CreateIcon(self.contentContainer, "Currency",
 		currency == "coins" and "Cash" or "Gem", {
-			size = UDim2.new(0, 25, 0, 20),
+			size = UDim2.fromOffset(25, 20),
 			layoutOrder = 1
 		})
 
 	-- Create amount label
 	self.amountLabel = Instance.new("TextLabel")
 	self.amountLabel.Name = "AmountLabel"
-	self.amountLabel.Size = UDim2.new(0, 0, 0, 1)
+	self.amountLabel.Size = UDim2.fromOffset(0, 1)
 	self.amountLabel.AutomaticSize = Enum.AutomaticSize.X
 	self.amountLabel.BackgroundTransparency = 1
 	self.amountLabel.Text = tostring(amount)
@@ -179,9 +179,7 @@ end
 --]]
 function BuyButton:OnMouseEnter()
 	if self.isAvailable then
-		-- Get current variant colors to determine hover effect
-		local colorConfig = self:GetColorVariant(self.variant)
-
+		-- Determine hover colors based on current variant
 		local hoverBackgroundColor, hoverBorderColor
 
 		-- Determine hover colors based on variant
@@ -316,7 +314,7 @@ function BuyButton:SetCurrency(currency)
 	if self.currencyIcon then
 		IconManager:ApplyIcon(self.currencyIcon, "Currency",
 			currency == "coins" and "Cash" or "Gem", {
-				size = UDim2.new(0, 25, 0, 20)
+				size = UDim2.fromOffset(25, 20)
 			})
 	end
 end

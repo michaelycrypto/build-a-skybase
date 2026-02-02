@@ -8,11 +8,11 @@ local IconManager = {}
 
 local ContentProvider = game:GetService("ContentProvider")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
+local _RunService = game:GetService("RunService")
 
 -- Import dependencies
 local IconMapping = require(ReplicatedStorage.Shared.IconMapping)
-local Logger = require(ReplicatedStorage.Shared.Logger)
+local _Logger = require(ReplicatedStorage.Shared.Logger)
 
 -- State
 local preloadedIcons = {}
@@ -21,37 +21,37 @@ local isPreloading = false
 local preloadProgress = 0
 
 -- Constants
-local ICON_SIZE_CACHE = {}
-local DEFAULT_ICON_SIZE = UDim2.new(0, 32, 0, 32)
-local ICON_COLOR_CACHE = {}
+local _ICON_SIZE_CACHE = {}
+local DEFAULT_ICON_SIZE = UDim2.fromOffset(32, 32)
+local _ICON_COLOR_CACHE = {}
 local DEFAULT_ICON_COLOR = Color3.new(1, 1, 1)
 
 -- Icon Size System - Supporting 64x64 source icons with flexible sizing
 local ICON_SIZES = {
 	-- Pixel-based sizes
-	[12] = UDim2.new(0, 12, 0, 12),
-	[18] = UDim2.new(0, 18, 0, 18),
-	[24] = UDim2.new(0, 24, 0, 24),
-	[36] = UDim2.new(0, 36, 0, 36),
-	[48] = UDim2.new(0, 48, 0, 48),
-	[64] = UDim2.new(0, 64, 0, 64),
+	[12] = UDim2.fromOffset(12, 12),
+	[18] = UDim2.fromOffset(18, 18),
+	[24] = UDim2.fromOffset(24, 24),
+	[36] = UDim2.fromOffset(36, 36),
+	[48] = UDim2.fromOffset(48, 48),
+	[64] = UDim2.fromOffset(64, 64),
 
 	-- Semantic size names
-	xs = UDim2.new(0, 12, 0, 12),   -- Extra Small
-	sm = UDim2.new(0, 18, 0, 18),   -- Small
-	md = UDim2.new(0, 24, 0, 24),   -- Medium (default)
-	lg = UDim2.new(0, 36, 0, 36),   -- Large
-	xl = UDim2.new(0, 48, 0, 48),   -- Extra Large
-	xxl = UDim2.new(0, 64, 0, 64),  -- Extra Extra Large (full resolution)
+	xs = UDim2.fromOffset(12, 12),   -- Extra Small
+	sm = UDim2.fromOffset(18, 18),   -- Small
+	md = UDim2.fromOffset(24, 24),   -- Medium (default)
+	lg = UDim2.fromOffset(36, 36),   -- Large
+	xl = UDim2.fromOffset(48, 48),   -- Extra Large
+	xxl = UDim2.fromOffset(64, 64),  -- Extra Extra Large (full resolution)
 
 	-- Common UI component sizes
-	button = UDim2.new(0, 24, 0, 24),      -- Standard button icons
-	navbar = UDim2.new(0, 20, 0, 20),      -- Navigation bar icons
-	sidebar = UDim2.new(0, 28, 0, 28),     -- Sidebar icons
-	toast = UDim2.new(0, 21, 0, 21),       -- Toast notification icons
-	hud = UDim2.new(0, 16, 0, 16),         -- HUD element icons
-	avatar = UDim2.new(0, 48, 0, 48),      -- Avatar/profile icons
-	hero = UDim2.new(0, 64, 0, 64),        -- Hero/feature icons
+	button = UDim2.fromOffset(24, 24),      -- Standard button icons
+	navbar = UDim2.fromOffset(20, 20),      -- Navigation bar icons
+	sidebar = UDim2.fromOffset(28, 28),     -- Sidebar icons
+	toast = UDim2.fromOffset(21, 21),       -- Toast notification icons
+	hud = UDim2.fromOffset(16, 16),         -- HUD element icons
+	avatar = UDim2.fromOffset(48, 48),      -- Avatar/profile icons
+	hero = UDim2.fromOffset(64, 64),        -- Hero/feature icons
 }
 
 -- Events
@@ -95,7 +95,7 @@ function IconManager:GetSizeFromSpec(size)
 
 	-- If it's a number, create UDim2 from it
 	if typeof(size) == "number" then
-		return UDim2.new(0, size, 0, size)
+		return UDim2.fromOffset(size, size)
 	end
 
 	-- Fallback to medium
@@ -220,7 +220,9 @@ function IconManager:PreloadRegisteredIcons(onProgress, onComplete)
 	if totalIcons == 0 then
 		-- No icons to preload
 		isPreloading = false
-		if onComplete then onComplete(0, 0) end
+		if onComplete then
+			onComplete(0, 0)
+		end
 		AllIconsPreloadedEvent:Fire()
 		return true
 	end
@@ -601,7 +603,7 @@ end
 	IconManager:CreateIcon(parent, "General", "Star", {size = "hero"})    -- 64px for hero elements
 
 	-- UDim2 (for custom sizing)
-	IconManager:CreateIcon(parent, "General", "Star", {size = UDim2.new(0, 32, 0, 32)})
+	IconManager:CreateIcon(parent, "General", "Star", {size = UDim2.fromOffset(32, 32)})
 --]]
 
 return IconManager

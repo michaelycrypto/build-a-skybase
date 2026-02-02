@@ -293,7 +293,9 @@ function WorldInstanceManager:GetStats()
 		worldsUnloaded = self.stats.worldsUnloaded,
 		queuedForUnload = (function()
 			local count = 0
-			for _ in pairs(self.unloadQueue) do count += 1 end
+			for _ in pairs(self.unloadQueue) do
+				count += 1
+			end
 			return count
 		end)()
 	}
@@ -305,7 +307,7 @@ function WorldInstanceManager:Destroy()
 	self:SaveAllWorlds()
 
 	-- Destroy all worlds
-	for worldId, world in pairs(self.activeWorlds) do
+	for _, world in pairs(self.activeWorlds) do
 		world:Destroy()
 	end
 

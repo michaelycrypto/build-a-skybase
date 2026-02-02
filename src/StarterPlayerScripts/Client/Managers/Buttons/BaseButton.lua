@@ -55,7 +55,7 @@ local COLOR_VARIANTS = {
 }
 
 -- Component configurations (shared with UIComponents)
-local COMPONENT_CONFIGS = {
+BaseButton.COMPONENT_CONFIGS = {
 	button = {
 		sizes = {
 			compact = {width = 100, height = 35},
@@ -67,6 +67,7 @@ local COMPONENT_CONFIGS = {
 		borderOffset = 2
 	}
 }
+local COMPONENT_CONFIGS = BaseButton.COMPONENT_CONFIGS
 
 --[[
 	Create a new BaseButton instance
@@ -354,7 +355,7 @@ end
 	Set text stroke color
 	@param color: Color3 - Text stroke color
 --]]
-function BaseButton:SetTextStrokeColor(color)
+function BaseButton:SetTextStrokeColor(_color)
 	-- This will be implemented by subclasses that have text strokes
 end
 

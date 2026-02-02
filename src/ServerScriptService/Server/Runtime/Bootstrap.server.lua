@@ -432,7 +432,9 @@ services:Start()
 
 local function applyMinecraftScale(character)
 	local humanoid = character:FindFirstChildOfClass("Humanoid")
-	if not humanoid then return end
+	if not humanoid then
+		return
+	end
 
 	local scale = GameConfig.CharacterScale
 	local function setOrCreateScale(name, value)
@@ -475,7 +477,7 @@ Players.PlayerAdded:Connect(setupPlayerCharacterScaling)
 
 local firstPlayerHasJoined = false
 local worldReady = false
-local configuredFromTeleport = false
+local _configuredFromTeleport = false
 local configuredWorldId = nil
 local WORLD_READY_TIMEOUT = 30
 
@@ -513,12 +515,12 @@ end
 
 local function dispatchWorldState(status, message, targetPlayer)
 	local payload = buildWorldStatePayload(status, message)
-	if not payload then 
+	if not payload then
 		print("[dispatchWorldState] ⚠️ Payload is nil!")
-		return 
+		return
 	end
 
-	print("[dispatchWorldState] 📤 Sending WorldStateChanged:", 
+	print("[dispatchWorldState] 📤 Sending WorldStateChanged:",
 		"status=" .. tostring(payload.status),
 		"isReady=" .. tostring(payload.isReady),
 		"to=" .. (targetPlayer and targetPlayer.Name or "ALL"))
@@ -535,6 +537,9 @@ local function dispatchWorldState(status, message, targetPlayer)
 		serverType = SERVER_ROLE
 	})
 end
+
+-- Track connections per player across hub and world logic
+local worldPlayerCharConnections = {}
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- HUB SERVER INITIALIZATION
@@ -553,8 +558,10 @@ if IS_HUB then
 	end
 
 	-- Anchor character to prevent falling through unloaded chunks
-	local function anchorHubCharacter(character)
-		if not character then return end
+	local function _anchorHubCharacter(character)
+		if not character then
+			return
+		end
 		local hrp = character:FindFirstChild("HumanoidRootPart")
 		if hrp then
 			hrp.Anchored = true
@@ -562,7 +569,9 @@ if IS_HUB then
 	end
 
 	local function unanchorHubCharacter(character)
-		if not character then return end
+		if not character then
+			return
+		end
 		local hrp = character:FindFirstChild("HumanoidRootPart")
 		if hrp then
 			hrp.Anchored = false
@@ -572,11 +581,13 @@ if IS_HUB then
 	-- Track players waiting for loading complete
 	local hubPlayersLoading = {}
 	local hubPlayerCharConnections = {} -- CharacterAdded connections per player
-	
+
 	-- Get spawn position for hub (cached after first call)
 	local hubSpawnPosition = nil
 	local function getHubSpawnPosition()
-		if hubSpawnPosition then return hubSpawnPosition end
+		if hubSpawnPosition then
+			return hubSpawnPosition
+		end
 		if voxelWorldService and voxelWorldService._getCurrentSpawnPosition then
 			hubSpawnPosition = voxelWorldService:_getCurrentSpawnPosition()
 		else
@@ -584,7 +595,7 @@ if IS_HUB then
 		end
 		return hubSpawnPosition
 	end
-	
+
 	local function addHubPlayer(player)
 		-- Wait for world to be ready before spawning character
 		if not voxelWorldService:IsWorldReady() then
@@ -600,13 +611,13 @@ if IS_HUB then
 				return
 			end
 		end
-		
+
 		-- Mark player as loading
 		hubPlayersLoading[player.UserId] = true
-		
+
 		-- Get spawn position
 		local spawnPos = getHubSpawnPosition()
-		
+
 		-- Set up CharacterAdded handler BEFORE LoadCharacter
 		-- This handles both initial spawn and respawns
 		hubPlayerCharConnections[player.UserId] = player.CharacterAdded:Connect(function(char)
@@ -620,10 +631,10 @@ if IS_HUB then
 				end
 			end
 		end)
-		
+
 		-- Spawn the character (CharacterAutoLoads is false)
 		player:LoadCharacter()
-		
+
 		-- Wait for character to exist
 		local character = player.Character or player.CharacterAdded:Wait()
 		local hrp = character:WaitForChild("HumanoidRootPart", 5)
@@ -631,27 +642,27 @@ if IS_HUB then
 			hrp.CFrame = CFrame.new(spawnPos)
 			hrp.Anchored = true
 		end
-		
+
 		-- Load player data from DataStore
 		if playerService then
 			playerService:OnPlayerAdded(player)
 		end
-		
+
 		-- Initialize armor slots
 		if armorEquipService and armorEquipService.OnPlayerAdded then
 			armorEquipService:OnPlayerAdded(player)
 		end
-		
+
 		-- Register player with VoxelWorldService (starts chunk streaming)
 		voxelWorldService:OnPlayerAdded(player)
 		-- NOTE: WorldStateChanged is sent when ClientReady is received (not here)
 		-- This prevents race condition where server fires event before client is listening
-		
+
 		-- Track tutorial progress: entered hub (for use_portal step)
 		if tutorialService and tutorialService.TrackProgress then
 			tutorialService:TrackProgress(player, "enter_world", { worldType = "hub" })
 		end
-		
+
 		-- Send tutorial data to client (for hub-specific steps)
 		if tutorialService and tutorialService.SendTutorialData then
 			task.delay(0.5, function()
@@ -662,7 +673,7 @@ if IS_HUB then
 		if hubPoolService then
 			hubPoolService:UpdatePlayerCount(#Players:GetPlayers())
 		end
-		
+
 		-- Fallback timeout: unanchor after 10 seconds
 		task.delay(10, function()
 			if hubPlayersLoading[player.UserId] then
@@ -674,7 +685,7 @@ if IS_HUB then
 			end
 		end)
 	end
-	
+
 	-- Client signals loading complete
 	EventManager:RegisterEvent("ClientLoadingComplete", function(eventPlayer)
 		if hubPlayersLoading[eventPlayer.UserId] then
@@ -714,7 +725,7 @@ if IS_HUB then
 			hubPlayerCharConnections[plr.UserId]:Disconnect()
 			hubPlayerCharConnections[plr.UserId] = nil
 		end
-		
+
 		-- Save and cleanup player data
 		if playerService then
 			playerService:OnPlayerRemoving(plr)
@@ -724,12 +735,12 @@ if IS_HUB then
 		end
 		craftingService:OnPlayerRemoving(plr)
 		voxelWorldService:OnPlayerRemoved(plr)
-		
+
 		-- Clear tutorial cache
 		if tutorialService and tutorialService.ClearPlayerCache then
 			tutorialService:ClearPlayerCache(plr)
 		end
-		
+
 		if hubPoolService then
 			hubPoolService:UpdatePlayerCount(#Players:GetPlayers() - 1)
 		end
@@ -755,7 +766,7 @@ if IS_HUB then
 
 	game:BindToClose(function()
 		dispatchWorldState("shutting_down", "hub_shutdown")
-		
+
 		-- Save all player data before shutdown
 		logger.Info("Saving all player data...")
 		for _, player in pairs(Players:GetPlayers()) do
@@ -763,7 +774,7 @@ if IS_HUB then
 				playerService:SavePlayerData(player)
 			end
 		end
-		
+
 		if hubPoolService then
 			hubPoolService:UnregisterHub()
 		end
@@ -814,7 +825,9 @@ local function ensureGroup(name)
 		end
 	end)
 	for _, g in ipairs(groups) do
-		if g.name == name then return end
+		if g.name == name then
+			return
+		end
 	end
 	pcall(function()
 		if PhysicsService.RegisterCollisionGroup then
@@ -834,7 +847,9 @@ pcall(function()
 end)
 
 local function setCharGroup(char)
-	if not char then return end
+	if not char then
+		return
+	end
 	for _, d in ipairs(char:GetDescendants()) do
 		if d:IsA("BasePart") then
 			pcall(function() d.CollisionGroup = "Character" end)
@@ -936,7 +951,7 @@ local function configureOwnerIfNeeded(ctx)
 	end
 
 	worldOwnershipService:LoadWorldData()
-	configuredFromTeleport = true
+	_configuredFromTeleport = true
 	configuredWorldId = ctx.worldId
 
 	if activeWorldRegistryService then
@@ -1006,8 +1021,10 @@ EventManager:RegisterEventHandler("ClientReady", function(eventPlayer)
 end)
 
 -- Anchor character to prevent falling through unloaded world
-local function anchorCharacter(character)
-	if not character then return end
+local function _anchorCharacter(character)
+	if not character then
+		return
+	end
 	local hrp = character:FindFirstChild("HumanoidRootPart")
 	if hrp then
 		hrp.Anchored = true
@@ -1015,7 +1032,9 @@ local function anchorCharacter(character)
 end
 
 local function unanchorCharacter(character)
-	if not character then return end
+	if not character then
+		return
+	end
 	local hrp = character:FindFirstChild("HumanoidRootPart")
 	if hrp then
 		hrp.Anchored = false
@@ -1082,10 +1101,10 @@ local function handlePlayerJoin(player, isExisting)
 
 	-- Mark player as loading
 	worldPlayersLoading[player.UserId] = true
-	
+
 	-- Get spawn position from voxel world
 	local spawnPos = voxelWorldService:_getCurrentSpawnPosition()
-	
+
 	-- Set up CharacterAdded handler BEFORE LoadCharacter
 	-- This handles both initial spawn and respawns
 	local respawnConnection
@@ -1100,14 +1119,13 @@ local function handlePlayerJoin(player, isExisting)
 			end
 		end
 	end)
-	
+
 	-- Store connection for cleanup
-	worldPlayerCharConnections = worldPlayerCharConnections or {}
 	worldPlayerCharConnections[player.UserId] = respawnConnection
-	
+
 	-- Spawn the character (CharacterAutoLoads is false)
 	player:LoadCharacter()
-	
+
 	-- Wait for character to exist and position it
 	local character = player.Character or player.CharacterAdded:Wait()
 	local hrp = character:WaitForChild("HumanoidRootPart", 5)
@@ -1118,17 +1136,17 @@ local function handlePlayerJoin(player, isExisting)
 
 	-- NOTE: WorldStateChanged is sent when ClientReady is received (not here)
 	-- This prevents race condition where server fires event before client is listening
-	
+
 	-- Load player data from DataStore (includes inventory)
 	if playerService then
 		playerService:OnPlayerAdded(player)
 	end
-	
+
 	-- Initialize armor slots for player
 	if armorEquipService and armorEquipService.OnPlayerAdded then
 		armorEquipService:OnPlayerAdded(player)
 	end
-	
+
 	-- Register player with VoxelWorldService (starts chunk streaming)
 	voxelWorldService:OnPlayerAdded(player)
 
@@ -1140,12 +1158,12 @@ local function handlePlayerJoin(player, isExisting)
 			unanchorCharacter(player.Character)
 		end
 	end)
-	
+
 	-- Track tutorial progress: entered player world (for return_home step)
 	if tutorialService and tutorialService.TrackProgress then
 		tutorialService:TrackProgress(player, "enter_world", { worldType = "player" })
 	end
-	
+
 	-- Send tutorial data to client
 	if tutorialService and tutorialService.SendTutorialData then
 		task.delay(0.5, function()
@@ -1166,7 +1184,7 @@ Players.PlayerRemoving:Connect(function(player)
 
 	-- Clear loading state
 	worldPlayersLoading[player.UserId] = nil
-	
+
 	-- Clean up CharacterAdded connection
 	if worldPlayerCharConnections and worldPlayerCharConnections[player.UserId] then
 		worldPlayerCharConnections[player.UserId]:Disconnect()
@@ -1183,7 +1201,7 @@ Players.PlayerRemoving:Connect(function(player)
 	if playerService then
 		playerService:OnPlayerRemoving(player)
 	end
-	
+
 	-- Service cleanup
 	if chestStorageService then
 		chestStorageService:OnPlayerRemoved(player)

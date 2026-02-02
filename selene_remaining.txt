@@ -1,0 +1,670 @@
+src/ReplicatedStorage/Shared/VoxelWorld/Storage/ChunkPersistence.lua:11:7: warning[unused_variable]: Config is assigned a value, but never used
+src/ReplicatedStorage/Shared/VoxelWorld/Storage/ChunkPersistence.lua:92:7: warning[unused_variable]: i is assigned a value, but never used
+src/ReplicatedStorage/Shared/VoxelWorld/Generation/SchematicWorldGenerator.lua:109:32: warning[unused_variable]: baseName is defined, but never used
+src/ReplicatedStorage/Shared/VoxelWorld/World/BlockBatcher.lua:107:6: warning[unused_variable]: chunkKey is assigned a value, but never used
+src/ReplicatedStorage/Shared/Pathfinding/AdvancedPathfinding.lua:146:11: warning[unused_variable]: v is assigned a value, but never used
+src/ReplicatedStorage/Shared/Pathfinding/AdvancedPathfinding.lua:207:40: warning[unused_variable]: x is defined, but never used
+src/ReplicatedStorage/Shared/Pathfinding/AdvancedPathfinding.lua:207:43: warning[unused_variable]: y is defined, but never used
+src/ReplicatedStorage/Shared/Pathfinding/AdvancedPathfinding.lua:207:46: warning[unused_variable]: z is defined, but never used
+src/ReplicatedStorage/Shared/Pathfinding/AdvancedPathfinding.lua:343:8: warning[unused_variable]: worldX is assigned a value, but never used
+src/ReplicatedStorage/Shared/Pathfinding/AdvancedPathfinding.lua:344:8: warning[unused_variable]: worldZ is assigned a value, but never used
+src/ReplicatedStorage/Shared/Pathfinding/AdvancedPathfinding.lua:345:8: warning[unused_variable]: worldY is assigned a value, but never used
+src/ReplicatedStorage/Shared/Pathfinding/AdvancedPathfinding.lua:521:46: warning[unused_variable]: climbingUp is defined, but never used
+src/ReplicatedStorage/Shared/Pathfinding/AdvancedPathfinding.lua:547:33: warning[unused_variable]: blockId is defined, but never used
+src/ReplicatedStorage/Shared/Pathfinding/AdvancedPathfinding.lua:548:8: warning[shadowing]: shadowing variable `Constants`
+src/ReplicatedStorage/Shared/Pathfinding/AdvancedPathfinding.lua:548:8: warning[unused_variable]: Constants is assigned a value, but never used
+src/ReplicatedStorage/Shared/Pathfinding/AdvancedPathfinding.lua:553:37: warning[unused_variable]: x is defined, but never used
+src/ReplicatedStorage/Shared/Pathfinding/AdvancedPathfinding.lua:553:40: warning[unused_variable]: y is defined, but never used
+src/ReplicatedStorage/Shared/Pathfinding/AdvancedPathfinding.lua:553:43: warning[unused_variable]: z is defined, but never used
+src/ReplicatedStorage/Shared/Pathfinding/AdvancedPathfinding.lua:874:8: warning[shadowing]: shadowing variable `Constants`
+src/ReplicatedStorage/Shared/VoxelWorld/Rendering/BlockViewportCreator.lua:10:7: warning[unused_variable]: Constants is assigned a value, but never used
+src/ReplicatedStorage/Shared/VoxelWorld/Rendering/BlockViewportCreator.lua:30:21: warning[unused_variable]: bboxSize is defined, but never used
+src/ReplicatedStorage/Shared/VoxelWorld/Rendering/BlockViewportCreator.lua:241:9: warning[unused_variable]: postL is assigned a value, but never used
+src/ReplicatedStorage/Shared/VoxelWorld/Rendering/BlockViewportCreator.lua:242:9: warning[unused_variable]: postR is assigned a value, but never used
+src/ReplicatedStorage/Shared/VoxelWorld/Rendering/BlockViewportCreator.lua:277:9: warning[unused_variable]: rail2 is assigned a value, but never used
+src/ReplicatedStorage/Shared/VoxelWorld/World/BlockProperties.lua:629:11: warning[unused_variable]: currentTier is assigned a value, but never used
+src/ReplicatedStorage/Shared/VoxelWorld/World/BlockProperties.lua:630:11: warning[unused_variable]: requiredTier is assigned a value, but never used
+src/ReplicatedStorage/Shared/VoxelWorld/World/ChunkManager.lua:41:6: warning[unused_variable]: i is assigned a value, but never used
+src/ReplicatedStorage/Shared/VoxelWorld/World/Persistence/WorldDataStore.lua:9:7: warning[unused_variable]: HttpService is assigned a value, but never used
+src/ReplicatedStorage/Shared/VoxelWorld/World/Persistence/WorldDataStore.lua:177:45: warning[unused_variable]: worldId is defined, but never used
+src/ReplicatedStorage/Shared/VoxelWorld/World/Persistence/WorldDataStore.lua:185:47: warning[unused_variable]: worldId is defined, but never used
+src/ReplicatedStorage/Shared/VoxelWorld/World/Persistence/WorldDataStore.lua:281:42: warning[unused_variable]: limit is defined, but never used
+src/ReplicatedStorage/Shared/VoxelWorld/World/WaterDetector.lua:26:7: warning[unused_variable]: FLOWING_WATER is assigned a value, but never used
+src/ReplicatedStorage/Shared/VoxelWorld/World/WaterDetector.lua:29:7: warning[unused_variable]: CHARACTER_HEIGHT is assigned a value, but never used
+src/ReplicatedStorage/Shared/VoxelWorld/World/WaterDetector.lua:32:7: warning[unused_variable]: TORSO_OFFSET is assigned a value, but never used
+src/ReplicatedStorage/Shared/VoxelWorld/World/World.lua:7:7: warning[unused_variable]: Chunk is assigned a value, but never used
+src/ReplicatedStorage/Shared/VoxelWorld/World/WorldInstanceManager.lua:310:6: warning[unused_variable]: worldId is assigned a value, but never used
+src/ReplicatedStorage/Shared/VoxelWorld/init.lua:15:7: warning[unused_variable]: BlockRegistry is assigned a value, but never used
+src/ReplicatedStorage/Shared/VoxelWorld/init.lua:16:7: warning[unused_variable]: Constants is assigned a value, but never used
+src/ReplicatedStorage/Shared/VoxelWorld/init.lua:17:7: warning[unused_variable]: Config is assigned a value, but never used
+src/ServerScriptService/Server/Mixins/Cooldownable.lua:233:6: warning[unused_variable]: cooldownKey is assigned a value, but never used
+src/ServerScriptService/Server/Importers/SchematicImporter.lua:24:7: warning[unused_variable]: RunService is assigned a value, but never used
+src/ServerScriptService/Server/Importers/SchematicImporter.lua:170:32: warning[unused_variable]: baseName is defined, but never used
+src/ServerScriptService/Server/Mixins/Randomizable.lua:141:6: warning[unused_variable]: i is assigned a value, but never used
+src/ServerScriptService/Server/Mixins/Randomizable.lua:235:6: warning[unused_variable]: i is assigned a value, but never used
+src/ServerScriptService/Server/Services/ActiveWorldRegistryService.lua:184:53: warning[unused_variable]: force is defined, but never used
+src/ServerScriptService/Server/Services/ArmorEquipService.lua:242:8: warning[unused_variable]: cursorCount is assigned a value, but never used
+src/ReplicatedStorage/Shared/VoxelWorld/World/BlockAPI.lua:249:36: warning[unused_variable]: ROT_W is assigned a value, but never used
+src/ReplicatedStorage/Shared/VoxelWorld/World/BlockAPI.lua:404:80: warning[unused_variable]: metadata is defined, but never used
+src/ReplicatedStorage/Shared/VoxelWorld/World/BlockAPI.lua:472:75: warning[unused_variable]: metadata is defined, but never used
+src/ReplicatedStorage/Shared/VoxelWorld/World/BlockAPI.lua:541:19: warning[unused_variable]: length is defined, but never used
+src/ServerScriptService/Server/Services/CropService.lua:76:35: warning[multiple_statements]: only one statement per line is allowed
+src/ServerScriptService/Server/Services/CropService.lua:90:20: warning[multiple_statements]: only one statement per line is allowed
+src/ServerScriptService/Server/Services/CropService.lua:90:36: warning[multiple_statements]: only one statement per line is allowed
+src/ServerScriptService/Server/Services/CropService.lua:136:58: warning[unused_variable]: newMetadata is defined, but never used
+src/ServerScriptService/Server/Services/CropService.lua:214:19: warning[multiple_statements]: only one statement per line is allowed
+src/ServerScriptService/Server/Services/CropService.lua:214:35: warning[multiple_statements]: only one statement per line is allowed
+src/ServerScriptService/Server/Services/BowService.lua:356:23: warning[multiple_statements]: only one statement per line is allowed
+src/ServerScriptService/Server/Services/BowService.lua:371:21: warning[multiple_statements]: only one statement per line is allowed
+src/ServerScriptService/Server/Services/DamageService.lua:85:44: warning[unused_variable]: newHealth is defined, but never used
+src/ServerScriptService/Server/Services/DamageService.lua:280:34: warning[unused_variable]: mob is defined, but never used
+src/ServerScriptService/Server/Services/DamageService.lua:280:58: warning[unused_variable]: attacker is defined, but never used
+src/ServerScriptService/Server/Services/DroppedItemService.lua:23:7: warning[unused_variable]: PICKUP_DISTANCE is assigned a value, but never used
+src/ServerScriptService/Server/Services/DroppedItemService.lua:24:7: warning[unused_variable]: PICKUP_COOLDOWN is assigned a value, but never used
+src/ServerScriptService/Server/Services/DroppedItemService.lua:319:11: warning[unused_variable]: lastPickup is assigned a value, but never used
+src/ServerScriptService/Server/Services/FoodService.lua:295:49: warning[unused_variable]: data is defined, but never used
+src/ReplicatedStorage/Shared/EventManager.lua:204:23: warning[unused_variable]: rewardData is defined, but never used
+src/ReplicatedStorage/Shared/EventManager.lua:211:23: warning[unused_variable]: rewardData is defined, but never used
+src/ReplicatedStorage/Shared/EventManager.lua:218:23: warning[unused_variable]: errorData is defined, but never used
+src/ReplicatedStorage/Shared/EventManager.lua:1125:11: warning[unused_variable]: ok is assigned a value, but never used
+src/ServerScriptService/Server/Services/PlayerDataStoreService.lua:591:6: warning[unused_variable]: userId is assigned a value, but never used
+src/ServerScriptService/Server/Services/PlayerDataStoreService.lua:613:52: warning[unused_variable]: player is defined, but never used
+src/ServerScriptService/Server/Services/PlayerDataStoreService.lua:663:57: warning[unused_variable]: fromVersion is defined, but never used
+src/ServerScriptService/Server/Services/PlayerDataStoreService.lua:663:78: warning[unused_variable]: toVersion is defined, but never used
+src/ServerScriptService/Server/Services/PlayerDataStoreService.lua:684:8: warning[unused_variable]: userId is assigned a value, but never used
+src/ServerScriptService/Server/Services/NPCService.lua:433:43: warning[unused_variable]: player is defined, but never used
+src/ReplicatedStorage/Shared/Mobs/MinecraftBoneTranslator.lua:98:75: warning[unused_variable]: parentBone is defined, but never used
+src/ReplicatedStorage/Shared/Mobs/MinecraftBoneTranslator.lua:119:8: warning[unused_variable]: shearedGeometry is assigned a value, but never used
+src/ReplicatedStorage/Shared/Mobs/MinecraftBoneTranslator.lua:245:24: warning[unused_variable]: rotCFrame is defined, but never used
+src/ReplicatedStorage/Shared/Mobs/MinecraftBoneTranslator.lua:281:17: warning[shadowing]: shadowing variable `px`
+src/ReplicatedStorage/Shared/Mobs/MinecraftBoneTranslator.lua:281:23: warning[multiple_statements]: only one statement per line is allowed
+src/ServerScriptService/Server/Services/QuestService.lua:155:10: warning[unused_variable]: milestone is assigned a value, but never used
+src/ServerScriptService/Server/Services/QuestService.lua:350:9: warning[shadowing]: shadowing variable `claimData`
+src/ReplicatedStorage/Shared/VoxelWorld/Rendering/GreedyMesher.lua:10:7: warning[unused_variable]: Config is assigned a value, but never used
+src/ReplicatedStorage/Shared/VoxelWorld/Rendering/GreedyMesher.lua:35:7: warning[unused_variable]: SEAM_EPS is assigned a value, but never used
+src/ReplicatedStorage/Shared/VoxelWorld/Rendering/GreedyMesher.lua:37:7: warning[unused_variable]: INSET is assigned a value, but never used
+src/ReplicatedStorage/Shared/VoxelWorld/Rendering/GreedyMesher.lua:44:36: warning[unused_variable]: blockId is defined, but never used
+src/ReplicatedStorage/Shared/VoxelWorld/Rendering/GreedyMesher.lua:261:18: warning[multiple_statements]: only one statement per line is allowed
+src/ReplicatedStorage/Shared/VoxelWorld/Rendering/GreedyMesher.lua:273:18: warning[multiple_statements]: only one statement per line is allowed
+src/ReplicatedStorage/Shared/VoxelWorld/Rendering/GreedyMesher.lua:285:18: warning[multiple_statements]: only one statement per line is allowed
+src/ReplicatedStorage/Shared/VoxelWorld/Rendering/GreedyMesher.lua:297:18: warning[multiple_statements]: only one statement per line is allowed
+src/ReplicatedStorage/Shared/VoxelWorld/Rendering/GreedyMesher.lua:462:9: warning[unused_variable]: faceIndex is assigned a value, but never used
+src/ReplicatedStorage/Shared/VoxelWorld/Rendering/GreedyMesher.lua:483:9: warning[shadowing]: shadowing variable `w`
+src/ReplicatedStorage/Shared/VoxelWorld/Rendering/GreedyMesher.lua:487:34: warning[multiple_statements]: only one statement per line is allowed
+src/ReplicatedStorage/Shared/VoxelWorld/Rendering/GreedyMesher.lua:487:45: warning[multiple_statements]: only one statement per line is allowed
+src/ReplicatedStorage/Shared/VoxelWorld/Rendering/GreedyMesher.lua:490:34: warning[multiple_statements]: only one statement per line is allowed
+src/ReplicatedStorage/Shared/VoxelWorld/Rendering/GreedyMesher.lua:490:45: warning[multiple_statements]: only one statement per line is allowed
+src/ReplicatedStorage/Shared/VoxelWorld/Rendering/GreedyMesher.lua:493:37: warning[multiple_statements]: only one statement per line is allowed
+src/ReplicatedStorage/Shared/VoxelWorld/Rendering/GreedyMesher.lua:493:48: warning[multiple_statements]: only one statement per line is allowed
+src/ReplicatedStorage/Shared/VoxelWorld/Rendering/GreedyMesher.lua:505:9: warning[shadowing]: shadowing variable `w`
+src/ReplicatedStorage/Shared/VoxelWorld/Rendering/GreedyMesher.lua:510:35: warning[multiple_statements]: only one statement per line is allowed
+src/ReplicatedStorage/Shared/VoxelWorld/Rendering/GreedyMesher.lua:510:46: warning[multiple_statements]: only one statement per line is allowed
+src/ReplicatedStorage/Shared/VoxelWorld/Rendering/GreedyMesher.lua:513:35: warning[multiple_statements]: only one statement per line is allowed
+src/ReplicatedStorage/Shared/VoxelWorld/Rendering/GreedyMesher.lua:513:46: warning[multiple_statements]: only one statement per line is allowed
+src/ReplicatedStorage/Shared/VoxelWorld/Rendering/GreedyMesher.lua:516:38: warning[multiple_statements]: only one statement per line is allowed
+src/ReplicatedStorage/Shared/VoxelWorld/Rendering/GreedyMesher.lua:516:49: warning[multiple_statements]: only one statement per line is allowed
+src/ReplicatedStorage/Shared/VoxelWorld/Rendering/GreedyMesher.lua:695:35: warning[shadowing]: shadowing variable `bs`
+src/ReplicatedStorage/Shared/VoxelWorld/Rendering/GreedyMesher.lua:697:35: warning[shadowing]: shadowing variable `sizeX`
+src/ReplicatedStorage/Shared/VoxelWorld/Rendering/GreedyMesher.lua:698:35: warning[shadowing]: shadowing variable `sizeY`
+src/ReplicatedStorage/Shared/VoxelWorld/Rendering/GreedyMesher.lua:699:35: warning[shadowing]: shadowing variable `sizeZ`
+src/ServerScriptService/Server/Services/ShopService.lua:12:7: warning[unused_variable]: Config is assigned a value, but never used
+src/ServerScriptService/Server/Services/ShopService.lua:319:6: warning[unused_variable]: i is assigned a value, but never used
+src/ServerScriptService/Server/Services/ShopService.lua:417:47: warning[unused_variable]: rarity is defined, but never used
+src/ServerScriptService/Server/Services/ShopService.lua:469:44: warning[multiple_statements]: only one statement per line is allowed
+src/ServerScriptService/Server/Services/ShopService.lua:478:43: warning[multiple_statements]: only one statement per line is allowed
+src/ServerScriptService/Server/Services/TutorialService.lua:13:7: warning[unused_variable]: GameConfig is assigned a value, but never used
+src/ServerScriptService/Server/Services/TutorialService.lua:599:9: warning[unused_variable]: count is assigned a value, but never used
+src/ServerScriptService/Server/Services/TutorialService.lua:628:9: warning[unused_variable]: count is assigned a value, but never used
+src/ServerScriptService/Server/Services/TutorialService.lua:836:8: warning[unused_variable]: userId is assigned a value, but never used
+src/ServerScriptService/Server/Services/SmeltingService.lua:15:7: warning[unused_variable]: Players is assigned a value, but never used
+src/ServerScriptService/Server/Services/SmeltingService.lua:404:52: warning[unused_variable]: data is defined, but never used
+src/ServerScriptService/Server/Services/SmeltingService.lua:579:46: warning[unused_variable]: player is defined, but never used
+src/ServerScriptService/Server/Services/WorldOwnershipService.lua:190:9: warning[shadowing]: shadowing variable `Players`
+src/ServerScriptService/Server/Services/HungerService.lua:151:6: warning[unused_variable]: player is assigned a value, but never used
+src/ServerScriptService/Server/Services/HungerService.lua:656:54: warning[unused_variable]: oldState is defined, but never used
+src/ServerScriptService/Server/Services/WaterService.lua:415:6: warning[unused_variable]: k is assigned a value, but never used
+src/ServerScriptService/Server/Services/WaterService.lua:415:33: warning[multiple_statements]: only one statement per line is allowed
+src/ServerScriptService/Server/Services/WaterService.lua:421:6: warning[unused_variable]: k is assigned a value, but never used
+src/ServerScriptService/Server/Services/WaterService.lua:428:6: warning[unused_variable]: k is assigned a value, but never used
+src/ServerScriptService/Server/Services/WaterService.lua:848:31: warning[multiple_statements]: only one statement per line is allowed
+src/ServerScriptService/Server/Services/WaterService.lua:849:32: warning[multiple_statements]: only one statement per line is allowed
+src/ServerScriptService/Server/Services/WaterService.lua:863:48: warning[multiple_statements]: only one statement per line is allowed
+src/StarterPlayerScripts/Client/Controllers/ArmorVisualController.lua:16:7: warning[unused_variable]: ArmorConfig is assigned a value, but never used
+src/StarterPlayerScripts/Client/Controllers/ArmorVisualController.lua:260:42: warning[multiple_statements]: only one statement per line is allowed
+src/ServerScriptService/Server/Services/PlayerInventoryService.lua:8:7: warning[unused_variable]: Players is assigned a value, but never used
+src/ServerScriptService/Server/Services/PlayerInventoryService.lua:17:7: warning[unused_variable]: Constants is assigned a value, but never used
+src/ServerScriptService/Server/Services/PlayerInventoryService.lua:641:36: warning[multiple_statements]: only one statement per line is allowed
+src/ServerScriptService/Server/Services/PlayerInventoryService.lua:642:39: warning[multiple_statements]: only one statement per line is allowed
+src/ServerScriptService/Server/Services/PlayerInventoryService.lua:781:13: warning[unused_variable]: i is assigned a value, but never used
+src/ServerScriptService/Server/Services/PlayerInventoryService.lua:789:13: warning[unused_variable]: i is assigned a value, but never used
+src/StarterPlayerScripts/Client/Controllers/CombatController.lua:13:7: warning[unused_variable]: BlockProperties is assigned a value, but never used
+src/StarterPlayerScripts/Client/Controllers/CombatController.lua:14:7: warning[unused_variable]: ToolConfig is assigned a value, but never used
+src/StarterPlayerScripts/Client/Controllers/CombatController.lua:71:28: warning[deprecated]: standard library expression `Enum.RaycastFilterType.Blacklist` is deprecated
+src/StarterPlayerScripts/Client/Controllers/CombatController.lua:103:25: warning[deprecated]: standard library expression `Enum.RaycastFilterType.Blacklist` is deprecated
+src/StarterPlayerScripts/Client/Controllers/CombatController.lua:131:53: warning[unused_variable]: gpe is defined, but never used
+src/ServerScriptService/Server/Services/ChestStorageService.lua:112:8: warning[unused_variable]: key is assigned a value, but never used
+src/ServerScriptService/Server/Services/ChestStorageService.lua:1039:6: warning[unused_variable]: key is assigned a value, but never used
+src/StarterPlayerScripts/Client/Controllers/FoodController.lua:9:7: warning[unused_variable]: UserInputService is assigned a value, but never used
+src/StarterPlayerScripts/Client/Controllers/FoodController.lua:27:7: warning[unused_variable]: cooldownEndTime is assigned a value, but never used
+src/StarterPlayerScripts/Client/Controllers/FoodController.lua:212:44: warning[unused_variable]: data is defined, but never used
+src/StarterPlayerScripts/Client/Controllers/MobReplicationController.lua:165:16: warning[unused_variable]: angleLerpDeg is defined, but never used
+src/StarterPlayerScripts/Client/Controllers/MobReplicationController.lua:337:24: warning[multiple_statements]: only one statement per line is allowed
+src/StarterPlayerScripts/Client/Controllers/MobileControlController.lua:314:69: warning[unused_variable]: deltaTime is defined, but never used
+src/StarterPlayerScripts/Client/Controllers/NPCController.lua:19:20: warning[multiple_statements]: only one statement per line is allowed
+src/ServerScriptService/Server/Runtime/Bootstrap.server.lua:480:7: warning[unused_variable]: configuredFromTeleport is assigned a value, but never used
+src/ServerScriptService/Server/Runtime/Bootstrap.server.lua:561:17: warning[unused_variable]: anchorHubCharacter is defined, but never used
+src/ServerScriptService/Server/Runtime/Bootstrap.server.lua:855:21: warning[multiple_statements]: only one statement per line is allowed
+src/ServerScriptService/Server/Runtime/Bootstrap.server.lua:860:21: warning[multiple_statements]: only one statement per line is allowed
+src/ServerScriptService/Server/Runtime/Bootstrap.server.lua:1024:16: warning[unused_variable]: anchorCharacter is defined, but never used
+src/StarterPlayerScripts/Client/Controllers/SprintController.lua:145:50: warning[unused_variable]: gameProcessed is defined, but never used
+src/StarterPlayerScripts/Client/Controllers/ToolAnimationController.lua:116:20: warning[multiple_statements]: only one statement per line is allowed
+src/StarterPlayerScripts/Client/Controllers/ToolAnimationController.lua:150:50: warning[unused_variable]: gameProcessed is defined, but never used
+src/StarterPlayerScripts/Client/Controllers/ToolAnimationController.lua:206:21: warning[multiple_statements]: only one statement per line is allowed
+src/StarterPlayerScripts/Client/Controllers/SwimmingController.lua:21:7: warning[unused_variable]: UserInputService is assigned a value, but never used
+src/StarterPlayerScripts/Client/Controllers/SwimmingController.lua:31:7: warning[unused_variable]: Constants is assigned a value, but never used
+src/StarterPlayerScripts/Client/Controllers/SwimmingController.lua:93:7: warning[unused_variable]: fogTransitionTween is assigned a value, but never used
+src/StarterPlayerScripts/Client/Controllers/SwimmingController.lua:201:38: warning[unused_variable]: dt is defined, but never used
+src/StarterPlayerScripts/Client/Controllers/SwimmingController.lua:369:36: warning[unused_variable]: gameProcessed is defined, but never used
+src/StarterPlayerScripts/Client/Controllers/ToolVisualController.lua:12:7: warning[unused_variable]: ToolConfig is assigned a value, but never used
+src/StarterPlayerScripts/Client/Controllers/ToolVisualController.lua:13:7: warning[unused_variable]: BlockProperties is assigned a value, but never used
+src/StarterPlayerScripts/Client/Controllers/ToolVisualController.lua:98:25: warning[multiple_statements]: only one statement per line is allowed
+src/StarterPlayerScripts/Client/Controllers/WorldManagementController.lua:11:7: warning[unused_variable]: Constants is assigned a value, but never used
+src/StarterPlayerScripts/Client/Controllers/ViewmodelController.lua:53:6: warning[unused_variable]: key is assigned a value, but never used
+src/StarterPlayerScripts/Client/Controllers/ViewmodelController.lua:77:21: warning[multiple_statements]: only one statement per line is allowed
+src/StarterPlayerScripts/Client/Controllers/ViewmodelController.lua:335:6: warning[unused_variable]: key is assigned a value, but never used
+src/StarterPlayerScripts/Client/Controllers/ViewmodelController.lua:367:6: warning[unused_variable]: key is assigned a value, but never used
+src/StarterPlayerScripts/Client/Controllers/ViewmodelController.lua:675:78: warning[unused_variable]: gp is defined, but never used
+src/StarterPlayerScripts/Client/Controllers/ViewmodelController.lua:699:8: warning[unused_variable]: isMoving is assigned a value, but never used
+src/StarterPlayerScripts/Client/Controllers/ViewmodelController.lua:764:7: warning[unused_variable]: key is assigned a value, but never used
+src/StarterPlayerScripts/Client/Controllers/ViewmodelController.lua:802:20: warning[multiple_statements]: only one statement per line is allowed
+src/StarterPlayerScripts/Client/Controllers/ViewmodelController.lua:802:45: warning[multiple_statements]: only one statement per line is allowed
+src/StarterPlayerScripts/Client/Controllers/ViewmodelController.lua:805:20: warning[multiple_statements]: only one statement per line is allowed
+src/StarterPlayerScripts/Client/Controllers/ViewmodelController.lua:805:50: warning[multiple_statements]: only one statement per line is allowed
+src/StarterPlayerScripts/Client/Input/InputService.lua:10:7: warning[unused_variable]: Players is assigned a value, but never used
+src/StarterPlayerScripts/Client/Managers/Buttons/BaseButton.lua:358:40: warning[unused_variable]: color is defined, but never used
+src/StarterPlayerScripts/Client/Managers/Buttons/ButtonExamples.lua:82:6: warning[unused_variable]: i is assigned a value, but never used
+src/StarterPlayerScripts/Client/Managers/Buttons/ButtonExamples.lua:83:9: warning[unused_variable]: button is assigned a value, but never used
+src/StarterPlayerScripts/Client/Managers/Buttons/ButtonExamples.lua:136:6: warning[unused_variable]: i is assigned a value, but never used
+src/StarterPlayerScripts/Client/Managers/Buttons/ButtonExamples.lua:137:9: warning[unused_variable]: button is assigned a value, but never used
+src/StarterPlayerScripts/Client/Managers/Buttons/ButtonExamples.lua:200:9: warning[unused_variable]: button is assigned a value, but never used
+src/StarterPlayerScripts/Client/Managers/Buttons/ButtonExamples.lua:251:6: warning[unused_variable]: i is assigned a value, but never used
+src/StarterPlayerScripts/Client/Managers/Buttons/ButtonExamples.lua:252:9: warning[unused_variable]: controlButton is assigned a value, but never used
+src/StarterPlayerScripts/Client/Managers/Buttons/PanelButton.lua:108:37: warning[unused_variable]: color is defined, but never used
+src/ServerScriptService/Server/Services/SaplingService.lua:6:7: warning[unused_variable]: Players is assigned a value, but never used
+src/ServerScriptService/Server/Services/SaplingService.lua:259:61: warning[unused_variable]: newMetadata is defined, but never used
+src/ServerScriptService/Server/Services/SaplingService.lua:382:13: warning[unused_variable]: s is assigned a value, but never used
+src/ServerScriptService/Server/Services/SaplingService.lua:389:23: warning[shadowing]: shadowing variable `idx`
+src/ServerScriptService/Server/Services/SaplingService.lua:641:19: warning[multiple_statements]: only one statement per line is allowed
+src/ServerScriptService/Server/Services/SaplingService.lua:728:35: warning[multiple_statements]: only one statement per line is allowed
+src/ServerScriptService/Server/Services/SaplingService.lua:728:46: warning[multiple_statements]: only one statement per line is allowed
+src/ServerScriptService/Server/Services/SaplingService.lua:759:7: warning[shadowing]: shadowing variable `x`
+src/ServerScriptService/Server/Services/SaplingService.lua:760:8: warning[shadowing]: shadowing variable `y`
+src/ServerScriptService/Server/Services/SaplingService.lua:761:9: warning[shadowing]: shadowing variable `z`
+src/ServerScriptService/Server/Services/SaplingService.lua:764:13: warning[shadowing]: shadowing variable `meta`
+src/StarterPlayerScripts/Client/Managers/EmoteManager.lua:139:8: warning[unused_variable]: contentSize is assigned a value, but never used
+src/StarterPlayerScripts/Client/Managers/EmoteManager.lua:547:9: warning[unused_variable]: emoteName is assigned a value, but never used
+src/StarterPlayerScripts/Client/Managers/EmoteManager.lua:631:9: warning[shadowing]: shadowing variable `player`
+src/StarterPlayerScripts/Client/Managers/EmoteManager.lua:631:9: warning[unused_variable]: player is assigned a value, but never used
+src/StarterPlayerScripts/Client/Managers/EmoteManager.lua:661:56: warning[unused_variable]: data is defined, but never used
+src/StarterPlayerScripts/Client/Managers/GameState.lua:22:7: warning[unused_variable]: UPDATE_INTERVAL is assigned a value, but never used
+src/StarterPlayerScripts/Client/Managers/GameState.lua:512:6: warning[unused_variable]: i is assigned a value, but never used
+src/StarterPlayerScripts/Client/Managers/IconManager.lua:11:7: warning[unused_variable]: RunService is assigned a value, but never used
+src/StarterPlayerScripts/Client/Managers/IconManager.lua:15:7: warning[unused_variable]: Logger is assigned a value, but never used
+src/StarterPlayerScripts/Client/Managers/IconManager.lua:24:7: warning[unused_variable]: ICON_SIZE_CACHE is assigned a value, but never used
+src/StarterPlayerScripts/Client/Managers/IconManager.lua:26:7: warning[unused_variable]: ICON_COLOR_CACHE is assigned a value, but never used
+src/StarterPlayerScripts/Client/Managers/PanelManager.lua:9:7: warning[unused_variable]: TweenService is assigned a value, but never used
+src/StarterPlayerScripts/Client/Managers/PanelManager.lua:10:7: warning[unused_variable]: GuiService is assigned a value, but never used
+src/StarterPlayerScripts/Client/Managers/PanelManager.lua:518:21: warning[unused_variable]: data is defined, but never used
+src/StarterPlayerScripts/Client/Managers/PanelManager.lua:523:21: warning[unused_variable]: data is defined, but never used
+src/StarterPlayerScripts/Client/Managers/PanelManager.lua:568:10: warning[shadowing]: shadowing variable `ReplicatedStorage`
+src/StarterPlayerScripts/Client/Managers/PanelManager.lua:586:35: warning[unused_variable]: data is defined, but never used
+src/StarterPlayerScripts/Client/Managers/PlayerBillboardManager.lua:164:6: warning[unused_variable]: player is assigned a value, but never used
+src/StarterPlayerScripts/Client/Managers/PlayerBaseManager.lua:14:7: warning[unused_variable]: TweenService is assigned a value, but never used
+src/StarterPlayerScripts/Client/Managers/PlayerBaseManager.lua:17:7: warning[unused_variable]: Network is assigned a value, but never used
+src/StarterPlayerScripts/Client/Managers/PlayerBaseManager.lua:18:7: warning[unused_variable]: Config is assigned a value, but never used
+src/StarterPlayerScripts/Client/Managers/PlayerBaseManager.lua:20:7: warning[unused_variable]: EventManager is assigned a value, but never used
+src/StarterPlayerScripts/Client/Managers/PlayerBaseManager.lua:21:7: warning[unused_variable]: GameState is assigned a value, but never used
+src/StarterPlayerScripts/Client/Managers/PlayerBaseManager.lua:22:7: warning[unused_variable]: ToastManager is assigned a value, but never used
+src/StarterPlayerScripts/Client/Managers/PlayerBaseManager.lua:26:7: warning[unused_variable]: player is assigned a value, but never used
+src/StarterPlayerScripts/Client/Managers/PlayerBaseManager.lua:342:7: warning[unused_variable]: slotId is assigned a value, but never used
+src/StarterPlayerScripts/Client/Managers/PlayerBaseManager.lua:405:63: warning[unused_variable]: objectType is defined, but never used
+src/StarterPlayerScripts/Client/Managers/SoundManager.lua:38:7: warning[unused_variable]: masterVolume is assigned a value, but never used
+src/StarterPlayerScripts/Client/Managers/SoundManager.lua:399:54: warning[unused_variable]: category is defined, but never used
+src/StarterPlayerScripts/Client/Managers/TutorialManager.lua:19:7: warning[unused_variable]: GameState is assigned a value, but never used
+src/StarterPlayerScripts/Client/Managers/TutorialManager.lua:32:7: warning[unused_variable]: localProgress is assigned a value, but never used
+src/StarterPlayerScripts/Client/Managers/TutorialManager.lua:142:9: warning[unused_variable]: isHub is assigned a value, but never used
+src/StarterPlayerScripts/Client/Managers/TutorialManager.lua:316:60: warning[unused_variable]: previousState is defined, but never used
+src/StarterPlayerScripts/Client/Managers/ToastManager.lua:16:7: warning[unused_variable]: GuiService is assigned a value, but never used
+src/StarterPlayerScripts/Client/Managers/ToastManager.lua:18:7: warning[unused_variable]: SoundService is assigned a value, but never used
+src/StarterPlayerScripts/Client/Managers/ToastManager.lua:31:7: warning[unused_variable]: TOAST_TEXT_SIZE is assigned a value, but never used
+src/StarterPlayerScripts/Client/Managers/ToastManager.lua:32:7: warning[unused_variable]: BODY_BASE_TEXT_SIZE is assigned a value, but never used
+src/StarterPlayerScripts/Client/Managers/UIManager.lua:47:16: warning[unused_variable]: ensureWorldStatusGui is defined, but never used
+src/StarterPlayerScripts/Client/Managers/UIManager.lua:247:36: warning[unused_variable]: title is defined, but never used
+src/StarterPlayerScripts/Client/Managers/UIManager.lua:247:43: warning[unused_variable]: subtitle is defined, but never used
+src/StarterPlayerScripts/Client/Managers/UIScaler.lua:48:8: warning[shadowing]: shadowing variable `maxScale`
+src/StarterPlayerScripts/Client/Managers/UIScaler.lua:63:6: warning[unused_variable]: listener_id is assigned a value, but never used
+src/StarterPlayerScripts/Client/Managers/UIScaler.lua:213:6: warning[unused_variable]: layout_component is assigned a value, but never used
+src/StarterPlayerScripts/Client/Managers/UIScaler.lua:240:16: warning[shadowing]: shadowing variable `notify_scale_listeners`
+src/StarterPlayerScripts/Client/Managers/UIScaler.lua:240:16: warning[unused_variable]: notify_scale_listeners is defined, but never used
+src/StarterPlayerScripts/Client/Managers/UIScaler.lua:241:6: warning[unused_variable]: listener_id is assigned a value, but never used
+src/StarterPlayerScripts/Client/Managers/UIVisibilityManager.lua:9:7: warning[unused_variable]: ReplicatedStorage is assigned a value, but never used
+src/StarterPlayerScripts/Client/Managers/ViewportPreview.lua:16:7: warning[unused_variable]: GuiService is assigned a value, but never used
+src/StarterPlayerScripts/Client/Modules/MobileControls/CameraController.lua:118:90: warning[unused_variable]: gameProcessed is defined, but never used
+src/StarterPlayerScripts/Client/Modules/MobileControls/CameraController.lua:129:86: warning[unused_variable]: gameProcessed is defined, but never used
+src/StarterPlayerScripts/Client/Modules/MobileControls/CameraController.lua:226:44: warning[unused_variable]: input is defined, but never used
+src/StarterPlayerScripts/Client/Modules/MobileControls/CameraController.lua:275:8: warning[unused_variable]: cameraPosition is assigned a value, but never used
+src/StarterPlayerScripts/Client/Modules/MobileControls/CameraController.lua:279:8: warning[unused_variable]: yawCFrame is assigned a value, but never used
+src/StarterPlayerScripts/Client/Modules/MobileControls/CameraController.lua:282:8: warning[unused_variable]: pitchCFrame is assigned a value, but never used
+src/StarterPlayerScripts/Client/Modules/MobileControls/ControlSchemes.lua:155:44: warning[unused_variable]: schemeType is defined, but never used
+src/StarterPlayerScripts/Client/Modules/MobileControls/DeviceDetector.lua:105:8: warning[unused_variable]: screenSize is assigned a value, but never used
+src/StarterPlayerScripts/Client/Modules/MobileControls/FeedbackSystem.lua:58:2: warning[empty_if]: empty if block
+src/StarterPlayerScripts/Client/Modules/MobileControls/FeedbackSystem.lua:92:8: warning[unused_variable]: finalIntensity is assigned a value, but never used
+src/StarterPlayerScripts/Client/Modules/MobileControls/FeedbackSystem.lua:109:8: warning[unused_variable]: volume is assigned a value, but never used
+src/StarterPlayerScripts/Client/Modules/MobileControls/InputDetector.lua:187:53: warning[unused_variable]: gameProcessed is defined, but never used
+src/StarterPlayerScripts/Client/Modules/MobileControls/InputDetector.lua:225:52: warning[unused_variable]: gameProcessed is defined, but never used
+src/StarterPlayerScripts/Client/Modules/MobileControls/VirtualThumbstick.lua:192:79: warning[unused_variable]: gameProcessed is defined, but never used
+src/StarterPlayerScripts/Client/Modules/MobileControls/VirtualThumbstick.lua:205:88: warning[unused_variable]: gameProcessed is defined, but never used
+src/StarterPlayerScripts/Client/Modules/MobileControls/VirtualThumbstick.lua:211:84: warning[unused_variable]: gameProcessed is defined, but never used
+src/StarterPlayerScripts/Client/Modules/MobileControls/VirtualThumbstick.lua:301:39: warning[unused_variable]: input is defined, but never used
+src/StarterPlayerScripts/Client/UI/BlockBreakProgress.lua:16:7: warning[unused_variable]: lastUpdateTime is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/BlockBreakProgress.lua:18:7: warning[unused_variable]: currentProgress is assigned a value, but never used
+src/ReplicatedStorage/Shared/VoxelWorld/Rendering/BoxMesher.lua:21:7: warning[unused_variable]: WaterUtils is assigned a value, but never used
+src/ReplicatedStorage/Shared/VoxelWorld/Rendering/BoxMesher.lua:39:36: warning[unused_variable]: blockId is defined, but never used
+src/ReplicatedStorage/Shared/VoxelWorld/Rendering/BoxMesher.lua:644:34: warning[unused_variable]: ROT_W is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/CharacterRigBuilder.lua:290:8: warning[unused_variable]: isR15 is assigned a value, but never used
+src/StarterPlayerScripts/Client/Controllers/BlockInteraction.lua:18:7: warning[unused_variable]: GameConfig is assigned a value, but never used
+src/StarterPlayerScripts/Client/Controllers/BlockInteraction.lua:53:7: warning[unused_variable]: TAP_TIME_THRESHOLD is assigned a value, but never used
+src/StarterPlayerScripts/Client/Controllers/BlockInteraction.lua:70:7: warning[unused_variable]: bridgeLastBlockX is assigned a value, but never used
+src/StarterPlayerScripts/Client/Controllers/BlockInteraction.lua:71:7: warning[unused_variable]: bridgeLastBlockZ is assigned a value, but never used
+src/StarterPlayerScripts/Client/Controllers/BlockInteraction.lua:130:16: warning[unused_variable]: isBucketEquipped is defined, but never used
+src/StarterPlayerScripts/Client/Controllers/BlockInteraction.lua:271:18: warning[unused_variable]: faceNormal is defined, but never used
+src/StarterPlayerScripts/Client/Controllers/BlockInteraction.lua:271:30: warning[unused_variable]: preciseHitPos is defined, but never used
+src/StarterPlayerScripts/Client/Controllers/BlockInteraction.lua:589:8: warning[shadowing]: shadowing variable `GameState`
+src/StarterPlayerScripts/Client/Controllers/BlockInteraction.lua:590:8: warning[unused_variable]: selectedSlot is assigned a value, but never used
+src/StarterPlayerScripts/Client/Controllers/BlockInteraction.lua:591:8: warning[unused_variable]: invMgr is assigned a value, but never used
+src/StarterPlayerScripts/Client/Controllers/BlockInteraction.lua:593:8: warning[unused_variable]: toolType is assigned a value, but never used
+src/StarterPlayerScripts/Client/Controllers/BlockInteraction.lua:594:8: warning[shadowing]: shadowing variable `ReplicatedStorage`
+src/StarterPlayerScripts/Client/Controllers/BlockInteraction.lua:595:8: warning[shadowing]: shadowing variable `ToolConfig`
+src/StarterPlayerScripts/Client/Controllers/BlockInteraction.lua:595:8: warning[unused_variable]: ToolConfig is assigned a value, but never used
+src/StarterPlayerScripts/Client/Controllers/BlockInteraction.lua:596:8: warning[shadowing]: shadowing variable `BlockProperties`
+src/StarterPlayerScripts/Client/Controllers/BlockInteraction.lua:596:8: warning[unused_variable]: BlockProperties is assigned a value, but never used
+src/StarterPlayerScripts/Client/Controllers/BlockInteraction.lua:777:8: warning[unused_variable]: selectedBlock is assigned a value, but never used
+src/StarterPlayerScripts/Client/Controllers/BlockInteraction.lua:893:11: warning[shadowing]: shadowing variable `now`
+src/StarterPlayerScripts/Client/Controllers/BlockInteraction.lua:918:8: warning[shadowing]: shadowing variable `selectedBlock`
+src/StarterPlayerScripts/Client/Controllers/BlockInteraction.lua:928:9: warning[shadowing]: shadowing variable `selectedSlot`
+src/StarterPlayerScripts/Client/Controllers/BlockInteraction.lua:958:8: warning[shadowing]: shadowing variable `worldManager`
+src/StarterPlayerScripts/Client/Controllers/BlockInteraction.lua:973:8: warning[shadowing]: shadowing variable `selectedSlot`
+src/StarterPlayerScripts/Client/Controllers/BlockInteraction.lua:1190:13: warning[shadowing]: shadowing variable `worldManager`
+src/StarterPlayerScripts/Client/Controllers/BlockInteraction.lua:1365:52: warning[unused_variable]: gameProcessed is defined, but never used
+src/StarterPlayerScripts/Client/Controllers/BlockInteraction.lua:1440:34: warning[unused_variable]: actionName is defined, but never used
+src/StarterPlayerScripts/Client/Controllers/BlockInteraction.lua:1440:58: warning[unused_variable]: inputObject is defined, but never used
+src/StarterPlayerScripts/Client/Controllers/BlockInteraction.lua:1491:20: warning[unused_variable]: faceNormal is defined, but never used
+src/StarterPlayerScripts/Client/Controllers/BlockInteraction.lua:1491:32: warning[unused_variable]: preciseHitPos is defined, but never used
+src/StarterPlayerScripts/Client/Controllers/BlockInteraction.lua:1493:11: warning[shadowing]: shadowing variable `worldManager`
+src/StarterPlayerScripts/Client/Controllers/BlockInteraction.lua:1535:63: warning[unused_variable]: newValue is defined, but never used
+src/StarterPlayerScripts/Client/Controllers/BlockInteraction.lua:1535:73: warning[unused_variable]: oldValue is defined, but never used
+src/ReplicatedStorage/Shared/VoxelWorld/Generation/HubWorldGenerator.lua:516:85: warning[unused_variable]: metrics is defined, but never used
+src/ReplicatedStorage/Shared/VoxelWorld/Generation/HubWorldGenerator.lua:930:41: warning[multiple_statements]: only one statement per line is allowed
+src/ReplicatedStorage/Shared/VoxelWorld/Generation/HubWorldGenerator.lua:934:41: warning[multiple_statements]: only one statement per line is allowed
+src/StarterPlayerScripts/Client/UI/DailyRewardsPanel.lua:14:7: warning[unused_variable]: EventManager is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/DailyRewardsPanel.lua:56:56: warning[unused_variable]: data is defined, but never used
+src/StarterPlayerScripts/Client/UI/DailyRewardsPanel.lua:368:8: warning[unused_variable]: rewardIcon is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/DailyRewardsPanel.lua:412:9: warning[unused_variable]: checkmark is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/DailyRewardsPanel.lua:459:8: warning[unused_variable]: currentReward is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/DailyRewardsPanel.lua:578:8: warning[unused_variable]: streakValue is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/DailyRewardsPanel.lua:579:8: warning[unused_variable]: statusText is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/DailyRewardsPanel.lua:580:8: warning[unused_variable]: statusColor is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/DailyRewardsPanel.lua:583:17: warning[unused_variable]: err is defined, but never used
+src/StarterPlayerScripts/Client/UI/DailyRewardsPanel.lua:763:76: warning[unused_variable]: oldValue is defined, but never used
+src/StarterPlayerScripts/Client/UI/DailyRewardsPanel.lua:763:86: warning[unused_variable]: path is defined, but never used
+src/ReplicatedStorage/Shared/VoxelWorld/Rendering/WaterMesher.lua:210:20: warning[multiple_statements]: only one statement per line is allowed
+src/ReplicatedStorage/Shared/VoxelWorld/Rendering/WaterMesher.lua:568:19: warning[multiple_statements]: only one statement per line is allowed
+src/ReplicatedStorage/Shared/VoxelWorld/Rendering/WaterMesher.lua:569:19: warning[multiple_statements]: only one statement per line is allowed
+src/ReplicatedStorage/Shared/VoxelWorld/Rendering/WaterMesher.lua:570:19: warning[multiple_statements]: only one statement per line is allowed
+src/ReplicatedStorage/Shared/VoxelWorld/Rendering/WaterMesher.lua:571:19: warning[multiple_statements]: only one statement per line is allowed
+src/ReplicatedStorage/Shared/VoxelWorld/Rendering/WaterMesher.lua:817:31: warning[multiple_statements]: only one statement per line is allowed
+src/ReplicatedStorage/Shared/VoxelWorld/Rendering/WaterMesher.lua:818:44: warning[multiple_statements]: only one statement per line is allowed
+src/ReplicatedStorage/Shared/VoxelWorld/Rendering/WaterMesher.lua:818:57: warning[multiple_statements]: only one statement per line is allowed
+src/ReplicatedStorage/Shared/VoxelWorld/Rendering/WaterMesher.lua:819:31: warning[multiple_statements]: only one statement per line is allowed
+src/ReplicatedStorage/Shared/VoxelWorld/Rendering/WaterMesher.lua:820:44: warning[multiple_statements]: only one statement per line is allowed
+src/ReplicatedStorage/Shared/VoxelWorld/Rendering/WaterMesher.lua:820:57: warning[multiple_statements]: only one statement per line is allowed
+src/ReplicatedStorage/Shared/VoxelWorld/Rendering/WaterMesher.lua:834:31: warning[multiple_statements]: only one statement per line is allowed
+src/ReplicatedStorage/Shared/VoxelWorld/Rendering/WaterMesher.lua:835:44: warning[multiple_statements]: only one statement per line is allowed
+src/ReplicatedStorage/Shared/VoxelWorld/Rendering/WaterMesher.lua:835:57: warning[multiple_statements]: only one statement per line is allowed
+src/ReplicatedStorage/Shared/VoxelWorld/Rendering/WaterMesher.lua:836:31: warning[multiple_statements]: only one statement per line is allowed
+src/ReplicatedStorage/Shared/VoxelWorld/Rendering/WaterMesher.lua:837:44: warning[multiple_statements]: only one statement per line is allowed
+src/ReplicatedStorage/Shared/VoxelWorld/Rendering/WaterMesher.lua:837:57: warning[multiple_statements]: only one statement per line is allowed
+src/StarterPlayerScripts/Client/UI/LoadingScreen.lua:82:7: warning[unused_variable]: FADE_DURATION is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/LoadingScreen.lua:343:9: warning[unused_variable]: metadataStr is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/LoadingScreen.lua:346:23: warning[unused_variable]: bracketEnd is defined, but never used
+src/StarterPlayerScripts/Client/UI/LoadingScreen.lua:744:8: warning[unused_variable]: meshesFailedCount is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/LoadingScreen.lua:746:8: warning[unused_variable]: soundsFailedCount is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/LoadingScreen.lua:752:21: warning[unused_variable]: total is defined, but never used
+src/StarterPlayerScripts/Client/UI/LoadingScreen.lua:752:28: warning[unused_variable]: progress is defined, but never used
+src/StarterPlayerScripts/Client/UI/LoadingScreen.lua:754:11: warning[shadowing]: shadowing variable `totalAssets`
+src/StarterPlayerScripts/Client/UI/LoadingScreen.lua:776:29: warning[unused_variable]: progress is defined, but never used
+src/StarterPlayerScripts/Client/UI/LoadingScreen.lua:797:29: warning[unused_variable]: progress is defined, but never used
+src/StarterPlayerScripts/Client/UI/LoadingScreen.lua:850:28: warning[unused_variable]: progress is defined, but never used
+src/StarterPlayerScripts/Client/UI/LoadingScreen.lua:1250:9: warning[shadowing]: shadowing variable `playerGui`
+src/StarterPlayerScripts/Client/UI/LoadingScreen.lua:1341:3: warning[unscoped_variables]: `dotsAnimation` is not declared locally, and will be available in every scope
+src/StarterPlayerScripts/Client/UI/LoadingScreen.lua:1341:3: warning[unused_variable]: dotsAnimation is defined, but never used
+src/StarterPlayerScripts/Client/UI/MainHUD.lua:10:7: warning[unused_variable]: GuiService is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/MainHUD.lua:13:7: warning[unused_variable]: InputService is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/MainHUD.lua:16:7: warning[unused_variable]: EventManager is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/MainHUD.lua:17:7: warning[unused_variable]: RewardsApi is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/MainHUD.lua:18:7: warning[unused_variable]: QuestsApi is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/MainHUD.lua:21:7: warning[unused_variable]: UIManager is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/MainHUD.lua:26:7: warning[unused_variable]: UIComponents is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/MainHUD.lua:79:16: warning[unused_variable]: tweenIconSize is defined, but never used
+src/StarterPlayerScripts/Client/UI/MainHUD.lua:190:16: warning[unused_variable]: setQuestsBadgeCount is defined, but never used
+src/StarterPlayerScripts/Client/UI/MainHUD.lua:255:16: warning[unused_variable]: setDailyBadgeAvailable is defined, but never used
+src/StarterPlayerScripts/Client/UI/MainHUD.lua:289:16: warning[unused_variable]: getClaimableQuestCount is defined, but never used
+src/StarterPlayerScripts/Client/UI/MainHUD.lua:302:47: warning[multiple_statements]: only one statement per line is allowed
+src/StarterPlayerScripts/Client/UI/MainHUD.lua:322:7: warning[unused_variable]: SIDEBAR_WIDTH is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/MainHUD.lua:323:7: warning[unused_variable]: STATS_WIDTH is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/MainHUD.lua:324:7: warning[unused_variable]: STATS_HEIGHT is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/MainHUD.lua:326:7: warning[unused_variable]: CONTENT_PADDING is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/MainHUD.lua:329:7: warning[unused_variable]: RunService is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/MainHUD.lua:330:7: warning[unused_variable]: subtleTween is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/MainHUD.lua:575:8: warning[unused_variable]: textLabel is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/NPCTradeUI.lua:16:7: warning[unused_variable]: NPCTradeConfig is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/MinionUI.lua:145:31: warning[unused_variable]: slot is defined, but never used
+src/StarterPlayerScripts/Client/UI/MinionUI.lua:975:9: warning[shadowing]: shadowing variable `EventManager`
+src/StarterPlayerScripts/Client/UI/SettingsPanel.lua:19:7: warning[unused_variable]: player is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/SettingsPanel.lua:22:7: warning[unused_variable]: panel is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/SettingsPanel.lua:27:52: warning[unused_variable]: data is defined, but never used
+src/StarterPlayerScripts/Client/UI/SettingsPanel.lua:116:74: warning[unused_variable]: oldValue is defined, but never used
+src/StarterPlayerScripts/Client/UI/SettingsPanel.lua:116:84: warning[unused_variable]: path is defined, but never used
+src/StarterPlayerScripts/Client/UI/SettingsPanel.lua:130:73: warning[unused_variable]: oldValue is defined, but never used
+src/StarterPlayerScripts/Client/UI/SettingsPanel.lua:130:83: warning[unused_variable]: path is defined, but never used
+src/StarterPlayerScripts/Client/UI/SettingsPanel.lua:136:71: warning[unused_variable]: oldValue is defined, but never used
+src/StarterPlayerScripts/Client/UI/SettingsPanel.lua:136:81: warning[unused_variable]: path is defined, but never used
+src/StarterPlayerScripts/Client/Controllers/DroppedItemController.lua:10:7: warning[unused_variable]: TweenService is assigned a value, but never used
+src/StarterPlayerScripts/Client/Controllers/DroppedItemController.lua:68:25: warning[deprecated]: standard library expression `Enum.RaycastFilterType.Blacklist` is deprecated
+src/StarterPlayerScripts/Client/Controllers/DroppedItemController.lua:81:7: warning[unused_variable]: PICKUP_REQUEST_COOLDOWN is assigned a value, but never used
+src/StarterPlayerScripts/Client/Controllers/DroppedItemController.lua:228:7: warning[unused_variable]: id is assigned a value, but never used
+src/StarterPlayerScripts/Client/Controllers/DroppedItemController.lua:429:20: warning[multiple_statements]: only one statement per line is allowed
+src/StarterPlayerScripts/Client/Controllers/DroppedItemController.lua:475:18: warning[unused_variable]: makeCube is defined, but never used
+src/StarterPlayerScripts/Client/Controllers/DroppedItemController.lua:631:10: warning[shadowing]: shadowing variable `itemName`
+src/StarterPlayerScripts/Client/Controllers/DroppedItemController.lua:680:21: warning[multiple_statements]: only one statement per line is allowed
+src/StarterPlayerScripts/Client/Controllers/DroppedItemController.lua:867:20: warning[multiple_statements]: only one statement per line is allowed
+src/StarterPlayerScripts/Client/Controllers/DroppedItemController.lua:940:20: warning[multiple_statements]: only one statement per line is allowed
+src/StarterPlayerScripts/Client/Controllers/DroppedItemController.lua:1031:20: warning[multiple_statements]: only one statement per line is allowed
+src/StarterPlayerScripts/Client/Controllers/DroppedItemController.lua:1076:21: warning[multiple_statements]: only one statement per line is allowed
+src/StarterPlayerScripts/Client/UI/ShopPanel.lua:13:7: warning[unused_variable]: InputService is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/ShopPanel.lua:20:7: warning[unused_variable]: EventManager is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/ShopPanel.lua:29:7: warning[unused_variable]: searchBox is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/ShopPanel.lua:30:7: warning[unused_variable]: sortDropdown is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/ShopPanel.lua:67:48: warning[unused_variable]: data is defined, but never used
+src/StarterPlayerScripts/Client/UI/ShopPanel.lua:200:59: warning[unused_variable]: newValue is defined, but never used
+src/StarterPlayerScripts/Client/UI/ShopPanel.lua:200:69: warning[unused_variable]: oldValue is defined, but never used
+src/StarterPlayerScripts/Client/UI/ShopPanel.lua:200:79: warning[unused_variable]: path is defined, but never used
+src/StarterPlayerScripts/Client/UI/ShopPanel.lua:211:33: warning[unused_variable]: parent is defined, but never used
+src/StarterPlayerScripts/Client/UI/ShopPanel.lua:810:10: warning[unused_variable]: previousStock is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/ShopPanel.lua:828:10: warning[shadowing]: shadowing variable `previousStock`
+src/StarterPlayerScripts/Client/UI/ShopPanel.lua:868:10: warning[unused_variable]: canPurchase is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/QuestsPanel.lua:9:7: warning[unused_variable]: Players is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/QuestsPanel.lua:13:7: warning[unused_variable]: Config is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/QuestsPanel.lua:14:7: warning[unused_variable]: EventManager is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/QuestsPanel.lua:17:7: warning[unused_variable]: IconManager is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/QuestsPanel.lua:63:47: warning[multiple_statements]: only one statement per line is allowed
+src/StarterPlayerScripts/Client/UI/QuestsPanel.lua:211:50: warning[unused_variable]: data is defined, but never used
+src/StarterPlayerScripts/Client/UI/StatusBarsHUD.lua:527:26: warning[multiple_statements]: only one statement per line is allowed
+src/StarterPlayerScripts/Client/UI/StatusBarsHUD.lua:554:9: warning[unused_variable]: saturation is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/StatusBarsHUD.lua:579:26: warning[multiple_statements]: only one statement per line is allowed
+src/StarterPlayerScripts/Client/UI/StatusBarsHUD.lua:601:27: warning[multiple_statements]: only one statement per line is allowed
+src/StarterPlayerScripts/Client/UI/TutorialUI.lua:228:8: warning[unused_variable]: iconLabel is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/TutorialUI.lua:239:8: warning[unused_variable]: titleLabel is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/TutorialUI.lua:251:8: warning[unused_variable]: descLabel is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/TutorialUI.lua:264:9: warning[unused_variable]: hintLabel is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/TutorialUI.lua:380:8: warning[unused_variable]: titleLabel is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/TutorialUI.lua:392:8: warning[unused_variable]: hintLabel is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/TutorialUI.lua:404:9: warning[unused_variable]: skipHint is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/TutorialUI.lua:429:58: warning[unused_variable]: dt is defined, but never used
+src/StarterPlayerScripts/Client/UI/TutorialUI.lua:499:8: warning[unused_variable]: headerLabel is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/TutorialUI.lua:512:8: warning[unused_variable]: titleLabel is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/TutorialUI.lua:523:8: warning[unused_variable]: descLabel is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/TutorialUI.lua:538:9: warning[unused_variable]: progressText is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/TutorialUI.lua:677:8: warning[unused_variable]: keyLabel is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/VoxelHotbar.lua:834:8: warning[shadowing]: shadowing variable `EventManager`
+src/StarterPlayerScripts/Client/GameClient.client.lua:28:19: warning[multiple_statements]: only one statement per line is allowed
+src/StarterPlayerScripts/Client/GameClient.client.lua:65:7: warning[unused_variable]: TextureManager is assigned a value, but never used
+src/StarterPlayerScripts/Client/GameClient.client.lua:114:7: warning[unused_variable]: spawnChunkKey is assigned a value, but never used
+src/StarterPlayerScripts/Client/GameClient.client.lua:287:43: warning[multiple_statements]: only one statement per line is allowed
+src/StarterPlayerScripts/Client/GameClient.client.lua:356:30: warning[multiple_statements]: only one statement per line is allowed
+src/StarterPlayerScripts/Client/GameClient.client.lua:357:33: warning[multiple_statements]: only one statement per line is allowed
+src/StarterPlayerScripts/Client/GameClient.client.lua:357:42: warning[multiple_statements]: only one statement per line is allowed
+src/StarterPlayerScripts/Client/GameClient.client.lua:358:30: warning[multiple_statements]: only one statement per line is allowed
+src/StarterPlayerScripts/Client/GameClient.client.lua:359:33: warning[multiple_statements]: only one statement per line is allowed
+src/StarterPlayerScripts/Client/GameClient.client.lua:359:42: warning[multiple_statements]: only one statement per line is allowed
+src/StarterPlayerScripts/Client/GameClient.client.lua:605:7: warning[unused_variable]: Initializer is assigned a value, but never used
+src/StarterPlayerScripts/Client/GameClient.client.lua:618:8: warning[unused_variable]: UIManager is assigned a value, but never used
+src/StarterPlayerScripts/Client/GameClient.client.lua:619:8: warning[unused_variable]: SoundManager is assigned a value, but never used
+src/StarterPlayerScripts/Client/GameClient.client.lua:620:8: warning[unused_variable]: ToastManager is assigned a value, but never used
+src/StarterPlayerScripts/Client/GameClient.client.lua:621:8: warning[unused_variable]: EmoteManager is assigned a value, but never used
+src/StarterPlayerScripts/Client/GameClient.client.lua:622:8: warning[unused_variable]: PanelManager is assigned a value, but never used
+src/StarterPlayerScripts/Client/GameClient.client.lua:627:8: warning[unused_variable]: MainHUD is assigned a value, but never used
+src/StarterPlayerScripts/Client/GameClient.client.lua:628:8: warning[unused_variable]: DailyRewardsPanel is assigned a value, but never used
+src/StarterPlayerScripts/Client/GameClient.client.lua:629:8: warning[unused_variable]: SettingsPanel is assigned a value, but never used
+src/StarterPlayerScripts/Client/GameClient.client.lua:750:39: warning[shadowing]: shadowing variable `EmoteManager`
+src/StarterPlayerScripts/Client/GameClient.client.lua:759:8: warning[shadowing]: shadowing variable `ToastManager`
+src/StarterPlayerScripts/Client/GameClient.client.lua:772:8: warning[shadowing]: shadowing variable `UIManager`
+src/StarterPlayerScripts/Client/GameClient.client.lua:786:8: warning[shadowing]: shadowing variable `PanelManager`
+src/StarterPlayerScripts/Client/GameClient.client.lua:1136:57: warning[unused_variable]: data is defined, but never used
+src/StarterPlayerScripts/Client/GameClient.client.lua:1170:8: warning[shadowing]: shadowing variable `DailyRewardsPanel`
+src/StarterPlayerScripts/Client/GameClient.client.lua:1176:8: warning[shadowing]: shadowing variable `SettingsPanel`
+src/StarterPlayerScripts/Client/GameClient.client.lua:1202:8: warning[shadowing]: shadowing variable `MainHUD`
+src/StarterPlayerScripts/Client/GameClient.client.lua:1213:41: warning[unused_variable]: character is defined, but never used
+src/StarterPlayerScripts/Client/GameClient.client.lua:1518:10: warning[shadowing]: shadowing variable `SoundManager`
+src/StarterPlayerScripts/Client/GameClient.client.lua:1591:9: warning[shadowing]: shadowing variable `SoundManager`
+src/StarterPlayerScripts/Client/GameClient.client.lua:1623:11: warning[unused_variable]: playerSpawnPosition is assigned a value, but never used
+src/StarterPlayerScripts/Client/GameClient.client.lua:1633:15: warning[shadowing]: shadowing variable `Players`
+src/StarterPlayerScripts/Client/GameClient.client.lua:1667:15: warning[shadowing]: shadowing variable `LoadingScreen`
+src/StarterPlayerScripts/Client/GameClient.client.lua:1736:8: warning[shadowing]: shadowing variable `GameState`
+src/StarterPlayerScripts/Client/GameClient.client.lua:1739:8: warning[shadowing]: shadowing variable `SoundManager`
+src/StarterPlayerScripts/Client/GameClient.client.lua:1761:9: warning[shadowing]: shadowing variable `LoadingScreen`
+src/StarterPlayerScripts/Client/GameClient.client.lua:1806:7: warning[unused_variable]: toastType is assigned a value, but never used
+src/StarterPlayerScripts/Client/GameClient.client.lua:1813:7: warning[unused_variable]: fallbackType is assigned a value, but never used
+src/StarterPlayerScripts/Client/GameClient.client.lua:1820:18: warning[shadowing]: shadowing variable `EmoteManager`
+src/StarterPlayerScripts/Client/GameClient.client.lua:1828:13: warning[unused_variable]: loaded is defined, but never used
+src/StarterPlayerScripts/Client/GameClient.client.lua:1828:21: warning[unused_variable]: total is defined, but never used
+src/StarterPlayerScripts/Client/GameClient.client.lua:1828:28: warning[unused_variable]: progress is defined, but never used
+src/StarterPlayerScripts/Client/GameClient.client.lua:1832:13: warning[unused_variable]: loadedCount is defined, but never used
+src/StarterPlayerScripts/Client/GameClient.client.lua:1832:26: warning[unused_variable]: failedCount is defined, but never used
+src/StarterPlayerScripts/Client/GameClient.client.lua:1900:8: warning[unused_variable]: name is assigned a value, but never used
+src/StarterPlayerScripts/Client/GameClient.client.lua:1916:53: warning[unused_variable]: inputObject is defined, but never used
+src/StarterPlayerScripts/Client/UI/ChestUI.lua:10:7: warning[unused_variable]: GuiService is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/ChestUI.lua:21:7: warning[unused_variable]: TextureManager is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/ChestUI.lua:319:8: warning[unused_variable]: borderThickness is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/ChestUI.lua:1771:48: warning[unused_variable]: playerInventory is defined, but never used
+src/StarterPlayerScripts/Client/UI/CraftingPanel.lua:16:7: warning[unused_variable]: RunService is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/CraftingPanel.lua:23:7: warning[unused_variable]: ItemStack is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/CraftingPanel.lua:25:7: warning[unused_variable]: IconManager is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/CraftingPanel.lua:254:6: warning[unused_variable]: i is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/CraftingPanel.lua:287:6: warning[unused_variable]: outputKey is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/CraftingPanel.lua:324:62: warning[unused_variable]: maxCount is defined, but never used
+src/StarterPlayerScripts/Client/UI/CraftingPanel.lua:738:9: warning[shadowing]: shadowing variable `output`
+src/StarterPlayerScripts/Client/UI/CraftingPanel.lua:855:22: warning[unused_variable]: materialsMax is defined, but never used
+src/StarterPlayerScripts/Client/UI/CraftingPanel.lua:1174:54: warning[unused_variable]: canCraft is defined, but never used
+src/StarterPlayerScripts/Client/UI/CraftingPanel.lua:1197:36: warning[unused_variable]: spaceMax is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/CraftingPanel.lua:1433:8: warning[shadowing]: shadowing variable `bottomPadding`
+src/StarterPlayerScripts/Client/UI/CraftingPanel.lua:1715:9: warning[unused_variable]: totalItems is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/CraftingPanel.lua:1876:52: warning[unused_variable]: canCraft is defined, but never used
+src/StarterPlayerScripts/Client/UI/CraftingPanel.lua:2029:51: warning[unused_variable]: canCraft is defined, but never used
+src/StarterPlayerScripts/Client/UI/FurnaceUI.lua:1683:8: warning[unused_variable]: efficiencyPercent is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/FurnaceUI.lua:1845:8: warning[unused_variable]: BOUNCE is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/FurnaceUI.lua:2266:85: warning[unused_variable]: gameProcessed is defined, but never used
+src/StarterPlayerScripts/Client/UI/FurnaceUI.lua:2275:85: warning[unused_variable]: gameProcessed is defined, but never used
+src/StarterPlayerScripts/Client/UI/FurnaceUI.lua:2330:56: warning[unused_variable]: data is defined, but never used
+src/StarterPlayerScripts/Client/UI/VoxelInventoryPanel.lua:15:7: warning[unused_variable]: GuiService is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/VoxelInventoryPanel.lua:27:7: warning[unused_variable]: BlockProperties is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/VoxelInventoryPanel.lua:36:7: warning[unused_variable]: UpheavalFont is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/VoxelInventoryPanel.lua:95:7: warning[unused_variable]: PREVIEW_GRIP is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/VoxelInventoryPanel.lua:98:16: warning[unused_variable]: cframeFromPosRotDeg is defined, but never used
+src/StarterPlayerScripts/Client/UI/VoxelInventoryPanel.lua:126:16: warning[unused_variable]: createToolHandle is defined, but never used
+src/StarterPlayerScripts/Client/UI/VoxelInventoryPanel.lua:197:8: warning[shadowing]: shadowing variable `BlockRegistry`
+src/StarterPlayerScripts/Client/UI/VoxelInventoryPanel.lua:660:8: warning[unused_variable]: visualWidth is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/VoxelInventoryPanel.lua:661:8: warning[unused_variable]: visualHeight is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/VoxelInventoryPanel.lua:827:8: warning[unused_variable]: contentAreaHeight is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/VoxelInventoryPanel.lua:835:8: warning[unused_variable]: numSlots is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/VoxelInventoryPanel.lua:865:21: warning[roblox_manual_fromscale_or_fromoffset]: this UDim2.new call only sets offset, and can be simplified using UDim2.fromOffset
+src/StarterPlayerScripts/Client/UI/VoxelInventoryPanel.lua:1074:8: warning[unused_variable]: slotWidth is assigned a value, but never used
+src/StarterPlayerScripts/Client/UI/VoxelInventoryPanel.lua:1163:8: warning[shadowing]: shadowing variable `borderThickness`
+src/StarterPlayerScripts/Client/UI/VoxelInventoryPanel.lua:1195:8: warning[shadowing]: shadowing variable `borderThickness`
+src/StarterPlayerScripts/Client/UI/VoxelInventoryPanel.lua:2440:92: warning[unused_variable]: gpe is defined, but never used
+src/ServerScriptService/Server/Services/MobEntityService.lua:21:7: warning[unused_variable]: BlockProperties is assigned a value, but never used
+src/ServerScriptService/Server/Services/MobEntityService.lua:23:7: warning[unused_variable]: AdvancedPathfinding is assigned a value, but never used
+src/ServerScriptService/Server/Services/MobEntityService.lua:498:8: warning[shadowing]: shadowing variable `BLOCK_SIZE`
+src/ServerScriptService/Server/Services/MobEntityService.lua:1030:16: warning[unused_variable]: isSolid is defined, but never used
+src/ServerScriptService/Server/Services/MobEntityService.lua:1097:8: warning[unused_variable]: validSamples is assigned a value, but never used
+src/ServerScriptService/Server/Services/MobEntityService.lua:1242:8: warning[parenthese_conditions]: lua does not require parentheses around conditions
+src/ServerScriptService/Server/Services/MobEntityService.lua:1362:31: warning[unused_variable]: self is defined, but never used
+src/ServerScriptService/Server/Services/MobEntityService.lua:1368:22: warning[deprecated]: standard library expression `Enum.RaycastFilterType.Blacklist` is deprecated
+src/ServerScriptService/Server/Services/MobEntityService.lua:1559:16: warning[unused_variable]: findDescentStepNear is defined, but never used
+src/ServerScriptService/Server/Services/MobEntityService.lua:1656:16: warning[unused_variable]: findPath is defined, but never used
+src/ServerScriptService/Server/Services/MobEntityService.lua:1690:16: warning[shadowing]: shadowing variable `self`
+src/ServerScriptService/Server/Services/MobEntityService.lua:1704:16: warning[shadowing]: shadowing variable `self`
+src/ServerScriptService/Server/Services/MobEntityService.lua:1759:8: warning[unused_variable]: startKey is assigned a value, but never used
+src/ServerScriptService/Server/Services/MobEntityService.lua:1856:16: warning[unused_variable]: snapToBlockCenter is defined, but never used
+src/ServerScriptService/Server/Services/MobEntityService.lua:2064:36: warning[multiple_statements]: only one statement per line is allowed
+src/ServerScriptService/Server/Services/MobEntityService.lua:2146:45: warning[unused_variable]: ctx is defined, but never used
+src/ServerScriptService/Server/Services/MobEntityService.lua:2238:79: warning[unused_variable]: now is defined, but never used
+src/ServerScriptService/Server/Services/MobEntityService.lua:2487:45: warning[unused_variable]: ctx is defined, but never used
+src/ServerScriptService/Server/Services/MobEntityService.lua:2516:9: warning[unused_variable]: distance is assigned a value, but never used
+src/ServerScriptService/Server/Services/MobEntityService.lua:2579:46: warning[unused_variable]: ctx is defined, but never used
+src/ServerScriptService/Server/Services/MobEntityService.lua:2579:51: warning[unused_variable]: chunkX is defined, but never used
+src/ServerScriptService/Server/Services/MobEntityService.lua:2579:59: warning[unused_variable]: chunkZ is defined, but never used
+src/ServerScriptService/Server/Services/MobEntityService.lua:2579:67: warning[unused_variable]: skip is defined, but never used
+src/ServerScriptService/Server/Services/MobEntityService.lua:2721:53: warning[unused_variable]: player is defined, but never used
+src/StarterPlayerScripts/Client/Managers/UIComponents.lua:21:7: warning[unused_variable]: GuiService is assigned a value, but never used
+src/StarterPlayerScripts/Client/Managers/UIComponents.lua:31:7: warning[unused_variable]: tooltipDebounce is assigned a value, but never used
+src/StarterPlayerScripts/Client/Managers/UIComponents.lua:280:25: warning[shadowing]: shadowing variable `self`
+src/StarterPlayerScripts/Client/Managers/UIComponents.lua:280:25: warning[unused_variable]: self is defined, but never used
+src/StarterPlayerScripts/Client/Managers/UIComponents.lua:324:8: warning[unused_variable]: icon is assigned a value, but never used
+src/StarterPlayerScripts/Client/Managers/UIComponents.lua:453:11: warning[shadowing]: shadowing variable `TweenService`
+src/StarterPlayerScripts/Client/Managers/UIComponents.lua:501:19: warning[shadowing]: shadowing variable `self`
+src/StarterPlayerScripts/Client/Managers/UIComponents.lua:521:19: warning[shadowing]: shadowing variable `self`
+src/StarterPlayerScripts/Client/Managers/UIComponents.lua:536:23: warning[shadowing]: shadowing variable `self`
+src/StarterPlayerScripts/Client/Managers/UIComponents.lua:542:22: warning[shadowing]: shadowing variable `self`
+src/StarterPlayerScripts/Client/Managers/UIComponents.lua:643:22: warning[shadowing]: shadowing variable `self`
+src/StarterPlayerScripts/Client/Managers/UIComponents.lua:647:25: warning[shadowing]: shadowing variable `self`
+src/StarterPlayerScripts/Client/Managers/UIComponents.lua:652:22: warning[shadowing]: shadowing variable `self`
+src/StarterPlayerScripts/Client/Managers/UIComponents.lua:811:25: warning[shadowing]: shadowing variable `self`
+src/StarterPlayerScripts/Client/Managers/UIComponents.lua:816:22: warning[shadowing]: shadowing variable `self`
+src/StarterPlayerScripts/Client/Managers/UIComponents.lua:1064:10: warning[unused_variable]: headerIcon is assigned a value, but never used
+src/StarterPlayerScripts/Client/Managers/UIComponents.lua:1161:10: warning[unused_variable]: headerIcon is assigned a value, but never used
+src/StarterPlayerScripts/Client/Managers/UIComponents.lua:1381:25: warning[shadowing]: shadowing variable `enabled`
+src/StarterPlayerScripts/Client/Managers/UIComponents.lua:1503:60: warning[shadowing]: shadowing variable `input`
+src/StarterPlayerScripts/Client/Managers/UIComponents.lua:1558:31: warning[shadowing]: shadowing variable `self`
+src/StarterPlayerScripts/Client/Managers/UIComponents.lua:1558:31: warning[unused_variable]: self is defined, but never used
+src/StarterPlayerScripts/Client/Managers/UIComponents.lua:1562:31: warning[shadowing]: shadowing variable `self`
+src/StarterPlayerScripts/Client/Managers/UIComponents.lua:1562:31: warning[unused_variable]: self is defined, but never used
+src/StarterPlayerScripts/Client/Managers/UIComponents.lua:1565:31: warning[shadowing]: shadowing variable `self`
+src/StarterPlayerScripts/Client/Managers/UIComponents.lua:1565:31: warning[unused_variable]: self is defined, but never used
+src/StarterPlayerScripts/Client/Managers/UIComponents.lua:1581:8: warning[unused_variable]: wrap is assigned a value, but never used
+src/StarterPlayerScripts/Client/Managers/UIComponents.lua:1890:21: warning[shadowing]: shadowing variable `self`
+src/StarterPlayerScripts/Client/Managers/UIComponents.lua:1895:21: warning[shadowing]: shadowing variable `self`
+src/StarterPlayerScripts/Client/Managers/UIComponents.lua:1979:8: warning[unused_variable]: iconColor is assigned a value, but never used
+src/StarterPlayerScripts/Client/Managers/UIComponents.lua:2033:21: warning[roblox_manual_fromscale_or_fromoffset]: this UDim2.new call only sets scale, and can be simplified using UDim2.fromScale
+src/StarterPlayerScripts/Client/Managers/UIComponents.lua:2674:8: warning[unused_variable]: CURRENCY_NAMES is assigned a value, but never used
+src/StarterPlayerScripts/Client/Managers/UIComponents.lua:2716:27: warning[shadowing]: shadowing variable `self`
+src/StarterPlayerScripts/Client/Managers/UIComponents.lua:2732:27: warning[shadowing]: shadowing variable `self`
+src/StarterPlayerScripts/Client/Managers/UIComponents.lua:2735:89: warning[unused_variable]: oldValue is defined, but never used
+src/StarterPlayerScripts/Client/Managers/UIComponents.lua:2735:99: warning[unused_variable]: path is defined, but never used
+src/StarterPlayerScripts/Client/Managers/UIComponents.lua:2751:27: warning[shadowing]: shadowing variable `self`
+src/StarterPlayerScripts/Client/Managers/UIComponents.lua:2786:8: warning[unused_variable]: borderColor is assigned a value, but never used
+src/StarterPlayerScripts/Client/Managers/UIComponents.lua:2873:4: warning[empty_if]: empty if block
+src/StarterPlayerScripts/Client/Managers/UIComponents.lua:2913:24: warning[shadowing]: shadowing variable `self`
+src/StarterPlayerScripts/Client/Managers/UIComponents.lua:2917:26: warning[shadowing]: shadowing variable `self`
+src/StarterPlayerScripts/Client/Managers/UIComponents.lua:2926:25: warning[shadowing]: shadowing variable `self`
+src/StarterPlayerScripts/Client/Managers/UIComponents.lua:2932:27: warning[shadowing]: shadowing variable `self`
+src/StarterPlayerScripts/Client/Managers/UIComponents.lua:2936:22: warning[shadowing]: shadowing variable `self`
+src/StarterPlayerScripts/Client/Managers/UIComponents.lua:2948:23: warning[shadowing]: shadowing variable `self`
+src/StarterPlayerScripts/Client/Managers/UIComponents.lua:2956:29: warning[shadowing]: shadowing variable `self`
+src/StarterPlayerScripts/Client/Managers/UIComponents.lua:2962:33: warning[shadowing]: shadowing variable `self`
+src/StarterPlayerScripts/Client/Managers/UIComponents.lua:2967:26: warning[shadowing]: shadowing variable `self`
+src/StarterPlayerScripts/Client/Managers/UIComponents.lua:2974:22: warning[shadowing]: shadowing variable `self`
+src/StarterPlayerScripts/Client/Managers/UIComponents.lua:2982:8: warning[unused_variable]: originalBackgroundColor is assigned a value, but never used
+src/StarterPlayerScripts/Client/Managers/UIComponents.lua:2983:8: warning[unused_variable]: originalBorderColor is assigned a value, but never used
+src/StarterPlayerScripts/Client/Managers/UIComponents.lua:2990:9: warning[unused_variable]: currentBorderColor is assigned a value, but never used
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:8:7: warning[unused_variable]: RunService is assigned a value, but never used
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:240:11: warning[unused_variable]: result is assigned a value, but never used
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:325:9: warning[shadowing]: shadowing variable `EventManager`
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:339:8: warning[shadowing]: shadowing variable `EventManager`
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:437:10: warning[shadowing]: shadowing variable `EventManager`
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:443:10: warning[shadowing]: shadowing variable `EventManager`
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:451:8: warning[unused_variable]: waitSec is assigned a value, but never used
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:452:8: warning[unused_variable]: nextCost is assigned a value, but never used
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:467:9: warning[shadowing]: shadowing variable `EventManager`
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:508:8: warning[shadowing]: shadowing variable `EventManager`
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:543:10: warning[shadowing]: shadowing variable `EventManager`
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:586:10: warning[shadowing]: shadowing variable `Constants`
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:597:10: warning[shadowing]: shadowing variable `EventManager`
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:626:12: warning[shadowing]: shadowing variable `EventManager`
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:635:8: warning[shadowing]: shadowing variable `EventManager`
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:640:54: warning[unused_variable]: data is defined, but never used
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:651:8: warning[shadowing]: shadowing variable `EventManager`
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:758:8: warning[shadowing]: shadowing variable `EventManager`
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:933:41: warning[multiple_statements]: only one statement per line is allowed
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:1106:36: warning[multiple_statements]: only one statement per line is allowed
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:1496:10: warning[shadowing]: shadowing variable `ToolConfig`
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:1651:53: warning[multiple_statements]: only one statement per line is allowed
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:1654:56: warning[multiple_statements]: only one statement per line is allowed
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:1657:56: warning[multiple_statements]: only one statement per line is allowed
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:1660:58: warning[multiple_statements]: only one statement per line is allowed
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:1663:55: warning[multiple_statements]: only one statement per line is allowed
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:1666:56: warning[multiple_statements]: only one statement per line is allowed
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:1677:12: warning[shadowing]: shadowing variable `dy`
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:1682:51: warning[multiple_statements]: only one statement per line is allowed
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:1685:54: warning[multiple_statements]: only one statement per line is allowed
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:1688:54: warning[multiple_statements]: only one statement per line is allowed
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:1691:56: warning[multiple_statements]: only one statement per line is allowed
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:1694:53: warning[multiple_statements]: only one statement per line is allowed
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:1697:54: warning[multiple_statements]: only one statement per line is allowed
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:1893:10: warning[unused_variable]: BLOCK is assigned a value, but never used
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:1925:9: warning[shadowing]: shadowing variable `Constants`
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:2079:32: warning[unused_variable]: ROT_W is assigned a value, but never used
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:2080:31: warning[multiple_statements]: only one statement per line is allowed
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:2081:32: warning[multiple_statements]: only one statement per line is allowed
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:2082:30: warning[multiple_statements]: only one statement per line is allowed
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:2092:12: warning[shadowing]: shadowing variable `BlockRegistry`
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:2106:11: warning[unused_variable]: rx is assigned a value, but never used
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:2106:18: warning[unused_variable]: rz is defined, but never used
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:2107:11: warning[unused_variable]: lx is assigned a value, but never used
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:2107:18: warning[unused_variable]: lz is defined, but never used
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:2238:12: warning[shadowing]: shadowing variable `BlockRegistry`
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:2477:15: warning[unused_variable]: placedChanged is assigned a value, but never used
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:2478:15: warning[unused_variable]: neighborChanged is assigned a value, but never used
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:2501:10: warning[shadowing]: shadowing variable `BLOCK`
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:2519:13: warning[shadowing]: shadowing variable `key`
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:2545:11: warning[shadowing]: shadowing variable `state`
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:2583:29: warning[unused_variable]: ROT_W is assigned a value, but never used
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:2584:28: warning[multiple_statements]: only one statement per line is allowed
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:2585:29: warning[multiple_statements]: only one statement per line is allowed
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:2586:27: warning[multiple_statements]: only one statement per line is allowed
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:2609:8: warning[unused_variable]: rx is assigned a value, but never used
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:2609:15: warning[unused_variable]: rz is defined, but never used
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:2610:8: warning[unused_variable]: lx is assigned a value, but never used
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:2610:15: warning[unused_variable]: lz is defined, but never used
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:2647:9: warning[shadowing]: shadowing variable `blockId`
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:2679:49: warning[unused_variable]: player is defined, but never used
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:2679:57: warning[unused_variable]: positionOrX is defined, but never used
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:2679:70: warning[unused_variable]: maybeZ is defined, but never used
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:2946:6: warning[unused_variable]: key is assigned a value, but never used
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:3083:10: warning[unused_variable]: key is assigned a value, but never used
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:3091:35: warning[multiple_statements]: only one statement per line is allowed
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:3150:34: warning[multiple_statements]: only one statement per line is allowed
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:3202:8: warning[shadowing]: shadowing variable `Constants`
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:3245:7: warning[unused_variable]: i is assigned a value, but never used
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:3324:13: warning[shadowing]: shadowing variable `state`
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:3360:30: warning[multiple_statements]: only one statement per line is allowed
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:3360:44: warning[multiple_statements]: only one statement per line is allowed
+src/ServerScriptService/Server/Services/VoxelWorldService.lua:3382:41: warning[multiple_statements]: only one statement per line is allowed
+src/StarterPlayerScripts/Client/UI/WorldsPanel.lua:92:16: warning[unused_variable]: destroyNonLayoutChildren is defined, but never used
+src/StarterPlayerScripts/Client/UI/WorldsPanel.lua:1289:8: warning[shadowing]: shadowing variable `detailPadding`
+src/StarterPlayerScripts/Client/UI/WorldsPanel.lua:3115:56: warning[unused_variable]: data is defined, but never used
+src/StarterPlayerScripts/Client/UI/WorldsPanel.lua:3129:58: warning[unused_variable]: data is defined, but never used
+Results:
+0 errors
+666 warnings
+0 parse errors

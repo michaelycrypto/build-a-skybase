@@ -12,9 +12,9 @@ local VoxelWorld = {}
 -- Import core modules
 local WorldManager = require(script.World.WorldManager)
 local ChunkManager = require(script.World.ChunkManager)
-local BlockRegistry = require(script.World.BlockRegistry)
-local Constants = require(script.Core.Constants)
-local Config = require(script.Core.Config)
+local _BlockRegistry = require(script.World.BlockRegistry)
+local _Constants = require(script.Core.Constants)
+local _Config = require(script.Core.Config)
 
 export type WorldHandle = {
 	GetWorldManager: () -> WorldManager.WorldManager,

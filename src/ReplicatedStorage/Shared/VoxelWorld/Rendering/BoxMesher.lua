@@ -18,7 +18,7 @@
 local Constants = require(script.Parent.Parent.Core.Constants)
 local Config = require(script.Parent.Parent.Core.Config)
 local BlockRegistry = require(script.Parent.Parent.World.BlockRegistry)
-local WaterUtils = require(script.Parent.Parent.World.WaterUtils)
+local _WaterUtils = require(script.Parent.Parent.World.WaterUtils)
 local PartPool = require(script.Parent.PartPool)
 local Blocks = BlockRegistry.Blocks
 -- Texture system
@@ -36,7 +36,7 @@ local function snap(value)
 end
 
 -- Get Roblox material for block type
-local function getMaterialForBlock(blockId)
+local function getMaterialForBlock(_blockId)
 	return Enum.Material.Plastic
 end
 
@@ -153,7 +153,9 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 		for z = 0, CHUNK_SZ - 1 do
 			for x = 0, CHUNK_SX - 1 do
 				local h = chunk.heightMap[x + z * CHUNK_SX] or 0
-				if h > maxH then maxH = h end
+				if h > maxH then
+					maxH = h
+				end
 			end
 		end
 		yLimit = math.clamp(maxH + 2, 1, CHUNK_SY)
@@ -193,28 +195,36 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 	-- Check if block is solid at position (for box merging)
 	-- Excludes crossShape and stairShape blocks - they're rendered in separate passes
 	local function isSolid(x, y, z)
-		if y < 0 or y >= sy then return false end
+		if y < 0 or y >= sy then
+			return false
+		end
 		local id
 		if x >= 0 and x < sx and z >= 0 and z < sz then
 			id = chunk:GetBlock(x, y, z)
 		else
 			id = sampler(worldManager, chunk, x, y, z)
 		end
-		if id == AIR then return false end
+		if id == AIR then
+			return false
+		end
 		local def = getBlockDef(id)
 		return def and def.solid ~= false and not def.crossShape and not def.stairShape and not def.slabShape and not def.fenceShape
 	end
 
 	-- Check if a neighbor FULLY occludes visibility (opaque full cube)
 	local function isOccluding(x, y, z)
-		if y < 0 or y >= sy then return false end
+		if y < 0 or y >= sy then
+			return false
+		end
 		local id
 		if x >= 0 and x < sx and z >= 0 and z < sz then
 			id = chunk:GetBlock(x, y, z)
 		else
 			id = sampler(worldManager, chunk, x, y, z)
 		end
-		if id == AIR then return false end
+		if id == AIR then
+			return false
+		end
 		local def = getBlockDef(id)
 		-- Occluding only when it is a full, opaque cube (not slabs/stairs/fences/cross-shapes)
 		return def and def.solid ~= false and def.transparent ~= true
@@ -287,7 +297,9 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 	for y = 0, sy - 1 do
 		for z = 0, sz - 1 do
 			for x = 0, sx - 1 do
-				if partsBudget >= MAX_PARTS then return meshParts end
+				if partsBudget >= MAX_PARTS then
+					return meshParts
+				end
 
 				if not isVisited(x, y, z) and isSolid(x, y, z) then
 					local seedId = chunk:GetBlock(x, y, z)
@@ -312,7 +324,9 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 								break
 							end
 						end
-						if canGrowZ then dz += 1 end
+						if canGrowZ then
+							dz += 1
+						end
 					end
 
 					-- Grow along Y axis uniformly across XZ area (only merge blocks with matching textures/rotation)
@@ -328,16 +342,20 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 									break
 								end
 							end
-							if not canGrowY then break end
+							if not canGrowY then
+								break
+							end
 						end
-						if canGrowY then dy += 1 end
+						if canGrowY then
+							dy += 1
+						end
 					end
 
 					-- Mark all merged blocks as visited
 					for iy = 0, dy - 1 do
 						for iz = 0, dz - 1 do
 							for ix = 0, dx - 1 do
-								markVisited(x + ix, y + iy, z + iz, true)
+								markVisited(x + ix, y + iy, z + iz)
 							end
 						end
 					end
@@ -386,7 +404,9 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 							break
 						end
 					end
-					if visibleFaces[Enum.NormalId.Left] then break end
+					if visibleFaces[Enum.NormalId.Left] then
+						break
+					end
 				end
 
 				-- Right face (at x+dx): spans Y and Z
@@ -397,7 +417,9 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 							break
 						end
 					end
-					if visibleFaces[Enum.NormalId.Right] then break end
+					if visibleFaces[Enum.NormalId.Right] then
+						break
+					end
 				end
 
 				-- Bottom face (at y-1): spans X and Z
@@ -408,7 +430,9 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 							break
 						end
 					end
-					if visibleFaces[Enum.NormalId.Bottom] then break end
+					if visibleFaces[Enum.NormalId.Bottom] then
+						break
+					end
 				end
 
 				-- Top face (at y+dy): spans X and Z
@@ -419,7 +443,9 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 							break
 						end
 					end
-					if visibleFaces[Enum.NormalId.Top] then break end
+					if visibleFaces[Enum.NormalId.Top] then
+						break
+					end
 				end
 
 				-- Front face (at z-1): spans X and Y
@@ -430,7 +456,9 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 							break
 						end
 					end
-					if visibleFaces[Enum.NormalId.Front] then break end
+					if visibleFaces[Enum.NormalId.Front] then
+						break
+					end
 				end
 
 				-- Back face (at z+dz): spans X and Y
@@ -441,7 +469,9 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 							break
 						end
 					end
-					if visibleFaces[Enum.NormalId.Back] then break end
+					if visibleFaces[Enum.NormalId.Back] then
+						break
+					end
 				end
 
 					-- Apply textures only to faces marked visible
@@ -467,7 +497,9 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 	for y = 0, yLimit - 1 do
 		for z = 0, sz - 1 do
 			for x = 0, sx - 1 do
-				if partsBudget >= MAX_PARTS then return meshParts end
+				if partsBudget >= MAX_PARTS then
+					return meshParts
+				end
 
 				local id = chunk:GetBlock(x, y, z)
 				if id ~= Constants.BlockType.AIR and not isStairVisited(x, y, z) then
@@ -587,19 +619,8 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 									texture.Texture = textureId
 									-- Tile per block (not stretched across merged stairs)
 									-- Vertical faces use full block height so texture cuts off naturally at half
-									if face == Enum.NormalId.Top or face == Enum.NormalId.Bottom then
-										-- Horizontal faces tile per block
-										texture.StudsPerTileU = Constants.BLOCK_SIZE
-										texture.StudsPerTileV = Constants.BLOCK_SIZE
-									elseif face == Enum.NormalId.Front or face == Enum.NormalId.Back then
-										-- Vertical faces: tile per block width, use full block height
-										texture.StudsPerTileU = Constants.BLOCK_SIZE
-										texture.StudsPerTileV = Constants.BLOCK_SIZE  -- Full block height (cuts off at half)
-									else -- Left or Right
-										-- Vertical faces: tile per block depth, use full block height
-										texture.StudsPerTileU = Constants.BLOCK_SIZE
-										texture.StudsPerTileV = Constants.BLOCK_SIZE  -- Full block height (cuts off at half)
-									end
+									texture.StudsPerTileU = Constants.BLOCK_SIZE
+									texture.StudsPerTileV = Constants.BLOCK_SIZE
 									texture.Parent = bottomPart
 								end
 							end
@@ -620,7 +641,7 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 
 						-- Determine stair shape (straight, outer, inner) using stored metadata if available
 						-- Helper: rotation math
-						local ROT_N, ROT_E, ROT_S, ROT_W = Constants.BlockMetadata.ROTATION_NORTH, Constants.BlockMetadata.ROTATION_EAST, Constants.BlockMetadata.ROTATION_SOUTH, Constants.BlockMetadata.ROTATION_WEST
+						local ROT_N, ROT_E, ROT_S, _ROT_W = Constants.BlockMetadata.ROTATION_NORTH, Constants.BlockMetadata.ROTATION_EAST, Constants.BlockMetadata.ROTATION_SOUTH, Constants.BlockMetadata.ROTATION_WEST
 						local function rotLeft(r)
 							return (r + 3) % 4
 						end
@@ -651,11 +672,15 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
                                 nid = sampler(worldManager, chunk, nx, ny, nz)
                             end
 							local ndef = BlockRegistry:GetBlock(nid)
-							if not (ndef and ndef.stairShape) then return nil end
+							if not (ndef and ndef.stairShape) then
+								return nil
+							end
                             local nmeta = DefaultSampleMetadata(worldManager, chunk, nx, ny, nz)
                             local nrot = Constants.GetRotation(nmeta)
 							local nvert = Constants.GetVerticalOrientation(nmeta)
-                            if nvert ~= verticalOrientation then return nil end
+                            if nvert ~= verticalOrientation then
+                            	return nil
+                            end
                             local nshape = Constants.GetStairShape(nmeta)
                             -- Allow linking across different stair types (Minecraft parity)
                             return {rot = nrot, shape = nshape}
@@ -679,10 +704,18 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 						-- Prefer stored shape from metadata for exact parity
 						local shapeFromMeta = Constants.GetStairShape(metadata)
 						local shape = "straight"
-						if shapeFromMeta == Constants.BlockMetadata.STAIR_SHAPE_OUTER_LEFT then shape = "outer_left" end
-						if shapeFromMeta == Constants.BlockMetadata.STAIR_SHAPE_OUTER_RIGHT then shape = "outer_right" end
-						if shapeFromMeta == Constants.BlockMetadata.STAIR_SHAPE_INNER_LEFT then shape = "inner_left" end
-						if shapeFromMeta == Constants.BlockMetadata.STAIR_SHAPE_INNER_RIGHT then shape = "inner_right" end
+						if shapeFromMeta == Constants.BlockMetadata.STAIR_SHAPE_OUTER_LEFT then
+							shape = "outer_left"
+						end
+						if shapeFromMeta == Constants.BlockMetadata.STAIR_SHAPE_OUTER_RIGHT then
+							shape = "outer_right"
+						end
+						if shapeFromMeta == Constants.BlockMetadata.STAIR_SHAPE_INNER_LEFT then
+							shape = "inner_left"
+						end
+						if shapeFromMeta == Constants.BlockMetadata.STAIR_SHAPE_INNER_RIGHT then
+							shape = "inner_right"
+						end
 
 						-- If no stored shape, derive at render as fallback
 						if shape == "straight" then
@@ -713,29 +746,7 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 						-- Inner: straight half + additional quarter to form L
 						-- Minecraft coordinate system: North=-Z, South=+Z, East=+X, West=-X
 						local topSizeX, topSizeZ, stepOffset
-						if shape == "straight" then
-							if rotation == ROT_N then
-								-- North faces -Z, step at -Z side
-								topSizeX = bottomSizeX
-								topSizeZ = Constants.BLOCK_SIZE / 2
-								stepOffset = Vector3.new(0, 0, -Constants.BLOCK_SIZE / 4)
-							elseif rotation == ROT_E then
-								-- East faces +X, step at +X side
-								topSizeX = Constants.BLOCK_SIZE / 2
-								topSizeZ = bottomSizeZ
-								stepOffset = Vector3.new(Constants.BLOCK_SIZE / 4, 0, 0)
-							elseif rotation == ROT_S then
-								-- South faces +Z, step at +Z side
-								topSizeX = bottomSizeX
-								topSizeZ = Constants.BLOCK_SIZE / 2
-								stepOffset = Vector3.new(0, 0, Constants.BLOCK_SIZE / 4)
-							else
-								-- West faces -X, step at -X side
-								topSizeX = Constants.BLOCK_SIZE / 2
-								topSizeZ = bottomSizeZ
-								stepOffset = Vector3.new(-Constants.BLOCK_SIZE / 4, 0, 0)
-							end
-						elseif shape == "outer_left" or shape == "outer_right" then
+						if shape == "outer_left" or shape == "outer_right" then
 							-- Outer: quarter step at forward+side quadrant
 							-- Uses dirFromRot which now returns correct Minecraft directions
 							topSizeX = Constants.BLOCK_SIZE / 2
@@ -746,7 +757,7 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 							local offZ = (qz + fz) * (Constants.BLOCK_SIZE / 4)
 							stepOffset = Vector3.new(offX, 0, offZ)
 						else
-							-- Inner: straight half-block geometry (L will be formed by adding a quarter below)
+							-- Straight or Inner (Inner forms an L by adding a second quarter later)
 							if rotation == ROT_N then
 								-- North faces -Z, step at -Z side
 								topSizeX = bottomSizeX
@@ -788,19 +799,8 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 
 									-- Tile per block (not stretched across merged stairs)
 									-- Vertical faces use full block height so texture cuts off naturally at half
-									if face == Enum.NormalId.Top or face == Enum.NormalId.Bottom then
-										-- Horizontal faces tile per block
-										texture.StudsPerTileU = Constants.BLOCK_SIZE
-										texture.StudsPerTileV = Constants.BLOCK_SIZE
-									elseif face == Enum.NormalId.Front or face == Enum.NormalId.Back then
-										-- Vertical faces: tile per block width, use full block height
-										texture.StudsPerTileU = Constants.BLOCK_SIZE
-										texture.StudsPerTileV = Constants.BLOCK_SIZE  -- Full block height (cuts off at half)
-									else -- Left or Right
-										-- Vertical faces: tile per block depth, use full block height
-										texture.StudsPerTileU = Constants.BLOCK_SIZE
-										texture.StudsPerTileV = Constants.BLOCK_SIZE  -- Full block height (cuts off at half)
-									end
+									texture.StudsPerTileU = Constants.BLOCK_SIZE
+									texture.StudsPerTileV = Constants.BLOCK_SIZE
 
 									texture.Parent = topPart
 								end
@@ -859,13 +859,8 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 										local texture = PartPool.AcquireTexture()
 										texture.Face = face
 										texture.Texture = textureId
-										if face == Enum.NormalId.Top or face == Enum.NormalId.Bottom then
-											texture.StudsPerTileU = Constants.BLOCK_SIZE
-											texture.StudsPerTileV = Constants.BLOCK_SIZE
-										else
-											texture.StudsPerTileU = Constants.BLOCK_SIZE
-											texture.StudsPerTileV = Constants.BLOCK_SIZE
-										end
+										texture.StudsPerTileU = Constants.BLOCK_SIZE
+										texture.StudsPerTileV = Constants.BLOCK_SIZE
 										texture.Parent = topPart2
 									end
 								end
@@ -898,7 +893,9 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 	for y = 0, yLimit - 1 do
 		for z = 0, sz - 1 do
 			for x = 0, sx - 1 do
-				if partsBudget >= MAX_PARTS then return meshParts end
+				if partsBudget >= MAX_PARTS then
+					return meshParts
+				end
 
 				local id = chunk:GetBlock(x, y, z)
 				if id ~= Constants.BlockType.AIR and not isSlabVisited(x, y, z) then
@@ -994,19 +991,8 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 									texture.Texture = textureId
 									-- Tile per block (not stretched across merged slabs)
 									-- Vertical faces use full block height so texture cuts off naturally at half
-									if face == Enum.NormalId.Top or face == Enum.NormalId.Bottom then
-										-- Horizontal faces tile per block
-										texture.StudsPerTileU = Constants.BLOCK_SIZE
-										texture.StudsPerTileV = Constants.BLOCK_SIZE
-									elseif face == Enum.NormalId.Front or face == Enum.NormalId.Back then
-										-- Vertical faces: tile per block width, use full block height
-										texture.StudsPerTileU = Constants.BLOCK_SIZE
-										texture.StudsPerTileV = Constants.BLOCK_SIZE  -- Full block height (cuts off at half)
-									else -- Left or Right
-										-- Vertical faces: tile per block depth, use full block height
-										texture.StudsPerTileU = Constants.BLOCK_SIZE
-										texture.StudsPerTileV = Constants.BLOCK_SIZE  -- Full block height (cuts off at half)
-									end
+									texture.StudsPerTileU = Constants.BLOCK_SIZE
+									texture.StudsPerTileV = Constants.BLOCK_SIZE
 									texture.Parent = slabPart
 								end
 							end
@@ -1028,7 +1014,9 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 	for x = 0, Constants.CHUNK_SIZE_X - 1 do
 		for y = 0, yLimit - 1 do
 			for z = 0, Constants.CHUNK_SIZE_Z - 1 do
-				if partsBudget >= MAX_PARTS then return meshParts end
+				if partsBudget >= MAX_PARTS then
+					return meshParts
+				end
 
 				local id = chunk:GetBlock(x, y, z)
 				if id ~= Constants.BlockType.AIR then
@@ -1049,11 +1037,17 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 						local function neighborKind(dx, dz)
 							local nid = sample(x + dx, y, z + dz)
 							-- Guard against nil or AIR
-							if not nid or nid == Constants.BlockType.AIR then return "none" end
+							if not nid or nid == Constants.BlockType.AIR then
+								return "none"
+							end
 							local ndef = BlockRegistry:GetBlock(nid)
 							-- Unknown or missing definitions should never connect
-							if not ndef or ndef.name == "Unknown" then return "none" end
-							if ndef.fenceShape then return "fence" end
+							if not ndef or ndef.name == "Unknown" then
+								return "none"
+							end
+							if ndef.fenceShape then
+								return "fence"
+							end
 							-- Treat only true full cubes as connectable; exclude chests and other interactables
 							if ndef.solid and not ndef.crossShape and not ndef.slabShape and not ndef.stairShape and not ndef.fenceShape then
 								-- Do not connect to chests (or any explicitly interactable blocks)
@@ -1157,7 +1151,9 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 
 						-- Helper to emit one rail part (visual only, non-collidable)
 						local function emitRail(centerX, centerZ, sizeX, sizeZ, yoff)
-							if partsBudget >= MAX_PARTS then return end
+							if partsBudget >= MAX_PARTS then
+								return
+							end
 							local rail = PartPool.AcquireFacePart()
 							rail.CanCollide = false
 							rail.Material = getMaterialForBlock(id)
@@ -1189,7 +1185,9 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 							while true do
 								local nid = sample(x + run, y, z)
 								local ndef = BlockRegistry:GetBlock(nid)
-								if not (ndef and ndef.fenceShape) then break end
+								if not (ndef and ndef.fenceShape) then
+									break
+								end
 								run += 1
 							end
 							local gaps = run - 1
@@ -1208,7 +1206,9 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 							while true do
 								local nid = sample(x, y, z + run)
 								local ndef = BlockRegistry:GetBlock(nid)
-								if not (ndef and ndef.fenceShape) then break end
+								if not (ndef and ndef.fenceShape) then
+									break
+								end
 								run += 1
 							end
 							local gaps = run - 1
@@ -1233,10 +1233,18 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 							end
 						end
 
-						if kindN == "full" then emitHalf(0, -1) end
-						if kindS == "full" then emitHalf(0, 1) end
-						if kindW == "full" then emitHalf(-1, 0) end
-						if kindE == "full" then emitHalf(1, 0) end
+						if kindN == "full" then
+							emitHalf(0, -1)
+						end
+						if kindS == "full" then
+							emitHalf(0, 1)
+						end
+						if kindW == "full" then
+							emitHalf(-1, 0)
+						end
+						if kindE == "full" then
+							emitHalf(1, 0)
+						end
 					end
 				end
 			end
@@ -1245,7 +1253,9 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 	for x = 0, Constants.CHUNK_SIZE_X - 1 do
 		for y = 0, yLimit - 1 do
 			for z = 0, Constants.CHUNK_SIZE_Z - 1 do
-				if partsBudget >= MAX_PARTS then return meshParts end
+				if partsBudget >= MAX_PARTS then
+					return meshParts
+				end
 
 				local id = chunk:GetBlock(x, y, z)
 				if id ~= Constants.BlockType.AIR then

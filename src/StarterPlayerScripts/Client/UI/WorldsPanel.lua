@@ -89,7 +89,7 @@ local COLOR = {
 	neutral = Color3.fromRGB(70, 70, 70)
 }
 
-local function destroyNonLayoutChildren(parent)
+local function _destroyNonLayoutChildren(parent)
 	for _, child in ipairs(parent:GetChildren()) do
 		if not child:IsA("UIListLayout") and not child:IsA("UIPadding") then
 			child:Destroy()
@@ -102,11 +102,7 @@ local function trim(text)
 end
 
 local function copyWorldEntries(list)
-	local copy = {}
-	for i, entry in ipairs(list or {}) do
-		copy[i] = entry
-	end
-	return copy
+	return table.clone(list or {})
 end
 
 WorldsPanel.__index = WorldsPanel
@@ -500,7 +496,7 @@ function WorldsPanel:CreateGui()
 
 	self.panel = Instance.new("Frame")
 	self.panel.Name = "WorldsPanelRoot"
-	self.panel.Size = UDim2.new(0, WORLDS_LAYOUT.TOTAL_WIDTH, 0, WORLDS_LAYOUT.HEADER_HEIGHT + WORLDS_LAYOUT.BODY_HEIGHT)
+	self.panel.Size = UDim2.fromOffset(WORLDS_LAYOUT.TOTAL_WIDTH, WORLDS_LAYOUT.HEADER_HEIGHT + WORLDS_LAYOUT.BODY_HEIGHT)
 	self.panel.Position = UDim2.new(0.5, 0, 0.5, -WORLDS_LAYOUT.HEADER_HEIGHT)
 	self.panel.AnchorPoint = Vector2.new(0.5, 0.5)
 	self.panel.BackgroundTransparency = 1
@@ -513,7 +509,9 @@ end
 
 function WorldsPanel:BindInput()
 	local connection = InputService.InputBegan:Connect(function(input, gpe)
-		if gpe then return end
+		if gpe then
+			return
+		end
 		if input.KeyCode == Enum.KeyCode.Escape and self:IsOpen() then
 			self:Close()
 		end
@@ -645,12 +643,12 @@ function WorldsPanel:AnimateOpen()
 	local finalHeight = WORLDS_LAYOUT.HEADER_HEIGHT + WORLDS_LAYOUT.BODY_HEIGHT
 	local startHeight = WORLDS_LAYOUT.HEADER_HEIGHT
 
-	self.panel.Size = UDim2.new(0, finalWidth, 0, startHeight)
+	self.panel.Size = UDim2.fromOffset(finalWidth, startHeight)
 	self.panel.Position = UDim2.new(0.5, 0, 0, 60 + startHeight * 0.5)
 
 	local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Cubic, Enum.EasingDirection.Out)
 	self.currentTween = TweenService:Create(self.panel, tweenInfo, {
-		Size = UDim2.new(0, finalWidth, 0, finalHeight),
+		Size = UDim2.fromOffset(finalWidth, finalHeight),
 		Position = UDim2.new(0.5, 0, 0.5, -WORLDS_LAYOUT.HEADER_HEIGHT)
 	})
 
@@ -665,7 +663,9 @@ end
 function WorldsPanel:AnimateClose(onComplete)
 	if not self.panel then
 		self.isAnimating = false
-		if onComplete then onComplete() end
+		if onComplete then
+			onComplete()
+		end
 		return
 	end
 
@@ -674,7 +674,7 @@ function WorldsPanel:AnimateClose(onComplete)
 
 	local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Cubic, Enum.EasingDirection.In)
 	self.currentTween = TweenService:Create(self.panel, tweenInfo, {
-		Size = UDim2.new(0, finalWidth, 0, startHeight),
+		Size = UDim2.fromOffset(finalWidth, startHeight),
 		Position = UDim2.new(0.5, 0, 0, 60 + startHeight * 0.5)
 	})
 
@@ -708,7 +708,7 @@ end
 function WorldsPanel:CreateHeader(parent)
 	local headerFrame = Instance.new("Frame")
 	headerFrame.Name = "Header"
-	headerFrame.Size = UDim2.new(0, WORLDS_LAYOUT.TOTAL_WIDTH, 0, WORLDS_LAYOUT.HEADER_HEIGHT)
+	headerFrame.Size = UDim2.fromOffset(WORLDS_LAYOUT.TOTAL_WIDTH, WORLDS_LAYOUT.HEADER_HEIGHT)
 	headerFrame.BackgroundTransparency = 1
 	headerFrame.Parent = parent
 
@@ -726,8 +726,8 @@ function WorldsPanel:CreateHeader(parent)
 	FontBinder.apply(title, CUSTOM_FONT_NAME)
 
 	local closeIcon = IconManager:CreateIcon(headerFrame, "UI", "X", {
-		size = UDim2.new(0, 44, 0, 44),
-		position = UDim2.new(1, 0, 0, 0),
+		size = UDim2.fromOffset(44, 44),
+		position = UDim2.fromScale(1, 0),
 		anchorPoint = Vector2.new(1, 0)
 	})
 
@@ -757,8 +757,8 @@ end
 function WorldsPanel:CreateBody(parent)
 	local bodyFrame = Instance.new("Frame")
 	bodyFrame.Name = "Body"
-	bodyFrame.Size = UDim2.new(0, WORLDS_LAYOUT.TOTAL_WIDTH, 0, WORLDS_LAYOUT.BODY_HEIGHT)
-	bodyFrame.Position = UDim2.new(0, 0, 0, WORLDS_LAYOUT.HEADER_HEIGHT)
+	bodyFrame.Size = UDim2.fromOffset(WORLDS_LAYOUT.TOTAL_WIDTH, WORLDS_LAYOUT.BODY_HEIGHT)
+	bodyFrame.Position = UDim2.fromOffset(0, WORLDS_LAYOUT.HEADER_HEIGHT)
 	bodyFrame.BackgroundTransparency = 1
 	bodyFrame.Parent = parent
 
@@ -769,7 +769,7 @@ end
 function WorldsPanel:CreateMenuColumn(parent)
 	local column = Instance.new("Frame")
 	column.Name = "MenuColumn"
-	column.Size = UDim2.new(0, WORLDS_LAYOUT.MENU_WIDTH, 0, WORLDS_LAYOUT.BODY_HEIGHT)
+	column.Size = UDim2.fromOffset(WORLDS_LAYOUT.MENU_WIDTH, WORLDS_LAYOUT.BODY_HEIGHT)
 	column.BackgroundTransparency = 1
 	column.Parent = parent
 
@@ -793,14 +793,14 @@ function WorldsPanel:CreateNavButton(parent, key, iconCategory, iconName)
 
 	local container = Instance.new("Frame")
 	container.Name = key .. "_Container"
-	container.Size = UDim2.new(0, visualSize, 0, visualSize + shadowHeight / 2)
+	container.Size = UDim2.fromOffset(visualSize, visualSize + shadowHeight / 2)
 	container.BackgroundTransparency = 1
 	container.Parent = parent
 
 	local button = Instance.new("ImageButton")
 	button.Name = key .. "_Button"
-	button.Size = UDim2.new(0, buttonSize, 0, buttonSize)
-	button.Position = UDim2.new(0, 3, 0, 3)
+	button.Size = UDim2.fromOffset(buttonSize, buttonSize)
+	button.Position = UDim2.fromOffset(3, 3)
 	button.BackgroundColor3 = WORLDS_LAYOUT.NAV_BG_COLOR  -- Matching inventory menu button
 	button.BackgroundTransparency = 0  -- Fully opaque, matching inventory
 	button.BorderSizePixel = 0
@@ -810,9 +810,9 @@ function WorldsPanel:CreateNavButton(parent, key, iconCategory, iconName)
 
 	local shadow = Instance.new("Frame")
 	shadow.Name = "Shadow"
-	shadow.Size = UDim2.new(0, buttonSize, 0, shadowHeight)
+	shadow.Size = UDim2.fromOffset(buttonSize, shadowHeight)
 	shadow.AnchorPoint = Vector2.new(0, 0.5)
-	shadow.Position = UDim2.new(0, 3, 0, buttonSize + 3)
+	shadow.Position = UDim2.fromOffset(3, buttonSize + 3)
 	shadow.BackgroundColor3 = WORLDS_LAYOUT.SHADOW_COLOR
 	shadow.BackgroundTransparency = 0
 	shadow.BorderSizePixel = 0
@@ -835,8 +835,8 @@ function WorldsPanel:CreateNavButton(parent, key, iconCategory, iconName)
 
 	-- Create icon using IconManager (matching inventory)
 	local icon = IconManager:CreateIcon(button, iconCategory, iconName, {
-		size = UDim2.new(0, 64, 0, 64),
-		position = UDim2.new(0.5, 0, 0.5, 0),
+		size = UDim2.fromOffset(64, 64),
+		position = UDim2.fromScale(0.5, 0.5),
 		anchorPoint = Vector2.new(0.5, 0.5)
 	})
 	if icon then
@@ -863,8 +863,8 @@ function WorldsPanel:CreateContentPanel(parent)
 
 	local column = Instance.new("Frame")
 	column.Name = "ContentPanel"
-	column.Size = UDim2.new(0, columnWidth, 0, columnHeight)
-	column.Position = UDim2.new(0, columnX + 3, 0, 3)
+	column.Size = UDim2.fromOffset(columnWidth, columnHeight)
+	column.Position = UDim2.fromOffset(columnX + 3, 3)
 	column.BackgroundColor3 = WORLDS_LAYOUT.PANEL_BG_COLOR
 	column.BorderSizePixel = 0
 	column.ZIndex = 1
@@ -876,9 +876,9 @@ function WorldsPanel:CreateContentPanel(parent)
 
 	local shadow = Instance.new("Frame")
 	shadow.Name = "Shadow"
-	shadow.Size = UDim2.new(0, columnWidth, 0, shadowHeight)
+	shadow.Size = UDim2.fromOffset(columnWidth, shadowHeight)
 	shadow.AnchorPoint = Vector2.new(0, 0.5)
-	shadow.Position = UDim2.new(0, columnX + 3, 0, columnHeight + 3)
+	shadow.Position = UDim2.fromOffset(columnX + 3, columnHeight + 3)
 	shadow.BackgroundColor3 = WORLDS_LAYOUT.SHADOW_COLOR
 	shadow.BorderSizePixel = 0
 	shadow.ZIndex = 0
@@ -904,26 +904,26 @@ function WorldsPanel:CreateContentPanel(parent)
 
 	local contentStack = Instance.new("Frame")
 	contentStack.Name = "ContentStack"
-	contentStack.Size = UDim2.new(1, 0, 1, 0)
+	contentStack.Size = UDim2.fromScale(1, 1)
 	contentStack.BackgroundTransparency = 1
 	contentStack.Parent = column
 
 	self.overviewContainer = Instance.new("Frame")
 	self.overviewContainer.Name = "OverviewContainer"
-	self.overviewContainer.Size = UDim2.new(1, 0, 1, 0)
+	self.overviewContainer.Size = UDim2.fromScale(1, 1)
 	self.overviewContainer.BackgroundTransparency = 1
 	self.overviewContainer.Parent = contentStack
 
 	self.detailContainer = Instance.new("Frame")
 	self.detailContainer.Name = "DetailContainer"
-	self.detailContainer.Size = UDim2.new(1, 0, 1, 0)
+	self.detailContainer.Size = UDim2.fromScale(1, 1)
 	self.detailContainer.BackgroundTransparency = 1
 	self.detailContainer.Visible = false
 	self.detailContainer.Parent = contentStack
 
 	self.hubContainer = Instance.new("Frame")
 	self.hubContainer.Name = "HubContainer"
-	self.hubContainer.Size = UDim2.new(1, 0, 1, 0)
+	self.hubContainer.Size = UDim2.fromScale(1, 1)
 	self.hubContainer.BackgroundTransparency = 1
 	self.hubContainer.Visible = false
 	self.hubContainer.Parent = contentStack
@@ -964,9 +964,9 @@ function WorldsPanel:BuildOverviewContent(container)
 
 	local refreshButton = Instance.new("TextButton")
 	refreshButton.Name = "RefreshFriendsButton"
-	refreshButton.Size = UDim2.new(0, 40, 0, 40)
+	refreshButton.Size = UDim2.fromOffset(40, 40)
 	refreshButton.AnchorPoint = Vector2.new(1, 0.5)
-	refreshButton.Position = UDim2.new(1, 0, 0.5, 0)
+	refreshButton.Position = UDim2.fromScale(1, 0.5)
 	refreshButton.BackgroundColor3 = WORLDS_LAYOUT.BTN_DEFAULT
 	refreshButton.BackgroundTransparency = WORLDS_LAYOUT.SLOT_BG_TRANSPARENCY
 	refreshButton.BorderSizePixel = 0
@@ -987,8 +987,8 @@ function WorldsPanel:BuildOverviewContent(container)
 
 	local refreshBgImage = Instance.new("ImageLabel")
 	refreshBgImage.Name = "BackgroundImage"
-	refreshBgImage.Size = UDim2.new(1, 0, 1, 0)
-	refreshBgImage.Position = UDim2.new(0, 0, 0, 0)
+	refreshBgImage.Size = UDim2.fromScale(1, 1)
+	refreshBgImage.Position = UDim2.fromScale(0, 0)
 	refreshBgImage.BackgroundTransparency = 1
 	refreshBgImage.Image = WORLDS_LAYOUT.BACKGROUND_IMAGE
 	refreshBgImage.ImageTransparency = WORLDS_LAYOUT.BACKGROUND_IMAGE_TRANSPARENCY
@@ -997,8 +997,8 @@ function WorldsPanel:BuildOverviewContent(container)
 	refreshBgImage.Parent = refreshButton
 
 	local refreshIcon = IconManager:CreateIcon(refreshButton, "UI", "Refresh", {
-		size = UDim2.new(0, 24, 0, 24),
-		position = UDim2.new(0.5, 0, 0.5, 0),
+		size = UDim2.fromOffset(24, 24),
+		position = UDim2.fromScale(0.5, 0.5),
 		anchorPoint = Vector2.new(0.5, 0.5)
 	})
 	if refreshIcon then
@@ -1035,12 +1035,12 @@ function WorldsPanel:BuildOverviewContent(container)
 	local scrollTopOffset = headerHeight + buttonSpacing
 	local scrollFrame = Instance.new("ScrollingFrame")
 	scrollFrame.Name = "WorldsScroll"
-	scrollFrame.Position = UDim2.new(0, 0, 0, scrollTopOffset)
+	scrollFrame.Position = UDim2.fromOffset(0, scrollTopOffset)
 	scrollFrame.Size = UDim2.new(1, 0, 1, -scrollTopOffset)  -- Full height below label
 	scrollFrame.BackgroundTransparency = 1
 	scrollFrame.BorderSizePixel = 0  -- Remove border
 	scrollFrame.ScrollBarThickness = 6
-	scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+	scrollFrame.CanvasSize = UDim2.fromScale(0, 0)
 	scrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
 	scrollFrame.ScrollingDirection = Enum.ScrollingDirection.Y
 	scrollFrame.Parent = container
@@ -1099,7 +1099,7 @@ function WorldsPanel:BuildOverviewContent(container)
 	end)
 
 	local plusLabel = Instance.new("TextLabel")
-	plusLabel.Size = UDim2.new(0, 32, 0, 32)
+	plusLabel.Size = UDim2.fromOffset(32, 32)
 	plusLabel.Position = UDim2.new(0, 8, 0.5, 0)
 	plusLabel.AnchorPoint = Vector2.new(0, 0.5)
 	plusLabel.BackgroundTransparency = 1
@@ -1113,7 +1113,7 @@ function WorldsPanel:BuildOverviewContent(container)
 	local createLabel = Instance.new("TextLabel")
 	createLabel.Name = "Label"
 	createLabel.Size = UDim2.new(1, -48, 1, 0)
-	createLabel.Position = UDim2.new(0, 48, 0, 0)
+	createLabel.Position = UDim2.fromOffset(48, 0)
 	createLabel.BackgroundTransparency = 1
 	createLabel.Text = "Create New Realm"
 	createLabel.TextColor3 = COLOR.text
@@ -1128,7 +1128,7 @@ function WorldsPanel:BuildOverviewContent(container)
 	local reasonLabel = Instance.new("TextLabel")
 	reasonLabel.Name = "CreateReasonLabel"
 	reasonLabel.Size = UDim2.new(1, -reasonLabelOffset, 1, 0)
-	reasonLabel.Position = UDim2.new(0, reasonLabelOffset, 0, 0)
+	reasonLabel.Position = UDim2.fromOffset(reasonLabelOffset, 0)
 	reasonLabel.BackgroundTransparency = 1
 	reasonLabel.Text = ""
 	reasonLabel.TextColor3 = COLOR.textMuted
@@ -1171,8 +1171,8 @@ function WorldsPanel:BuildDetailContent(container)
 
 	local backButton = Instance.new("TextButton")
 	backButton.Name = "BackButton"
-	backButton.Size = UDim2.new(0, 56, 0, 56)  -- Matching inventory slot size
-	backButton.Position = UDim2.new(0, 0, 0, 0)
+	backButton.Size = UDim2.fromOffset(56, 56)  -- Matching inventory slot size
+	backButton.Position = UDim2.fromScale(0, 0)
 	backButton.BackgroundColor3 = WORLDS_LAYOUT.BTN_DEFAULT  -- Default for neutral action
 	backButton.BackgroundTransparency = WORLDS_LAYOUT.SLOT_BG_TRANSPARENCY
 	backButton.BorderSizePixel = 0
@@ -1189,8 +1189,8 @@ function WorldsPanel:BuildDetailContent(container)
 	-- Background image matching inventory
 	local backBgImage = Instance.new("ImageLabel")
 	backBgImage.Name = "BackgroundImage"
-	backBgImage.Size = UDim2.new(1, 0, 1, 0)
-	backBgImage.Position = UDim2.new(0, 0, 0, 0)
+	backBgImage.Size = UDim2.fromScale(1, 1)
+	backBgImage.Position = UDim2.fromScale(0, 0)
 	backBgImage.BackgroundTransparency = 1
 	backBgImage.Image = WORLDS_LAYOUT.BACKGROUND_IMAGE
 	backBgImage.ImageTransparency = WORLDS_LAYOUT.BACKGROUND_IMAGE_TRANSPARENCY
@@ -1221,7 +1221,7 @@ function WorldsPanel:BuildDetailContent(container)
 	local detailTitle = Instance.new("TextLabel")
 	detailTitle.Name = "DetailTitle"
 	detailTitle.Size = UDim2.new(1, -200, 1, 0)
-	detailTitle.Position = UDim2.new(0, 200, 0, 0)
+	detailTitle.Position = UDim2.fromOffset(200, 0)
 	detailTitle.BackgroundTransparency = 1
 	detailTitle.Text = "MANAGE WORLD"
 	detailTitle.TextColor3 = COLOR.textMuted
@@ -1235,11 +1235,11 @@ function WorldsPanel:BuildDetailContent(container)
 	local detailScroll = Instance.new("ScrollingFrame")
 	detailScroll.Name = "DetailScroll"
 	detailScroll.Size = UDim2.new(1, 0, 1, -56)
-	detailScroll.Position = UDim2.new(0, 0, 0, 56)
+	detailScroll.Position = UDim2.fromOffset(0, 56)
 	detailScroll.BackgroundTransparency = 1
 	detailScroll.ScrollBarThickness = 6
 	detailScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-	detailScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+	detailScroll.CanvasSize = UDim2.fromScale(0, 0)
 	detailScroll.ScrollingDirection = Enum.ScrollingDirection.Y
 	detailScroll.Parent = container
 	self.detailScroll = detailScroll
@@ -1273,7 +1273,7 @@ function WorldsPanel:BuildDetailContent(container)
 
 	local detailCard = Instance.new("Frame")
 	detailCard.Name = "DetailCard"
-	detailCard.Size = UDim2.new(1, 0, 0, 0)
+	detailCard.Size = UDim2.fromScale(1, 0)
 	detailCard.BackgroundColor3 = WORLDS_LAYOUT.SLOT_COLOR
 	detailCard.BorderSizePixel = 0
 	detailCard.Visible = false
@@ -1322,7 +1322,7 @@ function WorldsPanel:BuildDetailContent(container)
 
 	local slotBadge = Instance.new("TextLabel")
 	slotBadge.Name = "SlotBadge"
-	slotBadge.Size = UDim2.new(0, 72, 0, 28)
+	slotBadge.Size = UDim2.fromOffset(72, 28)
 	slotBadge.Position = UDim2.new(1, -72, 0, 6)
 	slotBadge.BackgroundColor3 = COLOR.textMuted
 	slotBadge.BorderSizePixel = 0
@@ -1372,7 +1372,7 @@ function WorldsPanel:BuildDetailContent(container)
 		row.Parent = infoList
 
 		local label = Instance.new("TextLabel")
-		label.Size = UDim2.new(0.35, 0, 1, 0)
+		label.Size = UDim2.fromScale(0.35, 1)
 		label.BackgroundTransparency = 1
 		label.Text = string.upper(name)
 		label.TextColor3 = COLOR.textMuted
@@ -1382,8 +1382,8 @@ function WorldsPanel:BuildDetailContent(container)
 		label.Parent = row
 
 		local value = Instance.new("TextLabel")
-		value.Size = UDim2.new(0.65, 0, 1, 0)
-		value.Position = UDim2.new(0.35, 0, 0, 0)
+		value.Size = UDim2.fromScale(0.65, 1)
+		value.Position = UDim2.fromScale(0.35, 0)
 		value.BackgroundTransparency = 1
 		value.Text = "--"
 		value.TextColor3 = COLOR.text
@@ -1442,7 +1442,7 @@ function WorldsPanel:BuildDetailContent(container)
 
 	local actionsCard = Instance.new("Frame")
 	actionsCard.Name = "ManageActions"
-	actionsCard.Size = UDim2.new(1, 0, 0, 0)
+	actionsCard.Size = UDim2.fromScale(1, 0)
 	actionsCard.BackgroundColor3 = WORLDS_LAYOUT.SLOT_COLOR
 	actionsCard.BorderSizePixel = 0
 	actionsCard.Visible = false
@@ -1520,7 +1520,7 @@ function WorldsPanel:BuildDetailContent(container)
 
 	local renameInput = Instance.new("TextBox")
 	renameInput.Name = "RenameInput"
-	renameInput.Size = UDim2.new(0.65, 0, 1, 0)
+	renameInput.Size = UDim2.fromScale(0.65, 1)
 	renameInput.BackgroundColor3 = WORLDS_LAYOUT.SLOT_BG_COLOR
 	renameInput.BackgroundTransparency = WORLDS_LAYOUT.SLOT_BG_TRANSPARENCY
 	renameInput.BorderSizePixel = 0
@@ -1538,8 +1538,8 @@ function WorldsPanel:BuildDetailContent(container)
 	-- Background image matching inventory
 	local renameInputBgImage = Instance.new("ImageLabel")
 	renameInputBgImage.Name = "BackgroundImage"
-	renameInputBgImage.Size = UDim2.new(1, 0, 1, 0)
-	renameInputBgImage.Position = UDim2.new(0, 0, 0, 0)
+	renameInputBgImage.Size = UDim2.fromScale(1, 1)
+	renameInputBgImage.Position = UDim2.fromScale(0, 0)
 	renameInputBgImage.BackgroundTransparency = 1
 	renameInputBgImage.Image = WORLDS_LAYOUT.BACKGROUND_IMAGE
 	renameInputBgImage.ImageTransparency = WORLDS_LAYOUT.BACKGROUND_IMAGE_TRANSPARENCY
@@ -1557,7 +1557,7 @@ function WorldsPanel:BuildDetailContent(container)
 
 	local renameButton = Instance.new("TextButton")
 	renameButton.Name = "RenameButton"
-	renameButton.Size = UDim2.new(0.35, 0, 1, 0)
+	renameButton.Size = UDim2.fromScale(0.35, 1)
 	renameButton.BackgroundColor3 = WORLDS_LAYOUT.BTN_DEFAULT  -- Default for neutral action
 	renameButton.BackgroundTransparency = WORLDS_LAYOUT.SLOT_BG_TRANSPARENCY
 	renameButton.BorderSizePixel = 0
@@ -1574,8 +1574,8 @@ function WorldsPanel:BuildDetailContent(container)
 	-- Background image matching inventory
 	local renameBtnBgImage = Instance.new("ImageLabel")
 	renameBtnBgImage.Name = "BackgroundImage"
-	renameBtnBgImage.Size = UDim2.new(1, 0, 1, 0)
-	renameBtnBgImage.Position = UDim2.new(0, 0, 0, 0)
+	renameBtnBgImage.Size = UDim2.fromScale(1, 1)
+	renameBtnBgImage.Position = UDim2.fromScale(0, 0)
 	renameBtnBgImage.BackgroundTransparency = 1
 	renameBtnBgImage.Image = WORLDS_LAYOUT.BACKGROUND_IMAGE
 	renameBtnBgImage.ImageTransparency = WORLDS_LAYOUT.BACKGROUND_IMAGE_TRANSPARENCY
@@ -1665,7 +1665,7 @@ function WorldsPanel:BuildHubContent(container)
 
 	local stack = Instance.new("Frame")
 	stack.Name = "HubStack"
-	stack.Size = UDim2.new(1, 0, 1, 0)
+	stack.Size = UDim2.fromScale(1, 1)
 	stack.BackgroundTransparency = 1
 	stack.Parent = container
 
@@ -1743,7 +1743,7 @@ function WorldsPanel:BuildHubContent(container)
 	local textColumn = Instance.new("Frame")
 	textColumn.Name = "HubTextColumn"
 	textColumn.Size = UDim2.new(1, -180, 1, -24)
-	textColumn.Position = UDim2.new(0, 12, 0, 12)
+	textColumn.Position = UDim2.fromOffset(12, 12)
 	textColumn.BackgroundTransparency = 1
 	textColumn.Parent = card
 
@@ -1797,7 +1797,7 @@ function WorldsPanel:BuildHubContent(container)
 
 	local actionFrame = Instance.new("Frame")
 	actionFrame.Name = "HubActions"
-	actionFrame.Size = UDim2.new(0, 160, 0, 56)
+	actionFrame.Size = UDim2.fromOffset(160, 56)
 	actionFrame.AnchorPoint = Vector2.new(1, 1)
 	actionFrame.Position = UDim2.new(1, -12, 1, -12)
 	actionFrame.BackgroundTransparency = 1
@@ -1806,7 +1806,7 @@ function WorldsPanel:BuildHubContent(container)
 
 	local teleportButton = Instance.new("TextButton")
 	teleportButton.Name = "TeleportToHubButton"
-	teleportButton.Size = UDim2.new(1, 0, 1, 0)
+	teleportButton.Size = UDim2.fromScale(1, 1)
 	teleportButton.BackgroundColor3 = WORLDS_LAYOUT.BTN_BLUE
 	teleportButton.BackgroundTransparency = 0
 	teleportButton.BorderSizePixel = 0
@@ -1853,7 +1853,7 @@ end
 function WorldsPanel:CreateLoadingSpinner(parent)
 	local spinnerContainer = Instance.new("Frame")
 	spinnerContainer.Name = "LoadingSpinner"
-	spinnerContainer.Size = UDim2.new(1, 0, 1, 0)
+	spinnerContainer.Size = UDim2.fromScale(1, 1)
 	spinnerContainer.BackgroundTransparency = 1
 	spinnerContainer.ZIndex = 10
 	spinnerContainer.Visible = false  -- Start hidden, will be set to visible when needed
@@ -1861,18 +1861,18 @@ function WorldsPanel:CreateLoadingSpinner(parent)
 
 	local spinner = Instance.new("Frame")
 	spinner.Name = "Spinner"
-	spinner.Size = UDim2.new(0, 48, 0, 48)
+	spinner.Size = UDim2.fromOffset(48, 48)
 	spinner.AnchorPoint = Vector2.new(0.5, 0.5)
-	spinner.Position = UDim2.new(0.5, 0, 0.5, 0)
+	spinner.Position = UDim2.fromScale(0.5, 0.5)
 	spinner.BackgroundTransparency = 1
 	spinner.Parent = spinnerContainer
 
 	-- Create base circle (subtle background)
 	local circle = Instance.new("Frame")
 	circle.Name = "Circle"
-	circle.Size = UDim2.new(0, 40, 0, 40)
+	circle.Size = UDim2.fromOffset(40, 40)
 	circle.AnchorPoint = Vector2.new(0.5, 0.5)
-	circle.Position = UDim2.new(0.5, 0, 0.5, 0)
+	circle.Position = UDim2.fromScale(0.5, 0.5)
 	circle.BackgroundTransparency = 1
 	circle.Parent = spinner
 
@@ -1889,9 +1889,9 @@ function WorldsPanel:CreateLoadingSpinner(parent)
 	-- Create rotating arc container
 	local arcContainer = Instance.new("Frame")
 	arcContainer.Name = "ArcContainer"
-	arcContainer.Size = UDim2.new(0, 40, 0, 40)
+	arcContainer.Size = UDim2.fromOffset(40, 40)
 	arcContainer.AnchorPoint = Vector2.new(0.5, 0.5)
-	arcContainer.Position = UDim2.new(0.5, 0, 0.5, 0)
+	arcContainer.Position = UDim2.fromScale(0.5, 0.5)
 	arcContainer.BackgroundTransparency = 1
 	arcContainer.Parent = spinner
 
@@ -1900,7 +1900,7 @@ function WorldsPanel:CreateLoadingSpinner(parent)
 		local dotSize = 6
 		local dot = Instance.new("Frame")
 		dot.Name = "Dot"
-		dot.Size = UDim2.new(0, dotSize, 0, dotSize)
+		dot.Size = UDim2.fromOffset(dotSize, dotSize)
 		dot.AnchorPoint = Vector2.new(0.5, 0.5)
 
 		-- Position dots around the circle (radius of ~16px from center)
@@ -2345,7 +2345,7 @@ function WorldsPanel:CreateWorldCard(worldData)
 	local nameLabel = Instance.new("TextLabel")
 	nameLabel.Name = "Name"
 	nameLabel.Size = UDim2.new(1, -180, 0, 32)
-	nameLabel.Position = UDim2.new(0, 12, 0, 12)
+	nameLabel.Position = UDim2.fromOffset(12, 12)
 	nameLabel.BackgroundTransparency = 1
 	nameLabel.TextColor3 = COLOR.text
 	nameLabel.Font = BOLD_FONT
@@ -2358,7 +2358,7 @@ function WorldsPanel:CreateWorldCard(worldData)
 	local statusLabel = Instance.new("TextLabel")
 	statusLabel.Name = "Status"
 	statusLabel.Size = UDim2.new(1, -180, 0, 22)
-	statusLabel.Position = UDim2.new(0, 12, 0, 44)
+	statusLabel.Position = UDim2.fromOffset(12, 44)
 	statusLabel.BackgroundTransparency = 1
 	statusLabel.Font = REGULAR_FONT
 	statusLabel.TextSize = MIN_TEXT_SIZE  -- Standard minimum text size
@@ -2369,7 +2369,7 @@ function WorldsPanel:CreateWorldCard(worldData)
 	local lastPlayed = Instance.new("TextLabel")
 	lastPlayed.Name = "LastPlayed"
 	lastPlayed.Size = UDim2.new(1, -180, 0, 20)
-	lastPlayed.Position = UDim2.new(0, 12, 0, 68)
+	lastPlayed.Position = UDim2.fromOffset(12, 68)
 	lastPlayed.BackgroundTransparency = 1
 	lastPlayed.TextColor3 = COLOR.textMuted
 	lastPlayed.Font = REGULAR_FONT
@@ -2380,7 +2380,7 @@ function WorldsPanel:CreateWorldCard(worldData)
 
 	local actionFrame = Instance.new("Frame")
 	actionFrame.Name = "Actions"
-	actionFrame.Size = UDim2.new(0, 224, 0, 56)  -- 160px play + 8px spacing + 56px manage = 224px width, 56px height
+	actionFrame.Size = UDim2.fromOffset(224, 56)  -- 160px play + 8px spacing + 56px manage = 224px width, 56px height
 	actionFrame.AnchorPoint = Vector2.new(1, 0.5)  -- Right-aligned horizontally, centered vertically
 	actionFrame.Position = UDim2.new(1, -12, 0.5, 0)  -- 12px from right edge, vertically centered
 	actionFrame.BackgroundTransparency = 1
@@ -2397,7 +2397,7 @@ function WorldsPanel:CreateWorldCard(worldData)
 
 	local playButton = Instance.new("TextButton")
 	playButton.Name = "PlayButton"
-	playButton.Size = UDim2.new(0, 160, 0, 56)  -- Original width retained (160px)
+	playButton.Size = UDim2.fromOffset(160, 56)  -- Original width retained (160px)
 	playButton.BackgroundColor3 = WORLDS_LAYOUT.BTN_GREEN  -- Green for success action
 	playButton.BackgroundTransparency = 0  -- Fully opaque for colored buttons
 	playButton.BorderSizePixel = 0
@@ -2440,7 +2440,7 @@ function WorldsPanel:CreateWorldCard(worldData)
 	if worldData.ownerId == player.UserId then
 		local manageButton = Instance.new("TextButton")
 		manageButton.Name = "ManageButton"
-		manageButton.Size = UDim2.new(0, 56, 0, 56)  -- Square button matching inventory slot size
+		manageButton.Size = UDim2.fromOffset(56, 56)  -- Square button matching inventory slot size
 		manageButton.BackgroundColor3 = WORLDS_LAYOUT.BTN_DEFAULT  -- Default for neutral action
 		manageButton.BackgroundTransparency = WORLDS_LAYOUT.SLOT_BG_TRANSPARENCY
 		manageButton.BorderSizePixel = 0
@@ -2456,8 +2456,8 @@ function WorldsPanel:CreateWorldCard(worldData)
 		-- Background image matching inventory
 		local manageBgImage = Instance.new("ImageLabel")
 		manageBgImage.Name = "BackgroundImage"
-		manageBgImage.Size = UDim2.new(1, 0, 1, 0)
-		manageBgImage.Position = UDim2.new(0, 0, 0, 0)
+		manageBgImage.Size = UDim2.fromScale(1, 1)
+		manageBgImage.Position = UDim2.fromScale(0, 0)
 		manageBgImage.BackgroundTransparency = 1
 		manageBgImage.Image = WORLDS_LAYOUT.BACKGROUND_IMAGE
 		manageBgImage.ImageTransparency = WORLDS_LAYOUT.BACKGROUND_IMAGE_TRANSPARENCY
@@ -2475,8 +2475,8 @@ function WorldsPanel:CreateWorldCard(worldData)
 
 		-- Settings icon (cog/wrench style)
 		local settingsIcon = IconManager:CreateIcon(manageButton, "General", "Settings", {
-			size = UDim2.new(0, 32, 0, 32),
-			position = UDim2.new(0.5, 0, 0.5, 0),
+			size = UDim2.fromOffset(32, 32),
+			position = UDim2.fromScale(0.5, 0.5),
 			anchorPoint = Vector2.new(0.5, 0.5)
 		})
 		if settingsIcon then
@@ -2655,11 +2655,11 @@ function WorldsPanel:UpdateDetailPanel()
 		end
 		if self.renameSection then
 			self.renameSection.Visible = false
-			self.renameSection.Size = UDim2.new(1, 0, 0, 0)
+			self.renameSection.Size = UDim2.fromScale(1, 0)
 		end
 		if self.deleteButton then
 			self.deleteButton.Visible = false
-			self.deleteButton.Size = UDim2.new(1, 0, 0, 0)
+			self.deleteButton.Size = UDim2.fromScale(1, 0)
 		end
 		if self.manageHintLabel then
 			self.manageHintLabel.Visible = false
@@ -3112,7 +3112,7 @@ function WorldsPanel:Initialize()
 		})
 	end)
 
-	EventManager:RegisterEvent("WorldJoinError", function(data)
+	EventManager:RegisterEvent("WorldJoinError", function(_data)
 		-- Stop spinner when teleport fails
 		self.isJoiningWorld = false
 		if self.joinSpinner then
@@ -3126,7 +3126,7 @@ function WorldsPanel:Initialize()
 		TeleportTransition:Hide()
 	end)
 
-	EventManager:RegisterEvent("HubTeleportError", function(data)
+	EventManager:RegisterEvent("HubTeleportError", function(_data)
 		-- Stop spinner when hub teleport fails
 		self.isTeleportingToHub = false
 		self:UpdateHubTeleportButtonState()

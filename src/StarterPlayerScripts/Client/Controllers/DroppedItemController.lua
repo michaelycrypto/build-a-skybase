@@ -7,7 +7,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
-local TweenService = game:GetService("TweenService")
+local _TweenService = game:GetService("TweenService")
 local PhysicsService = game:GetService("PhysicsService")
 
 local EventManager = require(ReplicatedStorage.Shared.EventManager)
@@ -37,7 +37,9 @@ local pickupSound = nil
 
 -- Compute the supporting block cell directly beneath a world position
 local function computeSupportKeyFromPos(pos, blockSize)
-    if not pos or not blockSize or blockSize <= 0 then return nil end
+    if not pos or not blockSize or blockSize <= 0 then
+    	return nil
+    end
     local bx = math.floor(pos.X / blockSize)
     local by = math.floor(pos.Y / blockSize) - 1 -- legacy fallback (unused when part available)
     local bz = math.floor(pos.Z / blockSize)
@@ -45,7 +47,9 @@ local function computeSupportKeyFromPos(pos, blockSize)
 end
 
 local function computeSupportKeyFromPart(part: BasePart, blockSize)
-    if not part or not blockSize or blockSize <= 0 then return nil end
+    if not part or not blockSize or blockSize <= 0 then
+    	return nil
+    end
     local pos = part.Position
     local halfY = (part.Size and part.Size.Y or 0) * 0.5
     local bx = math.floor(pos.X / blockSize)
@@ -56,10 +60,12 @@ end
 
 -- Raycast down from the item's primary part to find actual ground under it
 local function raycastGroundBelow(part: BasePart, maxDistance: number?)
-    if not part then return nil end
+    if not part then
+    	return nil
+    end
     local distance = maxDistance or 6
     local params = RaycastParams.new()
-    params.FilterType = Enum.RaycastFilterType.Blacklist
+    params.FilterType = Enum.RaycastFilterType.Exclude
     params.FilterDescendantsInstances = {part.Parent} -- ignore the item model itself
     return workspace:Raycast(part.Position, Vector3.new(0, -distance, 0), params)
 end
@@ -72,7 +78,7 @@ local MAGNET_RADIUS = 2 -- start pulling when within this distance (studs)
 local MAGNET_SPEED = 18 -- pull speed (studs/sec)
 
 local BOB_SPEED = 2 -- How fast items bob up and down
-local PICKUP_REQUEST_COOLDOWN = 0 -- No client-side cooldown
+local _PICKUP_REQUEST_COOLDOWN = 0 -- No client-side cooldown
 
 -- Minecraft's layering system for dropped items
 local function GetLayerCount(itemCount)
@@ -136,7 +142,9 @@ function DroppedItemController:SetupCollisionGroups()
 	end)
 
 	local function setCharGroup(char)
-		if not char then return end
+		if not char then
+			return
+		end
 		for _, desc in ipairs(char:GetDescendants()) do
 			if desc:IsA("BasePart") then
 				pcall(function()
@@ -187,12 +195,16 @@ function DroppedItemController:Initialize(voxelWorldHandle)
 
 	-- React to world edits to drop anchored items whose support disappeared
 	EventManager:RegisterEvent("BlockChanged", function(data)
-		if not data then return end
+		if not data then
+			return
+		end
 		self:OnBlockChanged(data.x, data.y, data.z, data.blockId)
 	end)
 
 	EventManager:RegisterEvent("BlockBroken", function(data)
-		if not data then return end
+		if not data then
+			return
+		end
 		self:OnBlockChanged(data.x, data.y, data.z, 0)
 	end)
 
@@ -213,7 +225,7 @@ function DroppedItemController:StartUpdateLoop()
 		local now = os.clock()
 
 		-- Animate all items
-		for id, item in pairs(items) do
+		for _, item in pairs(items) do
 			self:UpdateVisuals(item, dt, now)
 		end
 
@@ -226,7 +238,9 @@ function DroppedItemController:StartUpdateLoop()
 end
 
 function DroppedItemController:UpdateVisuals(item, dt, now)
-	if not item.model or not item.model.PrimaryPart then return end
+	if not item.model or not item.model.PrimaryPart then
+		return
+	end
 
 	local part = item.model.PrimaryPart
 
@@ -458,7 +472,7 @@ function DroppedItemController:CreateModel(itemId, count)
 			return sprite
 		end
 
-		local function makeCube()
+		local function _makeCube()
 			local cube = Instance.new("Part")
 			cube.Name = "VisualCube"
 			cube.Size = Vector3.new(0.9, 0.9, 0.9)
@@ -604,7 +618,7 @@ function DroppedItemController:CreateModel(itemId, count)
 			-- Fallback for ItemConfig string ids: billboard with item name
 			local bb = Instance.new("BillboardGui")
 			bb.Name = "VisualBillboard"
-			bb.Size = UDim2.new(0, 64, 0, 64)
+			bb.Size = UDim2.fromOffset(64, 64)
 			bb.StudsOffset = Vector3.new(0, hitbox.Size.Y * 0.5 + 0.25, 0)
 			bb.AlwaysOnTop = true
 			bb.Adornee = hitbox
@@ -1136,8 +1150,12 @@ function DroppedItemController:CreateModel(itemId, count)
 end
 
 function DroppedItemController:OnItemSpawned(data)
-	if not data or not data.id then return end
-	if items[data.id] then return end
+	if not data or not data.id then
+		return
+	end
+	if items[data.id] then
+		return
+	end
 
 	local model = self:CreateModel(data.itemId, data.count)
 	local startPos = Vector3.new(data.startPos[1], data.startPos[2], data.startPos[3])
@@ -1173,10 +1191,14 @@ function DroppedItemController:OnItemSpawned(data)
 end
 
 function DroppedItemController:OnItemRemoved(data)
-	if not data or not data.id then return end
+	if not data or not data.id then
+		return
+	end
 
 	local item = items[data.id]
-	if not item then return end
+	if not item then
+		return
+	end
 
 	-- Instant cleanup (no animation for performance)
 	if item.model then
@@ -1211,10 +1233,14 @@ function DroppedItemController:OnItemRemoved(data)
 end
 
 function DroppedItemController:OnItemUpdated(data)
-	if not data or not data.id then return end
+	if not data or not data.id then
+		return
+	end
 
 	local item = items[data.id]
-	if not item then return end
+	if not item then
+		return
+	end
 
 	local oldCount = item.count
 	local newCount = data.count
@@ -1281,10 +1307,14 @@ end
 
 function DroppedItemController:CheckPickup()
 	local char = player.Character
-	if not char then return end
+	if not char then
+		return
+	end
 
 	local root = char:FindFirstChild("HumanoidRootPart")
-	if not root then return end
+	if not root then
+		return
+	end
 
 	local now = os.clock()
 
@@ -1332,10 +1362,14 @@ end
 
 -- Called when a block changed or was broken; if it was supporting any anchored item, drop them
 function DroppedItemController:OnBlockChanged(x, y, z, newBlockId)
-    if not self.worldManager then return end
+    if not self.worldManager then
+    	return
+    end
     local key = string.format("%d,%d,%d", x, y, z)
     local set = self.supportMap[key]
-    if not set then return end
+    if not set then
+    	return
+    end
     local Constants = require(ReplicatedStorage.Shared.VoxelWorld.Core.Constants)
     if newBlockId == nil then
         newBlockId = self.worldManager:GetBlock(x, y, z)
@@ -1364,7 +1398,9 @@ function DroppedItemController:OnBlockChanged(x, y, z, newBlockId)
 end
 
 function DroppedItemController:OnItemPickedUp(data)
-	if not data then return end
+	if not data then
+		return
+	end
 	if SoundManager and SoundManager.PlaySFX then
 		SoundManager:PlaySFX("inventoryPop")
 		return

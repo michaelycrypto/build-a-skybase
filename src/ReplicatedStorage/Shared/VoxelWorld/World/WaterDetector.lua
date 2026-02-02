@@ -23,13 +23,13 @@ local WaterDetector = {}
 -- Constants
 local BLOCK_SIZE = Constants.BLOCK_SIZE
 local WATER_SOURCE = Constants.BlockType.WATER_SOURCE
-local FLOWING_WATER = Constants.BlockType.FLOWING_WATER
+local _FLOWING_WATER = Constants.BlockType.FLOWING_WATER
 
 -- Character dimensions (approximate R15)
-local CHARACTER_HEIGHT = 5.0 -- studs from feet to head
+local _CHARACTER_HEIGHT = 5.0 -- studs from feet to head
 local FEET_OFFSET = 2.5 -- studs below HumanoidRootPart to feet
 local HEAD_OFFSET = 1.5 -- studs above HumanoidRootPart to head (eye level)
-local TORSO_OFFSET = 0 -- HumanoidRootPart is at torso level
+local _TORSO_OFFSET = 0 -- HumanoidRootPart is at torso level
 
 -- Swimming state enum
 WaterDetector.SwimState = {

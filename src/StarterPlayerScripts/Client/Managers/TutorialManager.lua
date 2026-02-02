@@ -16,7 +16,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 -- Dependencies (injected during Initialize)
 local EventManager = nil
-local GameState = nil
+local _GameState = nil
 local ToastManager = nil
 local SoundManager = nil
 local TutorialConfig = nil
@@ -29,7 +29,7 @@ local isInitialized = false
 local tutorialData = nil
 local currentStep = nil
 local settings = nil
-local localProgress = {} -- Track local progress for responsive UI
+local _localProgress = {} -- Track local progress for responsive UI
 local isDisabled = false -- True when not in own realm (hub or friend's realm)
 local isOwnRealm = false -- True when in player's own realm
 local lastReportedCounts = {} -- Track last reported count per objective to avoid duplicate reports
@@ -53,7 +53,7 @@ function TutorialManager:Initialize(deps)
 
 	-- Store dependencies
 	EventManager = deps.EventManager or require(ReplicatedStorage.Shared.EventManager)
-	GameState = deps.GameState or require(script.Parent.GameState)
+	_GameState = deps.GameState or require(script.Parent.GameState)
 	ToastManager = deps.ToastManager
 	SoundManager = deps.SoundManager
 	InventoryManager = deps.InventoryManager
@@ -139,7 +139,7 @@ function TutorialManager:_registerEventHandlers()
 
 		-- Tutorial is active (either on own realm or hub with hub-specific step)
 		isOwnRealm = data.isOwnRealm == true
-		local isHub = data.isHub == true
+		local _isHub = data.isHub == true
 		isDisabled = false -- Tutorial is active for current step
 
 		if tutorialData and not tutorialData.completed then
@@ -214,19 +214,19 @@ function TutorialManager:_setupTrackingHooks()
 			moveStartPosition = humanoidRootPart.Position
 		end
 	end
-	
+
 	-- Setup existing character if present
 	if player.Character then
 		setupMovementTracking(player.Character)
 	end
-	
+
 	-- Handle respawn
 	player.CharacterAdded:Connect(function(newCharacter)
 		task.spawn(function()
 			setupMovementTracking(newCharacter)
 		end)
 	end)
-	
+
 	-- Movement tracking heartbeat (safe if character doesn't exist yet)
 	RunService.Heartbeat:Connect(function()
 		-- Skip tracking if tutorial is disabled (not in own realm)
@@ -313,7 +313,7 @@ function TutorialManager:_setupCameraModeTracking()
 		end
 
 		-- Listen to camera mode changes
-		CameraController.StateChanged:Connect(function(newState, previousState)
+		CameraController.StateChanged:Connect(function(newState, _previousState)
 			-- Skip if tutorial not active
 			if isDisabled or not currentStep or (tutorialData and tutorialData.completed) then
 				return
@@ -451,13 +451,13 @@ end
 ]]
 function TutorialManager:_showWaypoint(waypointName)
 	if not TutorialWaypoint or not TutorialConfig then return end
-	
+
 	local waypointConfig = TutorialConfig.GetWaypoint(waypointName)
 	if not waypointConfig then
 		warn("TutorialManager: Unknown waypoint:", waypointName)
 		return
 	end
-	
+
 	if waypointConfig.type == "npc" then
 		-- Show waypoint for an NPC
 		TutorialWaypoint:ShowForNPC(waypointConfig.npcId, {
@@ -587,13 +587,6 @@ function TutorialManager:_onProgressUpdated(data)
 		-- Extract progressData from the event data structure
 		local progressData = data.progressData or data
 		TutorialUI:UpdateProgress(currentStep, progressData)
-	else
-		if not TutorialUI then
-			warn("[TutorialManager] _onProgressUpdated: TutorialUI not available")
-		end
-		if not currentStep then
-			warn("[TutorialManager] _onProgressUpdated: currentStep is nil")
-		end
 	end
 end
 

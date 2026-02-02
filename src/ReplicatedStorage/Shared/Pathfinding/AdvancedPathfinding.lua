@@ -143,7 +143,7 @@ function NodeCache:get(x, y, z, nodeType)
 		if #self.nodes > self.maxSize then
 			local toRemove = {}
 			local count = 0
-			for k, v in pairs(self.nodes) do
+			for k, _ in pairs(self.nodes) do
 				if count < 1000 then  -- Remove oldest 1000 nodes
 					table.insert(toRemove, k)
 					count = count + 1
@@ -204,7 +204,7 @@ function PathNodeEvaluator:getStart()
 	return self.startNode
 end
 
-function PathNodeEvaluator:getNodeType(x, y, z)
+function PathNodeEvaluator:getNodeType(_x, _y, _z)
 	-- Override in subclasses
 	return AdvancedPathfinding.PathNodeType.OPEN
 end
@@ -340,9 +340,9 @@ function GroundEvaluator:getNodeType(x, y, z)
 
 	-- Use Minecraft-style footprint checking for pathfinding
 	-- Convert block coordinates to world coordinates for footprint checking
-	local worldX = x * BLOCK_SIZE + BLOCK_SIZE / 2
-	local worldZ = z * BLOCK_SIZE + BLOCK_SIZE / 2
-	local worldY = y * BLOCK_SIZE + BLOCK_SIZE / 2
+	local _worldX = x * BLOCK_SIZE + BLOCK_SIZE / 2
+	local _worldZ = z * BLOCK_SIZE + BLOCK_SIZE / 2
+	local _worldY = y * BLOCK_SIZE + BLOCK_SIZE / 2
 
 	-- Check if this position has a valid footprint (can stand here)
 	-- This mirrors the MobEntityService probeFootprint logic but simplified for pathfinding
@@ -518,7 +518,7 @@ function GroundEvaluator:getNeighbors(node, successors)
 	end
 end
 
-function GroundEvaluator:canClimbAt(x, y, z, climbingUp)
+function GroundEvaluator:canClimbAt(x, y, z, _climbingUp)
 	-- Check if the mob can climb at this position
 	-- For now, allow vertical movement if the target position is walkable
 	local targetType = self:getNodeType(x, y, z)
@@ -544,13 +544,13 @@ function GroundEvaluator:canClimbAt(x, y, z, climbingUp)
 end
 
 -- Door interaction methods (to be expanded with door mechanics)
-function GroundEvaluator:isDoor(blockId)
-	local Constants = require(ReplicatedStorage.Shared.VoxelWorld.Core.Constants)
+function GroundEvaluator:isDoor(_blockId)
+	local _Constants = require(ReplicatedStorage.Shared.VoxelWorld.Core.Constants)
 	-- TDS doesn't have doors yet, but this is where door logic would go
 	return false
 end
 
-function GroundEvaluator:isDoorOpen(x, y, z)
+function GroundEvaluator:isDoorOpen(_x, _y, _z)
 	-- TODO: Check door state when doors are implemented
 	return true
 end

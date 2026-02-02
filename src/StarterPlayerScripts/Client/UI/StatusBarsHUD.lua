@@ -175,7 +175,7 @@ function StatusBarsHUD:_createContainers()
 	self.container.BackgroundTransparency = 1
 	self.container.AnchorPoint = Vector2.new(0.5, 1)
 	self.container.Position = UDim2.new(0.5, 0, 1, -bottomOffset)
-	self.container.Size = UDim2.new(0, HOTBAR_WIDTH, 0, containerHeight) -- 580px to match hotbar
+	self.container.Size = UDim2.fromOffset(HOTBAR_WIDTH, containerHeight) -- 580px to match hotbar
 	self.container.Active = false
 	self.container.Parent = self.gui
 
@@ -190,7 +190,7 @@ function StatusBarsHUD:_createContainers()
 	self.leftContainer = Instance.new("Frame")
 	self.leftContainer.Name = "LeftContainer"
 	self.leftContainer.BackgroundTransparency = 1
-	self.leftContainer.Position = UDim2.new(0, HOTBAR.INTERNAL_OFFSET, 0, 0) -- x=8 to match slot 1 frame
+	self.leftContainer.Position = UDim2.fromOffset(HOTBAR.INTERNAL_OFFSET, 0) -- x=8 to match slot 1 frame
 	self.leftContainer.Size = UDim2.new(0, BAR_WIDTH, 1, 0)
 	self.leftContainer.Parent = self.container
 
@@ -245,7 +245,7 @@ function StatusBarsHUD:_createIcon(iconType, parent)
 	local frame = Instance.new("Frame")
 	frame.Name = iconType
 	frame.BackgroundTransparency = 1
-	frame.Size = UDim2.new(0, size, 0, size)
+	frame.Size = UDim2.fromOffset(size, size)
 	frame.Parent = parent
 
 	-- Outline (black border)
@@ -253,7 +253,7 @@ function StatusBarsHUD:_createIcon(iconType, parent)
 	outline.Name = "Outline"
 	outline.BackgroundColor3 = outlineColor
 	outline.BorderSizePixel = 0
-	outline.Size = UDim2.new(1, 0, 1, 0)
+	outline.Size = UDim2.fromScale(1, 1)
 	outline.ZIndex = 1
 	outline.Parent = frame
 
@@ -262,7 +262,7 @@ function StatusBarsHUD:_createIcon(iconType, parent)
 	empty.Name = "Empty"
 	empty.BackgroundColor3 = emptyColor
 	empty.BorderSizePixel = 0
-	empty.Position = UDim2.new(0, 2, 0, 2)
+	empty.Position = UDim2.fromOffset(2, 2)
 	empty.Size = UDim2.new(1, -4, 1, -4)
 	empty.ZIndex = 2
 	empty.Parent = frame
@@ -272,7 +272,7 @@ function StatusBarsHUD:_createIcon(iconType, parent)
 	fill.Name = "Fill"
 	fill.BackgroundColor3 = fullColor
 	fill.BorderSizePixel = 0
-	fill.Position = UDim2.new(0, 2, 0, 2)
+	fill.Position = UDim2.fromOffset(2, 2)
 	fill.Size = UDim2.new(1, -4, 1, -4)
 	fill.ZIndex = 3
 	fill.Parent = frame
@@ -283,8 +283,8 @@ function StatusBarsHUD:_createIcon(iconType, parent)
 	highlight.BackgroundColor3 = Color3.new(1, 1, 1)
 	highlight.BackgroundTransparency = 0.55
 	highlight.BorderSizePixel = 0
-	highlight.Position = UDim2.new(0, 1, 0, 1)
-	highlight.Size = UDim2.new(0, 3, 0, 3)
+	highlight.Position = UDim2.fromOffset(1, 1)
+	highlight.Size = UDim2.fromOffset(3, 3)
 	highlight.ZIndex = 4
 	highlight.Parent = fill
 
@@ -293,7 +293,7 @@ function StatusBarsHUD:_createIcon(iconType, parent)
 	halfFill.Name = "HalfFill"
 	halfFill.BackgroundColor3 = fullColor
 	halfFill.BorderSizePixel = 0
-	halfFill.Position = UDim2.new(0, 2, 0, 2)
+	halfFill.Position = UDim2.fromOffset(2, 2)
 	halfFill.Size = UDim2.new(0.5, -2, 1, -4)
 	halfFill.ZIndex = 3
 	halfFill.Visible = false
@@ -307,14 +307,14 @@ function StatusBarsHUD:_createHealthBar()
 	self.healthBar.Name = "HealthBar"
 	self.healthBar.BackgroundTransparency = 1
 	self.healthBar.AnchorPoint = Vector2.new(0, 1)
-	self.healthBar.Position = UDim2.new(0, 0, 1, 0)
+	self.healthBar.Position = UDim2.fromScale(0, 1)
 	self.healthBar.Size = UDim2.new(1, 0, 0, CONFIG.ICON_SIZE)
 	self.healthBar.Parent = self.leftContainer
 
 	-- Hearts: left-to-right (icon 1 at far left)
 	for i = 1, CONFIG.MAX_HEARTS do
 		local icon = self:_createIcon("Heart", self.healthBar)
-		icon.Position = UDim2.new(0, (i - 1) * ICON_STEP, 0, 0)
+		icon.Position = UDim2.fromOffset((i - 1) * ICON_STEP, 0)
 		icon.Name = "Heart_" .. i
 		self.heartIcons[i] = icon
 	end
@@ -324,7 +324,7 @@ function StatusBarsHUD:_createArmorBar()
 	self.armorBar = Instance.new("Frame")
 	self.armorBar.Name = "ArmorBar"
 	self.armorBar.BackgroundTransparency = 1
-	self.armorBar.Position = UDim2.new(0, 0, 0, 0)
+	self.armorBar.Position = UDim2.fromScale(0, 0)
 	self.armorBar.Size = UDim2.new(1, 0, 0, CONFIG.ICON_SIZE)
 	self.armorBar.Visible = false
 	self.armorBar.Parent = self.leftContainer
@@ -332,7 +332,7 @@ function StatusBarsHUD:_createArmorBar()
 	-- Armor: left-to-right (same direction as hearts)
 	for i = 1, CONFIG.MAX_ARMOR_ICONS do
 		local icon = self:_createIcon("Armor", self.armorBar)
-		icon.Position = UDim2.new(0, (i - 1) * ICON_STEP, 0, 0)
+		icon.Position = UDim2.fromOffset((i - 1) * ICON_STEP, 0)
 		icon.Name = "Armor_" .. i
 		self.armorIcons[i] = icon
 	end
@@ -343,7 +343,7 @@ function StatusBarsHUD:_createHungerBar()
 	self.hungerBar.Name = "HungerBar"
 	self.hungerBar.BackgroundTransparency = 1
 	self.hungerBar.AnchorPoint = Vector2.new(1, 1)
-	self.hungerBar.Position = UDim2.new(1, 0, 1, 0)
+	self.hungerBar.Position = UDim2.fromScale(1, 1)
 	self.hungerBar.Size = UDim2.new(1, 0, 0, CONFIG.ICON_SIZE)
 	self.hungerBar.Parent = self.rightContainer
 
@@ -368,7 +368,9 @@ end
 function StatusBarsHUD:_setIconState(icon, state)
 	local fill = icon:FindFirstChild("Fill")
 	local halfFill = icon:FindFirstChild("HalfFill")
-	if not fill or not halfFill then return end
+	if not fill or not halfFill then
+		return
+	end
 
 	if state == "full" then
 		fill.Visible = true
@@ -447,7 +449,9 @@ end
 --------------------------------------------------------------------------------
 
 function StatusBarsHUD:_shakeHearts()
-	if self.isShaking then return end
+	if self.isShaking then
+		return
+	end
 	self.isShaking = true
 
 	local shakeCount = 4
@@ -457,14 +461,14 @@ function StatusBarsHUD:_shakeHearts()
 		for i, icon in ipairs(self.heartIcons) do
 			local baseX = (i - 1) * ICON_STEP
 			local offsetY = math.random(-CONFIG.SHAKE_INTENSITY, CONFIG.SHAKE_INTENSITY)
-			icon.Position = UDim2.new(0, baseX, 0, offsetY)
+			icon.Position = UDim2.fromOffset(baseX, offsetY)
 		end
 		task.wait(shakeTime)
 	end
 
 	-- Reset positions
 	for i, icon in ipairs(self.heartIcons) do
-		icon.Position = UDim2.new(0, (i - 1) * ICON_STEP, 0, 0)
+		icon.Position = UDim2.fromOffset((i - 1) * ICON_STEP, 0)
 	end
 
 	self.isShaking = false
@@ -484,15 +488,23 @@ function StatusBarsHUD:_startPulseLoop()
 			for _, icon in ipairs(self.heartIcons) do
 				local fill = icon:FindFirstChild("Fill")
 				local halfFill = icon:FindFirstChild("HalfFill")
-				if fill and fill.Visible then fill.BackgroundColor3 = color end
-				if halfFill and halfFill.Visible then halfFill.BackgroundColor3 = color end
+				if fill and fill.Visible then
+					fill.BackgroundColor3 = color
+				end
+				if halfFill and halfFill.Visible then
+					halfFill.BackgroundColor3 = color
+				end
 			end
 		else
 			for _, icon in ipairs(self.heartIcons) do
 				local fill = icon:FindFirstChild("Fill")
 				local halfFill = icon:FindFirstChild("HalfFill")
-				if fill then fill.BackgroundColor3 = CONFIG.HEART_FULL end
-				if halfFill then halfFill.BackgroundColor3 = CONFIG.HEART_FULL end
+				if fill then
+					fill.BackgroundColor3 = CONFIG.HEART_FULL
+				end
+				if halfFill then
+					halfFill.BackgroundColor3 = CONFIG.HEART_FULL
+				end
 			end
 		end
 	end))
@@ -504,7 +516,9 @@ end
 
 function StatusBarsHUD:_connectEvents()
 	local healthConn = EventManager:ConnectToServer("PlayerHealthChanged", function(data)
-		if not data then return end
+		if not data then
+			return
+		end
 		local oldHealth = self.currentHealth
 		self.currentHealth = data.health or self.currentHealth
 		self.maxHealth = data.maxHealth or self.maxHealth
@@ -514,14 +528,20 @@ function StatusBarsHUD:_connectEvents()
 		end
 		self:_updateHearts()
 	end)
-	if healthConn then table.insert(self.connections, healthConn) end
+	if healthConn then
+		table.insert(self.connections, healthConn)
+	end
 
 	local armorConn = EventManager:ConnectToServer("PlayerArmorChanged", function(data)
-		if not data then return end
+		if not data then
+			return
+		end
 		self.currentArmor = data.defense or 0
 		self:_updateArmor()
 	end)
-	if armorConn then table.insert(self.connections, armorConn) end
+	if armorConn then
+		table.insert(self.connections, armorConn)
+	end
 
 	local hungerConn = EventManager:ConnectToServer("PlayerHungerChanged", function(data)
 		if not data then
@@ -531,7 +551,7 @@ function StatusBarsHUD:_connectEvents()
 
 		-- Clamp hunger to valid range (0-20) for safety
 		local hunger = data.hunger
-		local saturation = data.saturation
+		local _saturation = data.saturation
 
 		if hunger ~= nil then
 			local oldHunger = self.currentHunger
@@ -559,12 +579,16 @@ function StatusBarsHUD:_connectEvents()
 			task.spawn(function() self:_shakeHearts() end)
 		end
 	end)
-	if damageConn then table.insert(self.connections, damageConn) end
+	if damageConn then
+		table.insert(self.connections, damageConn)
+	end
 end
 
 function StatusBarsHUD:_syncFromHumanoid()
 	local function connect(humanoid)
-		if not humanoid then return end
+		if not humanoid then
+			return
+		end
 
 		self.currentHealth = humanoid.Health
 		self.maxHealth = humanoid.MaxHealth

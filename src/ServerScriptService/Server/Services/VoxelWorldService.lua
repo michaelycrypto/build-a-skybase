@@ -5,7 +5,7 @@
 --]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
+local _RunService = game:GetService("RunService")  -- Preloaded for cache
 local Workspace = game:GetService("Workspace")
 
 -- Core voxel modules
@@ -63,7 +63,9 @@ end
 
 -- Internal: combat tagging helpers
 function VoxelWorldService:_refreshCombatTagForCharacter(character, now)
-    if not character then return end
+    if not character then
+    	return
+    end
     local ttl = CombatConfig.COMBAT_TTL_SECONDS or 8
     local expiresAt = now + ttl
 
@@ -78,8 +80,12 @@ function VoxelWorldService:_refreshCombatTagForCharacter(character, now)
         local ok, currentExpiry = pcall(function()
             return character:GetAttribute("CombatExpiresAt")
         end)
-        if not ok then return end
-        if type(currentExpiry) ~= "number" then return end
+        if not ok then
+        	return
+        end
+        if type(currentExpiry) ~= "number" then
+        	return
+        end
         if os.clock() >= currentExpiry then
             pcall(function()
                 character:SetAttribute("IsInCombat", false)
@@ -145,7 +151,9 @@ end
 
 -- Handle player melee hit request (PvP)
 function VoxelWorldService:HandlePlayerMeleeHit(player: Player, data)
-    if not data or not data.targetUserId then return end
+    if not data or not data.targetUserId then
+    	return
+    end
     local now = os.clock()
 
     -- Rate limit by swing cooldown
@@ -162,9 +170,13 @@ function VoxelWorldService:HandlePlayerMeleeHit(player: Player, data)
 
     -- Validate attacker character
     local attackerChar = player.Character
-    if not attackerChar then return end
+    if not attackerChar then
+    	return
+    end
     local attackerRoot = attackerChar:FindFirstChild("HumanoidRootPart")
-    if not attackerRoot then return end
+    if not attackerRoot then
+    	return
+    end
 
     -- Validate victim
     local victim = nil
@@ -174,12 +186,18 @@ function VoxelWorldService:HandlePlayerMeleeHit(player: Player, data)
             break
         end
     end
-    if not victim or victim == player then return end
+    if not victim or victim == player then
+    	return
+    end
     local victimChar = victim.Character
-    if not victimChar then return end
+    if not victimChar then
+    	return
+    end
     local victimRoot = victimChar:FindFirstChild("HumanoidRootPart")
     local victimHum = victimChar:FindFirstChildOfClass("Humanoid")
-    if not victimRoot or not victimHum or victimHum.Health <= 0 then return end
+    if not victimRoot or not victimHum or victimHum.Health <= 0 then
+    	return
+    end
 
     -- Determine attacker tool (sword or empty hand)
     local toolType, toolTier
@@ -211,17 +229,19 @@ function VoxelWorldService:HandlePlayerMeleeHit(player: Player, data)
     local dir = (victimRoot.Position - attackerRoot.Position).Unit
     local dot = forward:Dot(dir)
     local angle = math.deg(math.acos(math.clamp(dot, -1, 1)))
-    if angle > fov then return end
+    if angle > fov then
+    	return
+    end
 
     -- Optional: simple line-of-sight raycast
     local rayParams = RaycastParams.new()
-    rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+    rayParams.FilterType = Enum.RaycastFilterType.Exclude
     rayParams.FilterDescendantsInstances = {attackerChar}
-    local result = workspace:Raycast(attackerRoot.Position, (victimRoot.Position - attackerRoot.Position), rayParams)
-    if result and result.Instance and result.Instance:IsDescendantOf(victimChar) == false then
-        -- Hit something else first
-        -- allow slight occlusion tolerance; skip rejection for now to reduce false negatives
-    end
+    local _result = workspace:Raycast(attackerRoot.Position, (victimRoot.Position - attackerRoot.Position), rayParams)
+    -- if result and result.Instance and result.Instance:IsDescendantOf(victimChar) == false then
+    --     -- Hit something else first
+    --     -- allow slight occlusion tolerance; skip rejection for now to reduce false negatives
+    -- end
 
     -- Compute damage using unified config (supports swords, axes, pickaxes, shovels, or hand)
     local rawDmg = CombatConfig.GetMeleeDamage(toolType, toolTier)
@@ -302,7 +322,6 @@ function VoxelWorldService:HandleOpenMinion(player, data)
 
 	-- If player is already viewing this minion, avoid re-sending MinionOpened (prevents duplicate UI)
 	if self.playerMinionView[player] == key then
-		local EventManager = require(game.ReplicatedStorage.Shared.EventManager)
 		EventManager:FireEvent("MinionUpdated", player, {
 			state = {
 				type = state.type,
@@ -316,7 +335,6 @@ function VoxelWorldService:HandleOpenMinion(player, data)
 		return
 	end
 
-	local EventManager = require(game.ReplicatedStorage.Shared.EventManager)
 	EventManager:FireEvent("MinionOpened", player, {
 		anchorPos = { x = data.x, y = data.y, z = data.z },
 		state = {
@@ -337,7 +355,9 @@ end
 
 -- Handle open UI by entity id (clicking the mob model)
 function VoxelWorldService:HandleOpenMinionByEntity(player, data)
-	if not data or not data.entityId then return end
+	if not data or not data.entityId then
+		return
+	end
 	local entityId = data.entityId
 	-- Try both string and numeric keys
 	local key = nil
@@ -376,10 +396,14 @@ function VoxelWorldService:HandleOpenMinionByEntity(player, data)
 	if not isMinionEntity then
 		return
 	end
-	if not key then return end
+	if not key then
+		return
+	end
 	local x, y, z = string.match(key, "(-?%d+),(-?%d+),(-?%d+)")
 	x, y, z = tonumber(x), tonumber(y), tonumber(z)
-	if not x then return end
+	if not x then
+		return
+	end
 	-- Reuse HandleOpenMinion state logic but with derived coordinates
 	return self:HandleOpenMinion(player, { x = x, y = y, z = z })
 end
@@ -408,13 +432,11 @@ function VoxelWorldService:HandleMinionUpgrade(player, data)
 		local itemId = MinionConfig.GetUpgradeItemId(state.type)
 		local have = inv:GetItemCount(player, itemId)
 		if have < cost then
-			local EventManager = require(game.ReplicatedStorage.Shared.EventManager)
 			EventManager:FireEvent("ShowError", player, { message = "Not enough materials" })
 			return
 		end
 		local ok = inv:RemoveItem(player, itemId, cost)
 		if not ok then
-			local EventManager = require(game.ReplicatedStorage.Shared.EventManager)
 			EventManager:FireEvent("ShowError", player, { message = "Failed to consume materials" })
 			return
 		end
@@ -422,21 +444,22 @@ function VoxelWorldService:HandleMinionUpgrade(player, data)
 	-- Apply upgrade
 	state.level = math.min(maxLevel, state.level + 1)
 	state.slotsUnlocked = math.min(12, (state.slotsUnlocked or 1) + 1)
-	local waitSec = MinionConfig.GetWaitSeconds(state.type, state.level)
-	local nextCost = (state.level < maxLevel) and MinionConfig.GetUpgradeCost(state.type, state.level) or 0
+	local _waitSec = MinionConfig.GetWaitSeconds(state.type, state.level)  -- Currently unused but computed for future UI
+	local _nextCost = (state.level < maxLevel) and MinionConfig.GetUpgradeCost(state.type, state.level) or 0
 	-- Broadcast to all viewers for this anchor
 	self:_broadcastMinionState(key)
 end
 
 -- Handle collect all items from minion
 function VoxelWorldService:HandleMinionCollectAll(player, data)
-	if not data or not data.x or not data.y or not data.z then return end
+	if not data or not data.x or not data.y or not data.z then
+		return
+	end
 
 	local key = string.format("%d,%d,%d", data.x, data.y, data.z)
 	local state = self.minionStateByBlockKey[key]
 	if not state or not state.slots then
 		print(string.format("[Minion] CollectAll: no state for %s by %s", key, player and player.Name or "?"))
-		local EventManager = require(game.ReplicatedStorage.Shared.EventManager)
 		EventManager:FireEvent("ShowError", player, { message = "Minion not found or empty" })
 		return
 	end
@@ -477,7 +500,6 @@ function VoxelWorldService:HandleMinionCollectAll(player, data)
 	self:_broadcastMinionState(key)
 
 	-- Feedback to requester
-	local EventManager = require(game.ReplicatedStorage.Shared.EventManager)
 	if collected > 0 then
 		print(string.format("[Minion] CollectAll: moved %d/%d items at %s for %s", collected, attempted, key, player.Name))
 		EventManager:FireEvent("ShowNotification", player, {
@@ -494,7 +516,9 @@ end
 
 -- Handle pickup minion: despawn, remove state, return item to player
 function VoxelWorldService:HandleMinionPickup(player, data)
-	if not data or not data.x or not data.y or not data.z then return end
+	if not data or not data.x or not data.y or not data.z then
+		return
+	end
 
 	local key = string.format("%d,%d,%d", data.x, data.y, data.z)
 	local state = self.minionStateByBlockKey[key]
@@ -510,7 +534,6 @@ function VoxelWorldService:HandleMinionPickup(player, data)
 			end
 		end
 		if hasItems then
-			local EventManager = require(game.ReplicatedStorage.Shared.EventManager)
 			EventManager:FireEvent("ShowError", player, {
 				message = "Minion has items! Collect them first or they will be lost."
 			})
@@ -553,7 +576,6 @@ function VoxelWorldService:HandleMinionPickup(player, data)
 	do
 		local wm = self.worldManager
 		if wm then
-			local Constants = require(game.ReplicatedStorage.Shared.VoxelWorld.Core.Constants)
 			if _isMinionBlock(wm:GetBlock(data.x, data.y, data.z)) then
 				wm:SetBlock(data.x, data.y, data.z, Constants.BlockType.AIR)
 			end
@@ -564,7 +586,6 @@ function VoxelWorldService:HandleMinionPickup(player, data)
 	do
 		local viewers = self.minionViewers and self.minionViewers[key]
 		if viewers then
-			local EventManager = require(game.ReplicatedStorage.Shared.EventManager)
 			for viewer in pairs(viewers) do
 				-- Clear reverse mapping
 				if self.playerMinionView then
@@ -593,7 +614,6 @@ function VoxelWorldService:HandleMinionPickup(player, data)
 				local ok = inv:AddItemWithMetadata(player, itemId, metadata)
 				if not ok then
 					-- Inventory full: drop on ground as a fallback (optional)
-					local EventManager = require(game.ReplicatedStorage.Shared.EventManager)
 					EventManager:FireEvent("ShowError", player, { message = "Inventory full" })
 				end
 			else
@@ -602,12 +622,11 @@ function VoxelWorldService:HandleMinionPickup(player, data)
 	end
 
 	-- Close UI
-	local EventManager = require(game.ReplicatedStorage.Shared.EventManager)
 	EventManager:FireEvent("MinionClosed", player)
 end
 
 -- Close minion UI for a player (unsubscribe)
-function VoxelWorldService:HandleCloseMinion(player, data)
+function VoxelWorldService:HandleCloseMinion(player, _data)
 	-- Remove viewer subscription if present
 	local key = self.playerMinionView[player]
 	if key and self.minionViewers[key] then
@@ -618,7 +637,6 @@ function VoxelWorldService:HandleCloseMinion(player, data)
 	end
 	self.playerMinionView[player] = nil
 	-- Acknowledge close back to client
-	local EventManager = require(game.ReplicatedStorage.Shared.EventManager)
 	EventManager:FireEvent("MinionClosed", player)
 end
 
@@ -651,7 +669,9 @@ function VoxelWorldService:AddItemToMinion(anchorKey, itemId, count)
 
 	-- Try to stack with existing slots first
 	for i = 1, slotsUnlocked do
-		if remaining <= 0 then break end
+		if remaining <= 0 then
+			break
+		end
 		local slot = state.slots[i]
 		if slot.itemId == itemId and slot.count < 64 then
 			local canAdd = math.min(64 - slot.count, remaining)
@@ -662,7 +682,9 @@ function VoxelWorldService:AddItemToMinion(anchorKey, itemId, count)
 
 	-- Fill empty slots
 	for i = 1, slotsUnlocked do
-		if remaining <= 0 then break end
+		if remaining <= 0 then
+			break
+		end
 		local slot = state.slots[i]
 		if slot.itemId == 0 or slot.count == 0 then
 			local canAdd = math.min(64, remaining)
@@ -713,11 +735,14 @@ end
 -- Broadcast current minion state to all viewers of the anchor
 function VoxelWorldService:_broadcastMinionState(anchorKey)
 	local state = self.minionStateByBlockKey[anchorKey]
-	if not state then return end
+	if not state then
+		return
+	end
 	local viewers = self.minionViewers[anchorKey]
-	if not viewers then return end
+	if not viewers then
+		return
+	end
 	local payload = self:_buildMinionStatePayload(state)
-	local EventManager = require(game.ReplicatedStorage.Shared.EventManager)
 	for viewer, _ in pairs(viewers) do
 		EventManager:FireEvent("MinionUpdated", viewer, { state = payload })
 	end
@@ -725,14 +750,22 @@ end
 
 -- Cancel block breaking immediately for a specific block
 function VoxelWorldService:CancelBlockBreak(player, data)
-    if not data or data.x == nil or data.y == nil or data.z == nil then return end
-    if not self.blockBreakTracker then return end
+    if not data or data.x == nil or data.y == nil or data.z == nil then
+    	return
+    end
+    if not self.blockBreakTracker then
+    	return
+    end
 
     -- Optional: validate reach similar to punch to avoid remote abuse
     local character = player.Character
-    if not character then return end
+    if not character then
+    	return
+    end
     local head = character:FindFirstChild("Head")
-    if not head then return end
+    if not head then
+    	return
+    end
     local x, y, z = data.x, data.y, data.z
     local blockCenter = Vector3.new(
         x * Constants.BLOCK_SIZE + Constants.BLOCK_SIZE * 0.5,
@@ -741,7 +774,9 @@ function VoxelWorldService:CancelBlockBreak(player, data)
     )
     local distance3D = (blockCenter - head.Position).Magnitude
     local maxReach = 4.5 * Constants.BLOCK_SIZE + 2
-    if distance3D > maxReach then return end
+    if distance3D > maxReach then
+    	return
+    end
 
     self.blockBreakTracker:Cancel(x, y, z)
 end
@@ -749,16 +784,24 @@ end
 -- Check if world is ready for players to spawn
 function VoxelWorldService:IsWorldReady()
 	-- World must exist
-	if not self.world then return false end
+	if not self.world then
+		return false
+	end
 
 	-- WorldManager must exist
-	if not self.worldManager then return false end
+	if not self.worldManager then
+		return false
+	end
 
 	-- Generator must exist (needed for spawn position)
-	if not self.worldManager.generator then return false end
+	if not self.worldManager.generator then
+		return false
+	end
 
 	-- Generator must have GetSpawnPosition method
-	if not self.worldManager.generator.GetSpawnPosition then return false end
+	if not self.worldManager.generator.GetSpawnPosition then
+		return false
+	end
 
 	return true
 end
@@ -902,7 +945,9 @@ end
 
 -- Update world seed (called when owner joins)
 function VoxelWorldService:UpdateWorldSeed(seed)
-	if not seed then return end
+	if not seed then
+		return
+	end
 
 	-- Destroy old world if it exists
 	if self.world and self.world.Destroy then
@@ -1068,7 +1113,9 @@ end
 -- Stream needed chunks for a player
 function VoxelWorldService:StreamChunksToPlayer(player, playerState)
 	local state = playerState or self.players[player]
-	if not state then return end
+	if not state then
+		return
+	end
 
 	local now = os.clock()
 	local rl = self.rateLimits[player]
@@ -1078,7 +1125,9 @@ function VoxelWorldService:StreamChunksToPlayer(player, playerState)
 	end
 
 	local remaining = math.max(0, (Config.NETWORK.MAX_CHUNKS_PER_UPDATE or 5) - rl.chunksSent)
-	if remaining <= 0 then return end
+	if remaining <= 0 then
+		return
+	end
 
 	local centerChunkX = math.floor(state.position.X / (Constants.CHUNK_SIZE_X * Constants.BLOCK_SIZE))
 	local centerChunkZ = math.floor(state.position.Z / (Constants.CHUNK_SIZE_Z * Constants.BLOCK_SIZE))
@@ -1101,21 +1150,19 @@ function VoxelWorldService:StreamChunksToPlayer(player, playerState)
 
 				if not state.chunks[key] then
 					-- Skip known-empty chunks in sparse worlds (e.g., Skyblock)
-					if self.worldManager and self.worldManager.IsChunkEmpty and self.worldManager:IsChunkEmpty(cx, cz) then
-						-- continue
-					else
-					local score = dist2
-					if hasForward then
-						local len = math.sqrt(ox*ox + oz*oz)
-						if len > 1e-3 then
-							local ndx, ndz = ox/len, oz/len
-							local dot = ndx * forward.X + ndz * forward.Z
-							if dot then
-								dot = math.clamp(dot, -1, 1)
-								score = score - (dot * bias)
+					if not (self.worldManager and self.worldManager.IsChunkEmpty and self.worldManager:IsChunkEmpty(cx, cz)) then
+						local score = dist2
+						if hasForward then
+							local len = math.sqrt(ox*ox + oz*oz)
+							if len > 1e-3 then
+								local ndx, ndz = ox/len, oz/len
+								local dot = ndx * forward.X + ndz * forward.Z
+								if dot then
+									dot = math.clamp(dot, -1, 1)
+									score = score - (dot * bias)
+								end
 							end
 						end
-					end
 						table.insert(candidates, { cx = cx, cz = cz, key = key, score = score })
 					end
 				end
@@ -1161,7 +1208,7 @@ function VoxelWorldService:StreamChunksToPlayers()
 				local prevPos = state.position
 				state.prevPosition = prevPos
 				state.position = Vector3.new(pos.X, pos.Y, pos.Z)
-				
+
 				-- Calculate movement direction for predictive streaming
 				local dx = state.position.X - prevPos.X
 				local dz = state.position.Z - prevPos.Z
@@ -1171,7 +1218,7 @@ function VoxelWorldService:StreamChunksToPlayers()
 				end
 			end
 		end
-		
+
 		self:StreamChunksToPlayer(player, state)
 
 		-- Unload far chunks
@@ -1199,7 +1246,9 @@ end
 
 -- Set block in world
 function VoxelWorldService:SetBlock(x, y, z, blockId, player, metadata)
-	if not self.worldManager then return false end
+	if not self.worldManager then
+		return false
+	end
 
 	-- Get current state
     local prevBlockId = self.worldManager:GetBlock(x, y, z)
@@ -1217,7 +1266,9 @@ function VoxelWorldService:SetBlock(x, y, z, blockId, player, metadata)
     -- Set block type if changed
     if blockTypeChanged then
     	local success = self.worldManager:SetBlock(x, y, z, blockId)
-		if not success then return false end
+		if not success then
+			return false
+		end
     end
 
 	-- If block type changed and no explicit metadata provided, clear old metadata
@@ -1304,10 +1355,18 @@ function VoxelWorldService:SetBlock(x, y, z, blockId, player, metadata)
 	-- If on a chunk edge, also mark the neighbor so fence rails render across border
 	local localX = x % Constants.CHUNK_SIZE_X
 	local localZ = z % Constants.CHUNK_SIZE_Z
-	if localX == 0 then mark(chunkX - 1, chunkZ) end
-	if localX == Constants.CHUNK_SIZE_X - 1 then mark(chunkX + 1, chunkZ) end
-	if localZ == 0 then mark(chunkX, chunkZ - 1) end
-	if localZ == Constants.CHUNK_SIZE_Z - 1 then mark(chunkX, chunkZ + 1) end
+	if localX == 0 then
+		mark(chunkX - 1, chunkZ)
+	end
+	if localX == Constants.CHUNK_SIZE_X - 1 then
+		mark(chunkX + 1, chunkZ)
+	end
+	if localZ == 0 then
+		mark(chunkX, chunkZ - 1)
+	end
+	if localZ == Constants.CHUNK_SIZE_Z - 1 then
+		mark(chunkX, chunkZ + 1)
+	end
 	print(string.format("🔄 Marked chunk (%d,%d) (+edges if any) as modified (block %d at %d,%d,%d, meta:%d)", chunkX, chunkZ, blockId, x, y, z, metadata or 0))
 
 	-- Notify all players
@@ -1357,7 +1416,9 @@ function VoxelWorldService:HandlePlayerPunch(player, punchData)
 		return
 	end
 	local playerData = self.players[player]
-	if not playerData then return end
+	if not playerData then
+		return
+	end
 
 	-- Rate limiting
 	local now = os.clock()
@@ -1374,10 +1435,14 @@ function VoxelWorldService:HandlePlayerPunch(player, punchData)
 
 	-- Validate distance
 	local character = player.Character
-	if not character then return end
+	if not character then
+		return
+	end
 
 	local head = character:FindFirstChild("Head")
-	if not head then return end
+	if not head then
+		return
+	end
 
 	local blockCenter = Vector3.new(
 		x * Constants.BLOCK_SIZE + Constants.BLOCK_SIZE * 0.5,
@@ -1415,7 +1480,6 @@ function VoxelWorldService:HandlePlayerPunch(player, punchData)
 		local stack = self.Deps.PlayerInventoryService:GetHotbarSlot(player, slotIndex)
 		if stack and not stack:IsEmpty() then
 			local itemId = stack:GetItemId()
-			local ToolConfig = require(game.ReplicatedStorage.Configs.ToolConfig)
 			if ToolConfig.IsTool(itemId) then
 				local tType, tTier = ToolConfig.GetBlockProps(itemId)
 				toolType = tType
@@ -1499,12 +1563,24 @@ function VoxelWorldService:HandlePlayerPunch(player, punchData)
 
 				-- Map leaf → sapling
 				local saplingId
-				if blockId == Constants.BlockType.OAK_LEAVES then saplingId = Constants.BlockType.OAK_SAPLING end
-				if blockId == Constants.BlockType.SPRUCE_LEAVES then saplingId = Constants.BlockType.SPRUCE_SAPLING end
-				if blockId == Constants.BlockType.JUNGLE_LEAVES then saplingId = Constants.BlockType.JUNGLE_SAPLING end
-				if blockId == Constants.BlockType.DARK_OAK_LEAVES then saplingId = Constants.BlockType.DARK_OAK_SAPLING end
-				if blockId == Constants.BlockType.BIRCH_LEAVES then saplingId = Constants.BlockType.BIRCH_SAPLING end
-				if blockId == Constants.BlockType.ACACIA_LEAVES then saplingId = Constants.BlockType.ACACIA_SAPLING end
+				if blockId == Constants.BlockType.OAK_LEAVES then
+					saplingId = Constants.BlockType.OAK_SAPLING
+				end
+				if blockId == Constants.BlockType.SPRUCE_LEAVES then
+					saplingId = Constants.BlockType.SPRUCE_SAPLING
+				end
+				if blockId == Constants.BlockType.JUNGLE_LEAVES then
+					saplingId = Constants.BlockType.JUNGLE_SAPLING
+				end
+				if blockId == Constants.BlockType.DARK_OAK_LEAVES then
+					saplingId = Constants.BlockType.DARK_OAK_SAPLING
+				end
+				if blockId == Constants.BlockType.BIRCH_LEAVES then
+					saplingId = Constants.BlockType.BIRCH_SAPLING
+				end
+				if blockId == Constants.BlockType.ACACIA_LEAVES then
+					saplingId = Constants.BlockType.ACACIA_SAPLING
+				end
 
 				-- If leaf was the legacy generic kind, infer species from nearby variant leaves first, then nearest trunk
 				if (not saplingId) and blockId == Constants.BlockType.LEAVES then
@@ -1513,16 +1589,30 @@ function VoxelWorldService:HandlePlayerPunch(player, punchData)
 					local meta = self.worldManager and self.worldManager:GetBlockMetadata(x, y, z) or 0
 					local code = bit32.rshift(bit32.band(meta, 0x70), 4)
 					local function codeToSapling(c)
-						if c == 0 then return Constants.BlockType.OAK_SAPLING end
-						if c == 1 then return Constants.BlockType.SPRUCE_SAPLING end
-						if c == 2 then return Constants.BlockType.JUNGLE_SAPLING end
-						if c == 3 then return Constants.BlockType.DARK_OAK_SAPLING end
-						if c == 4 then return Constants.BlockType.BIRCH_SAPLING end
-						if c == 5 then return Constants.BlockType.ACACIA_SAPLING end
+						if c == 0 then
+							return Constants.BlockType.OAK_SAPLING
+						end
+						if c == 1 then
+							return Constants.BlockType.SPRUCE_SAPLING
+						end
+						if c == 2 then
+							return Constants.BlockType.JUNGLE_SAPLING
+						end
+						if c == 3 then
+							return Constants.BlockType.DARK_OAK_SAPLING
+						end
+						if c == 4 then
+							return Constants.BlockType.BIRCH_SAPLING
+						end
+						if c == 5 then
+							return Constants.BlockType.ACACIA_SAPLING
+						end
 						return nil
 					end
 					local fromCode = codeToSapling(code)
-					if fromCode then saplingId = fromCode end
+					if fromCode then
+						saplingId = fromCode
+					end
 
 					-- Next, ask SaplingService for a chunk species hint
 					if (not saplingId) and self.Deps and self.Deps.SaplingService and self.Deps.SaplingService.GetChunkSpecies then
@@ -1531,7 +1621,9 @@ function VoxelWorldService:HandlePlayerPunch(player, punchData)
 						local hint = self.Deps.SaplingService:GetChunkSpecies(cx, cz)
 						if hint ~= nil then
 							local hinted = codeToSapling(hint)
-							if hinted then saplingId = hinted end
+							if hinted then
+								saplingId = hinted
+							end
 						end
 					end
 
@@ -1541,14 +1633,28 @@ function VoxelWorldService:HandlePlayerPunch(player, punchData)
 						for dx = -radius, radius do
 							for dz = -radius, radius do
 								local nid = self.worldManager and self.worldManager:GetBlock(x + dx, y + dy, z + dz)
-								if nid == Constants.BlockType.OAK_LEAVES then inferred = Constants.BlockType.OAK_SAPLING break end
-								if nid == Constants.BlockType.SPRUCE_LEAVES then inferred = Constants.BlockType.SPRUCE_SAPLING break end
-								if nid == Constants.BlockType.JUNGLE_LEAVES then inferred = Constants.BlockType.JUNGLE_SAPLING break end
-								if nid == Constants.BlockType.DARK_OAK_LEAVES then inferred = Constants.BlockType.DARK_OAK_SAPLING break end
-								if nid == Constants.BlockType.BIRCH_LEAVES then inferred = Constants.BlockType.BIRCH_SAPLING break end
-								if nid == Constants.BlockType.ACACIA_LEAVES then inferred = Constants.BlockType.ACACIA_SAPLING break end
+								if nid == Constants.BlockType.OAK_LEAVES then
+									inferred = Constants.BlockType.OAK_SAPLING break
+								end
+								if nid == Constants.BlockType.SPRUCE_LEAVES then
+									inferred = Constants.BlockType.SPRUCE_SAPLING break
+								end
+								if nid == Constants.BlockType.JUNGLE_LEAVES then
+									inferred = Constants.BlockType.JUNGLE_SAPLING break
+								end
+								if nid == Constants.BlockType.DARK_OAK_LEAVES then
+									inferred = Constants.BlockType.DARK_OAK_SAPLING break
+								end
+								if nid == Constants.BlockType.BIRCH_LEAVES then
+									inferred = Constants.BlockType.BIRCH_SAPLING break
+								end
+								if nid == Constants.BlockType.ACACIA_LEAVES then
+									inferred = Constants.BlockType.ACACIA_SAPLING break
+								end
 							end
-							if inferred then break end
+							if inferred then
+								break
+							end
 						end
 						if inferred then
 							saplingId = inferred
@@ -1558,16 +1664,32 @@ function VoxelWorldService:HandlePlayerPunch(player, punchData)
 								for dx = -radius, radius do
 									for dz = -radius, radius do
 										local bid = self.worldManager and self.worldManager:GetBlock(x + dx, y + dy, z + dz)
-										if bid == Constants.BlockType.WOOD then best = Constants.BlockType.OAK_SAPLING break end
-										if bid == Constants.BlockType.SPRUCE_LOG then best = Constants.BlockType.SPRUCE_SAPLING break end
-										if bid == Constants.BlockType.JUNGLE_LOG then best = Constants.BlockType.JUNGLE_SAPLING break end
-										if bid == Constants.BlockType.DARK_OAK_LOG then best = Constants.BlockType.DARK_OAK_SAPLING break end
-										if bid == Constants.BlockType.BIRCH_LOG then best = Constants.BlockType.BIRCH_SAPLING break end
-										if bid == Constants.BlockType.ACACIA_LOG then best = Constants.BlockType.ACACIA_SAPLING break end
+										if bid == Constants.BlockType.WOOD then
+											best = Constants.BlockType.OAK_SAPLING break
+										end
+										if bid == Constants.BlockType.SPRUCE_LOG then
+											best = Constants.BlockType.SPRUCE_SAPLING break
+										end
+										if bid == Constants.BlockType.JUNGLE_LOG then
+											best = Constants.BlockType.JUNGLE_SAPLING break
+										end
+										if bid == Constants.BlockType.DARK_OAK_LOG then
+											best = Constants.BlockType.DARK_OAK_SAPLING break
+										end
+										if bid == Constants.BlockType.BIRCH_LOG then
+											best = Constants.BlockType.BIRCH_SAPLING break
+										end
+										if bid == Constants.BlockType.ACACIA_LOG then
+											best = Constants.BlockType.ACACIA_SAPLING break
+										end
 									end
-									if best then break end
+									if best then
+										break
+									end
 								end
-								if best then break end
+								if best then
+									break
+								end
 							end
 							saplingId = best
 						end
@@ -1694,7 +1816,9 @@ function VoxelWorldService:RequestBlockPlace(player, placeData)
 
 	local x, y, z, blockId = placeData.x, placeData.y, placeData.z, placeData.blockId
 	local playerData = self.players[player]
-	if not playerData then return end
+	if not playerData then
+		return
+	end
 
 	if self:IsHubWorld() then
 		self:RejectBlockChange(player, { x = x, y = y, z = z }, "hub_read_only")
@@ -1720,11 +1844,15 @@ function VoxelWorldService:RequestBlockPlace(player, placeData)
 
 	-- Validate distance and collision
 	local character = player.Character
-	if not character then return end
+	if not character then
+		return
+	end
 
 	local head = character:FindFirstChild("Head")
 	local rootPart = character:FindFirstChild("HumanoidRootPart")
-	if not head or not rootPart then return end
+	if not head or not rootPart then
+		return
+	end
 
 	-- Use head position for distance check (where player looks from)
 	-- Use rootPart position for collision check (body center)
@@ -1748,7 +1876,7 @@ function VoxelWorldService:RequestBlockPlace(player, placeData)
 	if not isPotentialSlabMerge then
 		-- Special rule: Cobblestone Minion must be placed by clicking a TOP face
 		do
-			local BLOCK = Constants.BlockType
+			local _BLOCK = Constants.BlockType
 			local fn = placeData.faceNormal
 			if _isMinionBlock(placeData.blockId) then
 				if not (fn and fn.Y and fn.Y == 1) then
@@ -1780,7 +1908,6 @@ function VoxelWorldService:RequestBlockPlace(player, placeData)
 	if not canPlace then
 		-- Debug logging for placement rejection
 		local currentBlock = self.worldManager:GetBlock(x, y, z)
-		local Constants = require(game.ReplicatedStorage.Shared.VoxelWorld.Core.Constants)
 		local blockName = "unknown"
 		if currentBlock == Constants.BlockType.AIR then blockName = "AIR"
 		elseif currentBlock == Constants.BlockType.STONE then blockName = "STONE"
@@ -1826,10 +1953,18 @@ function VoxelWorldService:RequestBlockPlace(player, placeData)
 
 	-- 2) Planting: redirect seed/produce items to stage-0 crop if above farmland
 	local function seedToCrop(item)
-		if item == BLOCK.WHEAT_SEEDS then return BLOCK.WHEAT_CROP_0 end
-		if item == BLOCK.POTATO then return BLOCK.POTATO_CROP_0 end
-		if item == BLOCK.CARROT then return BLOCK.CARROT_CROP_0 end
-		if item == BLOCK.BEETROOT_SEEDS then return BLOCK.BEETROOT_CROP_0 end
+		if item == BLOCK.WHEAT_SEEDS then
+			return BLOCK.WHEAT_CROP_0
+		end
+		if item == BLOCK.POTATO then
+			return BLOCK.POTATO_CROP_0
+		end
+		if item == BLOCK.CARROT then
+			return BLOCK.CARROT_CROP_0
+		end
+		if item == BLOCK.BEETROOT_SEEDS then
+			return BLOCK.BEETROOT_CROP_0
+		end
 		return nil
 	end
 
@@ -1913,10 +2048,8 @@ function VoxelWorldService:RequestBlockPlace(player, placeData)
 				local EPS = 1e-3
 				if normalizedY > (0.5 + EPS) then
 					verticalOrientation = Constants.BlockMetadata.VERTICAL_TOP
-				elseif normalizedY < (0.5 - EPS) then
-					verticalOrientation = Constants.BlockMetadata.VERTICAL_BOTTOM
 				else
-					-- Tie-break near midline: favor bottom (matches user expectation on boundary)
+					-- normalizedY <= (0.5 + EPS) -> favor bottom (matches user expectation on boundary)
 					verticalOrientation = Constants.BlockMetadata.VERTICAL_BOTTOM
 				end
 				print(string.format("[BlockPlace] 🔍 Side click: normalizedY=%.3f → %s",
@@ -1928,7 +2061,7 @@ function VoxelWorldService:RequestBlockPlace(player, placeData)
 
 			-- Compute and persist stair shape (Minecraft parity) on placement
 			if blockInfo and blockInfo.stairShape then
-				local ROT_N, ROT_E, ROT_S, ROT_W = Constants.BlockMetadata.ROTATION_NORTH, Constants.BlockMetadata.ROTATION_EAST, Constants.BlockMetadata.ROTATION_SOUTH, Constants.BlockMetadata.ROTATION_WEST
+				local ROT_N, ROT_E, ROT_S, _ROT_W = Constants.BlockMetadata.ROTATION_NORTH, Constants.BlockMetadata.ROTATION_EAST, Constants.BlockMetadata.ROTATION_SOUTH, Constants.BlockMetadata.ROTATION_WEST
 				local function rotLeft(r) return (r + 3) % 4 end
 				local function rotRight(r) return (r + 1) % 4 end
 				local function rotOpp(r) return (r + 2) % 4 end
@@ -1943,21 +2076,29 @@ function VoxelWorldService:RequestBlockPlace(player, placeData)
 					local nid = self.worldManager:GetBlock(nx, ny, nz)
 					local BlockRegistry = require(game.ReplicatedStorage.Shared.VoxelWorld.World.BlockRegistry)
 					local ndef = BlockRegistry:GetBlock(nid)
-					if not (ndef and ndef.stairShape) then return false end
+					if not (ndef and ndef.stairShape) then
+						return false
+					end
 					local nmeta = self.worldManager:GetBlockMetadata(nx, ny, nz)
 					local nvert = Constants.GetVerticalOrientation(nmeta)
-					if nvert ~= verticalOrientation then return false end
+					if nvert ~= verticalOrientation then
+						return false
+					end
 					return true, Constants.GetRotation(nmeta), Constants.GetStairShape(nmeta)
 				end
 				local fx, _, fz = dirFromRot(rotation)
 				local bx, bz = -fx, -fz
-				local rx, _, rz = dirFromRot(rotRight(rotation))
-				local lx, _, lz = dirFromRot(rotLeft(rotation))
+				local _rx, _, _rz = dirFromRot(rotRight(rotation))
+				local _lx, _, _lz = dirFromRot(rotLeft(rotation))
 				local function isDifferentOrientation(checkRot)
 					local dx, _, dz = dirFromRot(checkRot)
 					local ok, nrot, nshape = isSameHalfStair(x + dx, y, z + dz)
-					if not ok then return true end
-					if nrot ~= rotation then return true end
+					if not ok then
+						return true
+					end
+					if nrot ~= rotation then
+						return true
+					end
 					-- Same facing neighbor blocks corner unless neighbor is STRAIGHT (vanilla guard)
 					return nshape == Constants.BlockMetadata.STAIR_SHAPE_STRAIGHT
 				end
@@ -2002,7 +2143,9 @@ function VoxelWorldService:RequestBlockPlace(player, placeData)
 				end
 				local function isSameStair(nx, ny, nz)
 					local nid = self.worldManager:GetBlock(nx, ny, nz)
-					if nid ~= blockId then return false end
+					if nid ~= blockId then
+						return false
+					end
 					local nmeta = self.worldManager:GetBlockMetadata(nx, ny, nz)
 					local nvert = Constants.GetVerticalOrientation(nmeta)
 					return nvert == verticalOrientation, Constants.GetRotation(nmeta)
@@ -2015,14 +2158,22 @@ function VoxelWorldService:RequestBlockPlace(player, placeData)
 					-- Inner corner check (highest priority)
 					local okFront, frontRot = isSameStair(x + fx, y, z + fz)
 					if okFront then
-						if frontRot == rotLeft(r) then return "inner_left" end
-						if frontRot == rotRight(r) then return "inner_right" end
+						if frontRot == rotLeft(r) then
+							return "inner_left"
+						end
+						if frontRot == rotRight(r) then
+							return "inner_right"
+						end
 					end
 					-- Outer corner check
 					local okLeft, leftRot = isSameStair(x + lx, y, z + lz)
-					if okLeft and leftRot == rotLeft(r) then return "outer_left" end
+					if okLeft and leftRot == rotLeft(r) then
+						return "outer_left"
+					end
 					local okRight, rightRot = isSameStair(x + rx, y, z + rz)
-					if okRight and rightRot == rotRight(r) then return "outer_right" end
+					if okRight and rightRot == rotRight(r) then
+						return "outer_right"
+					end
 					return nil
 				end
 
@@ -2071,10 +2222,14 @@ function VoxelWorldService:RequestBlockPlace(player, placeData)
 					local nid = self.worldManager:GetBlock(nx, ny, nz)
 					local BlockRegistry = require(game.ReplicatedStorage.Shared.VoxelWorld.World.BlockRegistry)
 					local ndef = BlockRegistry:GetBlock(nid)
-					if not (ndef and ndef.stairShape) then return nil end
+					if not (ndef and ndef.stairShape) then
+						return nil
+					end
 					local nmeta = self.worldManager:GetBlockMetadata(nx, ny, nz)
 					local nvert = Constants.GetVerticalOrientation(nmeta)
-					if nvert ~= Constants.GetVerticalOrientation(metadata) then return nil end
+					if nvert ~= Constants.GetVerticalOrientation(metadata) then
+						return nil
+					end
 					return Constants.GetRotation(nmeta)
 				end
 				local function shapeFor(r)
@@ -2083,13 +2238,21 @@ function VoxelWorldService:RequestBlockPlace(player, placeData)
 					local lx, _, lz = dirFromRot(rotLeft(r))
 					-- Outer first
 					local lrot = getStairRot(x + lx, y, z + lz)
-					if lrot and lrot == rotLeft(r) then return "outer_left" end
+					if lrot and lrot == rotLeft(r) then
+						return "outer_left"
+					end
 					local rrot = getStairRot(x + rx, y, z + rz)
-					if rrot and rrot == rotRight(r) then return "outer_right" end
+					if rrot and rrot == rotRight(r) then
+						return "outer_right"
+					end
 					-- Inner second (behind)
 					local brot = getStairRot(x + fx, y, z + fz)
-					if brot and brot == rotLeft(r) then return "inner_left" end
-					if brot and brot == rotRight(r) then return "inner_right" end
+					if brot and brot == rotLeft(r) then
+						return "inner_left"
+					end
+					if brot and brot == rotRight(r) then
+						return "inner_right"
+					end
 					return nil
 				end
 				local candidates = {rotation, rotLeft(rotation), rotRight(rotation)}
@@ -2296,8 +2459,8 @@ function VoxelWorldService:RequestBlockPlace(player, placeData)
     local success = self:SetBlock(actualX, actualY, actualZ, actualBlockId, player, actualMetadata)
     if success then
         -- Recompute shapes for placed stair and neighbors immediately, so player sees corner on placement
-        local placedChanged = self:_recomputeStairShapeAt(actualX, actualY, actualZ)
-        local neighborChanged = self:_updateNeighborStairShapes(actualX, actualY, actualZ)
+        local _placedChanged = self:_recomputeStairShapeAt(actualX, actualY, actualZ)
+        local _neighborChanged = self:_updateNeighborStairShapes(actualX, actualY, actualZ)
 		if actualBlockId ~= blockId then
 			print(string.format("Player %s merged slabs into full block %d at (%d, %d, %d)",
 				player.Name, actualBlockId, actualX, actualY, actualZ))
@@ -2396,11 +2559,13 @@ function VoxelWorldService:_recomputeStairShapeAt(x, y, z)
 	local blockId = self.worldManager:GetBlock(x, y, z)
 	local BlockRegistry = require(game.ReplicatedStorage.Shared.VoxelWorld.World.BlockRegistry)
 	local def = BlockRegistry:GetBlock(blockId)
-	if not (def and def.stairShape) then return end
+	if not (def and def.stairShape) then
+		return
+	end
 	local meta = self.worldManager:GetBlockMetadata(x, y, z)
 	local rotation = Constants.GetRotation(meta)
 	local verticalOrientation = Constants.GetVerticalOrientation(meta)
-	local ROT_N, ROT_E, ROT_S, ROT_W = Constants.BlockMetadata.ROTATION_NORTH, Constants.BlockMetadata.ROTATION_EAST, Constants.BlockMetadata.ROTATION_SOUTH, Constants.BlockMetadata.ROTATION_WEST
+	local ROT_N, ROT_E, ROT_S, _ROT_W = Constants.BlockMetadata.ROTATION_NORTH, Constants.BlockMetadata.ROTATION_EAST, Constants.BlockMetadata.ROTATION_SOUTH, Constants.BlockMetadata.ROTATION_WEST
 	local function rotLeft(r) return (r + 3) % 4 end
 	local function rotRight(r) return (r + 1) % 4 end
 	local function rotOpp(r) return (r + 2) % 4 end
@@ -2414,20 +2579,26 @@ function VoxelWorldService:_recomputeStairShapeAt(x, y, z)
 	local function isSameHalfStair(nx, ny, nz)
 		local nid = self.worldManager:GetBlock(nx, ny, nz)
 		local ndef = BlockRegistry:GetBlock(nid)
-		if not (ndef and ndef.stairShape) then return false end
+		if not (ndef and ndef.stairShape) then
+			return false
+		end
 		local nmeta = self.worldManager:GetBlockMetadata(nx, ny, nz)
 		local nvert = Constants.GetVerticalOrientation(nmeta)
-		if nvert ~= verticalOrientation then return false end
+		if nvert ~= verticalOrientation then
+			return false
+		end
 		return true, Constants.GetRotation(nmeta)
 	end
 	local fx, _, fz = dirFromRot(rotation)
 	local bx, bz = -fx, -fz
-	local rx, _, rz = dirFromRot(rotRight(rotation))
-	local lx, _, lz = dirFromRot(rotLeft(rotation))
+	local _rx, _, _rz = dirFromRot(rotRight(rotation))
+	local _lx, _, _lz = dirFromRot(rotLeft(rotation))
 	local function isDifferentOrientation(checkRot)
 		local dx, _, dz = dirFromRot(checkRot)
 		local ok, nrot = isSameHalfStair(x + dx, y, z + dz)
-		if not ok then return true end
+		if not ok then
+			return true
+		end
 		return nrot ~= rotation
 	end
 	local shape = Constants.BlockMetadata.STAIR_SHAPE_STRAIGHT
@@ -2490,7 +2661,7 @@ end
 -- DEPRECATED: Server now reads position directly from HumanoidRootPart in StreamChunksToPlayers
 -- This method is kept for backwards compatibility with old clients but does nothing.
 -- Position tracking is now server-authoritative to prevent remote queue exhaustion.
-function VoxelWorldService:UpdatePlayerPosition(player, positionOrX, maybeZ)
+function VoxelWorldService:UpdatePlayerPosition(_player, _positionOrX, _maybeZ)
 	-- No-op: position is read directly from character in StreamChunksToPlayers
 	return
 end
@@ -2561,11 +2732,17 @@ end
 
 -- Equip a tool from hotbar slot (client sends slot index); server validates
 function VoxelWorldService:OnEquipTool(player, data)
-	if not data or type(data.slotIndex) ~= "number" then return end
+	if not data or type(data.slotIndex) ~= "number" then
+		return
+	end
 	local slotIndex = data.slotIndex
-	if slotIndex < 1 or slotIndex > 9 then return end
+	if slotIndex < 1 or slotIndex > 9 then
+		return
+	end
 
-	if not self.Deps or not self.Deps.PlayerInventoryService then return end
+	if not self.Deps or not self.Deps.PlayerInventoryService then
+		return
+	end
 	local invService = self.Deps.PlayerInventoryService
 	local stack = invService:GetHotbarSlot(player, slotIndex)
 	if not stack or stack:IsEmpty() then
@@ -2642,17 +2819,25 @@ end
 -- Track client hotbar selection and broadcast held item to all clients
 -- This handles BOTH tools AND blocks in a unified way
 function VoxelWorldService:OnSelectHotbarSlot(player, data)
-    if not data or type(data.slotIndex) ~= "number" then return end
+    if not data or type(data.slotIndex) ~= "number" then
+    	return
+    end
     local slotIndex = data.slotIndex
-    if slotIndex < 1 or slotIndex > 9 then return end
+    if slotIndex < 1 or slotIndex > 9 then
+    	return
+    end
 
     local state = self.players[player]
-    if not state then return end
+    if not state then
+    	return
+    end
 
     state.selectedSlot = slotIndex
 
     -- Get the item in the selected slot
-    if not self.Deps or not self.Deps.PlayerInventoryService then return end
+    if not self.Deps or not self.Deps.PlayerInventoryService then
+    	return
+    end
     local invService = self.Deps.PlayerInventoryService
     local stack = invService:GetHotbarSlot(player, slotIndex)
 
@@ -2743,7 +2928,7 @@ function VoxelWorldService:SaveWorldData()
 
 	-- Collect modified chunks
 	local modifiedCount = 0
-	for key in pairs(self.modifiedChunks) do
+	for _ in pairs(self.modifiedChunks) do
 		modifiedCount = modifiedCount + 1
 	end
 	print(string.format("Found %d modified chunks to save", modifiedCount))
@@ -2880,7 +3065,7 @@ function VoxelWorldService:LoadWorldData()
 	-- This ensures clients see the restored blocks when they join
 	if loadedCount > 0 then
 		for _, chunkPos in ipairs(loadedChunks) do
-			local key = string.format("%d,%d", chunkPos.x, chunkPos.z)
+			local _key = string.format("%d,%d", chunkPos.x, chunkPos.z)
 			-- Note: We don't mark as modifiedChunks (for saving) since they're already saved
 			-- But we do need to ensure they're streamed to players
 			print(string.format("  📝 Chunk (%d,%d) ready for streaming", chunkPos.x, chunkPos.z))
@@ -2961,7 +3146,9 @@ end
 
 -- Internal: add viewer
 function VoxelWorldService:_addViewer(player, key)
-	if not key then return end
+	if not key then
+		return
+	end
 	local viewers = self.chunkViewers[key]
 	local isNew = false
 	if not viewers then
@@ -2987,18 +3174,23 @@ end
 
 -- Respawn minions in a chunk if state exists but entity is missing
 function VoxelWorldService:RespawnMinionsInChunk(chunkKey)
-	if not self.minionStateByBlockKey then return end
+	if not self.minionStateByBlockKey then
+		return
+	end
 
 	local cx, cz = string.match(chunkKey, "(-?%d+),(-?%d+)")
-	if not cx or not cz then return end
+	if not cx or not cz then
+		return
+	end
 	cx, cz = tonumber(cx), tonumber(cz)
 
-	local Constants = require(game.ReplicatedStorage.Shared.VoxelWorld.Core.Constants)
 	local bs = Constants.BLOCK_SIZE
 
 	-- Helper: apply offline fast-forward for a single minion at anchor
 	local function fastForwardMinion(anchorKey, state)
-		if not state then return end
+		if not state then
+			return
+		end
 		-- Determine elapsed time since last activity
 		local now = os.clock()
 		local last = tonumber(state.lastActiveAt) or now
@@ -3008,7 +3200,9 @@ function VoxelWorldService:RespawnMinionsInChunk(chunkKey)
 		local MinionConfig = require(game.ReplicatedStorage.Configs.MinionConfig)
 		local minionType = state.type or "COBBLESTONE"
 		local waitSec = MinionConfig.GetWaitSeconds(minionType, state.level or 1)
-		if waitSec <= 0 then waitSec = 15 end
+		if waitSec <= 0 then
+			waitSec = 15
+		end
 
 		-- Cap offline simulation (e.g., 8 hours)
 		local maxSeconds = 8 * 3600
@@ -3032,7 +3226,7 @@ function VoxelWorldService:RespawnMinionsInChunk(chunkKey)
 		local mineId = MinionConfig.GetMineBlockId(minionType)
 
 		local acted = 0
-		for i = 1, cycles do
+		for _ = 1, cycles do
 			-- Scan 5x5 footprint on platform Y
 			local targetForPlace
 			local targetForMine
@@ -3140,7 +3334,9 @@ end
 
 -- Internal: remove viewer
 function VoxelWorldService:_removeViewer(player, key)
-	if not key then return end
+	if not key then
+		return
+	end
 	local viewers = self.chunkViewers[key]
 	if viewers then
 		viewers[player] = nil
@@ -3196,7 +3392,9 @@ function VoxelWorldService:HandleBucketPickup(player, data)
 	local x, y, z = data.x, data.y, data.z
 	local hotbarSlot = data.hotbarSlot
 	local playerData = self.players[player]
-	if not playerData then return end
+	if not playerData then
+		return
+	end
 
 	-- Hub worlds are read-only
 	if self:IsHubWorld() then
@@ -3206,9 +3404,13 @@ function VoxelWorldService:HandleBucketPickup(player, data)
 
 	-- Distance check
 	local character = player.Character
-	if not character then return end
+	if not character then
+		return
+	end
 	local head = character:FindFirstChild("Head")
-	if not head then return end
+	if not head then
+		return
+	end
 
 	local bs = Constants.BLOCK_SIZE
 	local blockCenter = Vector3.new(x * bs + bs * 0.5, y * bs + bs * 0.5, z * bs + bs * 0.5)
@@ -3298,7 +3500,9 @@ function VoxelWorldService:HandleBucketPlace(player, data)
 	local x, y, z = data.x, data.y, data.z
 	local hotbarSlot = data.hotbarSlot
 	local playerData = self.players[player]
-	if not playerData then return end
+	if not playerData then
+		return
+	end
 
 	-- Hub worlds are read-only
 	if self:IsHubWorld() then
@@ -3308,10 +3512,14 @@ function VoxelWorldService:HandleBucketPlace(player, data)
 
 	-- Distance check
 	local character = player.Character
-	if not character then return end
+	if not character then
+		return
+	end
 	local head = character:FindFirstChild("Head")
 	local rootPart = character:FindFirstChild("HumanoidRootPart")
-	if not head or not rootPart then return end
+	if not head or not rootPart then
+		return
+	end
 
 	local bs = Constants.BLOCK_SIZE
 	local blockCenter = Vector3.new(x * bs + bs * 0.5, y * bs + bs * 0.5, z * bs + bs * 0.5)

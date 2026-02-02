@@ -13,11 +13,13 @@ ViewportPreview.__index = ViewportPreview
 
 local RunService = game:GetService("RunService")
 local InputService = require(script.Parent.Parent.Input.InputService)
-local GuiService = game:GetService("GuiService")
+local _GuiService = game:GetService("GuiService")
 local Workspace = game:GetService("Workspace")
 
 local function ensureModel(instance)
-	if not instance then return nil end
+	if not instance then
+		return nil
+	end
 	if instance:IsA("Model") then
 		return instance
 	end
@@ -32,7 +34,9 @@ local function ensureModel(instance)
 end
 
 local function calculateModelBounds(model)
-	if not model then return nil end
+	if not model then
+		return nil
+	end
 	local primary = model.PrimaryPart
 	if not primary then
 		for _, child in ipairs(model:GetDescendants()) do
@@ -43,7 +47,9 @@ local function calculateModelBounds(model)
 			end
 		end
 	end
-	if not primary then return nil end
+	if not primary then
+		return nil
+	end
 	local size = model:GetExtentsSize()
 	local pivotPos = model:GetPivot().Position
 	return size, pivotPos
@@ -67,8 +73,8 @@ function ViewportPreview.new(config)
 	local self = setmetatable({}, ViewportPreview)
 
 	local parent = config and config.parent or nil
-	local size = config and config.size or UDim2.new(0, 128, 0, 128)
-	local position = config and config.position or UDim2.new(0, 0, 0, 0)
+	local size = config and config.size or UDim2.fromOffset(128, 128)
+	local position = config and config.position or UDim2.fromScale(0, 0)
 	local backgroundColor = config and config.backgroundColor or Color3.fromRGB(20, 20, 20)
 	local backgroundTransparency = config and config.backgroundTransparency or 0
 	local borderRadius = config and config.borderRadius
@@ -93,7 +99,7 @@ function ViewportPreview.new(config)
 
 		-- ViewportFrame at 2x resolution
 		actualSize = UDim2.new(size.X.Scale, size.X.Offset * 2, size.Y.Scale, size.Y.Offset * 2)
-		actualPosition = UDim2.new(0.5, 0, 0.5, 0)
+		actualPosition = UDim2.fromScale(0.5, 0.5)
 
 		-- Add UIScale to scale back down
 		local uiScale = Instance.new("UIScale")
@@ -116,7 +122,9 @@ function ViewportPreview.new(config)
 	viewport.Ambient = Color3.fromRGB(200, 200, 200)
 	viewport.LightColor = Color3.fromRGB(255, 255, 255)
 	viewport.CurrentCamera = nil
-	if zIndex then viewport.ZIndex = zIndex end
+	if zIndex then
+		viewport.ZIndex = zIndex
+	end
 	viewport.Parent = parent
 
 	if borderRadius then
@@ -169,7 +177,9 @@ end
 function ViewportPreview:SetModel(model)
 	-- Clear existing
 	self:Clear()
-	if not model then return end
+	if not model then
+		return
+	end
 
 	-- Ensure world exists
 	if not self._world then
@@ -220,9 +230,13 @@ function ViewportPreview:Clear()
 end
 
 function ViewportPreview:_refit()
-	if not self._model or not self._camera then return end
+	if not self._model or not self._camera then
+		return
+	end
 	local size = select(1, calculateModelBounds(self._model))
-	if not size then return end
+	if not size then
+		return
+	end
 
 	-- Place model centered at origin (y at half-height)
 	self._model:PivotTo(CFrame.new(Vector3.new(0, size.Y * 0.5, 0)))
@@ -261,7 +275,9 @@ end
 
 function ViewportPreview:SetSpin(enabled)
 	if enabled then
-		if self._spinConnection then return end
+		if self._spinConnection then
+			return
+		end
 		-- Disable mouse tracking when spinning
 		self:SetMouseTracking(false)
 		self._spinConnection = RunService.RenderStepped:Connect(function(dt)
@@ -279,7 +295,9 @@ end
 
 function ViewportPreview:SetMouseTracking(enabled)
 	if enabled then
-		if self._mouseConnection then return end
+		if self._mouseConnection then
+			return
+		end
 		-- Disable spin when mouse tracking
 		self:SetSpin(false)
 
@@ -289,12 +307,16 @@ function ViewportPreview:SetMouseTracking(enabled)
 		end
 
 		self._mouseConnection = RunService.Heartbeat:Connect(function()
-			if not self._model or not self._model.PrimaryPart or not self._viewport or not self._basePivot then return end
+			if not self._model or not self._model.PrimaryPart or not self._viewport or not self._basePivot then
+				return
+			end
 
 			-- Get mouse position and screen width
 			local mousePos = InputService:GetMouseLocation()
 			local camera = Workspace.CurrentCamera
-			if not camera then return end
+			if not camera then
+				return
+			end
 
 			local screenWidth = camera.ViewportSize.X
 			local screenHeight = camera.ViewportSize.Y
@@ -339,9 +361,15 @@ function ViewportPreview:Destroy()
 	self:SetSpin(false)
 	self:SetMouseTracking(false)
 	self:Clear()
-	if self._world then self._world:Destroy() end
-	if self._viewport then self._viewport:Destroy() end
-	if self._container then self._container:Destroy() end
+	if self._world then
+		self._world:Destroy()
+	end
+	if self._viewport then
+		self._viewport:Destroy()
+	end
+	if self._container then
+		self._container:Destroy()
+	end
 	self._world = nil
 	self._viewport = nil
 	self._camera = nil

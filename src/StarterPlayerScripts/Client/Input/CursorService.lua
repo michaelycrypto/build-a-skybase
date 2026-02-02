@@ -6,15 +6,7 @@ local function cloneOptions(options)
 		return {}
 	end
 
-	if table.clone then
-		return table.clone(options)
-	end
-
-	local copy = {}
-	for key, value in pairs(options) do
-		copy[key] = value
-	end
-	return copy
+	return table.clone(options)
 end
 
 function CursorService.new(config)

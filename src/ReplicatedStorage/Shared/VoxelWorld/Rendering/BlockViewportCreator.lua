@@ -7,7 +7,7 @@
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Constants = require(script.Parent.Parent.Core.Constants)
+
 local BlockRegistry = require(script.Parent.Parent.World.BlockRegistry)
 local TextureApplicator = require(script.Parent.TextureApplicator)
 local TextureManager = require(script.Parent.TextureManager)
@@ -27,7 +27,7 @@ local function centerViewportInstance(inst)
 	if inst == nil then return end
 	if inst:IsA("Model") then
 		-- Get bounding box center in world space
-		local bboxCFrame, bboxSize = inst:GetBoundingBox()
+		local bboxCFrame, _ = inst:GetBoundingBox()
 		-- Calculate offset from current pivot to bbox center
 		local currentPivot = inst:GetPivot()
 		local offset = currentPivot:PointToObjectSpace(bboxCFrame.Position)
@@ -238,8 +238,8 @@ local function createBlockPart(blockId)
 			return post
 		end
 
-		local postL = makePost(-sep)
-		local postR = makePost(sep)
+		makePost(-sep)
+		makePost(sep)
 
 		-- two horizontal rails connecting posts
 		local span = (sep * 2) - postWidth
@@ -274,7 +274,7 @@ local function createBlockPart(blockId)
 
 		-- Symmetric rail positions for perfect vertical stacking
 		local rail1 = makeRail(0.25 * size)
-		local rail2 = makeRail(0.75 * size)
+		makeRail(0.75 * size)
 
 		-- Use a rail as PrimaryPart since it's centered at X=0
 		-- This ensures the model pivots around the center, not the left post
@@ -353,8 +353,8 @@ function BlockViewportCreator.CreateBlockViewport(parent, blockId, size, positio
 		-- Create an ImageLabel for tools
 		local imageLabel = Instance.new("ImageLabel")
 		imageLabel.Name = "ItemImage"
-		imageLabel.Size = size or UDim2.new(1, 0, 1, 0)
-		imageLabel.Position = position or UDim2.new(0.5, 0, 0.5, 0)
+		imageLabel.Size = size or UDim2.fromScale(1, 1)
+		imageLabel.Position = position or UDim2.fromScale(0.5, 0.5)
 		imageLabel.AnchorPoint = anchorPoint or Vector2.new(0.5, 0.5)  -- Center by default
 		imageLabel.BackgroundTransparency = 1
 		imageLabel.BorderSizePixel = 0
@@ -370,8 +370,8 @@ function BlockViewportCreator.CreateBlockViewport(parent, blockId, size, positio
 		-- Create an ImageLabel for armor
 		local imageLabel = Instance.new("ImageLabel")
 		imageLabel.Name = "ArmorImage"
-		imageLabel.Size = size or UDim2.new(1, 0, 1, 0)
-		imageLabel.Position = position or UDim2.new(0.5, 0, 0.5, 0)
+		imageLabel.Size = size or UDim2.fromScale(1, 1)
+		imageLabel.Position = position or UDim2.fromScale(0.5, 0.5)
 		imageLabel.AnchorPoint = anchorPoint or Vector2.new(0.5, 0.5)
 		imageLabel.BackgroundTransparency = 1
 		imageLabel.BorderSizePixel = 0
@@ -386,8 +386,8 @@ function BlockViewportCreator.CreateBlockViewport(parent, blockId, size, positio
 	if overrideImage then
 		local imageLabel = Instance.new("ImageLabel")
 		imageLabel.Name = "ItemImage"
-		imageLabel.Size = size or UDim2.new(1, 0, 1, 0)
-		imageLabel.Position = position or UDim2.new(0.5, 0, 0.5, 0)
+		imageLabel.Size = size or UDim2.fromScale(1, 1)
+		imageLabel.Position = position or UDim2.fromScale(0.5, 0.5)
 		imageLabel.AnchorPoint = anchorPoint or Vector2.new(0.5, 0.5)
 		imageLabel.BackgroundTransparency = 1
 		imageLabel.BorderSizePixel = 0
@@ -412,8 +412,8 @@ function BlockViewportCreator.CreateBlockViewport(parent, blockId, size, positio
 			if textureId then
 				local imageLabel = Instance.new("ImageLabel")
 				imageLabel.Name = "ItemImage"
-				imageLabel.Size = size or UDim2.new(1, 0, 1, 0)
-				imageLabel.Position = position or UDim2.new(0.5, 0, 0.5, 0)
+				imageLabel.Size = size or UDim2.fromScale(1, 1)
+				imageLabel.Position = position or UDim2.fromScale(0.5, 0.5)
 				imageLabel.AnchorPoint = anchorPoint or Vector2.new(0.5, 0.5)  -- Center by default
 				imageLabel.BackgroundTransparency = 1
 				imageLabel.BorderSizePixel = 0
@@ -425,15 +425,12 @@ function BlockViewportCreator.CreateBlockViewport(parent, blockId, size, positio
 		end
 	end
 
-	-- Check cache first
-	local cacheKey = "viewport_" .. tostring(blockId)
-
 	-- Create container for high-resolution rendering
 	-- We'll render at 2x resolution for crisp visuals
 	local container = Instance.new("Frame")
 	container.Name = "ViewportContainer"
-	container.Size = size or UDim2.new(1, 0, 1, 0)
-	container.Position = position or UDim2.new(0, 0, 0, 0)
+	container.Size = size or UDim2.fromScale(1, 1)
+	container.Position = position or UDim2.fromOffset(0, 0)
 	container.AnchorPoint = anchorPoint or Vector2.new(0, 0)
 	container.BackgroundTransparency = 1
 	container.BorderSizePixel = 0
@@ -443,8 +440,8 @@ function BlockViewportCreator.CreateBlockViewport(parent, blockId, size, positio
 	-- Create ViewportFrame at higher resolution (2x)
 	local viewport = Instance.new("ViewportFrame")
 	viewport.Name = "BlockViewport"
-	viewport.Size = UDim2.new(2, 0, 2, 0) -- Render at 2x size
-	viewport.Position = UDim2.new(0.5, 0, 0.5, 0)
+	viewport.Size = UDim2.fromScale(2, 2) -- Render at 2x size
+	viewport.Position = UDim2.fromScale(0.5, 0.5)
 	viewport.AnchorPoint = Vector2.new(0.5, 0.5)
 	viewport.BackgroundTransparency = 1
 	viewport.BorderSizePixel = 0

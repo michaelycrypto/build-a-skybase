@@ -202,7 +202,9 @@ function MobileControlController:SetupActionBarCallbacks()
 	-- Attack callbacks - triggers both combat (PvP) and block breaking
 	self.actionBar.onAttackStart = function()
 		local Client = getClient()
-		if not Client then return end
+		if not Client then
+			return
+		end
 
 		-- Combat system (PvP sword swings)
 		if Client.combatController and Client.combatController.SetHolding then
@@ -216,7 +218,9 @@ function MobileControlController:SetupActionBarCallbacks()
 
 	self.actionBar.onAttackEnd = function()
 		local Client = getClient()
-		if not Client then return end
+		if not Client then
+			return
+		end
 
 		-- Combat system
 		if Client.combatController and Client.combatController.SetHolding then
@@ -307,8 +311,10 @@ end
 	Setup update loop
 ]]
 function MobileControlController:SetupUpdateLoop()
-	self.connections.heartbeat = RunService.Heartbeat:Connect(function(deltaTime)
-		if not self.enabled then return end
+	self.connections.heartbeat = RunService.Heartbeat:Connect(function(_deltaTime)
+		if not self.enabled then
+			return
+		end
 
 		-- Update movement based on thumbstick
 		local moveVector = self.thumbstick:GetMovementVector()
@@ -325,11 +331,15 @@ end
 	Apply movement from thumbstick
 ]]
 function MobileControlController:ApplyMovement(direction, magnitude)
-	if not self.humanoid or not self.character then return end
+	if not self.humanoid or not self.character then
+		return
+	end
 
 	-- Get camera direction for relative movement
 	local camera = workspace.CurrentCamera
-	if not camera then return end
+	if not camera then
+		return
+	end
 
 	local cameraCFrame = camera.CFrame
 	local cameraLookVector = cameraCFrame.LookVector
@@ -485,10 +495,18 @@ function MobileControlController:Destroy()
 	end
 
 	-- Destroy modules
-	if self.inputDetector then self.inputDetector:Destroy() end
-	if self.thumbstick then self.thumbstick:Destroy() end
-	if self.mobileCameraController then self.mobileCameraController:Destroy() end
-	if self.actionBar then self.actionBar:Destroy() end
+	if self.inputDetector then
+		self.inputDetector:Destroy()
+	end
+	if self.thumbstick then
+		self.thumbstick:Destroy()
+	end
+	if self.mobileCameraController then
+		self.mobileCameraController:Destroy()
+	end
+	if self.actionBar then
+		self.actionBar:Destroy()
+	end
 
 	print("MobileControlController: Destroyed")
 end

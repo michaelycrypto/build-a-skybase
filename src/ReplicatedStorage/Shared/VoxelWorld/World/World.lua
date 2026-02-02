@@ -4,7 +4,7 @@
 ]]
 
 local Constants = require(script.Parent.Parent.Core.Constants)
-local Chunk = require(script.Parent.Chunk)
+local _Chunk = require(script.Parent.Chunk)
 local WorldManager = require(script.Parent.WorldManager)
 local ChunkPersistence = require(script.Parent.Parent.Storage.ChunkPersistence)
 

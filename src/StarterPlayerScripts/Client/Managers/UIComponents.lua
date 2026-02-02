@@ -18,7 +18,7 @@ local ViewportPreview = require(script.Parent.ViewportPreview)
 -- Services
 local Players = game:GetService("Players")
 local InputService = require(script.Parent.Parent.Input.InputService)
-local GuiService = game:GetService("GuiService")
+local _GuiService = game:GetService("GuiService")
 
 -- Services and instances
 local player = Players.LocalPlayer
@@ -28,7 +28,7 @@ local playerGui = player:WaitForChild("PlayerGui")
 local activeTooltip = nil
 local activeTooltipTarget = nil -- Track which element the active tooltip belongs to
 local tooltipContainer = nil
-local tooltipDebounce = {}
+local _tooltipDebounce = {}
 local hideTooltipDebounce = nil
 
 -- Component configurations
@@ -158,7 +158,7 @@ function UIComponents:CreateInfoTopbar(config)
 	for i, item in ipairs(items) do
 		local itemContainer = Instance.new("Frame")
 		itemContainer.Name = "TopbarItem" .. i
-		itemContainer.Size = UDim2.new(0, 0, 1, 0) -- Auto-size based on content
+		itemContainer.Size = UDim2.fromScale(0, 1) -- Auto-size based on content
 		itemContainer.BackgroundTransparency = 1
 		itemContainer.LayoutOrder = i
 		itemContainer.Parent = topbarFrame
@@ -184,7 +184,7 @@ function UIComponents:CreateInfoTopbar(config)
 		local itemIcon = nil
 		if item.icon and item.icon.category and item.icon.name then
 			itemIcon = IconManager:CreateIcon(itemContainer, item.icon.category, item.icon.name, {
-				size = UDim2.new(0, 40, 0, 40), -- Compact icon size
+				size = UDim2.fromOffset(40, 40), -- Compact icon size
 				layoutOrder = 1
 			})
 		end
@@ -192,7 +192,7 @@ function UIComponents:CreateInfoTopbar(config)
 		-- Text/Value container
 		local textContainer = Instance.new("Frame")
 		textContainer.Name = "TextContainer"
-		textContainer.Size = UDim2.new(0, 0, 1, 0) -- Will be auto-sized based on content
+		textContainer.Size = UDim2.fromScale(0, 1) -- Will be auto-sized based on content
 		textContainer.BackgroundTransparency = 1
 		textContainer.LayoutOrder = 2
 		textContainer.Parent = itemContainer
@@ -210,7 +210,7 @@ function UIComponents:CreateInfoTopbar(config)
 		if item.text then
 			textLabel = Instance.new("TextLabel")
 			textLabel.Name = "TextLabel"
-			textLabel.Size = UDim2.new(0, 0, 1, 0) -- Auto-size
+			textLabel.Size = UDim2.fromScale(0, 1) -- Auto-size
 			textLabel.BackgroundTransparency = 1
 			textLabel.Text = item.text
 			textLabel.TextColor3 = Config.UI_SETTINGS.colors.textSecondary
@@ -230,7 +230,7 @@ function UIComponents:CreateInfoTopbar(config)
 		if item.value then
 			valueLabel = Instance.new("TextLabel")
 			valueLabel.Name = "ValueLabel"
-			valueLabel.Size = UDim2.new(0, 0, 1, 0) -- Auto-size
+			valueLabel.Size = UDim2.fromScale(0, 1) -- Auto-size
 			valueLabel.BackgroundTransparency = 1
 			valueLabel.Text = tostring(item.value)
 			valueLabel.TextColor3 = item.valueColor or Config.UI_SETTINGS.colors.text
@@ -277,7 +277,7 @@ function UIComponents:CreateInfoTopbar(config)
 	return {
 		topbar = topbarFrame,
 		items = itemComponents,
-		UpdateItem = function(self, index, newData)
+		UpdateItem = function(_self, index, newData)
 			if itemComponents[index] then
 				local item = itemComponents[index]
 				if newData.text and item.textLabel then
@@ -321,7 +321,7 @@ function UIComponents:CreatePanel(config)
 	local panelConfig = config or {}
 	local size = panelConfig.size or "medium"
 	local title = panelConfig.title or "Panel"
-	local icon = panelConfig.icon
+	local _icon = panelConfig.icon
 	local parent = panelConfig.parent
 	local closable = panelConfig.closable ~= false -- Default true
 	local headerless = panelConfig.headerless == true -- Default false
@@ -341,7 +341,7 @@ function UIComponents:CreatePanel(config)
 	-- Main panel frame (no backdrop)
 	local mainFrame = Instance.new("Frame")
 	mainFrame.Name = "MainFrame"
-	mainFrame.Size = UDim2.new(0, panelWidth, 0, panelHeight)
+	mainFrame.Size = UDim2.fromOffset(panelWidth, panelHeight)
 	mainFrame.Position = UDim2.new(0.5, -panelWidth/2, 0.5, -panelHeight/2)
 	mainFrame.BackgroundColor3 = Config.UI_SETTINGS.colors.backgroundGlass -- Flat dark background
 	mainFrame.BackgroundTransparency = 0 -- Completely opaque for flat design
@@ -387,7 +387,7 @@ function UIComponents:CreatePanel(config)
 		titleContainer = Instance.new("Frame")
 		titleContainer.Name = "TitleContainer"
 		titleContainer.Size = UDim2.new(1, closable and -(64 + Config.UI_SETTINGS.designSystem.spacing.lg) or 0, 1, 0) -- Reserve space for close button
-		titleContainer.Position = UDim2.new(0, 0, -0.5, 0) -- 50% offset above the panel
+		titleContainer.Position = UDim2.fromScale(0, -0.5) -- 50% offset above the panel
 		titleContainer.BackgroundTransparency = 1
 		titleContainer.Parent = headerFrame
 
@@ -426,8 +426,8 @@ function UIComponents:CreatePanel(config)
 		-- Close button (if closable)
 		if closable then
             closeButton = IconManager:CreateIcon(headerFrame, "UI", "X", {
-                size = UDim2.new(0, 40, 0, 40),
-                position = UDim2.new(1, 0, 0, 0),
+                size = UDim2.fromOffset(40, 40),
+                position = UDim2.fromScale(1, 0),
             })
 
 			-- Make the icon clickable with dark red background
@@ -480,7 +480,7 @@ function UIComponents:CreatePanel(config)
 	local contentFrame = Instance.new("Frame")
 	contentFrame.Name = "Content"
 	contentFrame.Size = UDim2.new(1, 0, 1, -actualHeaderHeight) -- No side padding, tight fit
-	contentFrame.Position = UDim2.new(0, 0, 0, actualHeaderHeight) -- No side margin
+	contentFrame.Position = UDim2.fromOffset(0, actualHeaderHeight) -- No side margin
 	contentFrame.BackgroundTransparency = 1
 	contentFrame.Parent = mainFrame
 
@@ -579,8 +579,8 @@ function UIComponents:CreateButton(config)
 		-- Panel button style - full width, no border frame
 		button = Instance.new("TextButton")
 		button.Name = buttonConfig.name or "Button"
-		button.Size = UDim2.new(1, 0, 1, 0) -- Fill parent container
-		button.Position = UDim2.new(0, 0, 0, 0)
+		button.Size = UDim2.fromScale(1, 1) -- Fill parent container
+		button.Position = UDim2.fromScale(0, 0)
 		button.BackgroundColor3 = buttonColor
 		button.BackgroundTransparency = Config.UI_SETTINGS.designSystem.transparency.light
 		button.Text = text
@@ -602,8 +602,8 @@ function UIComponents:CreateButton(config)
 		-- Action button style - fixed size with border frame (original behavior)
 		borderFrame = Instance.new("Frame")
 		borderFrame.Name = (buttonConfig.name or "Button") .. "Frame"
-		borderFrame.Size = UDim2.new(0, buttonWidth + (COMPONENT_CONFIGS.button.borderOffset * 2), 0, buttonHeight + (COMPONENT_CONFIGS.button.borderOffset * 2))
-		borderFrame.Position = position or UDim2.new(0, 0, 0, 0)
+		borderFrame.Size = UDim2.fromOffset(buttonWidth + (COMPONENT_CONFIGS.button.borderOffset * 2), buttonHeight + (COMPONENT_CONFIGS.button.borderOffset * 2))
+		borderFrame.Position = position or UDim2.fromScale(0, 0)
 		borderFrame.BackgroundColor3 = borderColor
 		borderFrame.BackgroundTransparency = Config.UI_SETTINGS.designSystem.transparency.heavy
 		borderFrame.BorderSizePixel = 0
@@ -616,8 +616,8 @@ function UIComponents:CreateButton(config)
 		-- Main button
 		button = Instance.new("TextButton")
 		button.Name = buttonConfig.name or "Button"
-		button.Size = UDim2.new(0, buttonWidth, 0, buttonHeight)
-		button.Position = UDim2.new(0, COMPONENT_CONFIGS.button.borderOffset, 0, COMPONENT_CONFIGS.button.borderOffset)
+		button.Size = UDim2.fromOffset(buttonWidth, buttonHeight)
+		button.Position = UDim2.fromOffset(COMPONENT_CONFIGS.button.borderOffset, COMPONENT_CONFIGS.button.borderOffset)
 		button.BackgroundColor3 = buttonColor
 		button.BackgroundTransparency = Config.UI_SETTINGS.designSystem.transparency.light
 		button.Text = text
@@ -729,8 +729,8 @@ function UIComponents:CreateIconButton(config)
 	-- Background frame (always create for consistency)
 	local borderFrame = Instance.new("Frame")
 	borderFrame.Name = (buttonConfig.name or "IconButton") .. "Frame"
-	borderFrame.Size = UDim2.new(0, buttonWidth + (COMPONENT_CONFIGS.iconButton.borderOffset * 2), 0, buttonHeight + (COMPONENT_CONFIGS.iconButton.borderOffset * 2))
-	borderFrame.Position = position or UDim2.new(0, 0, 0, 0)
+	borderFrame.Size = UDim2.fromOffset(buttonWidth + (COMPONENT_CONFIGS.iconButton.borderOffset * 2), buttonHeight + (COMPONENT_CONFIGS.iconButton.borderOffset * 2))
+	borderFrame.Position = position or UDim2.fromScale(0, 0)
 	borderFrame.AnchorPoint = anchorPoint or Vector2.new(0, 0)
 	borderFrame.BackgroundColor3 = borderColor
 	borderFrame.BackgroundTransparency = Config.UI_SETTINGS.designSystem.transparency.light
@@ -744,8 +744,8 @@ function UIComponents:CreateIconButton(config)
 	-- Main button
 	local button = Instance.new("TextButton")
 	button.Name = buttonConfig.name or "IconButton"
-	button.Size = UDim2.new(0, buttonWidth, 0, buttonHeight)
-	button.Position = UDim2.new(0, COMPONENT_CONFIGS.iconButton.borderOffset, 0, COMPONENT_CONFIGS.iconButton.borderOffset)
+	button.Size = UDim2.fromOffset(buttonWidth, buttonHeight)
+	button.Position = UDim2.fromOffset(COMPONENT_CONFIGS.iconButton.borderOffset, COMPONENT_CONFIGS.iconButton.borderOffset)
 	button.BackgroundColor3 = buttonColor
 	button.BackgroundTransparency = Config.UI_SETTINGS.designSystem.transparency.medium
 	button.Text = ""
@@ -761,7 +761,7 @@ function UIComponents:CreateIconButton(config)
 	-- Icon (adjust position if there's a text label)
 	local iconElement = nil
 	if buttonConfig.iconCategory and buttonConfig.iconName then
-		local iconPosition = UDim2.new(0.5, 0, 0.5, 0)
+		local iconPosition = UDim2.fromScale(0.5, 0.5)
 		local iconAnchor = Vector2.new(0.5, 0.5)
 		local adjustedIconSize = iconSize
 
@@ -773,7 +773,7 @@ function UIComponents:CreateIconButton(config)
 		end
 
 		iconElement = IconManager:CreateIcon(button, buttonConfig.iconCategory, buttonConfig.iconName, {
-			size = UDim2.new(0, adjustedIconSize, 0, adjustedIconSize),
+			size = UDim2.fromOffset(adjustedIconSize, adjustedIconSize),
 			position = iconPosition,
 			anchorPoint = iconAnchor,
 		})
@@ -829,7 +829,7 @@ function UIComponents:CreateIconButton(config)
 		if iconElement then
 			local currentSize = iconElement.Size.X.Offset
 			TweenService:Create(iconElement, TweenInfo.new(Config.UI_SETTINGS.designSystem.animation.duration.normal, Config.UI_SETTINGS.designSystem.animation.easing.ease, Enum.EasingDirection.Out), {
-				Size = UDim2.new(0, currentSize + 4, 0, currentSize + 4)
+				Size = UDim2.fromOffset(currentSize + 4, currentSize + 4)
 			}):Play()
 		end
 		-- Border glow effect
@@ -843,7 +843,7 @@ function UIComponents:CreateIconButton(config)
 		if iconElement then
 			local originalSize = buttonConfig.buttonText and math.floor(iconSize * 0.8) or iconSize
 			TweenService:Create(iconElement, TweenInfo.new(Config.UI_SETTINGS.designSystem.animation.duration.normal, Config.UI_SETTINGS.designSystem.animation.easing.ease, Enum.EasingDirection.Out), {
-				Size = UDim2.new(0, originalSize, 0, originalSize)
+				Size = UDim2.fromOffset(originalSize, originalSize)
 			}):Play()
 		end
 		-- Reset border
@@ -872,13 +872,13 @@ end
 function UIComponents:CreateContainer(config)
 	local containerConfig = config or {}
 	local parent = containerConfig.parent
-	local size = containerConfig.size or UDim2.new(1, 0, 1, 0)
+	local size = containerConfig.size or UDim2.fromScale(1, 1)
 	local position = containerConfig.position
 
 	local container = Instance.new("Frame")
 	container.Name = containerConfig.name or "Container"
 	container.Size = size
-	container.Position = position or UDim2.new(0, 0, 0, 0)
+	container.Position = position or UDim2.fromScale(0, 0)
 	container.BackgroundColor3 = containerConfig.backgroundColor or Config.UI_SETTINGS.colors.semantic.backgrounds.card
 	container.BackgroundTransparency = containerConfig.backgroundTransparency or Config.UI_SETTINGS.designSystem.transparency.subtle
 	container.BorderSizePixel = 0
@@ -925,8 +925,8 @@ function UIComponents:CreateBadge(config)
 
 	local badge = Instance.new("Frame")
 	badge.Name = badgeConfig.name or "Badge"
-	badge.Size = UDim2.new(0, 0, 0, badgeHeight) -- Width auto-calculated by text
-	badge.Position = position or UDim2.new(0, 0, 0, 0)
+	badge.Size = UDim2.fromOffset(0, badgeHeight) -- Width auto-calculated by text
+	badge.Position = position or UDim2.fromScale(0, 0)
 	badge.BackgroundColor3 = badgeColor
 	badge.BackgroundTransparency = Config.UI_SETTINGS.designSystem.transparency.light
 	badge.BorderSizePixel = 0
@@ -937,7 +937,7 @@ function UIComponents:CreateBadge(config)
 	corner.Parent = badge
 
 	local textLabel = Instance.new("TextLabel")
-	textLabel.Size = UDim2.new(1, 0, 1, 0)
+	textLabel.Size = UDim2.fromScale(1, 1)
 	textLabel.BackgroundTransparency = 1
 	textLabel.Text = text
 	textLabel.TextColor3 = Config.UI_SETTINGS.colors.text
@@ -948,7 +948,7 @@ function UIComponents:CreateBadge(config)
 
 	-- Auto-size the badge based on text
 	local textBounds = textLabel.TextBounds
-	badge.Size = UDim2.new(0, textBounds.X + (COMPONENT_CONFIGS.badge.padding * 2), 0, badgeHeight)
+	badge.Size = UDim2.fromOffset(textBounds.X + (COMPONENT_CONFIGS.badge.padding * 2), badgeHeight)
 
 	return badge
 end
@@ -961,14 +961,14 @@ end
 function UIComponents:CreateCard(config)
 	local cardConfig = config or {}
 	local parent = cardConfig.parent
-	local size = cardConfig.size or UDim2.new(0, 200, 0, 150)
+	local size = cardConfig.size or UDim2.fromOffset(200, 150)
 	local position = cardConfig.position
 
 	-- Main card frame
 	local cardFrame = Instance.new("Frame")
 	cardFrame.Name = cardConfig.name or "Card"
 	cardFrame.Size = size
-	cardFrame.Position = position or UDim2.new(0, 0, 0, 0)
+	cardFrame.Position = position or UDim2.fromScale(0, 0)
 	cardFrame.BackgroundColor3 = cardConfig.backgroundColor or Config.UI_SETTINGS.colors.semantic.backgrounds.card
 	cardFrame.BackgroundTransparency = cardConfig.backgroundTransparency or Config.UI_SETTINGS.designSystem.transparency.subtle
 	cardFrame.BorderSizePixel = 0
@@ -997,7 +997,7 @@ end
 	@param config: table - Card configuration
 	@return: table - Card components
 --]]
-function UIComponents:CreateCard(config)
+function UIComponents:CreateFlexibleCard(config)
 	local cardConfig = config or {}
 	local parent = cardConfig.parent
 	local title = cardConfig.title
@@ -1012,10 +1012,10 @@ function UIComponents:CreateCard(config)
 
 	-- Size handling
 	if size == "auto" then
-		card.Size = UDim2.new(1, 0, 0, 0)
+		card.Size = UDim2.fromScale(1, 0)
 		card.AutomaticSize = Enum.AutomaticSize.Y
 	elseif size == "full" then
-		card.Size = UDim2.new(1, 0, 1, 0)
+		card.Size = UDim2.fromScale(1, 1)
 	elseif typeof(size) == "UDim2" then
 		card.Size = size
 	else
@@ -1048,7 +1048,7 @@ function UIComponents:CreateCard(config)
 		headerContainer = Instance.new("Frame")
 		headerContainer.Name = "Header"
 		headerContainer.Size = UDim2.new(1, 0, 0, 28) -- Compact header
-		headerContainer.Position = UDim2.new(0, 0, 0, 0)
+		headerContainer.Position = UDim2.fromScale(0, 0)
 		headerContainer.BackgroundTransparency = 1
 		headerContainer.Parent = card
 
@@ -1061,8 +1061,8 @@ function UIComponents:CreateCard(config)
 
 		-- Icon (if provided)
 		if icon and icon.category and icon.name then
-			local headerIcon = IconManager:CreateIcon(headerContainer, icon.category, icon.name, {
-				size = UDim2.new(0, 22, 0, 22), -- Larger icon for better proportion
+			local _headerIcon = IconManager:CreateIcon(headerContainer, icon.category, icon.name, {
+				size = UDim2.fromOffset(22, 22), -- Larger icon for better proportion
 				layoutOrder = 1
 			})
 		end
@@ -1095,11 +1095,11 @@ function UIComponents:CreateCard(config)
 	local contentContainer = Instance.new("Frame")
 	contentContainer.Name = "Content"
 	contentContainer.Size = UDim2.new(1, 0, 1, -contentStartY)
-	contentContainer.Position = UDim2.new(0, 0, 0, contentStartY)
+	contentContainer.Position = UDim2.fromOffset(0, contentStartY)
 	contentContainer.BackgroundTransparency = 1
 	if size == "auto" then
 		contentContainer.AutomaticSize = Enum.AutomaticSize.Y
-		contentContainer.Size = UDim2.new(1, 0, 0, 0)
+		contentContainer.Size = UDim2.fromScale(1, 0)
 	end
 	contentContainer.Parent = card
 
@@ -1126,7 +1126,7 @@ function UIComponents:CreatePanelSection(config)
 	-- Main section container
 	local section = Instance.new("Frame")
 	section.Name = (title and title:gsub("[^%w]", "") or "Section") .. "Container"
-	section.Size = fullWidth and UDim2.new(1, 0, 0, 0) or UDim2.new(0, sectionConfig.width or 200, 0, 0)
+	section.Size = fullWidth and UDim2.fromScale(1, 0) or UDim2.fromOffset(sectionConfig.width or 200, 0)
 	section.BackgroundColor3 = Config.UI_SETTINGS.colors.backgroundSecondary
 	section.BackgroundTransparency = Config.UI_SETTINGS.designSystem.transparency.light
 	section.BorderSizePixel = 0
@@ -1145,7 +1145,7 @@ function UIComponents:CreatePanelSection(config)
 		local headerContainer = Instance.new("Frame")
 		headerContainer.Name = "Header"
 		headerContainer.Size = UDim2.new(1, -24, 0, PANEL_LAYOUTS.section.headerHeight)
-		headerContainer.Position = UDim2.new(0, 12, 0, 8)
+		headerContainer.Position = UDim2.fromOffset(12, 8)
 		headerContainer.BackgroundTransparency = 1
 		headerContainer.Parent = section
 
@@ -1158,7 +1158,7 @@ function UIComponents:CreatePanelSection(config)
 
 		-- Icon (if provided)
 		if icon and icon.category and icon.name then
-			local headerIcon = IconManager:CreateIcon(headerContainer, icon.category, icon.name, {
+			local _headerIcon = IconManager:CreateIcon(headerContainer, icon.category, icon.name, {
 				layoutOrder = 1
 			})
 		end
@@ -1191,7 +1191,7 @@ function UIComponents:CreatePanelSection(config)
 	local contentContainer = Instance.new("Frame")
 	contentContainer.Name = "Content"
 	contentContainer.Size = UDim2.new(1, -24, 0, 0)
-	contentContainer.Position = UDim2.new(0, 12, 0, currentY)
+	contentContainer.Position = UDim2.fromOffset(12, currentY)
 	contentContainer.BackgroundTransparency = 1
 	contentContainer.AutomaticSize = Enum.AutomaticSize.Y
 	contentContainer.Parent = section
@@ -1230,17 +1230,18 @@ function UIComponents:CreateFormRow(config)
 	local formRow = Instance.new("Frame")
 	formRow.Name = (label and label:gsub("[^%w]", "") or "FormRow") .. "Container"
 	formRow.Size = fullWidth and UDim2.new(1, 0, 0, PANEL_LAYOUTS.formRow.height) or
-					UDim2.new(0, rowConfig.width or 300, 0, PANEL_LAYOUTS.formRow.height)
+					UDim2.fromOffset(rowConfig.width or 300, PANEL_LAYOUTS.formRow.height)
 	formRow.BackgroundTransparency = 1
 	formRow.LayoutOrder = layoutOrder
 	formRow.Parent = parent
 
+	local labelFrame = nil
 	-- Label
 	if label then
-		local labelFrame = Instance.new("TextLabel")
+		labelFrame = Instance.new("TextLabel")
 		labelFrame.Name = "Label"
 		labelFrame.Size = UDim2.new(PANEL_LAYOUTS.formRow.labelWidth, -PANEL_LAYOUTS.formRow.spacing, 1, 0)
-		labelFrame.Position = UDim2.new(0, 0, 0, 0)
+		labelFrame.Position = UDim2.fromScale(0, 0)
 		labelFrame.BackgroundTransparency = 1
 		labelFrame.Text = label
 		labelFrame.TextColor3 = Config.UI_SETTINGS.colors.text
@@ -1254,8 +1255,8 @@ function UIComponents:CreateFormRow(config)
 	-- Control container
 	local controlContainer = Instance.new("Frame")
 	controlContainer.Name = "ControlContainer"
-	controlContainer.Size = UDim2.new(1 - PANEL_LAYOUTS.formRow.labelWidth, 0, 1, 0)
-	controlContainer.Position = UDim2.new(PANEL_LAYOUTS.formRow.labelWidth, 0, 0, 0)
+	controlContainer.Size = UDim2.fromScale(1 - PANEL_LAYOUTS.formRow.labelWidth, 1)
+	controlContainer.Position = UDim2.fromScale(PANEL_LAYOUTS.formRow.labelWidth, 0)
 	controlContainer.BackgroundTransparency = 1
 	controlContainer.Parent = formRow
 
@@ -1263,8 +1264,8 @@ function UIComponents:CreateFormRow(config)
 	if control then
 		control.Parent = controlContainer
 		-- Adjust control size to fit container
-		control.Size = UDim2.new(1, 0, 1, 0)
-		control.Position = UDim2.new(0, 0, 0, 0)
+		control.Size = UDim2.fromScale(1, 1)
+		control.Position = UDim2.fromScale(0, 0)
 	end
 
 	return {
@@ -1311,7 +1312,7 @@ function UIComponents:CreateToggleSwitch(config)
 
 	-- Label text
 	local labelText = Instance.new("TextLabel")
-	labelText.Size = UDim2.new(0.7, 0, 1, 0)
+	labelText.Size = UDim2.fromScale(0.7, 1)
 	labelText.BackgroundTransparency = 1
 	labelText.Text = label
 	labelText.TextColor3 = Config.UI_SETTINGS.colors.text
@@ -1323,7 +1324,7 @@ function UIComponents:CreateToggleSwitch(config)
 
 	-- Toggle background
 	local toggleBg = Instance.new("Frame")
-	toggleBg.Size = UDim2.new(0, sizeConfig.width, 0, sizeConfig.height)
+	toggleBg.Size = UDim2.fromOffset(sizeConfig.width, sizeConfig.height)
 	toggleBg.Position = UDim2.new(1, -sizeConfig.width - 10, 0.5, -sizeConfig.height/2)
 	toggleBg.BackgroundColor3 = enabled and Config.UI_SETTINGS.colors.semantic.button.success or Config.UI_SETTINGS.colors.backgroundSecondary
 	toggleBg.BorderSizePixel = 0
@@ -1335,7 +1336,7 @@ function UIComponents:CreateToggleSwitch(config)
 
 	-- Toggle handle
 	local toggleHandle = Instance.new("Frame")
-	toggleHandle.Size = UDim2.new(0, sizeConfig.knobSize, 0, sizeConfig.knobSize)
+	toggleHandle.Size = UDim2.fromOffset(sizeConfig.knobSize, sizeConfig.knobSize)
 	toggleHandle.Position = enabled and
 		UDim2.new(1, -sizeConfig.knobSize - 2, 0.5, -sizeConfig.knobSize/2) or
 		UDim2.new(0, 2, 0.5, -sizeConfig.knobSize/2)
@@ -1409,7 +1410,7 @@ function UIComponents:CreateSlider(config)
 
 	-- Label
 	local labelText = Instance.new("TextLabel")
-	labelText.Size = UDim2.new(0.3, 0, 1, 0)
+	labelText.Size = UDim2.fromScale(0.3, 1)
 	labelText.BackgroundTransparency = 1
 	labelText.Text = label
 	labelText.TextColor3 = Config.UI_SETTINGS.colors.text
@@ -1433,7 +1434,7 @@ function UIComponents:CreateSlider(config)
 
 	-- Fill
 	local fill = Instance.new("Frame")
-	fill.Size = UDim2.new(value, 0, 1, 0)
+	fill.Size = UDim2.fromScale(value, 1)
 	fill.BackgroundColor3 = Config.UI_SETTINGS.colors.accent
 	fill.BorderSizePixel = 0
 	fill.Parent = track
@@ -1444,7 +1445,7 @@ function UIComponents:CreateSlider(config)
 
 	-- Handle
 	local handle = Instance.new("Frame")
-	handle.Size = UDim2.new(0, 20, 0, 20)
+	handle.Size = UDim2.fromOffset(20, 20)
 	handle.Position = UDim2.new(value, -10, 0.5, -10)
 	handle.BackgroundColor3 = Config.UI_SETTINGS.colors.text
 	handle.BorderSizePixel = 0
@@ -1456,8 +1457,8 @@ function UIComponents:CreateSlider(config)
 
 	-- Value label
 	local valueLabel = Instance.new("TextLabel")
-	valueLabel.Size = UDim2.new(0.15, 0, 1, 0)
-	valueLabel.Position = UDim2.new(0.85, 0, 0, 0)
+	valueLabel.Size = UDim2.fromScale(0.15, 1)
+	valueLabel.Position = UDim2.fromScale(0.85, 0)
 	valueLabel.BackgroundTransparency = 1
 	valueLabel.Text = math.floor(value * 100) .. "%"
 	valueLabel.TextColor3 = Config.UI_SETTINGS.colors.accent
@@ -1475,7 +1476,7 @@ function UIComponents:CreateSlider(config)
 		newValue = math.clamp(newValue, 0, 1)
 		currentValue = newValue
 
-		fill.Size = UDim2.new(newValue, 0, 1, 0)
+		fill.Size = UDim2.fromScale(newValue, 1)
 		handle.Position = UDim2.new(newValue, -10, 0.5, -10)
 		valueLabel.Text = math.floor(newValue * 100) .. "%"
 
@@ -1554,14 +1555,14 @@ function UIComponents:CreateDropdown(config)
 	return {
 		dropdown = dropdownButton.button,
 		button = dropdownButton,
-		SetSelectedIndex = function(self, index)
+		SetSelectedIndex = function(_self, index)
 			selectedIndex = math.clamp(index, 1, #options)
 			dropdownButton:SetText(options[selectedIndex])
 		end,
-		GetSelectedIndex = function(self)
+		GetSelectedIndex = function(_self)
 			return selectedIndex
 		end,
-		GetSelectedValue = function(self)
+		GetSelectedValue = function(_self)
 			return options[selectedIndex]
 		end
 	}
@@ -1577,19 +1578,19 @@ function UIComponents:CreateFlexContainer(config)
 	local parent = flexConfig.parent
 	local direction = flexConfig.direction or "vertical" -- "vertical", "horizontal", "grid"
 	local gap = flexConfig.gap or PANEL_LAYOUTS.spacing.item
-	local wrap = flexConfig.wrap or false
+	local _wrap = flexConfig.wrap or false
 
 	local container = Instance.new("Frame")
 	container.Name = "FlexContainer"
-	container.Size = UDim2.new(1, 0, 0, 0)
+	container.Size = UDim2.fromScale(1, 0)
 	container.BackgroundTransparency = 1
 	container.AutomaticSize = Enum.AutomaticSize.Y
 	container.Parent = parent
 
 	if direction == "grid" then
 		local gridLayout = Instance.new("UIGridLayout")
-		gridLayout.CellSize = flexConfig.cellSize or UDim2.new(0, 160, 0, 120)
-		gridLayout.CellPadding = UDim2.new(0, gap, 0, gap)
+		gridLayout.CellSize = flexConfig.cellSize or UDim2.fromOffset(160, 120)
+		gridLayout.CellPadding = UDim2.fromOffset(gap, gap)
 		gridLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 		gridLayout.VerticalAlignment = Enum.VerticalAlignment.Top
 		gridLayout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -1615,8 +1616,8 @@ end
 function UIComponents:CreateScrollFrame(config)
 	local scrollConfig = config or {}
 	local parent = scrollConfig.parent
-	local size = scrollConfig.size or UDim2.new(1, 0, 1, 0)
-	local position = scrollConfig.position or UDim2.new(0, 0, 0, 0)
+	local size = scrollConfig.size or UDim2.fromScale(1, 1)
+	local position = scrollConfig.position or UDim2.fromScale(0, 0)
 
 	local scrollFrame = Instance.new("ScrollingFrame")
 	scrollFrame.Name = "ScrollFrame"
@@ -1628,14 +1629,14 @@ function UIComponents:CreateScrollFrame(config)
 	scrollFrame.ScrollBarImageColor3 = Config.UI_SETTINGS.colors.accent
 	scrollFrame.ScrollBarImageTransparency = 0.3
 	scrollFrame.ScrollingDirection = Enum.ScrollingDirection.Y
-	scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0) -- Will be updated automatically
+	scrollFrame.CanvasSize = UDim2.fromScale(0, 0) -- Will be updated automatically
 	scrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
 	scrollFrame.Parent = parent
 
 	-- Content container inside scroll frame
 	local contentContainer = Instance.new("Frame")
 	contentContainer.Name = "ScrollContent"
-	contentContainer.Size = UDim2.new(1, 0, 0, 0)
+	contentContainer.Size = UDim2.fromScale(1, 0)
 	contentContainer.BackgroundTransparency = 1
 	contentContainer.AutomaticSize = Enum.AutomaticSize.Y
 	contentContainer.Parent = scrollFrame
@@ -1665,7 +1666,7 @@ function UIComponents:CreateQuestPill(config)
 
 	local pill = Instance.new("Frame")
 	pill.Name = "QuestPill_" .. tostring(milestone)
-	pill.Size = UDim2.new(0, 180, 0, 40)
+	pill.Size = UDim2.fromOffset(180, 40)
 	pill.BackgroundColor3 = achieved and (claimed and Color3.fromRGB(50, 90, 50) or Config.UI_SETTINGS.colors.semantic.button.success) or Config.UI_SETTINGS.colors.semantic.button.secondary
 	pill.BackgroundTransparency = achieved and 0 or 0.2
 	pill.BorderSizePixel = 0
@@ -1683,7 +1684,7 @@ function UIComponents:CreateQuestPill(config)
 
 	local top = Instance.new("TextLabel")
 	top.Size = UDim2.new(1, -10, 0, 18)
-	top.Position = UDim2.new(0, 5, 0, 0)
+	top.Position = UDim2.fromOffset(5, 0)
 	top.BackgroundTransparency = 1
 	top.Text = tostring(milestone) .. (claimed and " ✔" or "")
 	top.TextColor3 = Color3.fromRGB(255,255,255)
@@ -1693,15 +1694,23 @@ function UIComponents:CreateQuestPill(config)
 	top.Parent = pill
 
 	local parts = {}
-	if reward.coins then table.insert(parts, "+" .. tostring(reward.coins) .. " coins") end
-	if reward.gems then table.insert(parts, "+" .. tostring(reward.gems) .. " gems") end
-	if reward.experience then table.insert(parts, "+" .. tostring(reward.experience) .. " XP") end
-	if reward.xp then table.insert(parts, "+" .. tostring(reward.xp) .. " XP") end
+	if reward.coins then
+		table.insert(parts, "+" .. tostring(reward.coins) .. " coins")
+	end
+	if reward.gems then
+		table.insert(parts, "+" .. tostring(reward.gems) .. " gems")
+	end
+	if reward.experience then
+		table.insert(parts, "+" .. tostring(reward.experience) .. " XP")
+	end
+	if reward.xp then
+		table.insert(parts, "+" .. tostring(reward.xp) .. " XP")
+	end
 	local rewardText = table.concat(parts, "  ")
 
 	local bottom = Instance.new("TextLabel")
 	bottom.Size = UDim2.new(1, -10, 0, 14)
-	bottom.Position = UDim2.new(0, 5, 0, 0)
+	bottom.Position = UDim2.fromOffset(5, 0)
 	bottom.BackgroundTransparency = 1
 	bottom.Text = rewardText
 	bottom.TextColor3 = Color3.fromRGB(230,230,230)
@@ -1720,10 +1729,12 @@ function UIComponents:CreateQuestPill(config)
 			color = "primary",
 			parent = pill,
 			callback = function()
-				if onClaim then onClaim() end
+				if onClaim then
+					onClaim()
+				end
 			end
 		})
-		button.button.Size = UDim2.new(0, 64, 0, 22)
+		button.button.Size = UDim2.fromOffset(64, 22)
 	end
 
 	return pill
@@ -1797,7 +1808,9 @@ function UIComponents:CreateQuestRow(config)
 			claimed = claimedMap[milestone] == true,
 			reward = rewards[milestone] or {},
 			onClaim = function()
-				if onClaim then onClaim() end
+				if onClaim then
+					onClaim()
+				end
 			end
 		})
 	end
@@ -1847,7 +1860,7 @@ function UIComponents:CreateTabBar(config)
 	for i, tab in ipairs(tabs) do
 		local tabButton = Instance.new("TextButton")
 		tabButton.Name = "Tab_" .. tab.key
-		tabButton.Size = UDim2.new(0, 100, 0, 32)
+		tabButton.Size = UDim2.fromOffset(100, 32)
 		tabButton.BackgroundColor3 = Config.UI_SETTINGS.colors.backgroundSecondary
 		tabButton.BorderSizePixel = 0
 		tabButton.Text = tab.text .. (tab.badgeCount and " (" .. tab.badgeCount .. ")" or "")
@@ -1950,7 +1963,7 @@ function UIComponents:CreateQuestCard(config)
 	-- Icon background for better visual weight
 	local iconBg = Instance.new("Frame")
 	iconBg.Name = "IconBg"
-	iconBg.Size = UDim2.new(1, 0, 1, 0)
+	iconBg.Size = UDim2.fromScale(1, 1)
 	iconBg.BackgroundColor3 = Config.UI_SETTINGS.colors.background
 	iconBg.BackgroundTransparency = 0
 	iconBg.BorderSizePixel = 0
@@ -1963,18 +1976,18 @@ function UIComponents:CreateQuestCard(config)
 	-- Pick icon from config if available, else fallback
 	local iconCategory = (questConfig.icon and questConfig.icon.category) or questConfig.iconCategory or "General"
 	local iconName = (questConfig.icon and questConfig.icon.name) or questConfig.iconName or "Skull"
-	local iconColor = (questConfig.icon and questConfig.icon.color)
+	local _iconColor = (questConfig.icon and questConfig.icon.color)
 
 	IconManager:CreateIcon(iconBg, iconCategory, iconName, {
 		size = "hero",
-		position = UDim2.new(0.5, 0, 0.5, 0),
+		position = UDim2.fromScale(0.5, 0.5),
 		anchorPoint = Vector2.new(0.5, 0.5),
 	})
 
 	-- Middle section: Title and progress
 	local leftSection = Instance.new("Frame")
 	leftSection.Name = "LeftSection"
-	leftSection.Position = UDim2.new(0, iconWidth + gap, 0, 0)
+	leftSection.Position = UDim2.fromOffset(iconWidth + gap, 0)
 	leftSection.Size = UDim2.new(1 - rightScale, - (iconWidth + gap), 1, 0)
 	leftSection.BackgroundTransparency = 1
 	leftSection.Parent = card
@@ -1993,7 +2006,7 @@ function UIComponents:CreateQuestCard(config)
 	local progress = Instance.new("TextLabel")
 	progress.Name = "Progress"
 	progress.Size = UDim2.new(1, 0, 0, 16)
-	progress.Position = UDim2.new(0, 0, 0, 24)
+	progress.Position = UDim2.fromOffset(0, 24)
 	progress.BackgroundTransparency = 1
 	progress.Text = "Progress: " .. kills .. "/" .. milestone
 	progress.TextColor3 = isClaimable and Config.UI_SETTINGS.colors.semantic.button.success or Config.UI_SETTINGS.colors.textMuted
@@ -2006,7 +2019,7 @@ function UIComponents:CreateQuestCard(config)
 	local progressBarBg = Instance.new("Frame")
 	progressBarBg.Name = "ProgressBarBg"
 	progressBarBg.Size = UDim2.new(1, 0, 0, 4)
-	progressBarBg.Position = UDim2.new(0, 0, 0, 44)
+	progressBarBg.Position = UDim2.fromOffset(0, 44)
 	progressBarBg.BackgroundColor3 = Config.UI_SETTINGS.colors.semantic.borders.subtle
 	progressBarBg.BorderSizePixel = 0
 	progressBarBg.Parent = leftSection
@@ -2029,8 +2042,8 @@ function UIComponents:CreateQuestCard(config)
 	-- Right section: Rewards and claim button
 	local rightSection = Instance.new("Frame")
 	rightSection.Name = "RightSection"
-	rightSection.Size = UDim2.new(rightScale, 0, 1, 0)
-	rightSection.Position = UDim2.new(1 - rightScale, 0, 0, 0)
+	rightSection.Size = UDim2.fromScale(rightScale, 1)
+	rightSection.Position = UDim2.fromScale(1 - rightScale, 0)
 	rightSection.BackgroundTransparency = 1
 	rightSection.Parent = card
 
@@ -2042,7 +2055,7 @@ function UIComponents:CreateQuestCard(config)
 	-- Create reward container positioned above the claim button (aligned with button)
 	local rewardContainer = Instance.new("Frame")
 	rewardContainer.Name = "RewardContainer"
-	rewardContainer.Size = UDim2.new(0, 120, 0, 18)
+	rewardContainer.Size = UDim2.fromOffset(120, 18)
 	rewardContainer.Position = UDim2.new(1, -120, 1, -65)
 	rewardContainer.BackgroundTransparency = 1
 	rewardContainer.Parent = rightSection
@@ -2060,7 +2073,7 @@ function UIComponents:CreateQuestCard(config)
 	if rewards.coins then
 		-- Create coin icon
 		local coinIcon = IconManager:CreateIcon(rewardContainer, "Currency", "Cash", {
-			size = UDim2.new(0, 14, 0, 14)
+			size = UDim2.fromOffset(14, 14)
 		})
 		if coinIcon then
 			coinIcon.LayoutOrder = rewardOrder
@@ -2070,7 +2083,7 @@ function UIComponents:CreateQuestCard(config)
 		-- Create coin amount label
 		local coinLabel = Instance.new("TextLabel")
 		coinLabel.Name = "CoinsAmount"
-		coinLabel.Size = UDim2.new(0, 0, 0, 18)
+		coinLabel.Size = UDim2.fromOffset(0, 18)
 		coinLabel.AutomaticSize = Enum.AutomaticSize.X
 		coinLabel.BackgroundTransparency = 1
 		coinLabel.Text = tostring(rewards.coins)
@@ -2086,7 +2099,7 @@ function UIComponents:CreateQuestCard(config)
 	if rewards.gems then
 		-- Create gem icon
 		local gemIcon = IconManager:CreateIcon(rewardContainer, "Currency", "Gem", {
-			size = UDim2.new(0, 14, 0, 14)
+			size = UDim2.fromOffset(14, 14)
 		})
 		if gemIcon then
 			gemIcon.LayoutOrder = rewardOrder
@@ -2096,7 +2109,7 @@ function UIComponents:CreateQuestCard(config)
 		-- Create gem amount label
 		local gemLabel = Instance.new("TextLabel")
 		gemLabel.Name = "GemsAmount"
-		gemLabel.Size = UDim2.new(0, 0, 0, 18)
+		gemLabel.Size = UDim2.fromOffset(0, 18)
 		gemLabel.AutomaticSize = Enum.AutomaticSize.X
 		gemLabel.BackgroundTransparency = 1
 		gemLabel.Text = tostring(rewards.gems)
@@ -2113,7 +2126,7 @@ function UIComponents:CreateQuestCard(config)
 	-- Claim button
 	local claimButton = Instance.new("TextButton")
 	claimButton.Name = "ClaimButton"
-	claimButton.Size = UDim2.new(0, 100, 0, 36)
+	claimButton.Size = UDim2.fromOffset(100, 36)
 	claimButton.Position = UDim2.new(1, -100, 1, -40)
 	claimButton.BorderSizePixel = 0
 	claimButton.TextSize = Config.UI_SETTINGS.typography.sizes.ui.button
@@ -2142,7 +2155,9 @@ function UIComponents:CreateQuestCard(config)
 			claimButton.TextColor3 = Config.UI_SETTINGS.colors.textMuted
 			claimButton.Active = false
 
-			if onClaim then onClaim() end
+			if onClaim then
+				onClaim()
+			end
 		end)
 	else
 		claimButton.Text = "Not Ready"
@@ -2213,7 +2228,7 @@ function UIComponents:ShowTooltip(config)
 	-- Create tooltip frame (initially invisible)
 	local tooltipFrame = Instance.new("Frame")
 	tooltipFrame.Name = "Tooltip"
-	tooltipFrame.Size = UDim2.new(0, 280, 0, 0) -- Width fixed, height auto-calculated
+	tooltipFrame.Size = UDim2.fromOffset(280, 0) -- Width fixed, height auto-calculated
 	tooltipFrame.BackgroundColor3 = Config.UI_SETTINGS.colors.semantic.backgrounds.panel
 	tooltipFrame.BackgroundTransparency = 0 -- Normal opacity
 	tooltipFrame.BorderSizePixel = 0
@@ -2237,7 +2252,7 @@ function UIComponents:ShowTooltip(config)
 	-- Content container
 	local contentContainer = Instance.new("Frame")
 	contentContainer.Name = "Content"
-	contentContainer.Size = UDim2.new(1, 0, 0, 0)
+	contentContainer.Size = UDim2.fromScale(1, 0)
 	contentContainer.BackgroundTransparency = 1
 	contentContainer.AutomaticSize = Enum.AutomaticSize.Y
 	contentContainer.ZIndex = 10001 -- Higher than tooltip frame
@@ -2297,7 +2312,7 @@ function UIComponents:ShowTooltip(config)
 			preferredX = math.max(10, math.min(preferredX, screenSize.X - tooltipSize.X - 10))
 			preferredY = math.max(10, math.min(preferredY, screenSize.Y - tooltipSize.Y - 10))
 
-			tooltipFrame.Position = UDim2.new(0, preferredX, 0, preferredY)
+			tooltipFrame.Position = UDim2.fromOffset(preferredX, preferredY)
 
 			-- Show entire tooltip at once
 			tooltipFrame.Visible = true
@@ -2356,7 +2371,7 @@ function UIComponents:BuildTooltipContent(container, content)
 	if content.title then
 		local titleLabel = Instance.new("TextLabel")
 		titleLabel.Name = "Title"
-		titleLabel.Size = UDim2.new(1, 0, 0, 0)
+		titleLabel.Size = UDim2.fromScale(1, 0)
 		titleLabel.BackgroundTransparency = 1
 		titleLabel.Text = content.title
 		titleLabel.TextColor3 = Config.UI_SETTINGS.titleLabel.textColor
@@ -2383,7 +2398,7 @@ function UIComponents:BuildTooltipContent(container, content)
 	if content.description then
 		local descLabel = Instance.new("TextLabel")
 		descLabel.Name = "Description"
-		descLabel.Size = UDim2.new(1, 0, 0, 0)
+		descLabel.Size = UDim2.fromScale(1, 0)
 		descLabel.BackgroundTransparency = 1
 		descLabel.Text = content.description
 		descLabel.TextColor3 = Config.UI_SETTINGS.colors.textSecondary
@@ -2419,7 +2434,7 @@ function UIComponents:BuildTooltipContent(container, content)
 		-- Status indicator
 		local statusIndicator = Instance.new("Frame")
 		statusIndicator.Name = "StatusIndicator"
-		statusIndicator.Size = UDim2.new(0, 8, 0, 8)
+		statusIndicator.Size = UDim2.fromOffset(8, 8)
 		-- Better status color detection
 		local statusColor = Config.UI_SETTINGS.colors.semantic.game.coins -- Default to green (available)
 		if content.status and (content.status:lower():find("placed") or content.status:lower():find("dungeon")) then
@@ -2438,7 +2453,7 @@ function UIComponents:BuildTooltipContent(container, content)
 		-- Status text
 		local statusLabel = Instance.new("TextLabel")
 		statusLabel.Name = "StatusText"
-		statusLabel.Size = UDim2.new(0, 0, 0, 24)
+		statusLabel.Size = UDim2.fromOffset(0, 24)
 		statusLabel.BackgroundTransparency = 1
 		statusLabel.Text = content.status
 		statusLabel.TextColor3 = Config.UI_SETTINGS.colors.text
@@ -2468,7 +2483,7 @@ function UIComponents:BuildTooltipContent(container, content)
 			-- Property name
 			local propertyName = Instance.new("TextLabel")
 			propertyName.Name = "PropertyName"
-			propertyName.Size = UDim2.new(0.6, 0, 1, 0)
+			propertyName.Size = UDim2.fromScale(0.6, 1)
 			propertyName.BackgroundTransparency = 1
 			propertyName.Text = property.name .. ":"
 			propertyName.TextColor3 = Config.UI_SETTINGS.colors.textSecondary
@@ -2482,8 +2497,8 @@ function UIComponents:BuildTooltipContent(container, content)
 			-- Property value
 			local propertyValue = Instance.new("TextLabel")
 			propertyValue.Name = "PropertyValue"
-			propertyValue.Size = UDim2.new(0.4, 0, 1, 0)
-			propertyValue.Position = UDim2.new(0.6, 0, 0, 0)
+			propertyValue.Size = UDim2.fromScale(0.4, 1)
+			propertyValue.Position = UDim2.fromScale(0.6, 0)
 			propertyValue.BackgroundTransparency = 1
 			propertyValue.Text = tostring(property.value)
 			propertyValue.TextColor3 = property.color or Config.UI_SETTINGS.colors.text
@@ -2534,7 +2549,7 @@ function UIComponents:PositionTooltip(tooltipFrame, targetElement)
 	preferredX = math.max(10, math.min(preferredX, screenSize.X - tooltipSize.X - 10))
 	preferredY = math.max(10, math.min(preferredY, screenSize.Y - tooltipSize.Y - 10))
 
-	tooltipFrame.Position = UDim2.new(0, preferredX, 0, preferredY)
+	tooltipFrame.Position = UDim2.fromOffset(preferredX, preferredY)
 end
 
 --[[
@@ -2617,9 +2632,15 @@ function UIComponents:AddTooltip(element, content)
 				elementDebounce = nil
 			end
 
-			if hoverConnection then hoverConnection:Disconnect() end
-			if leaveConnection then leaveConnection:Disconnect() end
-			if clickConnection then clickConnection:Disconnect() end
+			if hoverConnection then
+				hoverConnection:Disconnect()
+			end
+			if leaveConnection then
+				leaveConnection:Disconnect()
+			end
+			if clickConnection then
+				clickConnection:Disconnect()
+			end
 		end
 	}
 end
@@ -2650,7 +2671,7 @@ function UIComponents:CreateCurrencyDisplay(config)
 	}
 
 	-- Currency display names
-	local CURRENCY_NAMES = {
+	local _CURRENCY_NAMES = {
 		coins = "Coins",
 		gems = "Gems",
 		experience = "XP"
@@ -2684,7 +2705,7 @@ function UIComponents:CreateCurrencyDisplay(config)
 			layoutOrder = layoutOrder,
 			items = topbarItems,
 			-- Make it fit properly in parent container
-			size = UDim2.new(1, 0, 1, 0), -- Use full available space
+			size = UDim2.fromScale(1, 1), -- Use full available space
 			transparency = 1 -- Transparent background to inherit parent styling
 		})
 	end
@@ -2693,7 +2714,9 @@ function UIComponents:CreateCurrencyDisplay(config)
 		Update currency values
 	--]]
 	function currencyDisplay:UpdateValues(playerData)
-		if not playerData or not self.topbar then return end
+		if not playerData or not self.topbar then
+			return
+		end
 
 		for currencyType, itemIndex in pairs(self.items) do
 			local amount = playerData[currencyType] or 0
@@ -2709,7 +2732,7 @@ function UIComponents:CreateCurrencyDisplay(config)
 	function currencyDisplay:EnableAutoUpdate()
 		if self.gameStateListener then return end -- Already enabled
 
-		self.gameStateListener = GameState:OnPropertyChanged("playerData", function(newValue, oldValue, path)
+		self.gameStateListener = GameState:OnPropertyChanged("playerData", function(newValue, _oldValue, _path)
 			if newValue then
 				self:UpdateValues(newValue)
 			end
@@ -2760,13 +2783,13 @@ function UIComponents:CreateBuyButton(config)
 
 	-- Get color from semantic tokens
 	local buttonColor = Config.UI_SETTINGS.colors.semantic.button[colorVariant] or buttonConfig.color or Config.UI_SETTINGS.colors.accent
-	local borderColor = Config.UI_SETTINGS.colors.semantic.borders.default
+	local _borderColor = Config.UI_SETTINGS.colors.semantic.borders.default
 
 	-- Border frame (acts as the border)
 	local borderFrame = Instance.new("Frame")
 	borderFrame.Name = (buttonConfig.name or "BuyButton") .. "Border"
-	borderFrame.Size = UDim2.new(0, buttonWidth + 4, 0, buttonHeight + 4) -- 2px border on all sides
-	borderFrame.Position = position and UDim2.new(position.X.Scale, position.X.Offset - 2, position.Y.Scale, position.Y.Offset - 2) or UDim2.new(0, -2, 0, -2)
+	borderFrame.Size = UDim2.fromOffset(buttonWidth + 4, buttonHeight + 4) -- 2px border on all sides
+	borderFrame.Position = position and UDim2.new(position.X.Scale, position.X.Offset - 2, position.Y.Scale, position.Y.Offset - 2) or UDim2.fromOffset(-2, -2)
 	borderFrame.BackgroundColor3 = Color3.fromRGB(0, 80, 0) -- Dark green border
 	borderFrame.BorderSizePixel = 0
 	borderFrame.Parent = parent
@@ -2778,8 +2801,8 @@ function UIComponents:CreateBuyButton(config)
 	-- Main button (inside the border frame)
 	local button = Instance.new("TextButton")
 	button.Name = buttonConfig.name or "BuyButton"
-	button.Size = UDim2.new(0, buttonWidth, 0, buttonHeight)
-	button.Position = UDim2.new(0, 2, 0, 2) -- Offset by border thickness (2px)
+	button.Size = UDim2.fromOffset(buttonWidth, buttonHeight)
+	button.Position = UDim2.fromOffset(2, 2) -- Offset by border thickness (2px)
 	button.BackgroundColor3 = buttonColor
 	button.BackgroundTransparency = enabled and Config.UI_SETTINGS.designSystem.transparency.light or Config.UI_SETTINGS.designSystem.transparency.backdrop
 	button.Text = "" -- No text, we'll use icons and labels
@@ -2797,7 +2820,7 @@ function UIComponents:CreateBuyButton(config)
 	-- Create content container for icon and amount
 	local contentContainer = Instance.new("Frame")
 	contentContainer.Name = "ContentContainer"
-	contentContainer.Size = UDim2.new(1, 0, 1, 0)
+	contentContainer.Size = UDim2.fromScale(1, 1)
 	contentContainer.BackgroundTransparency = 1
 	contentContainer.Parent = button
 
@@ -2812,14 +2835,14 @@ function UIComponents:CreateBuyButton(config)
 
 	-- Create currency icon (reduced size)
 	local currencyIcon = IconManager:CreateIcon(contentContainer, "Currency", currency == "coins" and "Cash" or "Gem", {
-		size = UDim2.new(0, 25, 0, 20), -- Reduced from 32 to 24
+		size = UDim2.fromOffset(25, 20), -- Reduced from 32 to 24
 		layoutOrder = 1
 	})
 
 	-- Create amount label with white text
 	local amountLabel = Instance.new("TextLabel")
 	amountLabel.Name = "AmountLabel"
-	amountLabel.Size = UDim2.new(0, 0, 0, 1)
+	amountLabel.Size = UDim2.fromOffset(0, 1)
 	amountLabel.AutomaticSize = Enum.AutomaticSize.X
 	amountLabel.BackgroundTransparency = 1
 	amountLabel.Text = tostring(amount)
@@ -2847,6 +2870,7 @@ function UIComponents:CreateBuyButton(config)
 	if callback then
 		-- Simple click handler without flash animation
 		button.MouseButton1Down:Connect(function()
+			-- selene: allow(empty_if)
 			if enabled then
 				-- No flash animation - just handle the click
 			end
@@ -2895,7 +2919,7 @@ function UIComponents:CreateBuyButton(config)
 			-- Update icon
 			if self.currencyIcon then
 				IconManager:ApplyIcon(self.currencyIcon, "Currency", newCurrency == "coins" and "Cash" or "Gem", {
-					size = UDim2.new(0, iconSize, 0, iconSize)
+					size = UDim2.fromOffset(25, 20)
 				})
 			end
 		end,
@@ -2944,7 +2968,7 @@ function UIComponents:CreateBuyButton(config)
 		SetIconSize = function(self, newSize)
 			-- Update icon size
 			if self.currencyIcon then
-				self.currencyIcon.Size = UDim2.new(0, newSize, 0, newSize)
+				self.currencyIcon.Size = UDim2.fromOffset(newSize, newSize)
 			end
 		end,
 
@@ -2956,15 +2980,15 @@ function UIComponents:CreateBuyButton(config)
 	}
 
 	-- Store original colors for hover effects
-	local originalBackgroundColor = buttonColor
-	local originalBorderColor = Color3.fromRGB(0, 80, 0)
+	local _originalBackgroundColor = buttonColor
+	local _originalBorderColor = Color3.fromRGB(0, 80, 0)
 
 	-- Custom hover effects
 	button.MouseEnter:Connect(function()
 		if buttonObj.isAvailable then
 		-- Get current button colors to determine if it's green or red
 		local currentBgColor = button.BackgroundColor3
-		local currentBorderColor = borderFrame.BackgroundColor3
+		local _currentBorderColor = borderFrame.BackgroundColor3
 
 			-- Determine if this is a green (available) or red (unavailable) button
 			local isGreenButton = currentBgColor.G > currentBgColor.R
@@ -3023,7 +3047,7 @@ end
  	local preview = UIComponents:CreateBlockPreview({
  		parent = someParent,
  		blockType = "grass",
- 		size = UDim2.new(0, 128, 0, 128)
+ 		size = UDim2.fromOffset(128, 128)
  	})
  	-- later
  	preview.setBlockType("stone")
@@ -3031,8 +3055,8 @@ end
 function UIComponents:CreateBlockPreview(config)
 	local previewConfig = config or {}
 	local parent = previewConfig.parent
-	local size = previewConfig.size or UDim2.new(0, 120, 0, 120)
-	local position = previewConfig.position or UDim2.new(0, 0, 0, 0)
+	local size = previewConfig.size or UDim2.fromOffset(120, 120)
+	local position = previewConfig.position or UDim2.fromScale(0, 0)
 	local spin = previewConfig.spin ~= false
 
 	-- Container to allow borders, labels, etc., if needed later
@@ -3046,7 +3070,7 @@ function UIComponents:CreateBlockPreview(config)
 	-- Create viewport preview
 	local preview = ViewportPreview.new({
 		parent = container,
-		size = UDim2.new(1, 0, 1, 0),
+		size = UDim2.fromScale(1, 1),
 		backgroundColor = Color3.fromRGB(18, 18, 18),
 		backgroundTransparency = 0,
 		borderRadius = Config.UI_SETTINGS.designSystem.borderRadius.md
@@ -3071,7 +3095,9 @@ function UIComponents:CreateBlockPreview(config)
 	end
 
 	local function setBlockType(blockType)
-		if not blockType then return end
+		if not blockType then
+			return
+		end
 		local model = buildBlockModel(blockType)
 		preview:SetModel(model)
 	end
@@ -3092,7 +3118,9 @@ function UIComponents:CreateBlockPreview(config)
 		end,
 		destroy = function()
 			preview:Destroy()
-			if container then container:Destroy() end
+			if container then
+				container:Destroy()
+			end
 		end
 	}
 

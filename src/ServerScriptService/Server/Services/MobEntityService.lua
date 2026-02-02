@@ -18,9 +18,9 @@ local MobRegistry = require(ReplicatedStorage.Configs.MobRegistry)
 local Constants = require(ReplicatedStorage.Shared.VoxelWorld.Core.Constants)
 local MinionConfig = require(ReplicatedStorage.Configs.MinionConfig)
 local CombatConfig = require(ReplicatedStorage.Configs.CombatConfig)
-local BlockProperties = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockProperties)
+local _BlockProperties = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockProperties)  -- Preloaded for cache
 local BlockRegistry = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockRegistry)
-local AdvancedPathfinding = require(ReplicatedStorage.Shared.Pathfinding.AdvancedPathfinding)
+local _AdvancedPathfinding = require(ReplicatedStorage.Shared.Pathfinding.AdvancedPathfinding)  -- Preloaded for cache
 local Navigator = require(ReplicatedStorage.Shared.Pathfinding.Navigator)
 local SpawnEggConfig = require(ReplicatedStorage.Configs.SpawnEggConfig)
 
@@ -46,11 +46,7 @@ local function worldPositionToChunk(pos)
 end
 
 local function shallowCopy(dict)
-	local copy = {}
-	for key, value in pairs(dict) do
-		copy[key] = value
-	end
-	return copy
+	return table.clone(dict)
 end
 
 local function vectorToArray(vec)
@@ -268,7 +264,9 @@ function MobEntityService:_queueUpdate(mob)
     -- Only send if deltas exceed thresholds or on keepalive/state/health changes
 	    local posDelta = (mob.position - last.pos).Magnitude
 	    local rotDelta = math.abs((mob.rotation or 0) - (last.rot or 0))
-    if rotDelta > 180 then rotDelta = 360 - rotDelta end
+    if rotDelta > 180 then
+    	rotDelta = 360 - rotDelta
+    end
     local stateChanged = stateOut ~= last.state
     local healthChanged = mob.health ~= last.health
 		-- Adaptive thresholds by speed and viewer distance
@@ -279,7 +277,9 @@ function MobEntityService:_queueUpdate(mob)
 				local dx = root.Position.X - mob.position.X
 				local dz = root.Position.Z - mob.position.Z
 				local d = math.sqrt(dx * dx + dz * dz)
-				if d < dist then dist = d end
+				if d < dist then
+					dist = d
+				end
 			end
 		end
 		local basePos = self._positionThreshold or 0.25
@@ -495,7 +495,7 @@ function MobEntityService:HandleSpawnEggUse(player, data)
 	local mobType = eggInfo.mobType
 
 	-- Compute target world position from block coordinates (center of cell, slightly above)
-	local BLOCK_SIZE = Constants.BLOCK_SIZE
+	-- Note: Uses file-scoped BLOCK_SIZE
 	local worldPos = Vector3.new(
 		x * BLOCK_SIZE + BLOCK_SIZE * 0.5,
 		y * BLOCK_SIZE + BLOCK_SIZE * 0.75,
@@ -504,9 +504,13 @@ function MobEntityService:HandleSpawnEggUse(player, data)
 
 	-- Reach validation similar to placement
 	local character = player.Character
-	if not character then return end
+	if not character then
+		return
+	end
 	local head = character:FindFirstChild("Head")
-	if not head then return end
+	if not head then
+		return
+	end
 	local distance = (worldPos - head.Position).Magnitude
 	local maxReach = 4.5 * BLOCK_SIZE + 2
 	if distance > maxReach then
@@ -706,7 +710,9 @@ function MobEntityService:_updateMob(ctx, mob, dt)
 			local vws = self.Deps and self.Deps.VoxelWorldService
 			if vws and anchorKeyForLevel and vws.minionStateByBlockKey then
 				local s = vws.minionStateByBlockKey[anchorKeyForLevel]
-				if s and s.level then levelForTiming = s.level end
+				if s and s.level then
+					levelForTiming = s.level
+				end
 			end
 		end
 		local baseWait = MinionConfig.GetWaitSeconds(minionType, levelForTiming)
@@ -736,7 +742,9 @@ function MobEntityService:_updateMob(ctx, mob, dt)
 			end
 
 			local function getBlock(x, y, z)
-				if wm then return wm:GetBlock(x, y, z) end
+				if wm then
+					return wm:GetBlock(x, y, z)
+				end
 				return BLOCK.AIR
 			end
 			local function setBlock(x, y, z, id)
@@ -1019,11 +1027,12 @@ local function findGround(self, x, z, startYStuds)
 	return nil, nil
 end
 
-local function isSolid(self, blockX, blockY, blockZ)
-	if not self.Deps or not self.Deps.VoxelWorldService or not self.Deps.VoxelWorldService.worldManager then
+-- Reserved for potential future use in advanced collision detection
+local function _isSolid(_self, blockX, blockY, blockZ)
+	if not _self.Deps or not _self.Deps.VoxelWorldService or not _self.Deps.VoxelWorldService.worldManager then
 		return false
 	end
-	local wm = self.Deps.VoxelWorldService.worldManager
+	local wm = _self.Deps.VoxelWorldService.worldManager
 	if not wm then
 		return false
 	end
@@ -1086,7 +1095,7 @@ function probeFootprint(self, x, z, startYStuds)
 
 	-- For Minecraft-like behavior, we only need the center to be supported
 	-- Mobs can stand on edges and narrow surfaces
-	local validSamples = { { y = centerBlockY, hasHeadroom = true } }
+	local _validSamples = { { y = centerBlockY, hasHeadroom = true } }  -- Reserved for future multi-sample logic
 
 	-- Check headroom at center first
 	local centerBlockX = math.floor(x / BLOCK_SIZE)
@@ -1158,8 +1167,12 @@ local function moveRespectingVoxels(self, mob, direction, speed, dt)
                     mob.velocity = Vector3.new(math.sign(step.X), 0, 0) * newSpeed
                     local desiredYaw = math.deg(math.atan2(mob.velocity.X, mob.velocity.Z == 0 and 1e-6 or mob.velocity.Z))
                     local deltaYaw = desiredYaw - mob.rotation
-                    if deltaYaw > 180 then deltaYaw = deltaYaw - 360 end
-                    if deltaYaw < -180 then deltaYaw = deltaYaw + 360 end
+                    if deltaYaw > 180 then
+                    	deltaYaw = deltaYaw - 360
+                    end
+                    if deltaYaw < -180 then
+                    	deltaYaw = deltaYaw + 360
+                    end
                     local maxTurn = (mob.definition.turnRateDegPerSec or self._maxTurnRateDegPerSec or 160) * dt
                     mob.rotation = mob.rotation + math.clamp(deltaYaw, -maxTurn, maxTurn)
                     mob.groundY = gYx
@@ -1180,8 +1193,12 @@ local function moveRespectingVoxels(self, mob, direction, speed, dt)
                     mob.velocity = Vector3.new(0, 0, math.sign(step.Z)) * newSpeed
                     local desiredYaw = math.deg(math.atan2(mob.velocity.X, mob.velocity.Z == 0 and 1e-6 or mob.velocity.Z))
                     local deltaYaw = desiredYaw - mob.rotation
-                    if deltaYaw > 180 then deltaYaw = deltaYaw - 360 end
-                    if deltaYaw < -180 then deltaYaw = deltaYaw + 360 end
+                    if deltaYaw > 180 then
+                    	deltaYaw = deltaYaw - 360
+                    end
+                    if deltaYaw < -180 then
+                    	deltaYaw = deltaYaw + 360
+                    end
                     local maxTurn = (mob.definition.turnRateDegPerSec or self._maxTurnRateDegPerSec or 160) * dt
                     mob.rotation = mob.rotation + math.clamp(deltaYaw, -maxTurn, maxTurn)
                     mob.groundY = gYz
@@ -1208,8 +1225,12 @@ local function moveRespectingVoxels(self, mob, direction, speed, dt)
     mob.velocity = moveDir * newSpeed
     local desiredYaw = math.deg(math.atan2(moveDir.X, moveDir.Z))
     local deltaYaw = desiredYaw - mob.rotation
-    if deltaYaw > 180 then deltaYaw = deltaYaw - 360 end
-    if deltaYaw < -180 then deltaYaw = deltaYaw + 360 end
+    if deltaYaw > 180 then
+    	deltaYaw = deltaYaw - 360
+    end
+    if deltaYaw < -180 then
+    	deltaYaw = deltaYaw + 360
+    end
     local maxTurn = (mob.definition.turnRateDegPerSec or self._maxTurnRateDegPerSec or 160) * dt
     mob.rotation = mob.rotation + math.clamp(deltaYaw, -maxTurn, maxTurn)
     mob.groundY = targetGroundY
@@ -1219,7 +1240,7 @@ end
 
 -- Attempt a tiny horizontal nudge while respecting step up/down limits
 local function tryNudgeXZ(self, mob, dx, dz)
-    if (math.abs(dx) < 1e-6 and math.abs(dz) < 1e-6) then
+    if math.abs(dx) < 1e-6 and math.abs(dz) < 1e-6 then
         return false
     end
     local pos = mob.position
@@ -1287,7 +1308,9 @@ local function reconstructPath(cameFrom, endKey, nodeToWorld)
 	local current = endKey
 	while current do
 		local wp = nodeToWorld[current]
-		if not wp then break end
+		if not wp then
+			break
+		end
 		table.insert(path, 1, wp)
 		current = cameFrom[current]
 	end
@@ -1299,7 +1322,9 @@ local function lineClearFooting(self, fromPos, toPos, startYStuds)
 	local dx = toPos.X - fromPos.X
 	local dz = toPos.Z - fromPos.Z
 	local dist = math.sqrt(dx * dx + dz * dz)
-	if dist < 0.1 then return true end
+	if dist < 0.1 then
+		return true
+	end
 	local steps = math.max(2, math.ceil(dist / (BLOCK_SIZE * 0.5)))
 
 	-- Disallow skipping across a total rise > 1 block between endpoints
@@ -1335,13 +1360,13 @@ local function lineClearFooting(self, fromPos, toPos, startYStuds)
 end
 
 -- Simple line-of-sight check using Roblox raycast against world geometry
-local function hasLineOfSight(self, fromPos, toPos, ignoreInstances)
+local function hasLineOfSight(_self, fromPos, toPos, ignoreInstances)
 	local dir = toPos - fromPos
 	if dir.Magnitude < 1e-4 then
 		return true
 	end
 	local params = RaycastParams.new()
-	params.FilterType = Enum.RaycastFilterType.Blacklist
+	params.FilterType = Enum.RaycastFilterType.Exclude
 	params.FilterDescendantsInstances = ignoreInstances or {}
 	local result = workspace:Raycast(fromPos, dir, params)
 	if not result then
@@ -1416,8 +1441,12 @@ local function attemptEmergencyStepDown(self, mob)
 		local dir = bestDir.Unit
 		local desiredYaw = math.deg(math.atan2(dir.X, dir.Z == 0 and 1e-6 or dir.Z))
 		local deltaYaw = desiredYaw - (mob.rotation or 0)
-		if deltaYaw > 180 then deltaYaw = deltaYaw - 360 end
-		if deltaYaw < -180 then deltaYaw = deltaYaw + 360 end
+		if deltaYaw > 180 then
+			deltaYaw = deltaYaw - 360
+		end
+		if deltaYaw < -180 then
+			deltaYaw = deltaYaw + 360
+		end
 		mob.rotation = (mob.rotation or 0) + deltaYaw
 		mob.velocity = Vector3.new()
 		mob.position = bestTarget
@@ -1528,7 +1557,8 @@ end
 
 -- Find a nearby single descent step (1-2 blocks down) around the start position
 -- Returns a world position at the candidate step or nil
-local function findDescentStepNear(self, startPos, maxRadiusBlocks)
+-- Reserved for potential future use in jump-down pathing
+local function _findDescentStepNear(self, startPos, maxRadiusBlocks)
 	local wm = self.Deps and self.Deps.VoxelWorldService and self.Deps.VoxelWorldService.worldManager
 	if not wm then
 		return nil
@@ -1625,7 +1655,7 @@ local function findDescentStepNear(self, startPos, maxRadiusBlocks)
 	return best
 end
 
-local function findPath(self, startX, startZ, startYStuds, goalX, goalZ, maxRangeBlocks, maxNodes)
+local function _findPath(self, startX, startZ, startYStuds, goalX, goalZ, maxRangeBlocks, maxNodes)
 	local startBX, startBZ = worldToBlockCoord(startX), worldToBlockCoord(startZ)
 	local goalBX, goalBZ = worldToBlockCoord(goalX), worldToBlockCoord(goalZ)
 
@@ -1666,7 +1696,9 @@ local function findPath(self, startX, startZ, startYStuds, goalX, goalZ, maxRang
 		local i = #d
 		while i > 1 do
 			local p = math.floor(i / 2)
-			if d[p].f <= d[i].f then break end
+			if d[p].f <= d[i].f then
+				break
+			end
 			d[p], d[i] = d[i], d[p]
 			i = p
 		end
@@ -1674,7 +1706,9 @@ local function findPath(self, startX, startZ, startYStuds, goalX, goalZ, maxRang
 	function Heap:pop()
 		local d = self.data
 		local n = #d
-		if n == 0 then return nil end
+		if n == 0 then
+			return nil
+		end
 		local root = d[1]
 		d[1] = d[n]
 		d[n] = nil
@@ -1684,9 +1718,15 @@ local function findPath(self, startX, startZ, startYStuds, goalX, goalZ, maxRang
 			local l = i * 2
 			local r = l + 1
 			local smallest = i
-			if l <= n and d[l].f < d[smallest].f then smallest = l end
-			if r <= n and d[r].f < d[smallest].f then smallest = r end
-			if smallest == i then break end
+			if l <= n and d[l].f < d[smallest].f then
+				smallest = l
+			end
+			if r <= n and d[r].f < d[smallest].f then
+				smallest = r
+			end
+			if smallest == i then
+				break
+			end
 			d[i], d[smallest] = d[smallest], d[i]
 			i = smallest
 		end
@@ -1706,7 +1746,9 @@ local function findPath(self, startX, startZ, startYStuds, goalX, goalZ, maxRang
 
 	local function popLowestF()
 		local node = openSet:pop()
-		if not node then return nil end
+		if not node then
+			return nil
+		end
 		openKeys[node.key] = nil
 		-- Skip stale entries where f no longer matches best known fScore
 		local bestF = fScore[node.key]
@@ -1716,7 +1758,7 @@ local function findPath(self, startX, startZ, startYStuds, goalX, goalZ, maxRang
 		return node
 	end
 
-	local startKey = makeKey(startBX, startBZ)
+	local _startKey = makeKey(startBX, startBZ)
 	push(startBX, startBZ, startBY, 0, heuristic(startBX, startBZ, goalBX, goalBZ))
 
 	local expanded = 0
@@ -1725,7 +1767,9 @@ local function findPath(self, startX, startZ, startYStuds, goalX, goalZ, maxRang
     while #openSet.data > 0 and expanded < maxVisit do
 		expanded += 1
 		local current = popLowestF()
-		if not current then break end
+		if not current then
+			break
+		end
 
 		if current.bx == goalBX and current.bz == goalBZ then
 			return reconstructPath(cameFrom, current.key, nodeToWorld)
@@ -1764,9 +1808,8 @@ local function findPath(self, startX, startZ, startYStuds, goalX, goalZ, maxRang
 					skip = true
 				else
 					-- Also enforce step constraints for the side steps
-                    if (s1BY - current.by) > 1 or (current.by - s1BY) > (self._maxStepDownBlocks or 3) then
-						skip = true
-                    elseif (s2BY - current.by) > 1 or (current.by - s2BY) > (self._maxStepDownBlocks or 3) then
+                    if (s1BY - current.by) > 1 or (current.by - s1BY) > (self._maxStepDownBlocks or 3) or
+                       (s2BY - current.by) > 1 or (current.by - s2BY) > (self._maxStepDownBlocks or 3) then
 						skip = true
 					end
 				end
@@ -1780,7 +1823,9 @@ local function findPath(self, startX, startZ, startYStuds, goalX, goalZ, maxRang
                     if stepUp <= 1 and stepDown <= (self._maxStepDownBlocks or 3) then
 						local key = makeKey(nbx, nbz)
 						local tentativeG = (gScore[current.key] or math.huge)
-						if tentativeG == math.huge then tentativeG = 0 end
+						if tentativeG == math.huge then
+							tentativeG = 0
+						end
                 tentativeG = tentativeG + d.w + math.max(0, stepUp) * 0.2 + math.max(0, stepDown) * 0.3
 						if tentativeG < (gScore[key] or math.huge) then
 							cameFrom[key] = current.key
@@ -1810,7 +1855,7 @@ function MobEntityService:_clearPath(mob)
 	mob.brain.repathAt = 0
 end
 
-local function snapToBlockCenter(x)
+local function _snapToBlockCenter(x)
 	return worldToBlockCoord(x) * BLOCK_SIZE + BLOCK_SIZE / 2
 end
 
@@ -1917,7 +1962,9 @@ local function isEdgeAhead(self, position, direction, checkDistance)
 
     -- Build left/right directions (~20 degrees) and center
     local dir2 = Vector3.new(direction.X, 0, direction.Z)
-    if dir2.Magnitude < 1e-5 then return false end
+    if dir2.Magnitude < 1e-5 then
+    	return false
+    end
     dir2 = dir2.Unit
     local yaw = math.atan2(dir2.X, dir2.Z)
     local function fromYaw(a)
@@ -2015,7 +2062,9 @@ function MobEntityService:_applyMobRepulsion(ctx, dt)
     -- Use processed set to ensure each pair is handled once
     local processed = {}
     local function pairKey(a, b)
-        if a < b then return a .. "|" .. b else return b .. "|" .. a end
+        if a < b then
+        	return a .. "|" .. b else return b .. "|" .. a
+        end
     end
 
     for _, mob in pairs(ctx.mobsById) do
@@ -2075,8 +2124,12 @@ function MobEntityService:_applyMobRepulsion(ctx, dt)
                                                     local dzp = nz * dv * dt
                                                     local movedA = tryNudgeXZ(self, mob, dxp, dzp)
                                                     local movedB = tryNudgeXZ(self, other, -dxp, -dzp)
-                                                    if movedA then self:_queueUpdate(mob) end
-                                                    if movedB then self:_queueUpdate(other) end
+                                                    if movedA then
+                                                    	self:_queueUpdate(mob)
+                                                    end
+                                                    if movedB then
+                                                    	self:_queueUpdate(other)
+                                                    end
                                                 end
                                             end
                                         end
@@ -2092,7 +2145,7 @@ function MobEntityService:_applyMobRepulsion(ctx, dt)
     end
 end
 
-function MobEntityService:_updatePassiveMob(ctx, mob, def, brain, dt)
+function MobEntityService:_updatePassiveMob(_ctx, mob, def, brain, dt)
 	local players = self:_playersInWorld()
 	local position = mob.position
 	local now = os.clock()
@@ -2184,7 +2237,7 @@ function MobEntityService:_updatePassiveMob(ctx, mob, def, brain, dt)
 	self:_updateWanderBehavior(mob, brain, def, position, dt, now)
 end
 
-function MobEntityService:_updatePanicBehavior(mob, brain, def, position, dt, now)
+function MobEntityService:_updatePanicBehavior(mob, brain, def, position, dt, _now)
 	-- Minecraft panic: Run in random direction when damaged
 	mob.state = "panic"
 
@@ -2217,7 +2270,9 @@ function MobEntityService:_updateTemptBehavior(mob, brain, def, position, player
 	brain.panicUntil = 0
 
 	local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-	if not root then return end
+	if not root then
+		return
+	end
 
 	local delta = root.Position - position
 	local horizontalDelta = Vector3.new(delta.X, 0, delta.Z)
@@ -2249,11 +2304,8 @@ function MobEntityService:_updateTemptBehavior(mob, brain, def, position, player
     if needRepath then
         local temptMaxStuds = (def.temptMaxDistance or def.temptDistance or (BLOCK_SIZE * 10))
         local maxRangeBlocks = math.max(1, math.floor(temptMaxStuds / BLOCK_SIZE))
-        if self:_planPathTo(mob, target, maxRangeBlocks) then
-            brain.repathAt = now + 0.35
-        else
-            brain.repathAt = now + 0.35
-        end
+        self:_planPathTo(mob, target, maxRangeBlocks)
+        brain.repathAt = now + 0.35
     end
 
     -- Follow path only; avoid sliding into walls in narrow corridors
@@ -2315,8 +2367,12 @@ function MobEntityService:_updateIdleBehavior(mob, brain, position, dt, now)
 
 	-- Smoothly rotate toward look direction
 	local rotDelta = brain.lookRotation - mob.rotation
-	if rotDelta > 180 then rotDelta = rotDelta - 360 end
-	if rotDelta < -180 then rotDelta = rotDelta + 360 end
+	if rotDelta > 180 then
+		rotDelta = rotDelta - 360
+	end
+	if rotDelta < -180 then
+		rotDelta = rotDelta + 360
+	end
 	mob.rotation = mob.rotation + rotDelta * dt * 2  -- Slow rotation
 
 	-- Update ground while idle: allow snap down, never snap up
@@ -2430,7 +2486,7 @@ function MobEntityService:_updateWanderBehavior(mob, brain, def, position, dt, n
 	end
 end
 
-function MobEntityService:_updateHostileMob(ctx, mob, def, brain, dt)
+function MobEntityService:_updateHostileMob(_ctx, mob, def, brain, dt)
 	local targetPlayer, targetRoot
 	local position = mob.position
 	local players = self:_playersInWorld()
@@ -2459,7 +2515,7 @@ function MobEntityService:_updateHostileMob(ctx, mob, def, brain, dt)
 		brain.targetPlayer = targetPlayer
 		local targetPos = targetRoot.Position
 		local delta = targetPos - position
-		local distance = delta.Magnitude
+		local _distance = delta.Magnitude
 		local speed = def.runSpeed or def.walkSpeed
 		mob.state = "chase"
 
@@ -2476,11 +2532,8 @@ function MobEntityService:_updateHostileMob(ctx, mob, def, brain, dt)
 			if def.useAdvancedPathfinding then
 			local needRepath = (not brain.path) or (not brain.pathTarget) or ((brain.pathTarget - targetPos).Magnitude > 2) or (os.clock() >= (brain.repathAt or 0))
 			if needRepath then
-				if self:_planPathTo(mob, targetPos, 48) then
-					brain.repathAt = os.clock() + 0.35
-				else
-					brain.repathAt = os.clock() + 0.35
-				end
+				self:_planPathTo(mob, targetPos, 48)
+				brain.repathAt = os.clock() + 0.35
 			end
 			if not self:_followPath(mob, speed, dt) then
 				local direction = delta.Magnitude > 0 and delta.Unit or Vector3.new(0, 0, 0)
@@ -2525,7 +2578,7 @@ function MobEntityService:_applyMeleeDamage(player, damage)
 	end
 end
 
-function MobEntityService:_maybeSpawnNatural(ctx, chunkX, chunkZ, skip)
+function MobEntityService:_maybeSpawnNatural(_ctx, _chunkX, _chunkZ, _skip)
 	-- Natural mob spawning disabled (no zombies or passive mobs)
 	return
 end
@@ -2667,7 +2720,7 @@ function MobEntityService:DamageMob(entityId, amount, player)
 	end
 end
 
-function MobEntityService:_handleMobDeath(ctx, mob, player)
+function MobEntityService:_handleMobDeath(ctx, mob, _player)
 	removeMobFromChunk(ctx, mob)
 	ctx.mobsById[mob.entityId] = nil
 

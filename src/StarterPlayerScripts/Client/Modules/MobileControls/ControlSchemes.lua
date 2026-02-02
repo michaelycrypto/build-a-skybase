@@ -152,7 +152,7 @@ end
 --[[
 	Get scheme button positions (deprecated - action bar uses fixed positioning)
 ]]
-function ControlSchemes:GetButtonPositions(schemeType)
+function ControlSchemes:GetButtonPositions(_schemeType)
 	-- Action bar handles its own button positioning
 	return {}
 end

@@ -292,7 +292,7 @@ end
 	@param player: Player
 	@param data: {}
 --]]
-function FoodService:HandleCancelEating(player, data)
+function FoodService:HandleCancelEating(player, _data)
 	local eatingData = self._eatingPlayers[player]
 	if not eatingData then
 		return -- Not eating, nothing to cancel

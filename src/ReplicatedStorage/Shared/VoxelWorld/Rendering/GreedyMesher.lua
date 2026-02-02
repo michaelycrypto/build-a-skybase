@@ -7,7 +7,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local GlobalConfig = require(ReplicatedStorage.Shared.Config)
 local Constants = require(script.Parent.Parent.Core.Constants)
-local Config = require(script.Parent.Parent.Core.Config)
+local _Config = require(script.Parent.Parent.Core.Config)
 local BlockRegistry = require(script.Parent.Parent.World.BlockRegistry)
 local PartPool = require(script.Parent.PartPool)
 local Blocks = BlockRegistry.Blocks
@@ -32,16 +32,16 @@ local FACES = {
 
 -- Razor-thin face thickness (use Roblox minimum size to avoid gaps)
 local FACE_THICKNESS = 0.01
-local SEAM_EPS = 0 -- no seam offset on plane; faces fit within their cell
+local _SEAM_EPS = 0 -- no seam offset on plane; faces fit within their cell
 -- Keep faces exactly on cell planes to meet neighbors without gaps or overlaps
-local INSET = 0
+local _INSET = 0
 
 -- Snap to 1/1000th of a stud to avoid floating-point drift between chunks
 local function snap(value)
     return math.floor(value * 10000 + 0.5) / 10000
 end
 
-local function getMaterialForBlock(blockId)
+local function getMaterialForBlock(_blockId)
 	return Enum.Material.Plastic
 end
 
@@ -100,10 +100,16 @@ function GreedyMesher:CanMergeBlocks(chunk, x1: number, y1: number, z1: number, 
 	local blockData1 = Blocks[block1] or BlockRegistry:GetBlock(block1)
 	local blockData2 = Blocks[block2] or BlockRegistry:GetBlock(block2)
 
-	if not blockData1 or not blockData2 then return false end
+	if not blockData1 or not blockData2 then
+		return false
+	end
 	-- Do not merge cross-shaped or transparent blocks
-	if blockData1.crossShape or blockData2.crossShape then return false end
-	if blockData1.transparent or blockData2.transparent then return false end
+	if blockData1.crossShape or blockData2.crossShape then
+		return false
+	end
+	if blockData1.transparent or blockData2.transparent then
+		return false
+	end
 
 	return (block1 == block2) and (blockData1.color == blockData2.color)
 end
@@ -170,7 +176,9 @@ function GreedyMesher:GenerateMesh(chunk, worldManager, options)
 			for x = 0, sx - 1 do
 				local idx = x + z * sx
 				local h = chunk.heightMap[idx] or 0
-				if h > maxH then maxH = h end
+				if h > maxH then
+					maxH = h
+				end
 			end
 		end
 		-- Include the top cell and one extra layer for safe neighbor checks
@@ -218,7 +226,7 @@ function GreedyMesher:GenerateMesh(chunk, worldManager, options)
 				local gui = Instance.new("BillboardGui")
 				gui.Name = "AxisLabel"
 				gui.AlwaysOnTop = true
-				gui.Size = UDim2.new(0, 80, 0, 28)
+				gui.Size = UDim2.fromOffset(80, 28)
 				gui.StudsOffsetWorldSpace = Vector3.new(0, math.min(6, p.Size.Y * 0.25), 0)
 				gui.Adornee = p
 				local tl = Instance.new("TextLabel")
@@ -227,7 +235,7 @@ function GreedyMesher:GenerateMesh(chunk, worldManager, options)
 				tl.Font = BOLD_FONT
 				tl.TextScaled = true
 				tl.TextColor3 = color
-				tl.Size = UDim2.new(1, 0, 1, 0)
+				tl.Size = UDim2.fromScale(1, 1)
 				tl.Parent = gui
 				gui.Parent = p
 			end
@@ -249,33 +257,53 @@ function GreedyMesher:GenerateMesh(chunk, worldManager, options)
 			for z = 0, Constants.CHUNK_SIZE_Z - 1 do
 				local has = false
 				for y = 0, Constants.CHUNK_SIZE_Y - 1 do
-					if chunk:GetBlock(0, y, z) ~= Constants.BlockType.AIR then has = true break end
+					if chunk:GetBlock(0, y, z) ~= Constants.BlockType.AIR then
+						has = true
+						break
+					end
 				end
-				if has then occNegX += 1 end
+				if has then
+					occNegX += 1
+				end
 			end
 			-- +X edge (x=15)
 			for z = 0, Constants.CHUNK_SIZE_Z - 1 do
 				local has = false
 				for y = 0, Constants.CHUNK_SIZE_Y - 1 do
-					if chunk:GetBlock(Constants.CHUNK_SIZE_X - 1, y, z) ~= Constants.BlockType.AIR then has = true break end
+					if chunk:GetBlock(Constants.CHUNK_SIZE_X - 1, y, z) ~= Constants.BlockType.AIR then
+						has = true
+						break
+					end
 				end
-				if has then occPosX += 1 end
+				if has then
+					occPosX += 1
+				end
 			end
 			-- -Z edge (z=0)
 			for x = 0, Constants.CHUNK_SIZE_X - 1 do
 				local has = false
 				for y = 0, Constants.CHUNK_SIZE_Y - 1 do
-					if chunk:GetBlock(x, y, 0) ~= Constants.BlockType.AIR then has = true break end
+					if chunk:GetBlock(x, y, 0) ~= Constants.BlockType.AIR then
+						has = true
+						break
+					end
 				end
-				if has then occNegZ += 1 end
+				if has then
+					occNegZ += 1
+				end
 			end
 			-- +Z edge (z=15)
 			for x = 0, Constants.CHUNK_SIZE_X - 1 do
 				local has = false
 				for y = 0, Constants.CHUNK_SIZE_Y - 1 do
-					if chunk:GetBlock(x, y, Constants.CHUNK_SIZE_Z - 1) ~= Constants.BlockType.AIR then has = true break end
+					if chunk:GetBlock(x, y, Constants.CHUNK_SIZE_Z - 1) ~= Constants.BlockType.AIR then
+						has = true
+						break
+					end
 				end
-				if has then occPosZ += 1 end
+				if has then
+					occPosZ += 1
+				end
 			end
 		end
 
@@ -303,7 +331,9 @@ function GreedyMesher:GenerateMesh(chunk, worldManager, options)
             return visited[k(x, y, z)] == true
         end
         local function isSolid(x, y, z)
-            if y < 0 or y >= sy then return false end
+            if y < 0 or y >= sy then
+            	return false
+            end
             local id
             if x >= 0 and x < sx and z >= 0 and z < sz then
                 id = chunk:GetBlock(x, y, z)
@@ -311,7 +341,9 @@ function GreedyMesher:GenerateMesh(chunk, worldManager, options)
                 -- Sample across chunk borders using provided sampler
                 id = sampler(worldManager, chunk, x, y, z)
             end
-            if id == Constants.BlockType.AIR then return false end
+            if id == Constants.BlockType.AIR then
+            	return false
+            end
             local def = Blocks[id] or BlockRegistry:GetBlock(id)
             return def and def.solid ~= false and not def.crossShape
         end
@@ -320,17 +352,23 @@ function GreedyMesher:GenerateMesh(chunk, worldManager, options)
             for y = y0, y0 + dy - 1 do
                 for z = z0, z0 + dz - 1 do
                     -- Expand faces around the box by 1 cell to test exposure
-                    if not isSolid(x0 - 1, y, z) or not isSolid(x0 + dx, y, z) then return true end
+                    if not isSolid(x0 - 1, y, z) or not isSolid(x0 + dx, y, z) then
+                    	return true
+                    end
                 end
             end
             for x = x0, x0 + dx - 1 do
                 for z = z0, z0 + dz - 1 do
-                    if not isSolid(x, y0 - 1, z) or not isSolid(x, y0 + dy, z) then return true end
+                    if not isSolid(x, y0 - 1, z) or not isSolid(x, y0 + dy, z) then
+                    	return true
+                    end
                 end
             end
             for x = x0, x0 + dx - 1 do
                 for y = y0, y0 + dy - 1 do
-                    if not isSolid(x, y, z0 - 1) or not isSolid(x, y, z0 + dz) then return true end
+                    if not isSolid(x, y, z0 - 1) or not isSolid(x, y, z0 + dz) then
+                    	return true
+                    end
                 end
             end
             return false
@@ -339,7 +377,9 @@ function GreedyMesher:GenerateMesh(chunk, worldManager, options)
         for y = 0, sy - 1 do
             for z = 0, sz - 1 do
                 for x = 0, sx - 1 do
-                    if partsBudget >= MAX_PARTS then return meshParts end
+                    if partsBudget >= MAX_PARTS then
+                    	return meshParts
+                    end
                     if not isVisited(x, y, z) and isSolid(x, y, z) then
                         local seedId = chunk:GetBlock(x, y, z)
                         -- Grow x
@@ -357,7 +397,9 @@ function GreedyMesher:GenerateMesh(chunk, worldManager, options)
                                     break
                                 end
                             end
-                            if canGrowZ then dz += 1 end
+                            if canGrowZ then
+                            	dz += 1
+                            end
                         end
                         -- Grow y uniformly across xz area
                         local dy = 1
@@ -370,9 +412,13 @@ function GreedyMesher:GenerateMesh(chunk, worldManager, options)
                                         break
                                     end
                                 end
-                                if not canGrowY then break end
+                                if not canGrowY then
+                                	break
+                                end
                             end
-                            if canGrowY then dy += 1 end
+                            if canGrowY then
+                            	dy += 1
+                            end
                         end
                         -- Mark visited
                         for iy = 0, dy - 1 do
@@ -405,7 +451,9 @@ function GreedyMesher:GenerateMesh(chunk, worldManager, options)
 
                             table.insert(meshParts, p)
                             partsBudget += 1
-                            if partsBudget >= MAX_PARTS then return meshParts end
+                            if partsBudget >= MAX_PARTS then
+                            	return meshParts
+                            end
                         end
                     end
                 end
@@ -415,7 +463,7 @@ function GreedyMesher:GenerateMesh(chunk, worldManager, options)
     end
 
     -- For each face direction (optionally restrict for surface slabs)
-    for faceIndex, face in ipairs(FACES) do
+    for _, face in ipairs(FACES) do
         local skipFace = (SURFACE_SLABS and face.y <= 0)
         if not skipFace then
 		-- Determine primary axes based on face direction
@@ -439,9 +487,15 @@ function GreedyMesher:GenerateMesh(chunk, worldManager, options)
 				for w = 0, WIDTH - 1 do
 					-- Get block position
 					local x, y, z = 0, 0, 0
-					if u == "x" then x = w elseif u == "y" then y = w else z = w end
-					if v == "x" then x = h elseif v == "y" then y = h else z = h end
-					if face.x ~= 0 then x = d elseif face.y ~= 0 then y = d else z = d end
+					if u == "x" then
+						x = w elseif u == "y" then y = w else z = w
+					end
+					if v == "x" then
+						x = h elseif v == "y" then y = h else z = h
+					end
+					if face.x ~= 0 then
+						x = d elseif face.y ~= 0 then y = d else z = d
+					end
 
 						-- Check if face should be rendered (voxel.js-style neighbor sampler)
 						mask[n] = self:ShouldRenderFace(chunk, x, y, z, face, worldManager, sampler)
@@ -456,9 +510,15 @@ function GreedyMesher:GenerateMesh(chunk, worldManager, options)
                     if mask[n] then
 						-- Get block position
 						local x, y, z = 0, 0, 0
-						if u == "x" then x = w elseif u == "y" then y = w else z = w end
-						if v == "x" then x = h elseif v == "y" then y = h else z = h end
-						if face.x ~= 0 then x = d elseif face.y ~= 0 then y = d else z = d end
+						if u == "x" then
+							x = w elseif u == "y" then y = w else z = w
+						end
+						if v == "x" then
+							x = h elseif v == "y" then y = h else z = h
+						end
+						if face.x ~= 0 then
+							x = d elseif face.y ~= 0 then y = d else z = d
+						end
 
 						local blockId = chunk:GetBlock(x, y, z)
 
@@ -544,9 +604,15 @@ function GreedyMesher:GenerateMesh(chunk, worldManager, options)
 
 						-- Face plane coordinate in units along normal axis
 						local planeUnits
-						if face.x ~= 0 then planeUnits = d + (face.x > 0 and 1 or 0) end
-						if face.y ~= 0 then planeUnits = d + (face.y > 0 and 1 or 0) end
-						if face.z ~= 0 then planeUnits = d + (face.z > 0 and 1 or 0) end
+						if face.x ~= 0 then
+							planeUnits = d + (face.x > 0 and 1 or 0)
+						end
+						if face.y ~= 0 then
+							planeUnits = d + (face.y > 0 and 1 or 0)
+						end
+						if face.z ~= 0 then
+							planeUnits = d + (face.z > 0 and 1 or 0)
+						end
 
 					-- Center positions (studs) per axis with a small inward offset along the face normal.
 					local cx, cy, cz
@@ -589,10 +655,18 @@ function GreedyMesher:GenerateMesh(chunk, worldManager, options)
 						local maxX = cx + (part.Size.X * 0.5)
 						local minZ = cz - (part.Size.Z * 0.5)
 						local maxZ = cz + (part.Size.Z * 0.5)
-						if minX < aabbMinX then aabbMinX = minX end
-						if maxX > aabbMaxX then aabbMaxX = maxX end
-						if minZ < aabbMinZ then aabbMinZ = minZ end
-						if maxZ > aabbMaxZ then aabbMaxZ = maxZ end
+						if minX < aabbMinX then
+							aabbMinX = minX
+						end
+						if maxX > aabbMaxX then
+							aabbMaxX = maxX
+						end
+						if minZ < aabbMinZ then
+							aabbMinZ = minZ
+						end
+						if maxZ > aabbMaxZ then
+							aabbMaxZ = maxZ
+						end
 					end
 
 					-- Track top faces coverage extents
@@ -601,10 +675,18 @@ function GreedyMesher:GenerateMesh(chunk, worldManager, options)
 						local maxX = cx + (part.Size.X * 0.5)
 						local minZ = cz - (part.Size.Z * 0.5)
 						local maxZ = cz + (part.Size.Z * 0.5)
-						if minX < topMinX then topMinX = minX end
-						if maxX > topMaxX then topMaxX = maxX end
-						if minZ < topMinZ then topMinZ = minZ end
-						if maxZ > topMaxZ then topMaxZ = maxZ end
+						if minX < topMinX then
+							topMinX = minX
+						end
+						if maxX > topMaxX then
+							topMaxX = maxX
+						end
+						if minZ < topMinZ then
+							topMinZ = minZ
+						end
+						if maxZ > topMaxZ then
+							topMaxZ = maxZ
+						end
 					end
 
                         if VISUALS_ENABLED then
@@ -659,7 +741,9 @@ function GreedyMesher:GenerateMesh(chunk, worldManager, options)
 				if id ~= Constants.BlockType.AIR then
 				local def = Blocks[id] or BlockRegistry:GetBlock(id)
 					if def and def.crossShape then
-						if partsBudget >= MAX_PARTS then return meshParts end
+						if partsBudget >= MAX_PARTS then
+							return meshParts
+						end
 
 						local center = Vector3.new(
 							(chunk.x * Constants.CHUNK_SIZE_X + x + 0.5) * Constants.BLOCK_SIZE,

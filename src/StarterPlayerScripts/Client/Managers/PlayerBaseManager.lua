@@ -11,19 +11,19 @@ local PlayerBaseManager = {}
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local TweenService = game:GetService("TweenService")
+local _TweenService = game:GetService("TweenService")
 
 -- Import dependencies
-local Network = require(ReplicatedStorage.Shared.Network)
-local Config = require(ReplicatedStorage.Shared.Config)
+local _Network = require(ReplicatedStorage.Shared.Network)
+local _Config = require(ReplicatedStorage.Shared.Config)
 local Logger = require(ReplicatedStorage.Shared.Logger)
-local EventManager = require(ReplicatedStorage.Shared.EventManager)
-local GameState = require(script.Parent.GameState)
-local ToastManager = require(script.Parent.ToastManager)
+local _EventManager = require(ReplicatedStorage.Shared.EventManager)
+local _GameState = require(script.Parent.GameState)
+local _ToastManager = require(script.Parent.ToastManager)
 local GridUtils = require(ReplicatedStorage.Shared.GridSystem.GridUtils)
 
 -- Services and instances
-local player = Players.LocalPlayer
+local _player = Players.LocalPlayer
 
 -- State
 local isInitialized = false
@@ -247,12 +247,12 @@ function PlayerBaseManager:CreateHeightIndicator(x, z, height, minHeight, maxHei
 
 	-- Add height text label
 	local billboardGui = Instance.new("BillboardGui")
-	billboardGui.Size = UDim2.new(0, 100, 0, 50)
+	billboardGui.Size = UDim2.fromOffset(100, 50)
 	billboardGui.StudsOffset = Vector3.new(0, 2, 0)
 	billboardGui.Parent = indicator
 
 	local heightLabel = Instance.new("TextLabel")
-	heightLabel.Size = UDim2.new(1, 0, 1, 0)
+	heightLabel.Size = UDim2.fromScale(1, 1)
 	heightLabel.BackgroundTransparency = 1
 	heightLabel.Text = string.format("%.1f", height)
 	heightLabel.TextColor3 = Color3.new(1, 1, 1)
@@ -311,12 +311,12 @@ function PlayerBaseManager:CreateObjectVisualization(objectData, tileSize)
 
 	-- Add object info label
 	local billboardGui = Instance.new("BillboardGui")
-	billboardGui.Size = UDim2.new(0, 150, 0, 100)
+	billboardGui.Size = UDim2.fromOffset(150, 100)
 	billboardGui.StudsOffset = Vector3.new(0, (objectData.objectHeight or 2) + 1, 0)
 	billboardGui.Parent = preview
 
 	local infoLabel = Instance.new("TextLabel")
-	infoLabel.Size = UDim2.new(1, 0, 1, 0)
+	infoLabel.Size = UDim2.fromScale(1, 1)
 	infoLabel.BackgroundTransparency = 0.5
 	infoLabel.BackgroundColor3 = Color3.new(0, 0, 0)
 	infoLabel.Text = string.format("%s\nH: %.1f", objectData.type or "Object", objectData.objectHeight or 0)
@@ -339,7 +339,7 @@ function PlayerBaseManager:RenderBaseGrid(gridData)
 
 	-- Render spawner tiles with height awareness
 	if gridData.spawnerSlots then
-		for slotId, slotData in pairs(gridData.spawnerSlots) do
+		for _, slotData in pairs(gridData.spawnerSlots) do
 			self:RenderSpawnerTile(slotData, gridData)
 		end
 	end
@@ -402,7 +402,7 @@ end
 	@param objectHeight: number - Height of the object
 	@param canPlace: boolean - Whether placement is valid
 --]]
-function PlayerBaseManager:ShowPlacementPreview(x, z, height, objectType, objectHeight, canPlace)
+function PlayerBaseManager:ShowPlacementPreview(x, z, height, _objectType, objectHeight, canPlace)
 	if not currentGrid then
 		return
 	end

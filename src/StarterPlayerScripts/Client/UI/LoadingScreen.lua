@@ -47,6 +47,7 @@ local WORLDS_EVENT_NAME = "WorldsListUpdated"
 local worldsPrimeStarted = false
 local worldsPrimeComplete = false
 local worldsPrimeConnection = nil
+local dotsAnimation = nil  -- Animation connection for loading dots
 
 local function cleanupWorldsPrimeConnection()
 	if worldsPrimeConnection then
@@ -58,7 +59,9 @@ local function cleanupWorldsPrimeConnection()
 end
 
 local function setTextContent(target, text)
-	if not target then return end
+	if not target then
+		return
+	end
 
 	pcall(function()
 		target.Text = text
@@ -77,7 +80,7 @@ local function setStatusText(text)
 end
 
 -- Animation constants
-local FADE_DURATION = 0.8
+local _FADE_DURATION = 0.8
 local PROGRESS_DURATION = 0.3
 
 local function updateProgressBar(progress)
@@ -89,7 +92,7 @@ local function updateProgressBar(progress)
 	TweenService:Create(
 		progressFill,
 		TweenInfo.new(PROGRESS_DURATION, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
-		{Size = UDim2.new(clamped, 0, 1, 0)}
+		{Size = UDim2.fromScale(clamped, 1)}
 	):Play()
 end
 
@@ -201,8 +204,10 @@ end
 	Create the loading screen
 --]]
 function LoadingScreen:Create()
-	if loadingGui then return end
-	
+	if loadingGui then
+		return
+	end
+
 	FontBinder.preload(CUSTOM_FONT_THEME)
 
 	loadingGui = Instance.new("ScreenGui")
@@ -215,7 +220,7 @@ function LoadingScreen:Create()
 
 	local backdrop = Instance.new("Frame")
 	backdrop.Name = "Backdrop"
-	backdrop.Size = UDim2.new(1, 0, 1, 0)
+	backdrop.Size = UDim2.fromScale(1, 1)
 	backdrop.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 	backdrop.BorderSizePixel = 0
 	backdrop.Parent = loadingGui
@@ -223,8 +228,8 @@ function LoadingScreen:Create()
 	local centerContainer = Instance.new("Frame")
 	centerContainer.Name = "CenterContainer"
 	centerContainer.AnchorPoint = Vector2.new(0.5, 0.5)
-	centerContainer.Position = UDim2.new(0.5, 0, 0.5, 0)
-	centerContainer.Size = UDim2.new(0, 240, 0, 80)
+	centerContainer.Position = UDim2.fromScale(0.5, 0.5)
+	centerContainer.Size = UDim2.fromOffset(240, 80)
 	centerContainer.BackgroundTransparency = 1
 	centerContainer.Parent = backdrop
 
@@ -257,7 +262,7 @@ function LoadingScreen:Create()
 
 	local progressContainer = Instance.new("Frame")
 	progressContainer.Name = "ProgressContainer"
-	progressContainer.Size = UDim2.new(0, 180, 0, 4)
+	progressContainer.Size = UDim2.fromOffset(180, 4)
 	progressContainer.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 	progressContainer.BackgroundTransparency = 0.75
 	progressContainer.BorderSizePixel = 0
@@ -270,7 +275,7 @@ function LoadingScreen:Create()
 
 	progressFill = Instance.new("Frame")
 	progressFill.Name = "ProgressFill"
-	progressFill.Size = UDim2.new(0, 0, 1, 0)
+	progressFill.Size = UDim2.fromScale(0, 1)
 	progressFill.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 	progressFill.BorderSizePixel = 0
 	progressFill.Parent = progressContainer
@@ -336,13 +341,13 @@ local function getBlockIdsFromSchematic(schematicPath)
 	-- Helper to parse block entry (same logic as SchematicWorldGenerator)
 	local function parseBlockEntry(entry)
 		local baseName = entry
-		local metadataStr = nil
+		local _metadataStr = nil
 
 		-- Check if entry has properties: "block_name[property=value]"
-		local bracketStart, bracketEnd = string.find(entry, "%[")
+		local bracketStart, _bracketEnd = string.find(entry, "%[")
 		if bracketStart then
 			baseName = string.sub(entry, 1, bracketStart - 1)
-			metadataStr = string.sub(entry, bracketStart + 1, -2) -- Remove [ and ]
+			_metadataStr = string.sub(entry, bracketStart + 1, -2) -- Remove [ and ]
 		end
 
 		-- Strip "minecraft:" namespace prefix if present
@@ -737,15 +742,15 @@ function LoadingScreen:LoadAllAssets(onProgress, onComplete, onBeforeFadeOut)
 	local texturesLoadedCount = 0
 	local texturesFailedCount = 0
 	local meshesLoadedCount = 0
-	local meshesFailedCount = 0
+	local _meshesFailedCount = 0
 	local soundsLoadedCount = 0
-	local soundsFailedCount = 0
+	local _soundsFailedCount = 0
 
 	-- Load textures synchronously (blocks until complete)
 	if totalTextures > 0 then
 		setStatusText("Loading world textures...")
 		texturesLoadedCount, texturesFailedCount = self:LoadBlockTexturesSync(
-			function(loaded, total, progress)
+			function(loaded, _total, _progress)
 				-- Update asset progress (textures are part of assets, which take 0-50% of total)
 				local totalAssets = totalTextures + totalIcons + totalMeshes + totalSounds
 				if totalAssets > 0 then
@@ -769,20 +774,20 @@ function LoadingScreen:LoadAllAssets(onProgress, onComplete, onBeforeFadeOut)
 		task.spawn(function()
 			self:LoadMeshesInBackground(
 				meshAssets,
-				function(loaded, total, progress)
+				function(loaded, total, _progress)
 					meshesLoadedCount = loaded
-					meshesFailedCount = total - loaded
+					_meshesFailedCount = total - loaded
 					return false -- Continue loading
 				end,
 				function(loaded, failed)
 					meshesLoadedCount = loaded
-					meshesFailedCount = failed
+					_meshesFailedCount = failed
 				end
 			)
 		end)
 		-- Count meshes as loaded (loading in background)
 		meshesLoadedCount = #meshAssets
-		meshesFailedCount = 0
+		_meshesFailedCount = 0
 	end
 
 	-- Start sound loading in background
@@ -790,20 +795,20 @@ function LoadingScreen:LoadAllAssets(onProgress, onComplete, onBeforeFadeOut)
 		task.spawn(function()
 			self:LoadSoundsInBackground(
 				soundAssetIds,
-				function(loaded, total, progress)
+				function(loaded, total, _progress)
 					soundsLoadedCount = loaded
-					soundsFailedCount = total - loaded
+					_soundsFailedCount = total - loaded
 					return false -- Continue loading
 				end,
 				function(loaded, failed)
 					soundsLoadedCount = loaded
-					soundsFailedCount = failed
+					_soundsFailedCount = failed
 				end
 			)
 		end)
 		-- Count sounds as loaded (loading in background)
 		soundsLoadedCount = #soundAssetIds
-		soundsFailedCount = 0
+		_soundsFailedCount = 0
 	end
 
 	-- Load critical assets (icons only) - these are needed for UI immediately
@@ -843,7 +848,7 @@ function LoadingScreen:LoadIconsOnly(totalIcons, backgroundAssetsLoaded, backgro
 		setStatusText("Loading UI assets...")
 
 		IconManager:PreloadRegisteredIcons(
-			function(loaded, total, progress)
+			function(loaded, total, _progress)
 				local totalLoaded = backgroundAssetsLoaded + loaded
 				-- Update asset progress (assets take 0-50% of total, icons are part of assets)
 				if totalAssets > 0 then
@@ -882,7 +887,9 @@ end
 function LoadingScreen:LoadMeshesInBackground(meshAssets, onProgress, onComplete)
 	local totalMeshes = #meshAssets
 	if totalMeshes == 0 then
-		if onComplete then onComplete(0, 0) end
+		if onComplete then
+			onComplete(0, 0)
+		end
 		return
 	end
 
@@ -938,7 +945,9 @@ end
 function LoadingScreen:LoadSoundsInBackground(soundAssetIds, onProgress, onComplete)
 	local totalSounds = #soundAssetIds
 	if totalSounds == 0 then
-		if onComplete then onComplete(0, 0) end
+		if onComplete then
+			onComplete(0, 0)
+		end
 		return
 	end
 
@@ -1220,7 +1229,9 @@ end
 --]]
 function LoadingScreen:FadeOut(onComplete)
 	if not loadingGui then
-		if onComplete then onComplete() end
+		if onComplete then
+			onComplete()
+		end
 		return
 	end
 

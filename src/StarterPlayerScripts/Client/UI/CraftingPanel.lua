@@ -13,16 +13,16 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local InputService = require(script.Parent.Parent.Input.InputService)
 local TweenService = game:GetService("TweenService")
-local RunService = game:GetService("RunService")
+local _RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 
 local RecipeConfig = require(ReplicatedStorage.Configs.RecipeConfig)
 local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
 local CraftingSystem = require(ReplicatedStorage.Shared.VoxelWorld.Crafting.CraftingSystem)
 local BlockViewportCreator = require(ReplicatedStorage.Shared.VoxelWorld.Rendering.BlockViewportCreator)
-local ItemStack = require(ReplicatedStorage.Shared.VoxelWorld.Inventory.ItemStack)
+local _ItemStack = require(ReplicatedStorage.Shared.VoxelWorld.Inventory.ItemStack)
 local EventManager = require(ReplicatedStorage.Shared.EventManager)
-local IconManager = require(script.Parent.Parent.Managers.IconManager)
+local _IconManager = require(script.Parent.Parent.Managers.IconManager)
 local Config = require(ReplicatedStorage.Shared.Config)
 
 local player = Players.LocalPlayer
@@ -174,7 +174,7 @@ function CraftingPanel:CreatePanelUI()
 	-- Main container
 	local container = Instance.new("Frame")
 	container.Name = "CraftingContainer"
-	container.Size = UDim2.new(1, 0, 1, 0)
+	container.Size = UDim2.fromScale(1, 1)
 	container.BackgroundTransparency = 1
 	container.Parent = self.parentFrame
 
@@ -198,20 +198,20 @@ function CraftingPanel:CreatePanelUI()
 	local labelHeight = 22  -- INVENTORY_CONFIG.LABEL_HEIGHT
 	local labelSpacing = 8  -- INVENTORY_CONFIG.LABEL_SPACING
 	scrollFrame.Size = UDim2.new(1, 0, 1, -(labelHeight + labelSpacing))  -- Full width, below label
-	scrollFrame.Position = UDim2.new(0, 0, 0, labelHeight + labelSpacing)
+	scrollFrame.Position = UDim2.fromOffset(0, labelHeight + labelSpacing)
 	scrollFrame.BackgroundTransparency = 1
 	scrollFrame.BorderSizePixel = 0
 	scrollFrame.ScrollBarThickness = 6
 	scrollFrame.ScrollBarImageColor3 = Color3.fromRGB(80, 180, 80)
 	scrollFrame.ScrollBarImageTransparency = 0.4
-	scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+	scrollFrame.CanvasSize = UDim2.fromScale(0, 0)
 	scrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
 	scrollFrame.Parent = container
 
 	-- Recipe grid container
 	local recipeGrid = Instance.new("Frame")
 	recipeGrid.Name = "RecipeGrid"
-	recipeGrid.Size = UDim2.new(1, 0, 0, 0)
+	recipeGrid.Size = UDim2.fromScale(1, 0)
 	recipeGrid.BackgroundTransparency = 1
 	recipeGrid.AutomaticSize = Enum.AutomaticSize.Y
 	recipeGrid.Parent = scrollFrame
@@ -220,8 +220,8 @@ function CraftingPanel:CreatePanelUI()
 	local gridLayout = Instance.new("UIGridLayout")
 	gridLayout.Name = "GridLayout"
 	gridLayout.SortOrder = Enum.SortOrder.LayoutOrder
-	gridLayout.CellSize = UDim2.new(0, CRAFTING_CONFIG.GRID_CELL_SIZE, 0, CRAFTING_CONFIG.GRID_CELL_SIZE)
-	gridLayout.CellPadding = UDim2.new(0, CRAFTING_CONFIG.GRID_SPACING, 0, CRAFTING_CONFIG.GRID_SPACING)
+	gridLayout.CellSize = UDim2.fromOffset(CRAFTING_CONFIG.GRID_CELL_SIZE, CRAFTING_CONFIG.GRID_CELL_SIZE)
+	gridLayout.CellPadding = UDim2.fromOffset(CRAFTING_CONFIG.GRID_SPACING, CRAFTING_CONFIG.GRID_SPACING)
 	gridLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left  -- Left-aligned like inventory
 	gridLayout.Parent = recipeGrid
 
@@ -251,7 +251,7 @@ function CraftingPanel:RefreshRecipes()
 
 	-- Group recipes by output (itemId + count)
 	local recipeGroups = {}
-	for i, recipe in ipairs(self.allRecipes) do
+	for _, recipe in ipairs(self.allRecipes) do
 		-- Unified filter rules:
 		-- 1) If requiresWorkbenchOnly is true (legacy): include only workbench-required
 		-- 2) If showAllRecipes: include all
@@ -284,7 +284,7 @@ function CraftingPanel:RefreshRecipes()
 
 	-- Create grid items for each unique output (only show if at least one variant is craftable)
 	local layoutOrder = 1
-	for outputKey, group in pairs(recipeGroups) do
+	for _, group in pairs(recipeGroups) do
 		-- Check if ANY variant can be crafted
 		local anyCanCraft = false
 		local maxCount = 0
@@ -321,13 +321,13 @@ end
 	@param layoutOrder: number - Grid position
 	@return: TextButton - Recipe grid item
 ]]
-function CraftingPanel:CreateRecipeGridItem(group, canCraft, maxCount, layoutOrder)
+function CraftingPanel:CreateRecipeGridItem(group, canCraft, _maxCount, layoutOrder)
 	local output = group.output
 
 	-- Grid slot (matching inventory slot styling)
 	local slot = Instance.new("TextButton")
 	slot.Name = "Recipe_" .. output.itemId
-	slot.Size = UDim2.new(0, 56, 0, 56)  -- Frame size (visual is 60px with 2px border)
+	slot.Size = UDim2.fromOffset(56, 56)  -- Frame size (visual is 60px with 2px border)
 	slot.BackgroundColor3 = CRAFTING_CONFIG.SLOT_BG_COLOR
 	slot.BackgroundTransparency = canCraft and CRAFTING_CONFIG.SLOT_BG_TRANSPARENCY or CRAFTING_CONFIG.SLOT_DISABLED_TRANSPARENCY
 	slot.BorderSizePixel = 0
@@ -342,8 +342,8 @@ function CraftingPanel:CreateRecipeGridItem(group, canCraft, maxCount, layoutOrd
 	-- Background image (matching inventory)
 	local bgImage = Instance.new("ImageLabel")
 	bgImage.Name = "BackgroundImage"
-	bgImage.Size = UDim2.new(1, 0, 1, 0)
-	bgImage.Position = UDim2.new(0, 0, 0, 0)
+	bgImage.Size = UDim2.fromScale(1, 1)
+	bgImage.Position = UDim2.fromScale(0, 0)
 	bgImage.BackgroundTransparency = 1
 	bgImage.Image = "rbxassetid://82824299358542"
 	bgImage.ImageTransparency = 0.6  -- Matching inventory
@@ -363,8 +363,8 @@ function CraftingPanel:CreateRecipeGridItem(group, canCraft, maxCount, layoutOrd
 	-- Output icon container (fills entire slot)
 	local iconContainer = Instance.new("Frame")
 	iconContainer.Name = "Icon"
-	iconContainer.Size = UDim2.new(1, 0, 1, 0)
-	iconContainer.Position = UDim2.new(0, 0, 0, 0)
+	iconContainer.Size = UDim2.fromScale(1, 1)
+	iconContainer.Position = UDim2.fromScale(0, 0)
 	iconContainer.AnchorPoint = Vector2.new(0, 0)
 	iconContainer.BackgroundTransparency = 1
 	iconContainer.ZIndex = 3  -- Above background image
@@ -374,7 +374,7 @@ function CraftingPanel:CreateRecipeGridItem(group, canCraft, maxCount, layoutOrd
 	BlockViewportCreator.CreateBlockViewport(
 		iconContainer,
 		output.itemId,
-		UDim2.new(1, 0, 1, 0)
+		UDim2.fromScale(1, 1)
 	)
 
 	-- Store references for interaction
@@ -403,8 +403,8 @@ end
 function CraftingPanel:CreateIngredientIcon(input, parent, xOffset, enabled)
 	-- Icon frame with subtle background
 	local iconFrame = Instance.new("Frame")
-	iconFrame.Size = UDim2.new(0, CRAFTING_CONFIG.ICON_SIZE, 0, CRAFTING_CONFIG.ICON_SIZE)
-	iconFrame.Position = UDim2.new(0, xOffset, 0, 5)
+	iconFrame.Size = UDim2.fromOffset(CRAFTING_CONFIG.ICON_SIZE, CRAFTING_CONFIG.ICON_SIZE)
+	iconFrame.Position = UDim2.fromOffset(xOffset, 5)
 	iconFrame.BackgroundColor3 = Color3.fromRGB(55, 55, 55)
 	iconFrame.BorderSizePixel = 0
 	iconFrame.Parent = parent
@@ -428,7 +428,7 @@ function CraftingPanel:CreateIngredientIcon(input, parent, xOffset, enabled)
 			local image = Instance.new("ImageLabel")
 			image.Name = "ToolImage"
 			image.Size = UDim2.new(1, -4, 1, -4)
-			image.Position = UDim2.new(0.5, 0, 0.5, 0)
+			image.Position = UDim2.fromScale(0.5, 0.5)
 			image.AnchorPoint = Vector2.new(0.5, 0.5)
 			image.BackgroundTransparency = 1
 			image.Image = toolInfo.image
@@ -444,15 +444,15 @@ function CraftingPanel:CreateIngredientIcon(input, parent, xOffset, enabled)
 		BlockViewportCreator.CreateBlockViewport(
 			iconFrame,
 			input.itemId,
-			UDim2.new(1, 0, 1, 0)
+			UDim2.fromScale(1, 1)
 		)
 	end
 
 	-- Count label
 	local countLabel = Instance.new("TextLabel")
 	countLabel.Name = "Count"
-	countLabel.Size = UDim2.new(0, 40, 0, CRAFTING_CONFIG.ICON_SIZE)
-	countLabel.Position = UDim2.new(0, xOffset + CRAFTING_CONFIG.ICON_SIZE + 5, 0, 5)
+	countLabel.Size = UDim2.fromOffset(40, CRAFTING_CONFIG.ICON_SIZE)
+	countLabel.Position = UDim2.fromOffset(xOffset + CRAFTING_CONFIG.ICON_SIZE + 5, 5)
 	countLabel.BackgroundTransparency = 1
 	countLabel.Font = BOLD_FONT
 	countLabel.TextSize = 12
@@ -546,7 +546,9 @@ function CraftingPanel:SetupCardInteractions(card, craftBtn, recipe, canCraft, b
 			end
 
 			-- Smooth scale animation
-			if hoverTween then hoverTween:Cancel() end
+			if hoverTween then
+				hoverTween:Cancel()
+			end
 			hoverTween = TweenService:Create(card, TweenInfo.new(CRAFTING_CONFIG.ANIMATION_SPEED, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 				Size = UDim2.new(1, -CRAFTING_CONFIG.PADDING*2 + 4, 0, CRAFTING_CONFIG.RECIPE_CARD_HEIGHT * CRAFTING_CONFIG.HOVER_SCALE)
 			})
@@ -569,7 +571,9 @@ function CraftingPanel:SetupCardInteractions(card, craftBtn, recipe, canCraft, b
 			end
 
 			-- Smooth scale back
-			if hoverTween then hoverTween:Cancel() end
+			if hoverTween then
+				hoverTween:Cancel()
+			end
 			hoverTween = TweenService:Create(card, TweenInfo.new(CRAFTING_CONFIG.ANIMATION_SPEED, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 				Size = UDim2.new(1, -CRAFTING_CONFIG.PADDING*2, 0, CRAFTING_CONFIG.RECIPE_CARD_HEIGHT)
 			})
@@ -715,7 +719,9 @@ end
 	@param canCraft: boolean - Whether player can craft
 ]]
 function CraftingPanel:CraftToInventory(recipe, canCraft)
-	if not canCraft then return end
+	if not canCraft then
+		return
+	end
 
 	local output = recipe.outputs[1]
 
@@ -753,7 +759,9 @@ end
 	@param maxCraftable: number - Max number of times to craft
 ]]
 function CraftingPanel:CraftMaxToInventory(recipe, canCraft, maxCraftable)
-	if not canCraft or maxCraftable <= 0 then return end
+	if not canCraft or maxCraftable <= 0 then
+		return
+	end
 
 	local output = recipe.outputs[1]
 	local totalItems = maxCraftable * output.count
@@ -782,9 +790,13 @@ end
 ]]
 function CraftingPanel:GetCompositeMaxCraft(recipe)
 	local output = recipe.outputs[1]
-	if not output then return 0, 0, 0 end
+	if not output then
+		return 0, 0, 0
+	end
 	local perCraft = output.count or 0
-	if perCraft <= 0 then return 0, 0, 0 end
+	if perCraft <= 0 then
+		return 0, 0, 0
+	end
 
 	local materialsMax = CraftingSystem:GetMaxCraftCount(recipe, self.inventoryManager)
 	local spaceMax = self:GetMaxCraftBySpace(output.itemId, perCraft, materialsMax)
@@ -795,7 +807,9 @@ end
 	Binary search for max crafts by space only, up to materialsUpperBound
 ]]
 function CraftingPanel:GetMaxCraftBySpace(itemId, perCraft, materialsUpperBound)
-	if (materialsUpperBound or 0) <= 0 then return 0 end
+	if (materialsUpperBound or 0) <= 0 then
+		return 0
+	end
 	local lo, hi = 0, materialsUpperBound
 	while lo < hi do
 		local mid = math.floor((lo + hi + 1) / 2)
@@ -826,15 +840,19 @@ end
 	Craft an explicit quantity directly to inventory (optimistic updates)
 ]]
 function CraftingPanel:CraftQuantityToInventory(recipe, quantity)
-	if quantity <= 0 then return end
+	if quantity <= 0 then
+		return
+	end
 
 	-- Rate-limit rapid clicks
 	self._lastCraftTs = self._lastCraftTs or 0
-	if tick() - self._lastCraftTs < 0.1 then return end
+	if tick() - self._lastCraftTs < 0.1 then
+		return
+	end
 	self._lastCraftTs = tick()
 
 	-- Validate materials and space
-	local compositeMax, materialsMax, _ = self:GetCompositeMaxCraft(recipe)
+	local compositeMax, _materialsMax, _ = self:GetCompositeMaxCraft(recipe)
 	if quantity > compositeMax then
 		return -- UI should have clamped already
 	end
@@ -877,7 +895,9 @@ end
 	Show visual success feedback after crafting with animations
 ]]
 function CraftingPanel:ShowCraftSuccess(quantity, output)
-	if not self.activeTooltip then return end
+	if not self.activeTooltip then
+		return
+	end
 	local statusLabel = self.activeTooltip:FindFirstChild("StatusLabel", true)
 	if statusLabel then
 		local totalItems = quantity * (output.count or 0)
@@ -912,8 +932,8 @@ function CraftingPanel:PlayCraftSuccessEffect(parent)
 	-- Create sparkle particles
 	for i = 1, 8 do
 		local particle = Instance.new("Frame")
-		particle.Size = UDim2.new(0, 6, 0, 6)
-		particle.Position = UDim2.new(0.5, 0, 0.5, 0)
+		particle.Size = UDim2.fromOffset(6, 6)
+		particle.Position = UDim2.fromScale(0.5, 0.5)
 		particle.AnchorPoint = Vector2.new(0.5, 0.5)
 		particle.BackgroundColor3 = CRAFTING_CONFIG.SLOT_CRAFTABLE_GLOW
 		particle.BorderSizePixel = 0
@@ -934,7 +954,7 @@ function CraftingPanel:PlayCraftSuccessEffect(parent)
 		local tween = TweenService:Create(particle, TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 			Position = UDim2.new(0.5, targetX, 0.5, targetY),
 			BackgroundTransparency = 1,
-			Size = UDim2.new(0, 2, 0, 2)
+			Size = UDim2.fromOffset(2, 2)
 		})
 		tween:Play()
 
@@ -951,16 +971,20 @@ end
 function CraftingPanel:ShowItemRevealPopup(output, quantity)
 	-- Parent to the inventory panel for proper visibility above detail page
 	local inventoryGui = playerGui:FindFirstChild("VoxelInventory")
-	if not inventoryGui then return end
+	if not inventoryGui then
+		return
+	end
 
 	local inventoryPanel = inventoryGui:FindFirstChild("InventoryPanel")
-	if not inventoryPanel then return end
+	if not inventoryPanel then
+		return
+	end
 
 	-- Create popup container
 	local popup = Instance.new("Frame")
 	popup.Name = "ItemRevealPopup"
-	popup.Size = UDim2.new(0, 160, 0, 80)
-	popup.Position = UDim2.new(0.5, 0, 0.3, 0)
+	popup.Size = UDim2.fromOffset(160, 80)
+	popup.Position = UDim2.fromScale(0.5, 0.3)
 	popup.AnchorPoint = Vector2.new(0.5, 0.5)
 	popup.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
 	popup.BorderSizePixel = 0
@@ -981,7 +1005,7 @@ function CraftingPanel:ShowItemRevealPopup(output, quantity)
 
 	-- Icon (larger for dramatic effect in popup)
 	local icon = Instance.new("Frame")
-	icon.Size = UDim2.new(0, 64, 0, 64)
+	icon.Size = UDim2.fromOffset(64, 64)
 	icon.Position = UDim2.new(0.5, 0, 0, 8)
 	icon.AnchorPoint = Vector2.new(0.5, 0)
 	icon.BackgroundColor3 = Color3.fromRGB(55, 55, 55)
@@ -995,7 +1019,7 @@ function CraftingPanel:ShowItemRevealPopup(output, quantity)
 	iconCorner.Parent = icon
 
 	-- Create viewport and ensure it's visible
-	local viewport = BlockViewportCreator.CreateBlockViewport(icon, output.itemId, UDim2.new(1, 0, 1, 0))
+	local viewport = BlockViewportCreator.CreateBlockViewport(icon, output.itemId, UDim2.fromScale(1, 1))
 	if viewport then
 		viewport.ZIndex = 252
 		-- Recursively set ZIndex on all children for proper visibility
@@ -1019,9 +1043,9 @@ function CraftingPanel:ShowItemRevealPopup(output, quantity)
 	label.Parent = popup
 
 	-- Animate in: scale up + fade in
-	popup.Size = UDim2.new(0, 140, 0, 80)
+	popup.Size = UDim2.fromOffset(140, 80)
 	local tweenIn = TweenService:Create(popup, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-		Size = UDim2.new(0, 180, 0, 100),
+		Size = UDim2.fromOffset(180, 100),
 		BackgroundTransparency = 0.1
 	})
 	TweenService:Create(stroke, TweenInfo.new(0.25), {Transparency = 0}):Play()
@@ -1031,7 +1055,7 @@ function CraftingPanel:ShowItemRevealPopup(output, quantity)
 	task.delay(1.2, function()
 		if popup.Parent then
 			local tweenOut = TweenService:Create(popup, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-				Position = UDim2.new(0.5, 0, 0.2, 0),
+				Position = UDim2.fromScale(0.5, 0.2),
 				BackgroundTransparency = 1
 			})
 			TweenService:Create(stroke, TweenInfo.new(0.3), {Transparency = 1}):Play()
@@ -1052,7 +1076,9 @@ function CraftingPanel:AddButtonPressAnimation(button)
 	local originalSize = button.Size
 
 	button.MouseButton1Down:Connect(function()
-		if isPressed then return end
+		if isPressed then
+			return
+		end
 		isPressed = true
 
 		-- Scale down
@@ -1062,7 +1088,9 @@ function CraftingPanel:AddButtonPressAnimation(button)
 	end)
 
 	button.MouseButton1Up:Connect(function()
-		if not isPressed then return end
+		if not isPressed then
+			return
+		end
 		isPressed = false
 
 		-- Scale back with bounce
@@ -1088,7 +1116,9 @@ end
 ]]
 function CraftingPanel:AddCraftableGlowPulse(card)
 	local stroke = card:FindFirstChildOfClass("UIStroke")
-	if not stroke then return end
+	if not stroke then
+		return
+	end
 
 	stroke.ApplyStrokeMode = stroke.ApplyStrokeMode or Enum.ApplyStrokeMode.Border
 
@@ -1141,7 +1171,7 @@ end
 	@param canCraft: boolean - Whether player can craft
 	@return: Frame - Detail page frame
 ]]
-function CraftingPanel:CreateRecipeDetailPage(group, canCraft)
+function CraftingPanel:CreateRecipeDetailPage(group, _canCraft)
 	local output = group.output
 
 	-- Find best craftable recipe
@@ -1164,14 +1194,14 @@ function CraftingPanel:CreateRecipeDetailPage(group, canCraft)
 	end
 
 	-- Max craftable combined (materials + space)
-	local maxCraftable, materialsMax, spaceMax = self:GetCompositeMaxCraft(primaryRecipe)
+	local maxCraftable, materialsMax, _spaceMax = self:GetCompositeMaxCraft(primaryRecipe)
 
 	-- Detail page overlays the crafting panel exactly
 	-- It's created as a child of the crafting container
 	local detailPage = Instance.new("Frame")
 	detailPage.Name = "RecipeDetailPage"
-	detailPage.Size = UDim2.new(1, 0, 1, 0)  -- Full size overlay
-	detailPage.Position = UDim2.new(0, 0, 0, 0)
+	detailPage.Size = UDim2.fromScale(1, 1)  -- Full size overlay
+	detailPage.Position = UDim2.fromScale(0, 0)
 	detailPage.BackgroundColor3 = Color3.fromRGB(58, 58, 58)  -- Match content section color
 	detailPage.BorderSizePixel = 0
 	detailPage.ZIndex = 100  -- Above everything else in crafting panel
@@ -1184,7 +1214,7 @@ function CraftingPanel:CreateRecipeDetailPage(group, canCraft)
 	local headerSection = Instance.new("Frame")
 	headerSection.Name = "HeaderSection"
 	headerSection.Size = UDim2.new(1, 0, 0, headerHeight)
-	headerSection.Position = UDim2.new(0, 0, 0, 0)
+	headerSection.Position = UDim2.fromScale(0, 0)
 	headerSection.BackgroundTransparency = 1
 	headerSection.BorderSizePixel = 0
 	headerSection.ZIndex = 101
@@ -1193,8 +1223,8 @@ function CraftingPanel:CreateRecipeDetailPage(group, canCraft)
 	-- Back button (left side) - matching inventory slot styling
 	local backButton = Instance.new("TextButton")
 	backButton.Name = "BackButton"
-	backButton.Size = UDim2.new(0, 56, 0, 56)  -- Matching inventory slot size exactly
-	backButton.Position = UDim2.new(0, 0, 0.5, 0)  -- Vertically centered
+	backButton.Size = UDim2.fromOffset(56, 56)  -- Matching inventory slot size exactly
+	backButton.Position = UDim2.fromScale(0, 0.5)  -- Vertically centered
 	backButton.AnchorPoint = Vector2.new(0, 0.5)
 	backButton.BackgroundColor3 = CRAFTING_CONFIG.SLOT_BG_COLOR
 	backButton.BackgroundTransparency = CRAFTING_CONFIG.SLOT_BG_TRANSPARENCY
@@ -1213,8 +1243,8 @@ function CraftingPanel:CreateRecipeDetailPage(group, canCraft)
 	-- Background image matching inventory
 	local bgImage = Instance.new("ImageLabel")
 	bgImage.Name = "BackgroundImage"
-	bgImage.Size = UDim2.new(1, 0, 1, 0)
-	bgImage.Position = UDim2.new(0, 0, 0, 0)
+	bgImage.Size = UDim2.fromScale(1, 1)
+	bgImage.Position = UDim2.fromScale(0, 0)
 	bgImage.BackgroundTransparency = 1
 	bgImage.Image = "rbxassetid://82824299358542"
 	bgImage.ImageTransparency = 0.6
@@ -1271,14 +1301,14 @@ function CraftingPanel:CreateRecipeDetailPage(group, canCraft)
 	local scrollFrame = Instance.new("ScrollingFrame")
 	scrollFrame.Name = "ContentScroll"
 	scrollFrame.Size = UDim2.new(1, 0, 1, -(headerHeight + bottomSectionHeight))  -- Full width, between header and bottom
-	scrollFrame.Position = UDim2.new(0, 0, 0, headerHeight)
+	scrollFrame.Position = UDim2.fromOffset(0, headerHeight)
 	scrollFrame.BackgroundTransparency = 1
 	scrollFrame.BorderSizePixel = 0
 	scrollFrame.ClipsDescendants = true  -- Ensure content doesn't overflow into bottom section
 	scrollFrame.ScrollBarThickness = 6
 	scrollFrame.ScrollBarImageColor3 = Color3.fromRGB(80, 180, 80)
 	scrollFrame.ScrollBarImageTransparency = 0.4
-	scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+	scrollFrame.CanvasSize = UDim2.fromScale(0, 0)
 	scrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
 	scrollFrame.ZIndex = 101
 	scrollFrame.Parent = detailPage
@@ -1286,7 +1316,7 @@ function CraftingPanel:CreateRecipeDetailPage(group, canCraft)
 	-- Content container
 	local content = Instance.new("Frame")
 	content.Name = "Content"
-	content.Size = UDim2.new(1, 0, 0, 0)
+	content.Size = UDim2.fromScale(1, 0)
 	content.AutomaticSize = Enum.AutomaticSize.Y
 	content.BackgroundTransparency = 1
 	content.ZIndex = 102
@@ -1342,7 +1372,7 @@ function CraftingPanel:CreateRecipeDetailPage(group, canCraft)
 	-- Container for recipe variant options (horizontal)
 	local variantsContainer = Instance.new("Frame")
 	variantsContainer.Name = "VariantsContainer"
-	variantsContainer.Size = UDim2.new(1, 0, 0, 0)
+	variantsContainer.Size = UDim2.fromScale(1, 0)
 	variantsContainer.AutomaticSize = Enum.AutomaticSize.Y
 	variantsContainer.BackgroundTransparency = 1
 	variantsContainer.ZIndex = 103
@@ -1394,7 +1424,7 @@ function CraftingPanel:CreateRecipeDetailPage(group, canCraft)
 	local bottomSection = Instance.new("Frame")
 	bottomSection.Name = "BottomSection"
 	bottomSection.Size = UDim2.new(1, 0, 0, bottomSectionHeight)
-	bottomSection.Position = UDim2.new(0, 0, 1, 0)  -- Position at bottom (1, 0 means 100% from top, 0 offset)
+	bottomSection.Position = UDim2.fromScale(0, 1)  -- Position at bottom (1, 0 means 100% from top, 0 offset)
 	bottomSection.AnchorPoint = Vector2.new(0, 1)  -- Anchor to bottom-left
 	bottomSection.BackgroundTransparency = 1
 	bottomSection.ZIndex = 200  -- High ZIndex to ensure it's above scrollFrame
@@ -1426,7 +1456,7 @@ function CraftingPanel:CreateRecipeDetailPage(group, canCraft)
 	-- Status label (left-aligned)
 	local statusLabel = Instance.new("TextLabel")
 	statusLabel.Name = "StatusLabel"
-	statusLabel.Size = UDim2.new(1, 0, 1, 0)
+	statusLabel.Size = UDim2.fromScale(1, 1)
 	statusLabel.BackgroundTransparency = 1
 	statusLabel.Font = BOLD_FONT
 	statusLabel.TextSize = MIN_TEXT_SIZE
@@ -1456,7 +1486,7 @@ function CraftingPanel:CreateRecipeDetailPage(group, canCraft)
 	-- 1. Minus button (leftmost) - matching inventory slot styling
 	local minusBtn = Instance.new("TextButton")
 	minusBtn.Name = "Minus"
-	minusBtn.Size = UDim2.new(0, 56, 0, 56)  -- Matching inventory slot size
+	minusBtn.Size = UDim2.fromOffset(56, 56)  -- Matching inventory slot size
 	minusBtn.BackgroundColor3 = CRAFTING_CONFIG.SLOT_BG_COLOR
 	minusBtn.BackgroundTransparency = CRAFTING_CONFIG.SLOT_BG_TRANSPARENCY
 	minusBtn.BorderSizePixel = 0
@@ -1476,8 +1506,8 @@ function CraftingPanel:CreateRecipeDetailPage(group, canCraft)
 	-- Background image matching inventory
 	local minusBgImage = Instance.new("ImageLabel")
 	minusBgImage.Name = "BackgroundImage"
-	minusBgImage.Size = UDim2.new(1, 0, 1, 0)
-	minusBgImage.Position = UDim2.new(0, 0, 0, 0)
+	minusBgImage.Size = UDim2.fromScale(1, 1)
+	minusBgImage.Position = UDim2.fromScale(0, 0)
 	minusBgImage.BackgroundTransparency = 1
 	minusBgImage.Image = "rbxassetid://82824299358542"
 	minusBgImage.ImageTransparency = 0.6
@@ -1499,7 +1529,7 @@ function CraftingPanel:CreateRecipeDetailPage(group, canCraft)
 	-- 2. Amount textbox - matching inventory slot styling
 	local qtyBox = Instance.new("TextBox")
 	qtyBox.Name = "Quantity"
-	qtyBox.Size = UDim2.new(0, 80, 0, 56)  -- Matching inventory slot height
+	qtyBox.Size = UDim2.fromOffset(80, 56)  -- Matching inventory slot height
 	qtyBox.BackgroundColor3 = CRAFTING_CONFIG.SLOT_BG_COLOR
 	qtyBox.BackgroundTransparency = CRAFTING_CONFIG.SLOT_BG_TRANSPARENCY
 	qtyBox.BorderSizePixel = 0
@@ -1520,8 +1550,8 @@ function CraftingPanel:CreateRecipeDetailPage(group, canCraft)
 	-- Background image matching inventory
 	local qtyBgImage = Instance.new("ImageLabel")
 	qtyBgImage.Name = "BackgroundImage"
-	qtyBgImage.Size = UDim2.new(1, 0, 1, 0)
-	qtyBgImage.Position = UDim2.new(0, 0, 0, 0)
+	qtyBgImage.Size = UDim2.fromScale(1, 1)
+	qtyBgImage.Position = UDim2.fromScale(0, 0)
 	qtyBgImage.BackgroundTransparency = 1
 	qtyBgImage.Image = "rbxassetid://82824299358542"
 	qtyBgImage.ImageTransparency = 0.6
@@ -1540,7 +1570,7 @@ function CraftingPanel:CreateRecipeDetailPage(group, canCraft)
 	-- 3. Plus button - matching inventory slot styling
 	local plusBtn = Instance.new("TextButton")
 	plusBtn.Name = "Plus"
-	plusBtn.Size = UDim2.new(0, 56, 0, 56)  -- Matching inventory slot size
+	plusBtn.Size = UDim2.fromOffset(56, 56)  -- Matching inventory slot size
 	plusBtn.BackgroundColor3 = CRAFTING_CONFIG.SLOT_BG_COLOR
 	plusBtn.BackgroundTransparency = CRAFTING_CONFIG.SLOT_BG_TRANSPARENCY
 	plusBtn.BorderSizePixel = 0
@@ -1560,8 +1590,8 @@ function CraftingPanel:CreateRecipeDetailPage(group, canCraft)
 	-- Background image matching inventory
 	local plusBgImage = Instance.new("ImageLabel")
 	plusBgImage.Name = "BackgroundImage"
-	plusBgImage.Size = UDim2.new(1, 0, 1, 0)
-	plusBgImage.Position = UDim2.new(0, 0, 0, 0)
+	plusBgImage.Size = UDim2.fromScale(1, 1)
+	plusBgImage.Position = UDim2.fromScale(0, 0)
 	plusBgImage.BackgroundTransparency = 1
 	plusBgImage.Image = "rbxassetid://82824299358542"
 	plusBgImage.ImageTransparency = 0.6
@@ -1604,8 +1634,8 @@ function CraftingPanel:CreateRecipeDetailPage(group, canCraft)
 	-- Background image matching inventory
 	local maxBgImage = Instance.new("ImageLabel")
 	maxBgImage.Name = "BackgroundImage"
-	maxBgImage.Size = UDim2.new(1, 0, 1, 0)
-	maxBgImage.Position = UDim2.new(0, 0, 0, 0)
+	maxBgImage.Size = UDim2.fromScale(1, 1)
+	maxBgImage.Position = UDim2.fromScale(0, 0)
 	maxBgImage.BackgroundTransparency = 1
 	maxBgImage.Image = "rbxassetid://82824299358542"
 	maxBgImage.ImageTransparency = 0.6
@@ -1667,7 +1697,9 @@ function CraftingPanel:CreateRecipeDetailPage(group, canCraft)
 	local selectedQty = 1
 	local function clampQty(q)
 		q = math.floor(math.max(0, tonumber(q) or 0))
-		if q == 0 then return 0 end
+		if q == 0 then
+			return 0
+		end
 		if maxCraftable and maxCraftable > 0 then
 			return math.min(q, maxCraftable)
 		end
@@ -1676,11 +1708,11 @@ function CraftingPanel:CreateRecipeDetailPage(group, canCraft)
 
 	local function refreshUI()
 		-- Recalculate max (materials might have changed)
-		maxCraftable, materialsMax, spaceMax = self:GetCompositeMaxCraft(selectedRecipe)
+		maxCraftable, _materialsMax, _spaceMax = self:GetCompositeMaxCraft(selectedRecipe)
 		selectedQty = clampQty(selectedQty)
 
 		local canAny = maxCraftable > 0
-		local totalItems = selectedQty * (output.count or 0)
+		local _totalItems = selectedQty * (output.count or 0)
 		craftBtn.Text = string.format("Craft ×%d", selectedQty)
 		craftBtn.BackgroundColor3 = (canAny and selectedQty > 0) and CRAFTING_CONFIG.CRAFT_BTN_COLOR or CRAFTING_CONFIG.CRAFT_BTN_DISABLED_COLOR
 
@@ -1814,7 +1846,9 @@ function CraftingPanel:CreateRecipeDetailPage(group, canCraft)
 
 	-- Keyboard shortcuts
 	detailPage.InputBegan:Connect(function(input, gpe)
-		if gpe then return end
+		if gpe then
+			return
+		end
 		if input.KeyCode == Enum.KeyCode.Return or input.KeyCode == Enum.KeyCode.KeypadEnter then
 			if selectedQty > 0 and maxCraftable > 0 then
 				self:CraftQuantityToInventory(selectedRecipe, selectedQty)
@@ -1839,7 +1873,7 @@ end
 	@return: TextButton - Variant option button
 ]]
 
-function CraftingPanel:CreateVariantOption(recipe, canCraft, isSelected, variantIndex)
+function CraftingPanel:CreateVariantOption(recipe, _canCraft, isSelected, variantIndex)
 	-- Calculate height based on number of ingredients (56px per ingredient + spacing)
 	local ingredientCount = #recipe.inputs
 	local buttonHeight = (56 * ingredientCount) + (5 * (ingredientCount - 1)) + 16  -- 8px top + 8px bottom padding
@@ -1847,7 +1881,7 @@ function CraftingPanel:CreateVariantOption(recipe, canCraft, isSelected, variant
 	-- Button sized to fit standard 56×56 inventory slots
 	local button = Instance.new("TextButton")
 	button.Name = "Variant_" .. variantIndex
-	button.Size = UDim2.new(0, 72, 0, buttonHeight)  -- 56px slots + 8px left + 8px right margin
+	button.Size = UDim2.fromOffset(72, buttonHeight)  -- 56px slots + 8px left + 8px right margin
 	button.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
 	button.BorderSizePixel = 0
 	button.AutoButtonColor = false
@@ -1877,7 +1911,7 @@ function CraftingPanel:CreateVariantOption(recipe, canCraft, isSelected, variant
 	local ingredientsContainer = Instance.new("Frame")
 	ingredientsContainer.Name = "Ingredients"
 	ingredientsContainer.Size = UDim2.new(1, -16, 1, -16)  -- 8px padding on all sides
-	ingredientsContainer.Position = UDim2.new(0, 8, 0, 8)
+	ingredientsContainer.Position = UDim2.fromOffset(8, 8)
 	ingredientsContainer.AnchorPoint = Vector2.new(0, 0)
 	ingredientsContainer.BackgroundTransparency = 1
 	ingredientsContainer.ZIndex = 105
@@ -1901,7 +1935,7 @@ function CraftingPanel:CreateVariantOption(recipe, canCraft, isSelected, variant
 		-- Slot container (56×56 matching inventory exactly)
 		local slotFrame = Instance.new("Frame")
 		slotFrame.Name = "Slot_" .. i
-		slotFrame.Size = UDim2.new(0, 56, 0, 56)  -- Matching inventory slot size exactly
+		slotFrame.Size = UDim2.fromOffset(56, 56)  -- Matching inventory slot size exactly
 		slotFrame.BackgroundColor3 = CRAFTING_CONFIG.SLOT_BG_COLOR
 		slotFrame.BackgroundTransparency = CRAFTING_CONFIG.SLOT_BG_TRANSPARENCY
 		slotFrame.BorderSizePixel = 0
@@ -1916,8 +1950,8 @@ function CraftingPanel:CreateVariantOption(recipe, canCraft, isSelected, variant
 		-- Background image matching inventory
 		local bgImage = Instance.new("ImageLabel")
 		bgImage.Name = "BackgroundImage"
-		bgImage.Size = UDim2.new(1, 0, 1, 0)
-		bgImage.Position = UDim2.new(0, 0, 0, 0)
+		bgImage.Size = UDim2.fromScale(1, 1)
+		bgImage.Position = UDim2.fromScale(0, 0)
 		bgImage.BackgroundTransparency = 1
 		bgImage.Image = "rbxassetid://82824299358542"
 		bgImage.ImageTransparency = 0.6
@@ -1936,8 +1970,8 @@ function CraftingPanel:CreateVariantOption(recipe, canCraft, isSelected, variant
 		-- Icon container for viewport
 		local iconContainer = Instance.new("Frame")
 		iconContainer.Name = "IconContainer"
-		iconContainer.Size = UDim2.new(1, 0, 1, 0)
-		iconContainer.Position = UDim2.new(0, 0, 0, 0)
+		iconContainer.Size = UDim2.fromScale(1, 1)
+		iconContainer.Position = UDim2.fromScale(0, 0)
 		iconContainer.BackgroundTransparency = 1
 		iconContainer.ZIndex = 3  -- Above background image
 		iconContainer.Parent = slotFrame
@@ -1946,14 +1980,14 @@ function CraftingPanel:CreateVariantOption(recipe, canCraft, isSelected, variant
 		BlockViewportCreator.CreateBlockViewport(
 			iconContainer,
 			input.itemId,
-			UDim2.new(1, 0, 1, 0)
+			UDim2.fromScale(1, 1)
 		)
 
 		-- Count badge (bottom-right like inventory, matching inventory style)
 		if input.count > 1 then
 			local countBadge = Instance.new("TextLabel")
 			countBadge.Name = "CountBadge"
-			countBadge.Size = UDim2.new(0, 40, 0, 20)  -- Matching inventory count label size
+			countBadge.Size = UDim2.fromOffset(40, 20)  -- Matching inventory count label size
 			countBadge.Position = UDim2.new(1, -4, 1, -4)
 			countBadge.AnchorPoint = Vector2.new(1, 1)
 			countBadge.BackgroundTransparency = 1
@@ -1992,7 +2026,7 @@ end
 	@param layoutOrder: number - Layout order
 	@return: Frame - Ingredient row
 ]]
-function CraftingPanel:CreateIngredientRow(input, canCraft, layoutOrder)
+function CraftingPanel:CreateIngredientRow(input, _canCraft, layoutOrder)
 	local hasEnough = self.inventoryManager:CountItem(input.itemId) >= input.count
 
 	local row = Instance.new("Frame")
@@ -2011,8 +2045,8 @@ function CraftingPanel:CreateIngredientRow(input, canCraft, layoutOrder)
 	-- Background image matching inventory
 	local bgImage = Instance.new("ImageLabel")
 	bgImage.Name = "BackgroundImage"
-	bgImage.Size = UDim2.new(1, 0, 1, 0)
-	bgImage.Position = UDim2.new(0, 0, 0, 0)
+	bgImage.Size = UDim2.fromScale(1, 1)
+	bgImage.Position = UDim2.fromScale(0, 0)
 	bgImage.BackgroundTransparency = 1
 	bgImage.Image = "rbxassetid://82824299358542"
 	bgImage.ImageTransparency = 0.6
@@ -2032,8 +2066,8 @@ function CraftingPanel:CreateIngredientRow(input, canCraft, layoutOrder)
 	-- Icon (matching inventory slot size)
 	local iconContainer = Instance.new("Frame")
 	iconContainer.Name = "Icon"
-	iconContainer.Size = UDim2.new(0, 56, 0, 56)  -- Matching inventory slot size
-	iconContainer.Position = UDim2.new(0, 0, 0.5, 0)
+	iconContainer.Size = UDim2.fromOffset(56, 56)  -- Matching inventory slot size
+	iconContainer.Position = UDim2.fromScale(0, 0.5)
 	iconContainer.AnchorPoint = Vector2.new(0, 0.5)
 	iconContainer.BackgroundTransparency = 1
 	iconContainer.ClipsDescendants = false
@@ -2044,7 +2078,7 @@ function CraftingPanel:CreateIngredientRow(input, canCraft, layoutOrder)
 	local viewport = BlockViewportCreator.CreateBlockViewport(
 		iconContainer,
 		input.itemId,
-		UDim2.new(1, 0, 1, 0)
+		UDim2.fromScale(1, 1)
 	)
 	if viewport then
 		viewport.ZIndex = 105
@@ -2071,7 +2105,7 @@ function CraftingPanel:CreateIngredientRow(input, canCraft, layoutOrder)
 	nameLabel.Name = "ItemName"
 	-- Icon (56) + gap (8) = 64
 	nameLabel.Size = UDim2.new(1, -140, 1, 0)  -- Reserve 64 left + 60 for right count + margins
-	nameLabel.Position = UDim2.new(0, 64, 0, 0)
+	nameLabel.Position = UDim2.fromOffset(64, 0)
 	nameLabel.BackgroundTransparency = 1
 	nameLabel.Font = Enum.Font.Code
 	nameLabel.TextSize = MIN_TEXT_SIZE  -- Matching inventory minimum text size

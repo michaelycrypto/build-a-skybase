@@ -79,7 +79,9 @@ end
 	Apply UI scale to a GUI element
 ]]
 function AccessibilityFeatures:ApplyUIScale(guiElement)
-	if not guiElement or not guiElement:IsA("GuiObject") then return end
+	if not guiElement or not guiElement:IsA("GuiObject") then
+		return
+	end
 
 	-- Apply scale through UIScale object
 	local uiScale = guiElement:FindFirstChildOfClass("UIScale")
@@ -115,7 +117,9 @@ end
 	Apply color theme to a GUI element
 ]]
 function AccessibilityFeatures:ApplyColorTheme(guiElement, colorType)
-	if not guiElement or not guiElement:IsA("GuiObject") then return end
+	if not guiElement or not guiElement:IsA("GuiObject") then
+		return
+	end
 
 	local theme = self:GetColorTheme()
 	local color = theme[colorType] or theme.Primary
@@ -230,7 +234,9 @@ end
 	Check if element meets minimum touch size
 ]]
 function AccessibilityFeatures:MeetsMinimumTouchSize(guiElement)
-	if not guiElement or not guiElement:IsA("GuiObject") then return false end
+	if not guiElement or not guiElement:IsA("GuiObject") then
+		return false
+	end
 
 	local size = guiElement.AbsoluteSize
 	return size.X >= self.minimumTouchSize and size.Y >= self.minimumTouchSize
@@ -240,7 +246,9 @@ end
 	Adjust element to meet minimum touch size
 ]]
 function AccessibilityFeatures:EnsureMinimumTouchSize(guiElement)
-	if not guiElement or not guiElement:IsA("GuiObject") then return end
+	if not guiElement or not guiElement:IsA("GuiObject") then
+		return
+	end
 
 	local currentSize = guiElement.Size
 	local pixelSize = guiElement.AbsoluteSize
@@ -279,17 +287,39 @@ end
 	Apply settings from a table
 ]]
 function AccessibilityFeatures:ApplySettings(settings)
-	if settings.uiScale then self:SetUIScale(settings.uiScale) end
-	if settings.colorblindMode then self:SetColorblindMode(settings.colorblindMode) end
-	if settings.highContrast ~= nil then self:SetHighContrast(settings.highContrast) end
-	if settings.reduceMotion ~= nil then self:SetReduceMotion(settings.reduceMotion) end
-	if settings.touchAssistanceLevel then self:SetTouchAssistance(settings.touchAssistanceLevel) end
-	if settings.audioCues ~= nil then self:SetAudioCues(settings.audioCues) end
-	if settings.hapticIntensity then self:SetHapticIntensity(settings.hapticIntensity) end
-	if settings.autoJump ~= nil then self:SetAutoJump(settings.autoJump) end
-	if settings.autoAim ~= nil then self:SetAutoAim(settings.autoAim) end
-	if settings.stickyButtons ~= nil then self:SetStickyButtons(settings.stickyButtons) end
-	if settings.minimumTouchSize then self:SetMinimumTouchSize(settings.minimumTouchSize) end
+	if settings.uiScale then
+		self:SetUIScale(settings.uiScale)
+	end
+	if settings.colorblindMode then
+		self:SetColorblindMode(settings.colorblindMode)
+	end
+	if settings.highContrast ~= nil then
+		self:SetHighContrast(settings.highContrast)
+	end
+	if settings.reduceMotion ~= nil then
+		self:SetReduceMotion(settings.reduceMotion)
+	end
+	if settings.touchAssistanceLevel then
+		self:SetTouchAssistance(settings.touchAssistanceLevel)
+	end
+	if settings.audioCues ~= nil then
+		self:SetAudioCues(settings.audioCues)
+	end
+	if settings.hapticIntensity then
+		self:SetHapticIntensity(settings.hapticIntensity)
+	end
+	if settings.autoJump ~= nil then
+		self:SetAutoJump(settings.autoJump)
+	end
+	if settings.autoAim ~= nil then
+		self:SetAutoAim(settings.autoAim)
+	end
+	if settings.stickyButtons ~= nil then
+		self:SetStickyButtons(settings.stickyButtons)
+	end
+	if settings.minimumTouchSize then
+		self:SetMinimumTouchSize(settings.minimumTouchSize)
+	end
 end
 
 return AccessibilityFeatures

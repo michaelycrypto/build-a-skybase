@@ -13,9 +13,9 @@ local ToastManager = {}
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
-local GuiService = game:GetService("GuiService")
+local _GuiService = game:GetService("GuiService")
 local RunService = game:GetService("RunService")
-local SoundService = game:GetService("SoundService")
+local _SoundService = game:GetService("SoundService")
 local CollectionService = game:GetService("CollectionService")
 
 -- Import dependencies
@@ -28,8 +28,8 @@ local TextSizes = Typography.sizes or {}
 local UISizes = TextSizes.ui or {}
 local BodySizes = TextSizes.body or {}
 local BOLD_FONT = Fonts.bold or Fonts.regular
-local TOAST_TEXT_SIZE = UISizes.toast or 14
-local BODY_BASE_TEXT_SIZE = BodySizes.base or 14
+local _TOAST_TEXT_SIZE = UISizes.toast or 14
+local _BODY_BASE_TEXT_SIZE = BodySizes.base or 14
 
 -- Services
 local player = Players.LocalPlayer
@@ -46,7 +46,7 @@ local TOAST_CONFIG = {
 
 	-- Positioning
 	container = {
-		size = UDim2.new(0, 380, 0, 400),
+		size = UDim2.fromOffset(380, 400),
 		position = UDim2.new(1, -400, 1, -420)
 	},
 
@@ -83,8 +83,8 @@ local TOAST_CONFIG = {
 			duration = 0.2,
 			easing = Enum.EasingStyle.Quad,
 			direction = Enum.EasingDirection.Out,
-			liftOffset = UDim2.new(0, -3, 0, 0),
-			sizeIncrease = UDim2.new(0, 4, 0, 2)
+			liftOffset = UDim2.fromOffset(-3, 0),
+			sizeIncrease = UDim2.fromOffset(4, 2)
 		},
 		-- Close button
 		closeButton = {
@@ -514,7 +514,7 @@ function ToastManager:CreateToastUI(toast)
 	-- Main toast frame
 	local toastFrame = Instance.new("Frame")
 	toastFrame.Name = "Toast_" .. toast.id
-	toastFrame.Size = UDim2.new(0, TOAST_CONFIG.toast.width, 0, TOAST_CONFIG.toast.height)
+	toastFrame.Size = UDim2.fromOffset(TOAST_CONFIG.toast.width, TOAST_CONFIG.toast.height)
 	toastFrame.BorderSizePixel = 0
 	toastFrame.ClipsDescendants = true -- Prevent content overflow during animations
 	toastFrame.ZIndex = TOAST_CONFIG.zIndex.toast
@@ -546,7 +546,7 @@ function ToastManager:CreateToastUI(toast)
 	-- Standardized content container
 	local contentFrame = Instance.new("Frame")
 	contentFrame.Size = UDim2.new(1, -TOAST_CONFIG.toast.padding * 2, 1, -TOAST_CONFIG.toast.padding * 2)
-	contentFrame.Position = UDim2.new(0, TOAST_CONFIG.toast.padding, 0, TOAST_CONFIG.toast.padding)
+	contentFrame.Position = UDim2.fromOffset(TOAST_CONFIG.toast.padding, TOAST_CONFIG.toast.padding)
 	contentFrame.BackgroundTransparency = 1
 	contentFrame.ZIndex = TOAST_CONFIG.zIndex.content
 	contentFrame.Parent = toastFrame
@@ -566,7 +566,7 @@ function ToastManager:CreateToastUI(toast)
 	-- Fallback to text if icon creation fails
 	if not iconElement then
 		local iconLabel = Instance.new("TextLabel")
-		iconLabel.Size = UDim2.new(0, TOAST_CONFIG.styling.iconSize, 0, TOAST_CONFIG.styling.iconSize)
+		iconLabel.Size = UDim2.fromOffset(TOAST_CONFIG.styling.iconSize, TOAST_CONFIG.styling.iconSize)
 		iconLabel.Position = UDim2.new(0, TOAST_CONFIG.styling.iconSize / 2, 0.5, 0) -- Properly centered
 		iconLabel.AnchorPoint = Vector2.new(0.5, 0.5) -- Center anchor point for clean positioning
 		iconLabel.BackgroundTransparency = 1
@@ -584,7 +584,7 @@ function ToastManager:CreateToastUI(toast)
 	local textLeftMargin = TOAST_CONFIG.styling.iconSize + 6 -- Icon size + small gap
 	local shadowLabel = Instance.new("TextLabel")
 	shadowLabel.Size = UDim2.new(1, -textLeftMargin - 8, 1, 0) -- Account for icon and right margin
-	shadowLabel.Position = UDim2.new(0, textLeftMargin + 1, 0, 1) -- Offset 1px right, 1px down for shadow
+	shadowLabel.Position = UDim2.fromOffset(textLeftMargin + 1, 1) -- Offset 1px right, 1px down for shadow
 	shadowLabel.BackgroundTransparency = 1
 	shadowLabel.Text = toast.message
 	shadowLabel.TextColor3 = Color3.fromRGB(0, 0, 0)
@@ -601,7 +601,7 @@ function ToastManager:CreateToastUI(toast)
 	-- Standardized message - aligned with centered icon
 	local messageLabel = Instance.new("TextLabel")
 	messageLabel.Size = UDim2.new(1, -textLeftMargin - 8, 1, 0) -- Account for icon and right margin
-	messageLabel.Position = UDim2.new(0, textLeftMargin, 0, 0)
+	messageLabel.Position = UDim2.fromOffset(textLeftMargin, 0)
 	messageLabel.BackgroundTransparency = 1
 	messageLabel.Text = toast.message
 	messageLabel.TextColor3 = styleData.textColor
@@ -618,7 +618,7 @@ function ToastManager:CreateToastUI(toast)
 	if toast.persistent then
 		local closeButton = Instance.new("TextButton")
 		closeButton.Name = "closeButton"
-		closeButton.Size = UDim2.new(0, TOAST_CONFIG.styling.closeButtonSize, 0, TOAST_CONFIG.styling.closeButtonSize)
+		closeButton.Size = UDim2.fromOffset(TOAST_CONFIG.styling.closeButtonSize, TOAST_CONFIG.styling.closeButtonSize)
 		closeButton.Position = UDim2.new(1, -TOAST_CONFIG.styling.closeButtonSize / 2, 0.5, 0) -- Properly centered
 		closeButton.AnchorPoint = Vector2.new(0.5, 0.5) -- Center anchor point for clean positioning
 		closeButton.BackgroundTransparency = 1
@@ -756,7 +756,7 @@ function ToastManager:AnimateToastIn(toastFrame, styleData)
 	-- Single smooth slide-in animation
 	TweenService:Create(toastFrame,
 		TweenInfo.new(TOAST_CONFIG.animations.slideIn.duration, TOAST_CONFIG.animations.slideIn.easing, TOAST_CONFIG.animations.slideIn.direction), {
-		Position = UDim2.new(0, 0, 0, 0),
+		Position = UDim2.fromOffset(0, 0),
 		BackgroundTransparency = styleData.backgroundTransparency
 	}):Play()
 end
@@ -769,7 +769,7 @@ function ToastManager:AddInteractiveEffects(toastFrame)
 
 	-- Hover detection frame (invisible, covers entire toast)
 	local hoverFrame = Instance.new("Frame")
-	hoverFrame.Size = UDim2.new(1, 0, 1, 0)
+	hoverFrame.Size = UDim2.fromScale(1, 1)
 	hoverFrame.BackgroundTransparency = 1
 	hoverFrame.ZIndex = TOAST_CONFIG.zIndex.hover
 	hoverFrame.Parent = toastFrame
@@ -781,7 +781,7 @@ function ToastManager:AddInteractiveEffects(toastFrame)
 		-- Subtle lift and glow effect
 		TweenService:Create(toastFrame, TweenInfo.new(TOAST_CONFIG.animations.hover.duration, TOAST_CONFIG.animations.hover.easing, TOAST_CONFIG.animations.hover.direction), {
 			Position = TOAST_CONFIG.animations.hover.liftOffset,
-			Size = UDim2.new(0, TOAST_CONFIG.toast.width + TOAST_CONFIG.animations.hover.sizeIncrease.X.Offset, 0, TOAST_CONFIG.toast.height + TOAST_CONFIG.animations.hover.sizeIncrease.Y.Offset)
+			Size = UDim2.fromOffset(TOAST_CONFIG.toast.width + TOAST_CONFIG.animations.hover.sizeIncrease.X.Offset, TOAST_CONFIG.toast.height + TOAST_CONFIG.animations.hover.sizeIncrease.Y.Offset)
 		}):Play()
 	end)
 
@@ -790,8 +790,8 @@ function ToastManager:AddInteractiveEffects(toastFrame)
 
 		-- Return to normal
 		TweenService:Create(toastFrame, TweenInfo.new(TOAST_CONFIG.animations.hover.duration, TOAST_CONFIG.animations.hover.easing, TOAST_CONFIG.animations.hover.direction), {
-			Position = UDim2.new(0, 0, 0, 0),
-			Size = UDim2.new(0, TOAST_CONFIG.toast.width, 0, TOAST_CONFIG.toast.height)
+			Position = UDim2.fromOffset(0, 0),
+			Size = UDim2.fromOffset(TOAST_CONFIG.toast.width, TOAST_CONFIG.toast.height)
 		}):Play()
 	end)
 
@@ -824,7 +824,7 @@ function ToastManager:DismissToast(toastId)
 		TweenInfo.new(TOAST_CONFIG.animations.slideOut.duration, TOAST_CONFIG.animations.slideOut.easing, TOAST_CONFIG.animations.slideOut.direction), {
 		Position = TOAST_CONFIG.animations.slideOut.endPosition,
 		Rotation = TOAST_CONFIG.animations.slideOut.rotation,
-		Size = UDim2.new(0, TOAST_CONFIG.toast.width * TOAST_CONFIG.animations.slideOut.scaleMultiplier, 0, TOAST_CONFIG.toast.height * TOAST_CONFIG.animations.slideOut.scaleMultiplier),
+		Size = UDim2.fromOffset(TOAST_CONFIG.toast.width * TOAST_CONFIG.animations.slideOut.scaleMultiplier, TOAST_CONFIG.toast.height * TOAST_CONFIG.animations.slideOut.scaleMultiplier),
 		BackgroundTransparency = TOAST_CONFIG.animations.slideOut.endTransparency
 	})
 
@@ -917,7 +917,7 @@ function ToastManager:UpdateResponsiveLayout()
 
 	-- Adjust for smaller screens
 	if viewportSize.X < 800 then
-		toastContainer.Size = UDim2.new(0, 260, 0, 350)
+		toastContainer.Size = UDim2.fromOffset(260, 350)
 		toastContainer.Position = UDim2.new(1, -280, 1, -370)
 	else
 		toastContainer.Size = TOAST_CONFIG.container.size
@@ -940,10 +940,8 @@ function ToastManager:PlayToastSound(soundName, toastType)
 
 		if toastType == "success" then
 			defaultSound = "achievement"
-		elseif toastType == "error" then
-			defaultSound = "buttonClick" -- Keep simple for errors
-		elseif toastType == "warning" then
-			defaultSound = "buttonClick" -- Keep simple for warnings
+		elseif toastType == "error" or toastType == "warning" then
+			defaultSound = "buttonClick" -- Keep simple for errors/warnings
 		end
 
 		if SoundManager and SoundManager.PlaySFX then

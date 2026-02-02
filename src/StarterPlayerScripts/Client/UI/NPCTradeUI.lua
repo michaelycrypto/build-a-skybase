@@ -13,7 +13,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local EventManager = require(ReplicatedStorage.Shared.EventManager)
 local GameConfig = require(ReplicatedStorage.Configs.GameConfig)
-local NPCTradeConfig = require(ReplicatedStorage.Configs.NPCTradeConfig)
+local _NPCTradeConfig = require(ReplicatedStorage.Configs.NPCTradeConfig)
 local BlockRegistry = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockRegistry)
 local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
 local ArmorConfig = require(ReplicatedStorage.Configs.ArmorConfig)
@@ -255,7 +255,7 @@ function NPCTradeUI:CreatePanel()
 
 	local container = Instance.new("Frame")
 	container.Name = "TradeContainer"
-	container.Size = UDim2.new(0, CONFIG.TOTAL_WIDTH, 0, totalHeight)
+	container.Size = UDim2.fromOffset(CONFIG.TOTAL_WIDTH, totalHeight)
 	container.Position = UDim2.new(0.5, 0, 0.5, -CONFIG.HEADER_HEIGHT)  -- Vertical offset matching WorldsPanel
 	container.AnchorPoint = Vector2.new(0.5, 0.5)
 	container.BackgroundTransparency = 1
@@ -274,7 +274,7 @@ function NPCTradeUI:CreateHeader(parent)
 	-- Header frame (transparent, floats above panel - matching WorldsPanel)
 	local headerFrame = Instance.new("Frame")
 	headerFrame.Name = "Header"
-	headerFrame.Size = UDim2.new(0, CONFIG.TOTAL_WIDTH, 0, CONFIG.HEADER_HEIGHT)
+	headerFrame.Size = UDim2.fromOffset(CONFIG.TOTAL_WIDTH, CONFIG.HEADER_HEIGHT)
 	headerFrame.BackgroundTransparency = 1
 	headerFrame.Parent = parent
 
@@ -294,8 +294,8 @@ function NPCTradeUI:CreateHeader(parent)
 
 	-- Close button (top-right corner - matching WorldsPanel)
 	local closeIcon = IconManager:CreateIcon(headerFrame, "UI", "X", {
-		size = UDim2.new(0, 44, 0, 44),
-		position = UDim2.new(1, 0, 0, 0),
+		size = UDim2.fromOffset(44, 44),
+		position = UDim2.fromScale(1, 0),
 		anchorPoint = Vector2.new(1, 0)
 	})
 
@@ -327,16 +327,16 @@ function NPCTradeUI:CreateBody(parent)
 	-- Body frame (transparent container for panel + shadow - matching WorldsPanel)
 	local bodyFrame = Instance.new("Frame")
 	bodyFrame.Name = "Body"
-	bodyFrame.Size = UDim2.new(0, CONFIG.TOTAL_WIDTH, 0, CONFIG.BODY_HEIGHT)
-	bodyFrame.Position = UDim2.new(0, 0, 0, CONFIG.HEADER_HEIGHT)
+	bodyFrame.Size = UDim2.fromOffset(CONFIG.TOTAL_WIDTH, CONFIG.BODY_HEIGHT)
+	bodyFrame.Position = UDim2.fromOffset(0, CONFIG.HEADER_HEIGHT)
 	bodyFrame.BackgroundTransparency = 1
 	bodyFrame.Parent = parent
 
 	-- Main panel (with background color - matching WorldsPanel ContentPanel)
 	self.panel = Instance.new("Frame")
 	self.panel.Name = "TradePanel"
-	self.panel.Size = UDim2.new(0, CONFIG.TOTAL_WIDTH, 0, CONFIG.BODY_HEIGHT)
-	self.panel.Position = UDim2.new(0, 0, 0, 0)
+	self.panel.Size = UDim2.fromOffset(CONFIG.TOTAL_WIDTH, CONFIG.BODY_HEIGHT)
+	self.panel.Position = UDim2.fromScale(0, 0)
 	self.panel.BackgroundColor3 = CONFIG.PANEL_BG_COLOR
 	self.panel.BorderSizePixel = 0
 	self.panel.ZIndex = 1
@@ -350,9 +350,9 @@ function NPCTradeUI:CreateBody(parent)
 	-- Shadow below panel (matching WorldsPanel)
 	local shadow = Instance.new("Frame")
 	shadow.Name = "Shadow"
-	shadow.Size = UDim2.new(0, CONFIG.TOTAL_WIDTH, 0, CONFIG.SHADOW_HEIGHT)
+	shadow.Size = UDim2.fromOffset(CONFIG.TOTAL_WIDTH, CONFIG.SHADOW_HEIGHT)
 	shadow.AnchorPoint = Vector2.new(0, 0.5)
-	shadow.Position = UDim2.new(0, 0, 0, CONFIG.BODY_HEIGHT)
+	shadow.Position = UDim2.fromOffset(0, CONFIG.BODY_HEIGHT)
 	shadow.BackgroundColor3 = CONFIG.SHADOW_COLOR
 	shadow.BorderSizePixel = 0
 	shadow.ZIndex = 0
@@ -390,7 +390,7 @@ function NPCTradeUI:CreateCurrencyDisplay()
 	local currencyFrame = Instance.new("Frame")
 	currencyFrame.Name = "CurrencyDisplay"
 	currencyFrame.Size = UDim2.new(1, 0, 0, CONFIG.CURRENCY_HEIGHT)
-	currencyFrame.Position = UDim2.new(0, 0, 0, 0)
+	currencyFrame.Position = UDim2.fromScale(0, 0)
 	currencyFrame.BackgroundTransparency = 1
 	currencyFrame.BorderSizePixel = 0
 	currencyFrame.Parent = self.panel
@@ -401,7 +401,7 @@ function NPCTradeUI:CreateCurrencyDisplay()
 
 	-- Cash icon (matching MainHUD)
 	local cashIcon = IconManager:CreateIcon(currencyFrame, "Currency", "Cash", {
-		size = UDim2.new(0,  28, 0, 28)
+		size = UDim2.fromOffset(28, 28)
 	})
 	if cashIcon then
 		cashIcon.Position = UDim2.new(0, 12, 0.5, 0)
@@ -413,7 +413,7 @@ function NPCTradeUI:CreateCurrencyDisplay()
 	self.coinsLabel = Instance.new("TextLabel")
 	self.coinsLabel.Name = "CoinsLabel"
 	self.coinsLabel.Size = UDim2.new(1, -56, 1, 0)
-	self.coinsLabel.Position = UDim2.new(0, 44, 0, 0)
+	self.coinsLabel.Position = UDim2.fromOffset(44, 0)
 	self.coinsLabel.BackgroundTransparency = 1
 	self.coinsLabel.Text = "0"
 	self.coinsLabel.TextColor3 = Color3.fromRGB(34, 197, 94)  -- Green matching MainHUD
@@ -441,7 +441,7 @@ function NPCTradeUI:CreateContentArea()
 	local sectionLabel = Instance.new("TextLabel")
 	sectionLabel.Name = "SectionLabel"
 	sectionLabel.Size = UDim2.new(1, 0, 0, CONFIG.LABEL_HEIGHT)
-	sectionLabel.Position = UDim2.new(0, 0, 0, contentY)
+	sectionLabel.Position = UDim2.fromOffset(0, contentY)
 	sectionLabel.BackgroundTransparency = 1
 	sectionLabel.Font = BOLD_FONT
 	sectionLabel.TextSize = 14
@@ -457,19 +457,19 @@ function NPCTradeUI:CreateContentArea()
 	local contentFrame = Instance.new("Frame")
 	contentFrame.Name = "ContentFrame"
 	contentFrame.Size = UDim2.new(1, 0, 1, -contentY)
-	contentFrame.Position = UDim2.new(0, 0, 0, contentY)
+	contentFrame.Position = UDim2.fromOffset(0, contentY)
 	contentFrame.BackgroundTransparency = 1
 	contentFrame.Parent = self.panel
 
 	-- Scroll frame
 	local scrollFrame = Instance.new("ScrollingFrame")
 	scrollFrame.Name = "ItemsList"
-	scrollFrame.Size = UDim2.new(1, 0, 1, 0)
+	scrollFrame.Size = UDim2.fromScale(1, 1)
 	scrollFrame.BackgroundTransparency = 1
 	scrollFrame.BorderSizePixel = 0
 	scrollFrame.ScrollBarThickness = 6
 	scrollFrame.ScrollBarImageColor3 = Color3.fromRGB(100, 100, 100)
-	scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+	scrollFrame.CanvasSize = UDim2.fromScale(0, 0)
 	scrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
 	scrollFrame.ScrollingDirection = Enum.ScrollingDirection.Y
 	scrollFrame.Parent = contentFrame
@@ -552,7 +552,7 @@ function NPCTradeUI:CreateItemFrame(item, index, tradeType)
 	-- Inner container holds card + shadow
 	local container = Instance.new("Frame")
 	container.Name = "ItemContainer_" .. item.itemId
-	container.Size = UDim2.new(1, 0, 1, 0)
+	container.Size = UDim2.fromScale(1, 1)
 	container.BackgroundTransparency = 1
 	container.ClipsDescendants = false
 	container.Parent = outerContainer
@@ -561,7 +561,7 @@ function NPCTradeUI:CreateItemFrame(item, index, tradeType)
 	local card = Instance.new("Frame")
 	card.Name = "ItemCard_" .. item.itemId
 	card.Size = UDim2.new(1, 0, 0, CONFIG.ITEM_HEIGHT)
-	card.Position = UDim2.new(0, 0, 0, 0)
+	card.Position = UDim2.fromScale(0, 0)
 	card.BackgroundColor3 = CONFIG.PANEL_BG_COLOR
 	card.BorderSizePixel = 0
 	card.ZIndex = 2
@@ -583,7 +583,7 @@ function NPCTradeUI:CreateItemFrame(item, index, tradeType)
 	local shadow = Instance.new("Frame")
 	shadow.Name = "Shadow"
 	shadow.Size = UDim2.new(1, 0, 0, CONFIG.SHADOW_HEIGHT)
-	shadow.Position = UDim2.new(0, 0, 0, CONFIG.ITEM_HEIGHT - CONFIG.SHADOW_HEIGHT / 2)
+	shadow.Position = UDim2.fromOffset(0, CONFIG.ITEM_HEIGHT - CONFIG.SHADOW_HEIGHT / 2)
 	shadow.BackgroundColor3 = CONFIG.SHADOW_COLOR
 	shadow.BorderSizePixel = 0
 	shadow.ZIndex = 1
@@ -596,7 +596,7 @@ function NPCTradeUI:CreateItemFrame(item, index, tradeType)
 	-- Icon container (with slot styling)
 	local iconContainer = Instance.new("Frame")
 	iconContainer.Name = "IconContainer"
-	iconContainer.Size = UDim2.new(0, CONFIG.ICON_SIZE, 0, CONFIG.ICON_SIZE)
+	iconContainer.Size = UDim2.fromOffset(CONFIG.ICON_SIZE, CONFIG.ICON_SIZE)
 	iconContainer.Position = UDim2.new(0, 12, 0.5, 0)
 	iconContainer.AnchorPoint = Vector2.new(0, 0.5)
 	iconContainer.BackgroundColor3 = CONFIG.SLOT_BG_COLOR
@@ -612,7 +612,7 @@ function NPCTradeUI:CreateItemFrame(item, index, tradeType)
 	-- Icon background image
 	local iconBgImage = Instance.new("ImageLabel")
 	iconBgImage.Name = "BackgroundImage"
-	iconBgImage.Size = UDim2.new(1, 0, 1, 0)
+	iconBgImage.Size = UDim2.fromScale(1, 1)
 	iconBgImage.BackgroundTransparency = 1
 	iconBgImage.Image = CONFIG.BACKGROUND_IMAGE
 	iconBgImage.ImageTransparency = CONFIG.BACKGROUND_IMAGE_TRANSPARENCY
@@ -646,7 +646,7 @@ function NPCTradeUI:CreateItemFrame(item, index, tradeType)
 	local nameLabel = Instance.new("TextLabel")
 	nameLabel.Name = "ItemName"
 	nameLabel.Size = UDim2.new(1, -textX - CONFIG.BUTTON_WIDTH - 24, 0, 24)
-	nameLabel.Position = UDim2.new(0, textX, 0, 12)
+	nameLabel.Position = UDim2.fromOffset(textX, 12)
 	nameLabel.BackgroundTransparency = 1
 	nameLabel.Text = itemName
 	nameLabel.TextColor3 = CONFIG.TEXT_PRIMARY
@@ -669,7 +669,7 @@ function NPCTradeUI:CreateItemFrame(item, index, tradeType)
 	local priceLabel = Instance.new("TextLabel")
 	priceLabel.Name = "PriceLabel"
 	priceLabel.Size = UDim2.new(1, -textX - CONFIG.BUTTON_WIDTH - 24, 0, 20)
-	priceLabel.Position = UDim2.new(0, textX, 0, 36)
+	priceLabel.Position = UDim2.fromOffset(textX, 36)
 	priceLabel.BackgroundTransparency = 1
 	priceLabel.Text = priceText
 	priceLabel.TextSize = 14
@@ -689,7 +689,7 @@ function NPCTradeUI:CreateItemFrame(item, index, tradeType)
 	if isStackItem then
 		local stackBadge = Instance.new("TextLabel")
 		stackBadge.Name = "StackBadge"
-		stackBadge.Size = UDim2.new(0, 28, 0, 18)
+		stackBadge.Size = UDim2.fromOffset(28, 18)
 		stackBadge.Position = UDim2.new(1, -2, 1, -2)
 		stackBadge.AnchorPoint = Vector2.new(1, 1)
 		stackBadge.BackgroundColor3 = Color3.fromRGB(80, 180, 80)
@@ -712,7 +712,7 @@ function NPCTradeUI:CreateItemFrame(item, index, tradeType)
 	if tradeType == "sell" and item.count and item.count > 1 then
 		local countLabel = Instance.new("TextLabel")
 		countLabel.Name = "CountLabel"
-		countLabel.Size = UDim2.new(0, 40, 0, 20)
+		countLabel.Size = UDim2.fromOffset(40, 20)
 		countLabel.Position = UDim2.new(1, -4, 1, -4)
 		countLabel.AnchorPoint = Vector2.new(1, 1)
 		countLabel.BackgroundTransparency = 1
@@ -731,7 +731,7 @@ function NPCTradeUI:CreateItemFrame(item, index, tradeType)
 		local stockLabel = Instance.new("TextLabel")
 		stockLabel.Name = "StockLabel"
 		stockLabel.Size = UDim2.new(1, -textX - CONFIG.BUTTON_WIDTH - 24, 0, 18)
-		stockLabel.Position = UDim2.new(0, textX, 0, 54)
+		stockLabel.Position = UDim2.fromOffset(textX, 54)
 		stockLabel.BackgroundTransparency = 1
 		stockLabel.Text = "Stock: " .. tostring(item.currentStock or item.stock)
 		stockLabel.TextColor3 = CONFIG.TEXT_MUTED
@@ -750,7 +750,7 @@ function NPCTradeUI:CreateItemFrame(item, index, tradeType)
 
 	local actionButton = Instance.new("TextButton")
 	actionButton.Name = "ActionButton"
-	actionButton.Size = UDim2.new(0, CONFIG.BUTTON_WIDTH, 0, CONFIG.BUTTON_HEIGHT)
+	actionButton.Size = UDim2.fromOffset(CONFIG.BUTTON_WIDTH, CONFIG.BUTTON_HEIGHT)
 	actionButton.Position = UDim2.new(1, -12, 0.5, 0)
 	actionButton.AnchorPoint = Vector2.new(1, 0.5)
 	actionButton.BackgroundColor3 = buttonColor
@@ -829,7 +829,7 @@ function NPCTradeUI:CreateItemIcon(container, itemId)
 			local image = Instance.new("ImageLabel")
 			image.Name = "ToolImage"
 			image.Size = UDim2.new(1, -6, 1, -6)
-			image.Position = UDim2.new(0.5, 0, 0.5, 0)
+			image.Position = UDim2.fromScale(0.5, 0.5)
 			image.AnchorPoint = Vector2.new(0.5, 0.5)
 			image.BackgroundTransparency = 1
 			image.Image = toolInfo.image
@@ -846,7 +846,7 @@ function NPCTradeUI:CreateItemIcon(container, itemId)
 			local image = Instance.new("ImageLabel")
 			image.Name = "ArmorImage"
 			image.Size = UDim2.new(1, -6, 1, -6)
-			image.Position = UDim2.new(0.5, 0, 0.5, 0)
+			image.Position = UDim2.fromScale(0.5, 0.5)
 			image.AnchorPoint = Vector2.new(0.5, 0.5)
 			image.BackgroundTransparency = 1
 			image.Image = armorInfo.image
@@ -859,7 +859,7 @@ function NPCTradeUI:CreateItemIcon(container, itemId)
 
 	if SpawnEggConfig.IsSpawnEgg(itemId) then
 		local icon = SpawnEggIcon.Create(itemId, UDim2.new(1, -6, 1, -6))
-		icon.Position = UDim2.new(0.5, 0, 0.5, 0)
+		icon.Position = UDim2.fromScale(0.5, 0.5)
 		icon.AnchorPoint = Vector2.new(0.5, 0.5)
 		icon.ZIndex = 4
 		icon.Parent = container
@@ -869,7 +869,7 @@ function NPCTradeUI:CreateItemIcon(container, itemId)
 	local viewport = BlockViewportCreator.CreateBlockViewport(
 		container,
 		itemId,
-		UDim2.new(1, 0, 1, 0)
+		UDim2.fromScale(1, 1)
 	)
 	if viewport then
 		viewport.ZIndex = 4

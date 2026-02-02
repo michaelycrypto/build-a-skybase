@@ -27,7 +27,7 @@ local EMOTE_MAPPING = IconMapping.Emotes
 -- Constants
 local EMOTE_DURATION = 3 -- seconds
 local BILLBOARD_OFFSET = Vector3.new(0, 5, 0) -- Better positioning above player's head
-local BILLBOARD_SIZE = UDim2.new(0, 64, 0, 64)
+local BILLBOARD_SIZE = UDim2.fromOffset(64, 64)
 
 -- State
 local activeBillboards = {} -- Track active billboards by player
@@ -91,7 +91,7 @@ function EmoteManager:CreateEmotePanel()
     	-- Wide rectangular quick actions panel
 	local panelFrame = Instance.new("Frame")
 	panelFrame.Name = "PanelFrame"
-	panelFrame.Size = UDim2.new(0, 630, 0, 180)
+	panelFrame.Size = UDim2.fromOffset(630, 180)
 	panelFrame.Position = UDim2.new(0.5, -315, 1, -290) -- Position above bottom HUD
 	panelFrame.BackgroundColor3 = Config.UI_SETTINGS.colors.backgroundGlass
 	panelFrame.BackgroundTransparency = 0.05
@@ -114,7 +114,7 @@ function EmoteManager:CreateEmotePanel()
 	local scrollFrame = Instance.new("ScrollingFrame")
 	scrollFrame.Name = "EmoteGrid"
 	scrollFrame.Size = UDim2.new(1, -16, 1, -16)
-	scrollFrame.Position = UDim2.new(0, 8, 0, 8)
+	scrollFrame.Position = UDim2.fromOffset(8, 8)
 	scrollFrame.BackgroundTransparency = 1
 	scrollFrame.BorderSizePixel = 0
 	scrollFrame.ScrollBarThickness = 4
@@ -124,8 +124,8 @@ function EmoteManager:CreateEmotePanel()
 
 	-- Wide grid layout for more items per row
 	local gridLayout = Instance.new("UIGridLayout")
-	gridLayout.CellPadding = UDim2.new(0, 3, 0, 3)
-	gridLayout.CellSize = UDim2.new(0, 40, 0, 40)
+	gridLayout.CellPadding = UDim2.fromOffset(3, 3)
+	gridLayout.CellSize = UDim2.fromOffset(40, 40)
 	gridLayout.SortOrder = Enum.SortOrder.Name
 	gridLayout.FillDirection = Enum.FillDirection.Horizontal
 	gridLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
@@ -136,15 +136,15 @@ function EmoteManager:CreateEmotePanel()
     self:PopulateEmoteGrid(scrollFrame)
 
     	-- Update scroll canvas size
-	local contentSize = gridLayout.AbsoluteContentSize
+	local _contentSize = gridLayout.AbsoluteContentSize
 	gridLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-		scrollFrame.CanvasSize = UDim2.new(0, 0, 0, gridLayout.AbsoluteContentSize.Y + 10)
+		scrollFrame.CanvasSize = UDim2.fromOffset(0, gridLayout.AbsoluteContentSize.Y + 10)
 	end)
 
 	-- Smart overlay behavior - only capture clicks outside the panel area
 	local overlayFrame = Instance.new("TextButton")
 	overlayFrame.Name = "OverlayDetector"
-	overlayFrame.Size = UDim2.new(1, 0, 1, 0)
+	overlayFrame.Size = UDim2.fromScale(1, 1)
 	overlayFrame.BackgroundTransparency = 1
 	overlayFrame.Text = ""
 	overlayFrame.Modal = false -- Don't block other UI interactions
@@ -171,7 +171,7 @@ function EmoteManager:PopulateEmoteGrid(container)
     for emoteName, assetId in pairs(EMOTE_MAPPING) do
         local emoteButton = Instance.new("ImageButton")
         emoteButton.Name = emoteName
-        emoteButton.Size = UDim2.new(0, 40, 0, 40)
+        emoteButton.Size = UDim2.fromOffset(40, 40)
         emoteButton.BackgroundColor3 = Config.UI_SETTINGS.colors.backgroundSecondary
         emoteButton.BackgroundTransparency = 0.4
         emoteButton.BorderSizePixel = 0
@@ -225,12 +225,12 @@ function EmoteManager:SelectEmote(emoteName)
     self:ShowEmoteBillboard(player, emoteName)
 
     -- Send to server to show to other players
-    local success, error = pcall(function()
+    local success, err = pcall(function()
         EventManager:SendToServer("PlayEmote", emoteName)
     end)
 
     if not success then
-        warn("EmoteManager: Failed to send emote to server:", error)
+        warn("EmoteManager: Failed to send emote to server:", err)
     end
 
     -- Hide panel after selection
@@ -269,8 +269,8 @@ function EmoteManager:ShowEmoteBillboard(targetPlayer, emoteName)
     -- Create emote image with completely transparent design
     local emoteImage = Instance.new("ImageLabel")
     emoteImage.Name = "EmoteImage"
-    emoteImage.Size = UDim2.new(1, 0, 1, 0)
-    emoteImage.Position = UDim2.new(0.5, 0, 0.5, 0) -- Center position
+    emoteImage.Size = UDim2.fromScale(1, 1)
+    emoteImage.Position = UDim2.fromScale(0.5, 0.5) -- Center position
     emoteImage.AnchorPoint = Vector2.new(0.5, 0.5) -- Center anchor for smooth scaling
     emoteImage.BackgroundTransparency = 1 -- Fully transparent background
     emoteImage.BorderSizePixel = 0
@@ -289,7 +289,7 @@ function EmoteManager:ShowEmoteBillboard(targetPlayer, emoteName)
     self:SetupDistanceScaling(billboardGui)
 
     -- Initial state for refined fade/grow animation
-    emoteImage.Size = UDim2.new(0.3, 0, 0.3, 0) -- Start smaller
+    emoteImage.Size = UDim2.fromScale(0.3, 0.3) -- Start smaller
     emoteImage.ImageTransparency = 1
     emoteImage.Rotation = 0
 
@@ -316,7 +316,7 @@ function EmoteManager:CreateRefinedEntranceEffect(billboardGui, emoteImage)
     -- Phase 1: Fade and grow in smoothly
     local fadeGrowTween = TweenService:Create(emoteImage,
         TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-        Size = UDim2.new(1, 0, 1, 0),
+        Size = UDim2.fromScale(1, 1),
         ImageTransparency = 0
     })
 
@@ -426,7 +426,7 @@ function EmoteManager:SetupDistanceScaling(billboardGui)
         end
 
         -- Apply scaled size
-        local newSize = UDim2.new(0, originalSize.X.Offset * scale, 0, originalSize.Y.Offset * scale)
+        local newSize = UDim2.fromOffset(originalSize.X.Offset * scale, originalSize.Y.Offset * scale)
         billboardGui.Size = newSize
     end)
 
@@ -544,7 +544,7 @@ function EmoteManager:AreAssetsPreloaded()
     local testAssets = 0
     local maxTests = 3
 
-    for emoteName, assetId in pairs(EMOTE_MAPPING) do
+    for _, assetId in pairs(EMOTE_MAPPING) do
         if testAssets >= maxTests then break end
 
         local assetUrl = "rbxassetid://" .. tostring(assetId)
@@ -628,7 +628,7 @@ end
 --]]
 function EmoteManager:Cleanup()
     -- Clean up all active billboards and their connections
-    for player, billboard in pairs(activeBillboards) do
+    for _, billboard in pairs(activeBillboards) do
         if billboard then
             local connection = scalingConnections[billboard]
             if connection then
@@ -658,7 +658,7 @@ end
 	@param contentFrame: Frame - The content frame provided by PanelManager
 	@param data: table - Optional data for the panel
 --]]
-function EmoteManager:CreatePanelContent(contentFrame, data)
+function EmoteManager:CreatePanelContent(contentFrame, _data)
 	if not contentFrame then
 		warn("EmoteManager: No content frame provided")
 		return
@@ -668,7 +668,7 @@ function EmoteManager:CreatePanelContent(contentFrame, data)
 	local scrollFrame = Instance.new("ScrollingFrame")
 	scrollFrame.Name = "EmoteGrid"
 	scrollFrame.Size = UDim2.new(1, -8, 1, -8)  -- Tighter padding
-	scrollFrame.Position = UDim2.new(0, 4, 0, 4) -- Tighter padding
+	scrollFrame.Position = UDim2.fromOffset(4, 4) -- Tighter padding
 	scrollFrame.BackgroundTransparency = 1
 	scrollFrame.BorderSizePixel = 0
 	scrollFrame.ScrollBarThickness = 3 -- Thinner scrollbar
@@ -678,8 +678,8 @@ function EmoteManager:CreatePanelContent(contentFrame, data)
 
 	-- Wide grid layout for more items per row (original design)
 	local gridLayout = Instance.new("UIGridLayout")
-	gridLayout.CellPadding = UDim2.new(0, 3, 0, 3) -- Original tight spacing
-	gridLayout.CellSize = UDim2.new(0, 40, 0, 40) -- Original smaller icons
+	gridLayout.CellPadding = UDim2.fromOffset(3, 3) -- Original tight spacing
+	gridLayout.CellSize = UDim2.fromOffset(40, 40) -- Original smaller icons
 	gridLayout.SortOrder = Enum.SortOrder.Name
 	gridLayout.FillDirection = Enum.FillDirection.Horizontal
 	gridLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
@@ -691,7 +691,7 @@ function EmoteManager:CreatePanelContent(contentFrame, data)
 
 	-- Update scroll canvas size
 	gridLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-		scrollFrame.CanvasSize = UDim2.new(0, 0, 0, gridLayout.AbsoluteContentSize.Y + 10)
+		scrollFrame.CanvasSize = UDim2.fromOffset(0, gridLayout.AbsoluteContentSize.Y + 10)
 	end)
 
 	print("EmoteManager: Created panel content for PanelManager integration")
@@ -704,7 +704,7 @@ function EmoteManager:PopulateEmoteGridForPanel(container)
 	for emoteName, assetId in pairs(EMOTE_MAPPING) do
 		local emoteButton = Instance.new("ImageButton")
 		emoteButton.Name = emoteName
-		emoteButton.Size = UDim2.new(0, 40, 0, 40) -- Original smaller size
+		emoteButton.Size = UDim2.fromOffset(40, 40) -- Original smaller size
 		emoteButton.BackgroundColor3 = Config.UI_SETTINGS.colors.backgroundSecondary
 		emoteButton.BackgroundTransparency = 0.4 -- Original transparency
 		emoteButton.BorderSizePixel = 0
@@ -759,12 +759,13 @@ function EmoteManager:SelectEmoteFromPanel(emoteName)
 	self:ShowEmoteBillboard(player, emoteName)
 
 	-- Send to server to show to other players
-	local success, error = pcall(function()
+	-- Send to server to show to other players
+	local success, err = pcall(function()
 		EventManager:SendToServer("PlayEmote", emoteName)
 	end)
 
 	if not success then
-		warn("EmoteManager: Failed to send emote to server:", error)
+		warn("EmoteManager: Failed to send emote to server:", err)
 	end
 
 	-- Close the panel through PanelManager

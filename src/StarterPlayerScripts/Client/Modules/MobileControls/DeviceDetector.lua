@@ -102,7 +102,7 @@ function DeviceDetector:DetectSafeZones()
 
 	-- Bottom and right insets are typically 0 but can be set manually
 	-- for devices with bottom navigation bars
-	local screenSize = self.screenSize
+	local _screenSize = self.screenSize
 
 	-- Detect if device likely has a notch (tall aspect ratio)
 	if self.aspectRatio > 2.0 then
@@ -154,8 +154,8 @@ function DeviceDetector:GenerateRecommendedSettings()
 		settings.ButtonOpacity = 0.8
 		settings.ShowLabels = false -- Less space
 
-	elseif self.deviceType == DeviceType.Phone then
-		-- Standard phone: default settings
+	elseif self.deviceType == DeviceType.Phone or self.deviceType == DeviceType.Unknown then
+		-- Standard phone or unknown: default settings
 		settings.UIScale = 1.0
 		settings.ButtonSize = 65
 		settings.ThumbstickRadius = 60
@@ -172,14 +172,6 @@ function DeviceDetector:GenerateRecommendedSettings()
 		settings.ButtonOpacity = 0.6
 		settings.ShowLabels = true
 		settings.SplitRatio = 0.4
-	else
-		-- Unknown: use conservative defaults
-		settings.UIScale = 1.0
-		settings.ButtonSize = 65
-		settings.ThumbstickRadius = 60
-		settings.ControlScheme = "Classic"
-		settings.ButtonOpacity = 0.7
-		settings.ShowLabels = true
 	end
 
 	-- Adjust for screen aspect ratio

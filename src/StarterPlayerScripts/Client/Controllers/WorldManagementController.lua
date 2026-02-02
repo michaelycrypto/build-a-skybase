@@ -8,7 +8,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 
 local EventManager = require(ReplicatedStorage.Shared.EventManager)
-local Constants = require(ReplicatedStorage.Shared.VoxelWorld.Core.Constants)
+local _Constants = require(ReplicatedStorage.Shared.VoxelWorld.Core.Constants)
 
 local WorldManagementController = {}
 WorldManagementController.__index = WorldManagementController

@@ -152,7 +152,7 @@ function QuestService:SendQuestData(player)
 					claimedCount = 0
 				}
 				if mobData.claimed then
-					for milestone, isClaimed in pairs(mobData.claimed) do
+					for _, isClaimed in pairs(mobData.claimed) do
 						if isClaimed then
 							debugData[mobType].claimedCount = debugData[mobType].claimedCount + 1
 						end

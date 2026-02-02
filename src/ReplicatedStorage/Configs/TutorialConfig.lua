@@ -545,7 +545,7 @@ TutorialConfig.Settings = {
 	-- Waypoint settings
 	waypointBeamWidth = 0.5,
 	waypointBeamColor = Color3.fromRGB(255, 215, 0),
-	waypointMarkerSize = UDim2.new(0, 40, 0, 40),
+	waypointMarkerSize = UDim2.fromOffset(40, 40),
 	waypointUpdateInterval = 0.1,
 
 	-- Behavior

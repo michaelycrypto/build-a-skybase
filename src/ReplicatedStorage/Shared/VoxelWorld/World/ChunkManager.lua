@@ -38,7 +38,7 @@ function ChunkManager:GetNeededChunks(centerX: number, centerZ: number)
 	local dx, dz = 0, -1
 	local maxDist = self.renderDistance * self.renderDistance
 
-	for i = 1, (self.renderDistance * 2 + 1) ^ 2 do
+	for _ = 1, (self.renderDistance * 2 + 1) ^ 2 do
 		if -self.renderDistance <= x and x <= self.renderDistance and
 		   -self.renderDistance <= z and z <= self.renderDistance then
 			local dist = x * x + z * z
@@ -168,10 +168,15 @@ end
 
 -- Get statistics
 function ChunkManager:GetStats()
+	local activeCount = 0
+	for _ in pairs(self.activeChunks) do
+		activeCount += 1
+	end
+
 	return {
 		loadedChunks = self.stats.loadedCount,
 		unloadedChunks = self.stats.unloadedCount,
-		activeChunks = (function(t) local c=0 for _ in pairs(t) do c+=1 end return c end)(self.activeChunks),
+		activeChunks = activeCount,
 		lastLoadTime = os.clock() - self.stats.lastLoadTime
 	}
 end

@@ -91,7 +91,9 @@ WaterUtils.CARDINAL_DIRS = WaterUtils.HORIZONTAL_DIRS
 --============================================================================
 
 function WaterUtils.IsWater(blockId: number?): boolean
-	if not blockId then return false end
+	if not blockId then
+		return false
+	end
 	return blockId == Constants.BlockType.WATER_SOURCE
 		or blockId == Constants.BlockType.FLOWING_WATER
 end
@@ -277,7 +279,9 @@ function WaterUtils.GetWaterHeight(blockId: number, metadata: number?, hasWaterA
 	local level = WaterUtils.GetLevel(meta)
 
 	-- Clamp level to valid range (level 0 shouldn't happen for flowing water)
-	if level <= 0 then level = 1 end
+	if level <= 0 then
+		level = 1
+	end
 	level = math.clamp(level, 1, 7)
 
 	-- Height formula: 1.0 - (level / 8)
@@ -296,7 +300,9 @@ WaterUtils.GetHeight = WaterUtils.GetWaterHeight
 	Check if a block can be replaced by water (air or non-solid).
 ]]
 function WaterUtils.CanWaterReplace(blockId: number?): boolean
-	if not blockId then return false end
+	if not blockId then
+		return false
+	end
 
 	-- Air is always replaceable
 	if blockId == Constants.BlockType.AIR then
@@ -326,8 +332,12 @@ end
 	Check if a block is solid (blocks water flow).
 ]]
 function WaterUtils.IsSolid(blockId: number?): boolean
-	if not blockId then return false end
-	if blockId == Constants.BlockType.AIR then return false end
+	if not blockId then
+		return false
+	end
+	if blockId == Constants.BlockType.AIR then
+		return false
+	end
 
 	-- Water is not solid
 	if WaterUtils.IsWater(blockId) then
@@ -400,21 +410,15 @@ function WaterUtils.AnalyzeFlow(worldManager, x: number, y: number, z: number)
 					-- SOURCE BLOCK: Water flows TO neighbors with higher levels (flowing water we feed)
 					-- Adjacent sources are peers (no flow)
 					if not neighborIsSource then
-						if neighborIsFalling then
-							-- Falling water adjacent to source: we're feeding it horizontally
-							table.insert(flowDirections, dir.name)
-						elseif neighborLevel > 0 then
-							-- Flowing water: source feeds it (flow TO)
+						if neighborIsFalling or neighborLevel > 0 then
+							-- Water adjacent to source: we're feeding it horizontally
 							table.insert(flowDirections, dir.name)
 						end
 					end
 				else
 					-- FLOWING WATER: Check for sources and targets
 					-- Source or falling = always a source direction
-					if neighborIsSource or neighborIsFalling then
-						table.insert(sourceDirections, dir.name)
-					elseif neighborLevel < currentLevel then
-						-- Lower level = source direction (water comes from there)
+					if neighborIsSource or neighborIsFalling or neighborLevel < currentLevel then
 						table.insert(sourceDirections, dir.name)
 					elseif neighborLevel > currentLevel then
 						-- Higher level = flow direction (water goes there)
@@ -465,7 +469,9 @@ end
 	Uses corner height calculation to match actual rendering.
 ]]
 function WaterUtils.GetCornerString(worldManager, x: number, y: number, z: number)
-	if not worldManager then return "?" end
+	if not worldManager then
+		return "?"
+	end
 
 	local blockId = worldManager:GetBlock(x, y, z)
 	if not WaterUtils.IsWater(blockId) then
@@ -519,10 +525,26 @@ function WaterUtils.GetCornerString(worldManager, x: number, y: number, z: numbe
 	local threshold = (maxH + minH) / 2
 	local highCorners, lowCorners = {}, {}
 
-	if cornerNE >= threshold then table.insert(highCorners, "NE") else table.insert(lowCorners, "NE") end
-	if cornerNW >= threshold then table.insert(highCorners, "NW") else table.insert(lowCorners, "NW") end
-	if cornerSE >= threshold then table.insert(highCorners, "SE") else table.insert(lowCorners, "SE") end
-	if cornerSW >= threshold then table.insert(highCorners, "SW") else table.insert(lowCorners, "SW") end
+	if cornerNE >= threshold then
+		table.insert(highCorners, "NE")
+	else
+		table.insert(lowCorners, "NE")
+	end
+	if cornerNW >= threshold then
+		table.insert(highCorners, "NW")
+	else
+		table.insert(lowCorners, "NW")
+	end
+	if cornerSE >= threshold then
+		table.insert(highCorners, "SE")
+	else
+		table.insert(lowCorners, "SE")
+	end
+	if cornerSW >= threshold then
+		table.insert(highCorners, "SW")
+	else
+		table.insert(lowCorners, "SW")
+	end
 
 	local suffix = isSource and " (src)" or string.format(" L%d", level)
 
@@ -563,10 +585,14 @@ end
 	Returns: Vector2 (normalized) or nil if no flow
 ]]
 function WaterUtils.GetFlowVector(worldManager, x: number, y: number, z: number)
-	if not worldManager then return nil end
+	if not worldManager then
+		return nil
+	end
 
 	local blockId = worldManager:GetBlock(x, y, z)
-	if not WaterUtils.IsWater(blockId) then return nil end
+	if not WaterUtils.IsWater(blockId) then
+		return nil
+	end
 
 	local metadata = worldManager:GetBlockMetadata(x, y, z) or 0
 	local isSource = WaterUtils.IsSource(blockId)

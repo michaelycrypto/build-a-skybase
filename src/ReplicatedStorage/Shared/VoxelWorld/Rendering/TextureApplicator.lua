@@ -20,7 +20,7 @@ local PartPool = require(script.Parent.PartPool)
 local TextureApplicator = {}
 
 -- Cache for block texture lookups (blockId -> {faceName -> textureId})
-local textureCache = {}
+-- local textureCache = {}
 
 --[[
 	Apply textures to all 6 faces of a merged box Part
@@ -48,7 +48,6 @@ This function creates Texture objects (one for each visible face) and attaches t
 	@return: Rotated face name
 ]]
 local function getRotatedFaceName(faceName, rotation)
-	local Constants = require(script.Parent.Parent.Core.Constants)
 
 	-- If no rotation or not a directional face, return as is
 	if not rotation or rotation == 0 or (faceName ~= "front" and faceName ~= "back" and faceName ~= "left" and faceName ~= "right") then
@@ -128,7 +127,6 @@ function TextureApplicator:ApplyBoxTextures(
 	-- Get rotation from metadata if provided
 	local rotation = 0
 	if metadata and metadata ~= 0 then
-		local Constants = require(script.Parent.Parent.Core.Constants)
 		rotation = Constants.GetRotation(metadata)
 	end
 
@@ -140,7 +138,7 @@ function TextureApplicator:ApplyBoxTextures(
 	-- Apply texture to each face using pooled textures
 	for i = 1, 6 do
 		local faceInfo = faces[i]
-		
+
 		-- Fast visibility check - only check NormalId key (most common case)
 		local isVisible = true
 		if visibleFaces then
@@ -163,7 +161,7 @@ function TextureApplicator:ApplyBoxTextures(
 				texture.Texture = textureId
 				texture.StudsPerTileU = bs
 				texture.StudsPerTileV = bs
-				
+
 				-- Apply tint if needed
 				if tintColor then
 					texture.Color3 = tintColor

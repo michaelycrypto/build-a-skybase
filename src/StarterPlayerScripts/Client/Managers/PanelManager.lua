@@ -6,8 +6,8 @@
 local PanelManager = {}
 
 local Players = game:GetService("Players")
-local TweenService = game:GetService("TweenService")
-local GuiService = game:GetService("GuiService")
+local _TweenService = game:GetService("TweenService")
+local _GuiService = game:GetService("GuiService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 -- Import dependencies
@@ -43,39 +43,39 @@ local ANIMATION_SETTINGS = {
 
 -- Panel size configurations
 local PANEL_SIZES = {
-	small = {size = UDim2.new(0, 300, 0, 200)},
-	medium = {size = UDim2.new(0, 400, 0, 300)},
-	large = {size = UDim2.new(0, 500, 0, 600)},
+	small = {size = UDim2.fromOffset(300, 200)},
+	medium = {size = UDim2.fromOffset(400, 300)},
+	large = {size = UDim2.fromOffset(500, 600)},
 	-- Custom sizes for specific use cases
 	emote_wide = {
-		size = UDim2.new(0, 630, 0, 180),
+		size = UDim2.fromOffset(630, 180),
 		position = UDim2.new(0.5, 0, 1, -290),
 		anchorPoint = Vector2.new(0.5, 0)
 	},
 	daily_rewards_compact = {
-		size = UDim2.new(0, 560, 0, 330), -- Increased height by 30px to prevent button overlap
-		position = UDim2.new(0.5, 0, 0.5, 0),
+		size = UDim2.fromOffset(560, 330), -- Increased height by 30px to prevent button overlap
+		position = UDim2.fromScale(0.5, 0.5),
 		anchorPoint = Vector2.new(0.5, 0.5)
 	},
 	settings_compact = {
-		size = UDim2.new(0, 450, 0, 280), -- Compact size for audio settings
-		position = UDim2.new(0.5, 0, 0.5, 0),
+		size = UDim2.fromOffset(450, 280), -- Compact size for audio settings
+		position = UDim2.fromScale(0.5, 0.5),
 		anchorPoint = Vector2.new(0.5, 0.5)
 	},
 	inventory_compact = {
-		size = UDim2.new(0, 520, 0, 420), -- More compact size
-		position = UDim2.new(0.5, 0, 0.5, 0), -- Left-aligned with 240px offset
+		size = UDim2.fromOffset(520, 420), -- More compact size
+		position = UDim2.fromScale(0.5, 0.5), -- Left-aligned with 240px offset
 		anchorPoint = Vector2.new(0.5, 0.5)
 	},
 	-- Left-docked compact panel for build selector to mirror shop styling but as a sidebar
 	build_left = {
-		size = UDim2.new(0, 380, 0, 420),
+		size = UDim2.fromOffset(380, 420),
 		position = UDim2.new(0, 20, 0.5, 0),
 		anchorPoint = Vector2.new(0, 0.5)
 	},
 	shop = {
-		size = UDim2.new(0, 440, 0, 360), -- Wide size for shop side-by-side layout
-		position = UDim2.new(0.5, 0, 0.5, 0),
+		size = UDim2.fromOffset(440, 360), -- Wide size for shop side-by-side layout
+		position = UDim2.fromScale(0.5, 0.5),
 		anchorPoint = Vector2.new(0.5, 0.5)
 	}
 }
@@ -354,9 +354,7 @@ function PanelManager:CreatePanelInstance(config, data)
 	if sizeConfig.position and sizeConfig.anchorPoint then
 		panel.mainFrame.Position = sizeConfig.position
 		panel.mainFrame.AnchorPoint = sizeConfig.anchorPoint
-	elseif typeConfig.centerPosition then
-		-- Panel is already centered by UIComponents for standard cases
-	else
+	elseif not typeConfig.centerPosition then
 		-- Custom positioning for sidebars, etc.
 		self:PositionPanel(panel, config)
 	end
@@ -517,12 +515,12 @@ function PanelManager:RegisterBuiltInPanels()
 			local EmoteManager = require(script.Parent.EmoteManager)
 			EmoteManager:CreatePanelContent(contentFrame, data)
 		end,
-		onShow = function(data)
+		onShow = function(_data)
 			-- Notify EmoteManager that panel is shown
 			local EmoteManager = require(script.Parent.EmoteManager)
 			EmoteManager:OnPanelShown()
 		end,
-		onHide = function(data)
+		onHide = function(_data)
 			-- Notify EmoteManager that panel is hidden
 			local EmoteManager = require(script.Parent.EmoteManager)
 			EmoteManager:OnPanelHidden()
@@ -585,9 +583,9 @@ function PanelManager:ShowNotification(title, message, duration)
 		title = title,
 		type = "toast",
 		size = "small",
-		create = function(contentFrame, data)
+		create = function(contentFrame, _data)
 			local label = Instance.new("TextLabel")
-			label.Size = UDim2.new(1, 0, 1, 0)
+			label.Size = UDim2.fromScale(1, 1)
 			label.BackgroundTransparency = 1
 			label.Text = message
 			label.TextColor3 = Config.UI_SETTINGS.colors.text

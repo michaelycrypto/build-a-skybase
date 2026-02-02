@@ -283,8 +283,8 @@ local function createGlyphContainer(instance)
 	container.Name = "CustomFontGlyphs"
 	container.BackgroundTransparency = 1
 	container.BorderSizePixel = 0
-	container.Size = UDim2.new(1, 0, 1, 0)
-	container.Position = UDim2.new(0, 0, 0, 0)
+	container.Size = UDim2.fromScale(1, 1)
+	container.Position = UDim2.fromScale(0, 0)
 	container.ZIndex = instance.ZIndex
 	container.Visible = instance.Visible
 	container.ClipsDescendants = instance.ClipsDescendants

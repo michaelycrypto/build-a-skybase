@@ -53,12 +53,16 @@ function CropService.new()
 end
 
 function CropService:Init()
-	if self._initialized then return end
+	if self._initialized then
+		return
+	end
 	BaseService.Init(self)
 end
 
 function CropService:Start()
-	if self._started then return end
+	if self._started then
+		return
+	end
 	BaseService.Start(self)
 
 	-- Periodic growth checks
@@ -83,10 +87,14 @@ function CropService:Start()
 			cursor += 1
 			processed += 1
 			local x, y, z = string.match(key, "(-?%d+),(-?%d+),(-?%d+)")
-			x = tonumber(x) y = tonumber(y) z = tonumber(z)
+			x = tonumber(x)
+			y = tonumber(y)
+			z = tonumber(z)
 			local vws = self.Deps and self.Deps.VoxelWorldService
 			local vm = vws and vws.worldManager
-			if not (vm and x and y and z) then continue end
+			if not (vm and x and y and z) then
+				continue
+			end
 			local id = vm:GetBlock(x, y, z)
 			if not isCropBlock(id) then
 				-- Removed or changed
@@ -115,7 +123,9 @@ function CropService:Start()
 end
 
 function CropService:Destroy()
-	if self._destroyed then return end
+	if self._destroyed then
+		return
+	end
 	self._crops = {}
 	self._iterKeys = {}
 	BaseService.Destroy(self)
@@ -125,7 +135,7 @@ local function keyOf(x, y, z)
 	return string.format("%d,%d,%d", x, y, z)
 end
 
-function CropService:OnBlockChanged(x, y, z, newBlockId, newMetadata, oldBlockId)
+function CropService:OnBlockChanged(x, y, z, newBlockId, _newMetadata, oldBlockId)
 	if isCropBlock(newBlockId) then
 		local k = keyOf(x, y, z)
 		if not self._crops[k] then
@@ -144,7 +154,9 @@ end
 function CropService:OnChunkStreamed(cx, cz)
 	local vws = self.Deps and self.Deps.VoxelWorldService
 	local vm = vws and vws.worldManager
-	if not vm then return end
+	if not vm then
+		return
+	end
 	local minX = cx * Constants.CHUNK_SIZE_X
 	local minZ = cz * Constants.CHUNK_SIZE_Z
 	local maxX = minX + Constants.CHUNK_SIZE_X - 1
@@ -170,7 +182,9 @@ end
 function CropService:InstantGrowAllCrops()
 	local vws = self.Deps and self.Deps.VoxelWorldService
 	local vm = vws and vws.worldManager
-	if not vm then return 0 end
+	if not vm then
+		return 0
+	end
 
 	-- Mapping from any crop stage to its mature stage
 	local MATURE_STAGE = {
@@ -199,7 +213,9 @@ function CropService:InstantGrowAllCrops()
 	local grownCount = 0
 	for key in pairs(self._crops) do
 		local x, y, z = string.match(key, "(-?%d+),(-?%d+),(-?%d+)")
-		x = tonumber(x) y = tonumber(y) z = tonumber(z)
+		x = tonumber(x)
+		y = tonumber(y)
+		z = tonumber(z)
 		if x and y and z then
 			local id = vm:GetBlock(x, y, z)
 			local matureId = MATURE_STAGE[id]

@@ -1,1 +1,30 @@
 std = "roblox"
+
+[config]
+# Allow underscore-prefixed variables to be unused (Lua convention)
+# Also allow self as unused since it's common in Lua class patterns
+unused_variable = { allow_unused_self = true, ignore_pattern = "^_" }
+# Pattern matching for shadowing - allow underscore prefix and common names
+# self is commonly shadowed in Lua table methods
+shadowing = { ignore_pattern = "^_|^self$" }
+
+[lints]
+# Set multiple_statements to "allow" since this is a style preference
+# and many of these are intentional compact coordinate assignments
+multiple_statements = "allow"
+
+# Set shadowing to "allow" - it's a common Lua pattern for local requires
+# and method definitions that shadow outer scope intentionally
+shadowing = "allow"
+
+# UDim2 style suggestions are minor - allow them
+roblox_manual_fromscale_or_fromoffset = "allow"
+
+# Parentheses around conditions are allowed (coming from other languages)
+parenthese_conditions = "allow"
+
+# These are real issues we want to keep visible
+deprecated = "warn"
+unused_variable = "warn"
+empty_if = "warn"
+unscoped_variables = "warn"

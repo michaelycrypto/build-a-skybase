@@ -71,7 +71,7 @@ function VirtualThumbstick:Create(parent, position)
 	-- Container frame
 	local container = Instance.new("Frame")
 	container.Name = "Container"
-	container.Size = UDim2.new(0, self.radius * 2.5, 0, self.radius * 2.5)
+	container.Size = UDim2.fromOffset(self.radius * 2.5, self.radius * 2.5)
 	container.Position = position or UDim2.new(0, 100, 1, -150)
 	container.AnchorPoint = Vector2.new(0.5, 0.5)
 	container.BackgroundTransparency = 1
@@ -81,8 +81,8 @@ function VirtualThumbstick:Create(parent, position)
 	-- Outer ring (boundary)
 	self.outerRing = Instance.new("ImageLabel")
 	self.outerRing.Name = "OuterRing"
-	self.outerRing.Size = UDim2.new(0, self.radius * 2, 0, self.radius * 2)
-	self.outerRing.Position = UDim2.new(0.5, 0, 0.5, 0)
+	self.outerRing.Size = UDim2.fromOffset(self.radius * 2, self.radius * 2)
+	self.outerRing.Position = UDim2.fromScale(0.5, 0.5)
 	self.outerRing.AnchorPoint = Vector2.new(0.5, 0.5)
 	self.outerRing.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 	self.outerRing.BackgroundTransparency = 0.7
@@ -104,8 +104,8 @@ function VirtualThumbstick:Create(parent, position)
 	-- Inner knob (draggable)
 	self.innerKnob = Instance.new("ImageLabel")
 	self.innerKnob.Name = "InnerKnob"
-	self.innerKnob.Size = UDim2.new(0, self.radius * 0.8, 0, self.radius * 0.8)
-	self.innerKnob.Position = UDim2.new(0.5, 0, 0.5, 0)
+	self.innerKnob.Size = UDim2.fromOffset(self.radius * 0.8, self.radius * 0.8)
+	self.innerKnob.Position = UDim2.fromScale(0.5, 0.5)
 	self.innerKnob.AnchorPoint = Vector2.new(0.5, 0.5)
 	self.innerKnob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 	self.innerKnob.BackgroundTransparency = 0.4
@@ -138,16 +138,16 @@ end
 ]]
 function VirtualThumbstick:CreateDirectionalIndicators(parent)
 	local directions = {
-		{name = "Up", position = UDim2.new(0.5, 0, 0.2, 0), rotation = 0},
-		{name = "Down", position = UDim2.new(0.5, 0, 0.8, 0), rotation = 180},
-		{name = "Left", position = UDim2.new(0.2, 0, 0.5, 0), rotation = 270},
-		{name = "Right", position = UDim2.new(0.8, 0, 0.5, 0), rotation = 90},
+		{name = "Up", position = UDim2.fromScale(0.5, 0.2), rotation = 0},
+		{name = "Down", position = UDim2.fromScale(0.5, 0.8), rotation = 180},
+		{name = "Left", position = UDim2.fromScale(0.2, 0.5), rotation = 270},
+		{name = "Right", position = UDim2.fromScale(0.8, 0.5), rotation = 90},
 	}
 
 	for _, dir in ipairs(directions) do
 		local arrow = Instance.new("TextLabel")
 		arrow.Name = dir.name .. "Arrow"
-		arrow.Size = UDim2.new(0, 15, 0, 15)
+		arrow.Size = UDim2.fromOffset(15, 15)
 		arrow.Position = dir.position
 		arrow.AnchorPoint = Vector2.new(0.5, 0.5)
 		arrow.BackgroundTransparency = 1
@@ -189,7 +189,7 @@ function VirtualThumbstick:SetupInputHandling()
 		return
 	end
 
-	self.inputConnection = self.inputProvider.InputBegan:Connect(function(input, gameProcessed)
+	self.inputConnection = self.inputProvider.InputBegan:Connect(function(input, _gameProcessed)
 		if input.UserInputType == Enum.UserInputType.Touch and not self.active then
 			-- Check if touch is in the thumbstick zone (left side of screen)
 			local screenSize = workspace.CurrentCamera.ViewportSize
@@ -202,13 +202,13 @@ function VirtualThumbstick:SetupInputHandling()
 		end
 	end)
 
-	self.inputChangedConnection = self.inputProvider.InputChanged:Connect(function(input, gameProcessed)
+	self.inputChangedConnection = self.inputProvider.InputChanged:Connect(function(input, _gameProcessed)
 		if input.UserInputType == Enum.UserInputType.Touch and self.active and input == self.touchInput then
 			self:OnTouchMove(input)
 		end
 	end)
 
-	self.inputEndedConnection = self.inputProvider.InputEnded:Connect(function(input, gameProcessed)
+	self.inputEndedConnection = self.inputProvider.InputEnded:Connect(function(input, _gameProcessed)
 		if input.UserInputType == Enum.UserInputType.Touch and input == self.touchInput then
 			self:OnTouchEnd(input)
 		end
@@ -228,7 +228,7 @@ function VirtualThumbstick:OnTouchBegin(input)
 
 	-- Position thumbstick at touch location (dynamic mode)
 	if self.dynamicPosition then
-		self.container.Position = UDim2.new(0, self.startPosition.X, 0, self.startPosition.Y)
+		self.container.Position = UDim2.fromOffset(self.startPosition.X, self.startPosition.Y)
 	end
 
 	-- Show thumbstick
@@ -289,16 +289,16 @@ function VirtualThumbstick:OnTouchMove(input)
 	end
 
 	-- Haptic feedback on direction change (if enabled)
-	if self.hapticFeedback and self.magnitude > 0.5 then
-		-- Simple vibration (Roblox doesn't have native haptics, but we can prepare for it)
-		-- self.inputProvider:SetHapticMotor(Enum.HapticMotor.Touch, 0.1)
-	end
+	-- if self.hapticFeedback and self.magnitude > 0.5 then
+	-- 	-- Simple vibration (Roblox doesn't have native haptics, but we can prepare for it)
+	-- 	-- self.inputProvider:SetHapticMotor(Enum.HapticMotor.Touch, 0.1)
+	-- end
 end
 
 --[[
 	Handle touch end
 ]]
-function VirtualThumbstick:OnTouchEnd(input)
+function VirtualThumbstick:OnTouchEnd(_input)
 	if not self.active then return end
 
 	self.active = false
@@ -307,7 +307,7 @@ function VirtualThumbstick:OnTouchEnd(input)
 	self.magnitude = 0
 
 	-- Reset knob position
-	self.innerKnob.Position = UDim2.new(0.5, 0, 0.5, 0)
+	self.innerKnob.Position = UDim2.fromScale(0.5, 0.5)
 
 	-- Fade out animation
 	self:AnimateFadeOut()
@@ -415,11 +415,11 @@ function VirtualThumbstick:SetSize(radius)
 	self.radius = radius
 
 	if self.outerRing then
-		self.outerRing.Size = UDim2.new(0, radius * 2, 0, radius * 2)
+		self.outerRing.Size = UDim2.fromOffset(radius * 2, radius * 2)
 	end
 
 	if self.innerKnob then
-		self.innerKnob.Size = UDim2.new(0, radius * 0.8, 0, radius * 0.8)
+		self.innerKnob.Size = UDim2.fromOffset(radius * 0.8, radius * 0.8)
 	end
 end
 

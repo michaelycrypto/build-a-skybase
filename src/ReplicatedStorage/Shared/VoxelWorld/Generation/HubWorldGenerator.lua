@@ -513,7 +513,7 @@ function HubWorldGenerator:_applyNpcPadOverrides(info, wx: number, wz: number)
 	end
 end
 
-function HubWorldGenerator:_applyRockOutcrops(info, wx: number, wz: number, island, metrics)
+function HubWorldGenerator:_applyRockOutcrops(info, wx: number, wz: number, island, _metrics)
 	local rockConfig = self._options and self._options.rockOutcrops
 	if not rockConfig then
 		return
@@ -926,9 +926,13 @@ function HubWorldGenerator:IsChunkEmpty(chunkX: number, chunkZ: number): boolean
 
 	local function distSqToRect(px, pz)
 		local dx = 0
-		if px < minX then dx = minX - px elseif px > maxX then dx = px - maxX end
+		if px < minX then
+			dx = minX - px elseif px > maxX then dx = px - maxX
+		end
 		local dz = 0
-		if pz < minZ then dz = minZ - pz elseif pz > maxZ then dz = pz - maxZ end
+		if pz < minZ then
+			dz = minZ - pz elseif pz > maxZ then dz = pz - maxZ
+		end
 		return dx * dx + dz * dz
 	end
 

@@ -71,7 +71,7 @@ function MobileCameraController:Initialize()
 		self.cameraRotation = Vector2.new(0, 0)
 		self.targetRotation = Vector2.new(0, 0)
 	end)
-	
+
 	-- Setup existing character if present
 	if self.player.Character then
 		self.character = self.player.Character
@@ -115,18 +115,18 @@ function MobileCameraController:SetupInputHandling()
 		end
 	end)
 
-	self.connections.inputChanged = self.inputProvider.InputChanged:Connect(function(input, gameProcessed)
+	self.connections.inputChanged = self.inputProvider.InputChanged:Connect(function(input, _gameProcessed)
 		if input.UserInputType == Enum.UserInputType.Touch and self.active and input == self.touchInput then
 			self:OnTouchMove(input)
 		end
 
 		-- Gyroscope input
-		if self.gyroscopeEnabled and input.UserInputType == Enum.UserInputType.Gyroscope then
+		if self.gyroscopeEnabled and input.UserInputType == Enum.UserInputType.Gyro then
 			self:OnGyroscopeInput(input)
 		end
 	end)
 
-	self.connections.inputEnded = self.inputProvider.InputEnded:Connect(function(input, gameProcessed)
+	self.connections.inputEnded = self.inputProvider.InputEnded:Connect(function(input, _gameProcessed)
 		if input.UserInputType == Enum.UserInputType.Touch and input == self.touchInput then
 			self:OnTouchEnd(input)
 		end
@@ -223,7 +223,7 @@ end
 --[[
 	Handle touch end
 ]]
-function MobileCameraController:OnTouchEnd(input)
+function MobileCameraController:OnTouchEnd(_input)
 	if not self.active then return end
 
 	self.active = false
@@ -272,14 +272,14 @@ function MobileCameraController:UpdateCameraRotation(deltaTime)
 
 	-- Calculate camera CFrame
 	local cameraCFrame = self.camera.CFrame
-	local cameraPosition = cameraCFrame.Position
+	local _cameraPosition = cameraCFrame.Position
 
 	-- Apply rotation
 	-- Horizontal rotation (yaw)
-	local yawCFrame = CFrame.Angles(0, self.cameraRotation.X, 0)
+	local _yawCFrame = CFrame.Angles(0, self.cameraRotation.X, 0)
 
 	-- Vertical rotation (pitch)
-	local pitchCFrame = CFrame.Angles(self.cameraRotation.Y, 0, 0)
+	local _pitchCFrame = CFrame.Angles(self.cameraRotation.Y, 0, 0)
 
 	-- Combine rotations
 	-- Note: Roblox native camera handles positioning, we only influence rotation

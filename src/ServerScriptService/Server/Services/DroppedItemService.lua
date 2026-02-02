@@ -20,9 +20,8 @@ DroppedItemService.__index = DroppedItemService
 local BLOCK_SIZE = Constants.BLOCK_SIZE -- 3.5 studs
 local LIFETIME = 300 -- 5 minutes
 local MERGE_DISTANCE = BLOCK_SIZE -- Merge items within one block distance
-local PICKUP_DISTANCE = 2
-local PICKUP_COOLDOWN = 0 -- No cooldown on pickup
 local PICKUP_DELAY = 0.5 -- 0.5s pickup delay like Minecraft (10 ticks)
+-- Note: PICKUP_DISTANCE and PICKUP_COOLDOWN removed as they are handled client-side
 
 local nextItemId = 1
 -- Helper: determine if an itemId is a placeable block (numeric and not craftingMaterial)
@@ -316,9 +315,9 @@ function DroppedItemService:HandlePickupRequest(player, data)
 		self.playerPickupCooldowns[playerId] = {}
 	end
 
-    local lastPickup = self.playerPickupCooldowns[playerId][itemId]
+    local _lastPickup = self.playerPickupCooldowns[playerId][itemId]
     local now = os.clock()
-    -- No cooldown: always allow request
+    -- Note: Cooldown currently disabled, _lastPickup retained for potential future use
 
     -- Enforce pickup delay (server-authoritative)
     if now < (item.pickupAvailableAt or 0) then

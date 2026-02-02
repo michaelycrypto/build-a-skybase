@@ -6,7 +6,6 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Constants = require(ReplicatedStorage.Shared.VoxelWorld.Core.Constants)
-local BlockRegistry = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockRegistry)
 local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
 local ArmorConfig = require(ReplicatedStorage.Configs.ArmorConfig)
 local SpawnEggConfig = require(ReplicatedStorage.Configs.SpawnEggConfig)
@@ -312,7 +311,7 @@ function InventoryValidator:ValidateInventoryTransaction(oldInventory, oldHotbar
 
 	-- Count new inventory
 	if newInventory then
-		for i, stackData in pairs(newInventory) do
+		for _, stackData in pairs(newInventory) do
             local itemId = tonumber(stackData.itemId or stackData.id) or 0
             if itemId > 0 then
                 newTotals[itemId] = (newTotals[itemId] or 0) + (tonumber(stackData.count) or 0)
@@ -322,7 +321,7 @@ function InventoryValidator:ValidateInventoryTransaction(oldInventory, oldHotbar
 
 	-- Count new hotbar
 	if newHotbar then
-		for i, stackData in pairs(newHotbar) do
+		for _, stackData in pairs(newHotbar) do
             local itemId = tonumber(stackData.itemId or stackData.id) or 0
             if itemId > 0 then
                 newTotals[itemId] = (newTotals[itemId] or 0) + (tonumber(stackData.count) or 0)
@@ -466,9 +465,18 @@ function InventoryValidator:SanitizeInventoryData(slots, expectedSize)
             local count = tonumber(stackData.count) or 0
 
 			-- Clamp to valid ranges
-			if itemId < 0 then itemId = 0; wasModified = true end
-			if count < 0 then count = 0; wasModified = true end
-			if count > MAX_STACK_SIZE then count = MAX_STACK_SIZE; wasModified = true end
+			if itemId < 0 then
+				itemId = 0
+				wasModified = true
+			end
+			if count < 0 then
+				count = 0
+				wasModified = true
+			end
+			if count > MAX_STACK_SIZE then
+				count = MAX_STACK_SIZE
+				wasModified = true
+			end
 
 			-- Validate item ID exists (allow tools, armor, and spawn eggs)
             local isTool = ToolConfig.IsTool(itemId)

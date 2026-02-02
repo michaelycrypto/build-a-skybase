@@ -9,7 +9,7 @@
 
 local BaseService = require(script.Parent.BaseService)
 local Logger = require(game.ReplicatedStorage.Shared.Logger)
-local Config = require(game.ReplicatedStorage.Shared.Config)
+local _Config = require(game.ReplicatedStorage.Shared.Config)
 local GameConfig = require(game.ReplicatedStorage.Configs.GameConfig)
 
 local ShopService = setmetatable({}, BaseService)
@@ -316,7 +316,7 @@ end
 	Update item in shop
 --]]
 function ShopService:UpdateItem(itemId, updates)
-	for i, item in ipairs(self._shopData.items) do
+	for _, item in ipairs(self._shopData.items) do
 		if item.id == itemId then
 			for key, value in pairs(updates) do
 				item[key] = value
@@ -414,7 +414,7 @@ end
 --[[
 	Get initial stock amount based on item rarity (DEPRECATED - now using restock system)
 --]]
-function ShopService:GetInitialStockForRarity(rarity)
+function ShopService:GetInitialStockForRarity(_rarity)
 	-- This function is deprecated - initial stock is now determined by the restock system
 	self._logger.Warn("GetInitialStockForRarity is deprecated - using restock system instead")
 	return 0

@@ -7,12 +7,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local GameConfig = require(ReplicatedStorage.Configs.GameConfig)
 
 -- Create Config module that provides both naming conventions
-local Config = {}
-
--- Direct access to GameConfig
-for key, value in pairs(GameConfig) do
-	Config[key] = value
-end
+local Config = table.clone(GameConfig)
 
 -- Provide UPPER_CASE aliases for compatibility
 Config.SPAWNER_SYSTEM = GameConfig.SpawnerSystem

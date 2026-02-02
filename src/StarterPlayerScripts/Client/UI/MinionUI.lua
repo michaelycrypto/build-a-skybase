@@ -112,7 +112,7 @@ function MinionUI:CreateTooltip()
 	-- Create tooltip (hidden by default)
 	self.tooltip = Instance.new("Frame")
 	self.tooltip.Name = "Tooltip"
-	self.tooltip.Size = UDim2.new(0, 150, 0, 50)
+	self.tooltip.Size = UDim2.fromOffset(150, 50)
 	self.tooltip.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 	self.tooltip.BorderSizePixel = 0
 	self.tooltip.Visible = false
@@ -131,7 +131,7 @@ function MinionUI:CreateTooltip()
 	local tooltipText = Instance.new("TextLabel")
 	tooltipText.Name = "Text"
 	tooltipText.Size = UDim2.new(1, -8, 1, -8)
-	tooltipText.Position = UDim2.new(0, 4, 0, 4)
+	tooltipText.Position = UDim2.fromOffset(4, 4)
 	tooltipText.BackgroundTransparency = 1
 	tooltipText.Font = BOLD_FONT
 	tooltipText.TextSize = 12
@@ -142,7 +142,7 @@ function MinionUI:CreateTooltip()
 	tooltipText.Parent = self.tooltip
 end
 
-function MinionUI:ShowTooltip(slot, itemId, count)
+function MinionUI:ShowTooltip(_slot, itemId, count)
 	if not self.tooltip then return end
 
 	local block = BlockRegistry:GetBlock(itemId)
@@ -153,7 +153,7 @@ function MinionUI:ShowTooltip(slot, itemId, count)
 
 	-- Position near mouse
 	local mousePos = InputService:GetMouseLocation()
-	self.tooltip.Position = UDim2.new(0, mousePos.X + 15, 0, mousePos.Y + 15)
+	self.tooltip.Position = UDim2.fromOffset(mousePos.X + 15, mousePos.Y + 15)
 	self.tooltip.Visible = true
 end
 
@@ -167,8 +167,8 @@ function MinionUI:CreateHoverItemLabel()
 	-- Create a label in the top left of the screen to display hovered item name
 	local label = Instance.new("TextLabel")
 	label.Name = "HoverItemLabel"
-	label.Size = UDim2.new(0, 400, 0, 40)
-	label.Position = UDim2.new(0, 20, 0, 20)
+	label.Size = UDim2.fromOffset(400, 40)
+	label.Position = UDim2.fromOffset(20, 20)
 	label.AnchorPoint = Vector2.new(0, 0)
 	label.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 	label.BackgroundTransparency = 0.3
@@ -321,7 +321,7 @@ function MinionUI:CreatePanel()
 	-- Background overlay
 	local overlay = Instance.new("Frame")
 	overlay.Name = "Overlay"
-	overlay.Size = UDim2.new(1, 0, 1, 0)
+	overlay.Size = UDim2.fromScale(1, 1)
 	overlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 	overlay.BackgroundTransparency = 0.5
 	overlay.BorderSizePixel = 0
@@ -331,8 +331,8 @@ function MinionUI:CreatePanel()
 	-- Main panel
 	self.panel = Instance.new("Frame")
 	self.panel.Name = "MinionPanel"
-	self.panel.Size = UDim2.new(0, totalWidth, 0, totalHeight)
-	self.panel.Position = UDim2.new(0.5, 0, 0.5, 0)
+	self.panel.Size = UDim2.fromOffset(totalWidth, totalHeight)
+	self.panel.Position = UDim2.fromScale(0.5, 0.5)
 	self.panel.AnchorPoint = Vector2.new(0.5, 0.5)
 	self.panel.BackgroundColor3 = CONFIG.BG_COLOR
 	self.panel.BorderSizePixel = 0
@@ -362,7 +362,7 @@ function MinionUI:CreatePanel()
 	local titleContainer = Instance.new("Frame")
 	titleContainer.Name = "TitleContainer"
 	titleContainer.Size = UDim2.new(1, -64 - 16, 1, 0)
-	titleContainer.Position = UDim2.new(0, 0, -0.5, 0)
+	titleContainer.Position = UDim2.fromScale(0, -0.5)
 	titleContainer.BackgroundTransparency = 1
 	titleContainer.Parent = headerFrame
 
@@ -381,7 +381,7 @@ function MinionUI:CreatePanel()
 	-- Title icon (pickaxe emoji as fallback)
 	local titleIcon = Instance.new("TextLabel")
 	titleIcon.Name = "TitleIcon"
-	titleIcon.Size = UDim2.new(0, 36, 0, 36)
+	titleIcon.Size = UDim2.fromOffset(36, 36)
 	titleIcon.BackgroundTransparency = 1
 	titleIcon.Text = "⛏️"
 	titleIcon.TextSize = 28
@@ -409,7 +409,7 @@ function MinionUI:CreatePanel()
 
 	-- Close button
 	local closeIcon = IconManager:CreateIcon(headerFrame, "UI", "X", {
-		size = UDim2.new(0, 40, 0, 40),
+		size = UDim2.fromOffset(40, 40),
 		position = UDim2.new(1, 2, 0, -2),
 		anchorPoint = Vector2.new(0.5, 0.5)
 	})
@@ -444,14 +444,14 @@ function MinionUI:CreatePanel()
 	local infoFrame = Instance.new("Frame")
 	infoFrame.Name = "InfoSection"
 	infoFrame.Size = UDim2.new(1, -CONFIG.PADDING * 2, 0, 40)
-	infoFrame.Position = UDim2.new(0, CONFIG.PADDING, 0, 30)
+	infoFrame.Position = UDim2.fromOffset(CONFIG.PADDING, 30)
 	infoFrame.BackgroundTransparency = 1
 	infoFrame.Parent = self.panel
 
 	self.levelLabel = Instance.new("TextLabel")
 	self.levelLabel.Name = "LevelLabel"
-	self.levelLabel.Size = UDim2.new(0.5, 0, 1, 0)
-	self.levelLabel.Position = UDim2.new(0, 0, 0, 0)
+	self.levelLabel.Size = UDim2.fromScale(0.5, 1)
+	self.levelLabel.Position = UDim2.fromScale(0, 0)
 	self.levelLabel.BackgroundTransparency = 1
 	self.levelLabel.Text = "Level: I"
 	self.levelLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -462,8 +462,8 @@ function MinionUI:CreatePanel()
 
 	self.intervalLabel = Instance.new("TextLabel")
 	self.intervalLabel.Name = "IntervalLabel"
-	self.intervalLabel.Size = UDim2.new(0.5, 0, 1, 0)
-	self.intervalLabel.Position = UDim2.new(0.5, 0, 0, 0)
+	self.intervalLabel.Size = UDim2.fromScale(0.5, 1)
+	self.intervalLabel.Position = UDim2.fromScale(0.5, 0)
 	self.intervalLabel.BackgroundTransparency = 1
 	self.intervalLabel.Text = "Action: 15s"
 	self.intervalLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
@@ -485,8 +485,8 @@ function MinionUI:CreatePanel()
 	-- Upgrade button
 	self.upgradeBtn = Instance.new("TextButton")
 	self.upgradeBtn.Name = "UpgradeButton"
-	self.upgradeBtn.Size = UDim2.new(0, CONFIG.RIGHT_PANEL_WIDTH, 0, CONFIG.BUTTON_HEIGHT)
-	self.upgradeBtn.Position = UDim2.new(0, rightPanelX, 0, buttonsYStart)
+	self.upgradeBtn.Size = UDim2.fromOffset(CONFIG.RIGHT_PANEL_WIDTH, CONFIG.BUTTON_HEIGHT)
+	self.upgradeBtn.Position = UDim2.fromOffset(rightPanelX, buttonsYStart)
 	self.upgradeBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
 	self.upgradeBtn.BorderSizePixel = 0
 	self.upgradeBtn.Text = "Upgrade to II"
@@ -522,8 +522,8 @@ function MinionUI:CreatePanel()
 	-- Upgrade cost label (below button)
 	self.upgradeCostLabel = Instance.new("TextLabel")
 	self.upgradeCostLabel.Name = "UpgradeCostLabel"
-	self.upgradeCostLabel.Size = UDim2.new(0, CONFIG.RIGHT_PANEL_WIDTH, 0, 20)
-	self.upgradeCostLabel.Position = UDim2.new(0, rightPanelX, 0, buttonsYStart + CONFIG.BUTTON_HEIGHT + 4)
+	self.upgradeCostLabel.Size = UDim2.fromOffset(CONFIG.RIGHT_PANEL_WIDTH, 20)
+	self.upgradeCostLabel.Position = UDim2.fromOffset(rightPanelX, buttonsYStart + CONFIG.BUTTON_HEIGHT + 4)
 	self.upgradeCostLabel.BackgroundTransparency = 1
 	self.upgradeCostLabel.Text = "Cost: 32 Cobblestone"
 	self.upgradeCostLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
@@ -535,8 +535,8 @@ function MinionUI:CreatePanel()
 	-- Collect All button
 	self.collectBtn = Instance.new("TextButton")
 	self.collectBtn.Name = "CollectButton"
-	self.collectBtn.Size = UDim2.new(0, CONFIG.RIGHT_PANEL_WIDTH, 0, CONFIG.BUTTON_HEIGHT)
-	self.collectBtn.Position = UDim2.new(0, rightPanelX, 0, buttonsYStart + CONFIG.BUTTON_HEIGHT + 24 + CONFIG.BUTTON_SPACING)
+	self.collectBtn.Size = UDim2.fromOffset(CONFIG.RIGHT_PANEL_WIDTH, CONFIG.BUTTON_HEIGHT)
+	self.collectBtn.Position = UDim2.fromOffset(rightPanelX, buttonsYStart + CONFIG.BUTTON_HEIGHT + 24 + CONFIG.BUTTON_SPACING)
 	self.collectBtn.BackgroundColor3 = Color3.fromRGB(50, 100, 200)
 	self.collectBtn.BorderSizePixel = 0
 	self.collectBtn.Text = "Collect All"
@@ -580,8 +580,8 @@ function MinionUI:CreatePanel()
 	-- Pickup Minion button
 	self.pickupBtn = Instance.new("TextButton")
 	self.pickupBtn.Name = "PickupButton"
-	self.pickupBtn.Size = UDim2.new(0, CONFIG.RIGHT_PANEL_WIDTH, 0, CONFIG.BUTTON_HEIGHT)
-	self.pickupBtn.Position = UDim2.new(0, rightPanelX, 0, buttonsYStart + (CONFIG.BUTTON_HEIGHT + 24 + CONFIG.BUTTON_SPACING) + CONFIG.BUTTON_HEIGHT + CONFIG.BUTTON_SPACING)
+	self.pickupBtn.Size = UDim2.fromOffset(CONFIG.RIGHT_PANEL_WIDTH, CONFIG.BUTTON_HEIGHT)
+	self.pickupBtn.Position = UDim2.fromOffset(rightPanelX, buttonsYStart + (CONFIG.BUTTON_HEIGHT + 24 + CONFIG.BUTTON_SPACING) + CONFIG.BUTTON_HEIGHT + CONFIG.BUTTON_SPACING)
 	self.pickupBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
 	self.pickupBtn.BorderSizePixel = 0
 	self.pickupBtn.Text = "Pickup Golem"
@@ -619,8 +619,8 @@ function MinionUI:CreateSlotUI(index, yStart)
 	-- Slot frame (TextButton for hover/click)
 	local slot = Instance.new("TextButton")
 	slot.Name = "Slot" .. index
-	slot.Size = UDim2.new(0, CONFIG.SLOT_SIZE, 0, CONFIG.SLOT_SIZE)
-	slot.Position = UDim2.new(0, xPos, 0, yPos)
+	slot.Size = UDim2.fromOffset(CONFIG.SLOT_SIZE, CONFIG.SLOT_SIZE)
+	slot.Position = UDim2.fromOffset(xPos, yPos)
 	slot.BackgroundColor3 = CONFIG.SLOT_COLOR
 	slot.BorderSizePixel = 0
 	slot.Text = ""
@@ -642,7 +642,7 @@ function MinionUI:CreateSlotUI(index, yStart)
 	-- Icon container
 	local iconContainer = Instance.new("Frame")
 	iconContainer.Name = "IconContainer"
-	iconContainer.Size = UDim2.new(1, 0, 1, 0)
+	iconContainer.Size = UDim2.fromScale(1, 1)
 	iconContainer.BackgroundTransparency = 1
 	iconContainer.ZIndex = 2
 	iconContainer.Parent = slot
@@ -650,7 +650,7 @@ function MinionUI:CreateSlotUI(index, yStart)
 	-- Count label
 	local countLabel = Instance.new("TextLabel")
 	countLabel.Name = "CountLabel"
-	countLabel.Size = UDim2.new(0, 40, 0, 20)
+	countLabel.Size = UDim2.fromOffset(40, 20)
 	countLabel.Position = UDim2.new(1, -4, 1, -4)
 	countLabel.AnchorPoint = Vector2.new(1, 1)
 	countLabel.BackgroundTransparency = 1
@@ -666,7 +666,7 @@ function MinionUI:CreateSlotUI(index, yStart)
 	-- Lock overlay (for locked slots)
 	local lockOverlay = Instance.new("Frame")
 	lockOverlay.Name = "LockOverlay"
-	lockOverlay.Size = UDim2.new(1, 0, 1, 0)
+	lockOverlay.Size = UDim2.fromScale(1, 1)
 	lockOverlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 	lockOverlay.BackgroundTransparency = 0.7
 	lockOverlay.BorderSizePixel = 0
@@ -681,7 +681,7 @@ function MinionUI:CreateSlotUI(index, yStart)
 	-- Lock icon
 	local lockIcon = Instance.new("TextLabel")
 	lockIcon.Name = "LockIcon"
-	lockIcon.Size = UDim2.new(1, 0, 1, 0)
+	lockIcon.Size = UDim2.fromScale(1, 1)
 	lockIcon.BackgroundTransparency = 1
 	lockIcon.Text = "🔒"
 	lockIcon.TextSize = 24
@@ -725,9 +725,9 @@ function MinionUI:CreateSlotUI(index, yStart)
 
 	-- Click handlers (for future: quick-collect on click)
 	slot.MouseButton1Click:Connect(function()
-		if index <= self.slotsUnlocked and not self.slots[index]:IsEmpty() then
-			-- Could implement quick-collect single slot here
-		end
+		-- if index <= self.slotsUnlocked and not self.slots[index]:IsEmpty() then
+		-- 	-- Could implement quick-collect single slot here
+		-- end
 	end)
 end
 
@@ -774,7 +774,7 @@ function MinionUI:UpdateSlotDisplay(index)
 				local image = Instance.new("ImageLabel")
 				image.Name = "ToolImage"
 				image.Size = UDim2.new(1, -8, 1, -8)
-				image.Position = UDim2.new(0.5, 0, 0.5, 0)
+				image.Position = UDim2.fromScale(0.5, 0.5)
 				image.AnchorPoint = Vector2.new(0.5, 0.5)
 				image.BackgroundTransparency = 1
 				image.Image = info and info.image or ""
@@ -785,7 +785,7 @@ function MinionUI:UpdateSlotDisplay(index)
 				local image = Instance.new("ImageLabel")
 				image.Name = "ArmorImage"
 				image.Size = UDim2.new(1, -8, 1, -8)
-				image.Position = UDim2.new(0.5, 0, 0.5, 0)
+				image.Position = UDim2.fromScale(0.5, 0.5)
 				image.AnchorPoint = Vector2.new(0.5, 0.5)
 				image.BackgroundTransparency = 1
 				image.Image = info and info.image or ""
@@ -800,7 +800,7 @@ function MinionUI:UpdateSlotDisplay(index)
 					local overlay = Instance.new("ImageLabel")
 					overlay.Name = "ArmorOverlay"
 					overlay.Size = UDim2.new(1, -8, 1, -8)
-					overlay.Position = UDim2.new(0.5, 0, 0.5, 0)
+					overlay.Position = UDim2.fromScale(0.5, 0.5)
 					overlay.AnchorPoint = Vector2.new(0.5, 0.5)
 					overlay.BackgroundTransparency = 1
 					overlay.Image = info.imageOverlay
@@ -810,14 +810,14 @@ function MinionUI:UpdateSlotDisplay(index)
 				end
 			elseif SpawnEggConfig.IsSpawnEgg(itemId) then
 				local icon = SpawnEggIcon.Create(itemId, UDim2.new(1, -8, 1, -8))
-				icon.Position = UDim2.new(0.5, 0, 0.5, 0)
+				icon.Position = UDim2.fromScale(0.5, 0.5)
 				icon.AnchorPoint = Vector2.new(0.5, 0.5)
 				icon.Parent = slotFrame.iconContainer
 			else
 				BlockViewportCreator.CreateBlockViewport(
 					slotFrame.iconContainer,
 					itemId,
-					UDim2.new(1, 0, 1, 0)
+					UDim2.fromScale(1, 1)
 				)
 			end
 

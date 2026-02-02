@@ -30,10 +30,6 @@ local function studs(pixels)
 	return (pixels / 16) * BLOCK_SIZE
 end
 
-local function pixels(px)
-	return studs(px)
-end
-
 local function blocks(blocksValue)
 	return blocksValue * BLOCK_SIZE
 end

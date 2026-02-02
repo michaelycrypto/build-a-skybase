@@ -162,7 +162,9 @@ function BlockAPI:GetTargetedBlockFace(origin: Vector3, direction: Vector3, maxD
             end
             local t1 = (minV - o) / d
             local t2 = (maxV - o) / d
-            if t1 > t2 then t1, t2 = t2, t1 end
+            if t1 > t2 then
+            	t1, t2 = t2, t1
+            end
             return t1, t2
         end
 
@@ -244,7 +246,7 @@ function BlockAPI:GetTargetedBlockFace(origin: Vector3, direction: Vector3, maxD
         addBox(baseX + 0, baseX + bs, slabY0, slabY1, baseZ + 0, baseZ + bs)
 
         -- Top step: build based on rotation and shape
-        local ROT_N, ROT_E, ROT_S, ROT_W = Constants.BlockMetadata.ROTATION_NORTH, Constants.BlockMetadata.ROTATION_EAST, Constants.BlockMetadata.ROTATION_SOUTH, Constants.BlockMetadata.ROTATION_WEST
+        local ROT_N, ROT_E, ROT_S, _ROT_W = Constants.BlockMetadata.ROTATION_NORTH, Constants.BlockMetadata.ROTATION_EAST, Constants.BlockMetadata.ROTATION_SOUTH, Constants.BlockMetadata.ROTATION_WEST
         local SH = Constants.BlockMetadata
 
         -- Minecraft coordinate system: North=-Z (zL), South=+Z (zH), East=+X (xH), West=-X (xL)
@@ -297,9 +299,7 @@ function BlockAPI:GetTargetedBlockFace(origin: Vector3, direction: Vector3, maxD
             end
         end
 
-        if shape == SH.STAIR_SHAPE_STRAIGHT then
-            addStraightTop()
-        elseif shape == SH.STAIR_SHAPE_OUTER_LEFT then
+        if shape == SH.STAIR_SHAPE_OUTER_LEFT then
             addQuarterTop(false)
         elseif shape == SH.STAIR_SHAPE_OUTER_RIGHT then
             addQuarterTop(true)
@@ -310,7 +310,7 @@ function BlockAPI:GetTargetedBlockFace(origin: Vector3, direction: Vector3, maxD
             addStraightTop()
             addQuarterTop(true)
         else
-            -- Unknown shape → fallback to straight
+            -- Straight or unknown shape
             addStraightTop()
         end
 
@@ -325,7 +325,9 @@ function BlockAPI:GetTargetedBlockFace(origin: Vector3, direction: Vector3, maxD
             end
             local t1 = (minV - o) / d
             local t2 = (maxV - o) / d
-            if t1 > t2 then t1, t2 = t2, t1 end
+            if t1 > t2 then
+            	t1, t2 = t2, t1
+            end
             return t1, t2
         end
 
@@ -348,7 +350,9 @@ function BlockAPI:GetTargetedBlockFace(origin: Vector3, direction: Vector3, maxD
                 else
                     face = Vector3.new(0, 0, rayDirection.Z > 0 and -1 or 1)
                 end
-                if tEnter < 0 then tEnter = 0 end
+                if tEnter < 0 then
+                	tEnter = 0
+                end
                 if tEnter < bestT then
                     bestT = tEnter
                     bestFace = face
@@ -397,7 +401,7 @@ function BlockAPI:GetTargetedBlockFace(origin: Vector3, direction: Vector3, maxD
     -- Helper function: test ray against cross-shaped block with height-based hitbox
     -- Crops have reduced hitbox heights based on growth stage
     -- Returns: (intersects:boolean, tEnter:number|nil, faceNormal:Vector3|nil)
-    local function testCrossShapeIntersection(blockX, blockY, blockZ, blockId, metadata)
+    local function testCrossShapeIntersection(blockX, blockY, blockZ, blockId, _metadata)
         local def = BlockRegistry:GetBlock(blockId)
         if not (def and def.crossShape) then
             return true, nil, nil -- not cross-shaped; treat as full block
@@ -428,7 +432,9 @@ function BlockAPI:GetTargetedBlockFace(origin: Vector3, direction: Vector3, maxD
             end
             local t1 = (minV - o) / d
             local t2 = (maxV - o) / d
-            if t1 > t2 then t1, t2 = t2, t1 end
+            if t1 > t2 then
+            	t1, t2 = t2, t1
+            end
             return t1, t2
         end
 
@@ -463,7 +469,7 @@ function BlockAPI:GetTargetedBlockFace(origin: Vector3, direction: Vector3, maxD
 
     -- Helper function: test ray against fence composite AABBs (post + rails based on neighbors)
     -- Returns: (intersects:boolean, tEnter:number|nil, faceNormal:Vector3|nil)
-    local function testFenceIntersection(blockX, blockY, blockZ, blockId, metadata)
+    local function testFenceIntersection(blockX, blockY, blockZ, blockId, _metadata)
         local def = BlockRegistry:GetBlock(blockId)
         if not (def and def.fenceShape) then
             return true, nil, nil -- not a fence; treat as full block by caller
@@ -477,10 +483,16 @@ function BlockAPI:GetTargetedBlockFace(origin: Vector3, direction: Vector3, maxD
         -- Sample neighbors to determine which rails should exist
         local function sampleNeighbor(dx, dz)
             local nid = self:GetBlock(blockX + dx, blockY, blockZ + dz)
-            if not nid or nid == Constants.BlockType.AIR then return "none" end
+            if not nid or nid == Constants.BlockType.AIR then
+            	return "none"
+            end
             local ndef = BlockRegistry:GetBlock(nid)
-            if not ndef or ndef.name == "Unknown" then return "none" end
-            if ndef.fenceShape then return "fence" end
+            if not ndef or ndef.name == "Unknown" then
+            	return "none"
+            end
+            if ndef.fenceShape then
+            	return "fence"
+            end
             -- Connect to full solid blocks (excluding special shapes and interactables)
             if ndef.solid and not ndef.crossShape and not ndef.slabShape and not ndef.stairShape and not ndef.fenceShape then
                 if nid == Constants.BlockType.CHEST or ndef.interactable == true then
@@ -522,59 +534,39 @@ function BlockAPI:GetTargetedBlockFace(origin: Vector3, direction: Vector3, maxD
 
         -- Helper to add rails in a direction
         local function addRails(dx, dz, kind)
-            if kind == "none" then return end
+            if kind == "none" then
+            	return
+            end
 
-            local length, railMinX, railMaxX, railMinZ, railMaxZ
+            local _length, railMinX, railMaxX, railMinZ, railMaxZ
 
             if dz ~= 0 then
                 -- North/South rails (extend along Z)
                 railMinX = baseX + bs/2 - railHalf
                 railMaxX = baseX + bs/2 + railHalf
-                if kind == "full" then
-                    -- Half-rail to solid block
-                    if dz < 0 then
-                        -- North: extend from center to block edge
-                        railMinZ = baseZ
-                        railMaxZ = baseZ + bs/2
-                    else
-                        -- South: extend from center to block edge
-                        railMinZ = baseZ + bs/2
-                        railMaxZ = baseZ + bs
-                    end
+
+                if dz < 0 then
+                    -- North: extend from center to block edge
+                    railMinZ = baseZ
+                    railMaxZ = baseZ + bs/2
                 else
-                    -- Full rail to neighboring fence
-                    if dz < 0 then
-                        railMinZ = baseZ
-                        railMaxZ = baseZ + bs/2
-                    else
-                        railMinZ = baseZ + bs/2
-                        railMaxZ = baseZ + bs
-                    end
+                    -- South: extend from center to block edge
+                    railMinZ = baseZ + bs/2
+                    railMaxZ = baseZ + bs
                 end
             else
                 -- East/West rails (extend along X)
                 railMinZ = baseZ + bs/2 - railHalf
                 railMaxZ = baseZ + bs/2 + railHalf
-                if kind == "full" then
-                    -- Half-rail to solid block
-                    if dx < 0 then
-                        -- West: extend from center to block edge
-                        railMinX = baseX
-                        railMaxX = baseX + bs/2
-                    else
-                        -- East: extend from center to block edge
-                        railMinX = baseX + bs/2
-                        railMaxX = baseX + bs
-                    end
+
+                if dx < 0 then
+                    -- West: extend from center to block edge
+                    railMinX = baseX
+                    railMaxX = baseX + bs/2
                 else
-                    -- Full rail to neighboring fence
-                    if dx < 0 then
-                        railMinX = baseX
-                        railMaxX = baseX + bs/2
-                    else
-                        railMinX = baseX + bs/2
-                        railMaxX = baseX + bs
-                    end
+                    -- East: extend from center to block edge
+                    railMinX = baseX + bs/2
+                    railMaxX = baseX + bs
                 end
             end
 
@@ -600,7 +592,9 @@ function BlockAPI:GetTargetedBlockFace(origin: Vector3, direction: Vector3, maxD
             end
             local t1 = (minV - o) / d
             local t2 = (maxV - o) / d
-            if t1 > t2 then t1, t2 = t2, t1 end
+            if t1 > t2 then
+            	t1, t2 = t2, t1
+            end
             return t1, t2
         end
 
@@ -623,7 +617,9 @@ function BlockAPI:GetTargetedBlockFace(origin: Vector3, direction: Vector3, maxD
                 else
                     face = Vector3.new(0, 0, rayDirection.Z > 0 and -1 or 1)
                 end
-                if tEnter < 0 then tEnter = 0 end
+                if tEnter < 0 then
+                	tEnter = 0
+                end
                 if tEnter < bestT then
                     bestT = tEnter
                     bestFace = face

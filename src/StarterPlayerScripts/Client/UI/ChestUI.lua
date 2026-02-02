@@ -7,7 +7,7 @@
 
 local Players = game:GetService("Players")
 local InputService = require(script.Parent.Parent.Input.InputService)
-local GuiService = game:GetService("GuiService")
+local _GuiService = game:GetService("GuiService")
 local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
@@ -18,7 +18,7 @@ local IconManager = require(script.Parent.Parent.Managers.IconManager)
 local ItemStack = require(ReplicatedStorage.Shared.VoxelWorld.Inventory.ItemStack)
 local BlockViewportCreator = require(ReplicatedStorage.Shared.VoxelWorld.Rendering.BlockViewportCreator)
 local BlockRegistry = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockRegistry)
-local TextureManager = require(ReplicatedStorage.Shared.VoxelWorld.Rendering.TextureManager)
+local _TextureManager = require(ReplicatedStorage.Shared.VoxelWorld.Rendering.TextureManager)
 local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
 local ArmorConfig = require(ReplicatedStorage.Configs.ArmorConfig)
 local SpawnEggConfig = require(ReplicatedStorage.Configs.SpawnEggConfig)
@@ -259,8 +259,8 @@ function ChestUI:CreateHoverItemLabel()
 	-- Create a label in the top left of the screen to display hovered item name
 	local label = Instance.new("TextLabel")
 	label.Name = "HoverItemLabel"
-	label.Size = UDim2.new(0, 400, 0, 40)
-	label.Position = UDim2.new(0, 20, 0, 20)
+	label.Size = UDim2.fromOffset(400, 40)
+	label.Position = UDim2.fromOffset(20, 20)
 	label.AnchorPoint = Vector2.new(0, 0)
 	label.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 	label.BackgroundTransparency = 0.3
@@ -316,7 +316,7 @@ end
 
 function ChestUI:CreatePanel()
 	-- Calculate dimensions based on slot size
-	local borderThickness = CHEST_CONFIG.SLOT_BORDER_THICKNESS
+	local _borderThickness = CHEST_CONFIG.SLOT_BORDER_THICKNESS
 	local slotWidth = CHEST_CONFIG.SLOT_SIZE * CHEST_CONFIG.COLUMNS +
 	                  CHEST_CONFIG.SLOT_SPACING * (CHEST_CONFIG.COLUMNS - 1)
 	local chestHeight = CHEST_CONFIG.SLOT_SIZE * CHEST_CONFIG.CHEST_ROWS +
@@ -337,7 +337,7 @@ function ChestUI:CreatePanel()
 	-- Container frame (centers everything, transparent - matching WorldsPanel)
 	local container = Instance.new("Frame")
 	container.Name = "ChestContainer"
-	container.Size = UDim2.new(0, panelWidth, 0, totalHeight)
+	container.Size = UDim2.fromOffset(panelWidth, totalHeight)
 	container.Position = UDim2.new(0.5, 0, 0.5, -CHEST_CONFIG.HEADER_HEIGHT)  -- Vertical offset matching WorldsPanel
 	container.AnchorPoint = Vector2.new(0.5, 0.5)
 	container.BackgroundTransparency = 1
@@ -351,16 +351,16 @@ function ChestUI:CreatePanel()
 	-- Body frame (transparent container for panel + shadow - matching WorldsPanel)
 	local bodyFrame = Instance.new("Frame")
 	bodyFrame.Name = "Body"
-	bodyFrame.Size = UDim2.new(0, panelWidth, 0, bodyHeight)
-	bodyFrame.Position = UDim2.new(0, 0, 0, CHEST_CONFIG.HEADER_HEIGHT)
+	bodyFrame.Size = UDim2.fromOffset(panelWidth, bodyHeight)
+	bodyFrame.Position = UDim2.fromOffset(0, CHEST_CONFIG.HEADER_HEIGHT)
 	bodyFrame.BackgroundTransparency = 1
 	bodyFrame.Parent = container
 
 	-- Main panel (with background color - matching WorldsPanel ContentPanel)
 	self.panel = Instance.new("Frame")
 	self.panel.Name = "ChestPanel"
-	self.panel.Size = UDim2.new(0, panelWidth, 0, bodyHeight)
-	self.panel.Position = UDim2.new(0, 0, 0, 0)
+	self.panel.Size = UDim2.fromOffset(panelWidth, bodyHeight)
+	self.panel.Position = UDim2.fromScale(0, 0)
 	self.panel.BackgroundColor3 = CHEST_CONFIG.PANEL_BG_COLOR
 	self.panel.BorderSizePixel = 0
 	self.panel.ZIndex = 1
@@ -374,9 +374,9 @@ function ChestUI:CreatePanel()
 	-- Shadow below panel (matching WorldsPanel)
 	local shadow = Instance.new("Frame")
 	shadow.Name = "Shadow"
-	shadow.Size = UDim2.new(0, panelWidth, 0, CHEST_CONFIG.SHADOW_HEIGHT)
+	shadow.Size = UDim2.fromOffset(panelWidth, CHEST_CONFIG.SHADOW_HEIGHT)
 	shadow.AnchorPoint = Vector2.new(0, 0.5)
-	shadow.Position = UDim2.new(0, 0, 0, bodyHeight)
+	shadow.Position = UDim2.fromOffset(0, bodyHeight)
 	shadow.BackgroundColor3 = CHEST_CONFIG.SHADOW_COLOR
 	shadow.BorderSizePixel = 0
 	shadow.ZIndex = 0
@@ -402,7 +402,7 @@ function ChestUI:CreatePanel()
 	local chestLabel = Instance.new("TextLabel")
 	chestLabel.Name = "ChestLabel"
 	chestLabel.Size = UDim2.new(1, -CHEST_CONFIG.PADDING * 2, 0, CHEST_CONFIG.LABEL_HEIGHT)
-	chestLabel.Position = UDim2.new(0, CHEST_CONFIG.PADDING, 0, yOffset)
+	chestLabel.Position = UDim2.fromOffset(CHEST_CONFIG.PADDING, yOffset)
 	chestLabel.BackgroundTransparency = 1
 	chestLabel.Font = BOLD_FONT
 	chestLabel.TextSize = 14
@@ -430,7 +430,7 @@ function ChestUI:CreatePanel()
 	local invLabel = Instance.new("TextLabel")
 	invLabel.Name = "InvLabel"
 	invLabel.Size = UDim2.new(1, -CHEST_CONFIG.PADDING * 2, 0, CHEST_CONFIG.LABEL_HEIGHT)
-	invLabel.Position = UDim2.new(0, CHEST_CONFIG.PADDING, 0, yOffset)
+	invLabel.Position = UDim2.fromOffset(CHEST_CONFIG.PADDING, yOffset)
 	invLabel.BackgroundTransparency = 1
 	invLabel.Font = BOLD_FONT
 	invLabel.TextSize = 14
@@ -458,7 +458,7 @@ function ChestUI:CreatePanel()
 	local hotbarLabel = Instance.new("TextLabel")
 	hotbarLabel.Name = "HotbarLabel"
 	hotbarLabel.Size = UDim2.new(1, -CHEST_CONFIG.PADDING * 2, 0, CHEST_CONFIG.LABEL_HEIGHT)
-	hotbarLabel.Position = UDim2.new(0, CHEST_CONFIG.PADDING, 0, yOffset)
+	hotbarLabel.Position = UDim2.fromOffset(CHEST_CONFIG.PADDING, yOffset)
 	hotbarLabel.BackgroundTransparency = 1
 	hotbarLabel.Font = BOLD_FONT
 	hotbarLabel.TextSize = 14
@@ -481,7 +481,7 @@ function ChestUI:CreateHeader(parent, panelWidth)
 	-- Header frame (transparent, floats above panel - matching WorldsPanel)
 	local headerFrame = Instance.new("Frame")
 	headerFrame.Name = "Header"
-	headerFrame.Size = UDim2.new(0, panelWidth, 0, CHEST_CONFIG.HEADER_HEIGHT)
+	headerFrame.Size = UDim2.fromOffset(panelWidth, CHEST_CONFIG.HEADER_HEIGHT)
 	headerFrame.BackgroundTransparency = 1
 	headerFrame.Parent = parent
 
@@ -501,8 +501,8 @@ function ChestUI:CreateHeader(parent, panelWidth)
 
 	-- Close button (top-right corner - matching WorldsPanel)
 	local closeIcon = IconManager:CreateIcon(headerFrame, "UI", "X", {
-		size = UDim2.new(0, 44, 0, 44),
-		position = UDim2.new(1, 0, 0, 0),
+		size = UDim2.fromOffset(44, 44),
+		position = UDim2.fromScale(1, 0),
 		anchorPoint = Vector2.new(1, 0)
 	})
 
@@ -533,8 +533,8 @@ end
 function ChestUI:CreateChestSlot(index, x, y)
 	local slot = Instance.new("TextButton")
 	slot.Name = "ChestSlot" .. index
-	slot.Size = UDim2.new(0, CHEST_CONFIG.SLOT_SIZE, 0, CHEST_CONFIG.SLOT_SIZE)
-	slot.Position = UDim2.new(0, x, 0, y)
+	slot.Size = UDim2.fromOffset(CHEST_CONFIG.SLOT_SIZE, CHEST_CONFIG.SLOT_SIZE)
+	slot.Position = UDim2.fromOffset(x, y)
 	slot.BackgroundColor3 = CHEST_CONFIG.SLOT_BG_COLOR
 	slot.BackgroundTransparency = CHEST_CONFIG.SLOT_BG_TRANSPARENCY
 	slot.BorderSizePixel = 0
@@ -549,8 +549,8 @@ function ChestUI:CreateChestSlot(index, x, y)
 	-- Background image (matching inventory slots)
 	local bgImage = Instance.new("ImageLabel")
 	bgImage.Name = "BackgroundImage"
-	bgImage.Size = UDim2.new(1, 0, 1, 0)
-	bgImage.Position = UDim2.new(0, 0, 0, 0)
+	bgImage.Size = UDim2.fromScale(1, 1)
+	bgImage.Position = UDim2.fromScale(0, 0)
 	bgImage.BackgroundTransparency = 1
 	bgImage.Image = CHEST_CONFIG.BACKGROUND_IMAGE
 	bgImage.ImageTransparency = CHEST_CONFIG.BACKGROUND_IMAGE_TRANSPARENCY
@@ -578,15 +578,15 @@ function ChestUI:CreateChestSlot(index, x, y)
 
 	local iconContainer = Instance.new("Frame")
 	iconContainer.Name = "IconContainer"
-	iconContainer.Size = UDim2.new(1, 0, 1, 0)
-	iconContainer.Position = UDim2.new(0, 0, 0, 0)
+	iconContainer.Size = UDim2.fromScale(1, 1)
+	iconContainer.Position = UDim2.fromScale(0, 0)
 	iconContainer.BackgroundTransparency = 1
 	iconContainer.ZIndex = 3
 	iconContainer.Parent = slot
 
 	local countLabel = Instance.new("TextLabel")
 	countLabel.Name = "CountLabel"
-	countLabel.Size = UDim2.new(0, 40, 0, 20)
+	countLabel.Size = UDim2.fromOffset(40, 20)
 	countLabel.Position = UDim2.new(1, -4, 1, -4)
 	countLabel.AnchorPoint = Vector2.new(1, 1)
 	countLabel.BackgroundTransparency = 1
@@ -639,8 +639,8 @@ end
 function ChestUI:CreateInventorySlot(index, x, y)
 	local slot = Instance.new("TextButton")
 	slot.Name = "InventorySlot" .. index
-	slot.Size = UDim2.new(0, CHEST_CONFIG.SLOT_SIZE, 0, CHEST_CONFIG.SLOT_SIZE)
-	slot.Position = UDim2.new(0, x, 0, y)
+	slot.Size = UDim2.fromOffset(CHEST_CONFIG.SLOT_SIZE, CHEST_CONFIG.SLOT_SIZE)
+	slot.Position = UDim2.fromOffset(x, y)
 	slot.BackgroundColor3 = CHEST_CONFIG.SLOT_BG_COLOR
 	slot.BackgroundTransparency = CHEST_CONFIG.SLOT_BG_TRANSPARENCY
 	slot.BorderSizePixel = 0
@@ -655,8 +655,8 @@ function ChestUI:CreateInventorySlot(index, x, y)
 	-- Background image (matching inventory slots)
 	local bgImage = Instance.new("ImageLabel")
 	bgImage.Name = "BackgroundImage"
-	bgImage.Size = UDim2.new(1, 0, 1, 0)
-	bgImage.Position = UDim2.new(0, 0, 0, 0)
+	bgImage.Size = UDim2.fromScale(1, 1)
+	bgImage.Position = UDim2.fromScale(0, 0)
 	bgImage.BackgroundTransparency = 1
 	bgImage.Image = CHEST_CONFIG.BACKGROUND_IMAGE
 	bgImage.ImageTransparency = CHEST_CONFIG.BACKGROUND_IMAGE_TRANSPARENCY
@@ -684,15 +684,15 @@ function ChestUI:CreateInventorySlot(index, x, y)
 
 	local iconContainer = Instance.new("Frame")
 	iconContainer.Name = "IconContainer"
-	iconContainer.Size = UDim2.new(1, 0, 1, 0)
-	iconContainer.Position = UDim2.new(0, 0, 0, 0)
+	iconContainer.Size = UDim2.fromScale(1, 1)
+	iconContainer.Position = UDim2.fromScale(0, 0)
 	iconContainer.BackgroundTransparency = 1
 	iconContainer.ZIndex = 3
 	iconContainer.Parent = slot
 
 	local countLabel = Instance.new("TextLabel")
 	countLabel.Name = "CountLabel"
-	countLabel.Size = UDim2.new(0, 40, 0, 20)
+	countLabel.Size = UDim2.fromOffset(40, 20)
 	countLabel.Position = UDim2.new(1, -4, 1, -4)
 	countLabel.AnchorPoint = Vector2.new(1, 1)
 	countLabel.BackgroundTransparency = 1
@@ -745,8 +745,8 @@ end
 function ChestUI:CreateHotbarSlot(index, x, y)
 	local slot = Instance.new("TextButton")
 	slot.Name = "HotbarSlot" .. index
-	slot.Size = UDim2.new(0, CHEST_CONFIG.SLOT_SIZE, 0, CHEST_CONFIG.SLOT_SIZE)
-	slot.Position = UDim2.new(0, x, 0, y)
+	slot.Size = UDim2.fromOffset(CHEST_CONFIG.SLOT_SIZE, CHEST_CONFIG.SLOT_SIZE)
+	slot.Position = UDim2.fromOffset(x, y)
 	slot.BackgroundColor3 = CHEST_CONFIG.SLOT_BG_COLOR
 	slot.BackgroundTransparency = CHEST_CONFIG.SLOT_BG_TRANSPARENCY
 	slot.BorderSizePixel = 0
@@ -761,8 +761,8 @@ function ChestUI:CreateHotbarSlot(index, x, y)
 	-- Background image (matching inventory slots)
 	local bgImage = Instance.new("ImageLabel")
 	bgImage.Name = "BackgroundImage"
-	bgImage.Size = UDim2.new(1, 0, 1, 0)
-	bgImage.Position = UDim2.new(0, 0, 0, 0)
+	bgImage.Size = UDim2.fromScale(1, 1)
+	bgImage.Position = UDim2.fromScale(0, 0)
 	bgImage.BackgroundTransparency = 1
 	bgImage.Image = CHEST_CONFIG.BACKGROUND_IMAGE
 	bgImage.ImageTransparency = CHEST_CONFIG.BACKGROUND_IMAGE_TRANSPARENCY
@@ -799,15 +799,15 @@ function ChestUI:CreateHotbarSlot(index, x, y)
 
 	local iconContainer = Instance.new("Frame")
 	iconContainer.Name = "IconContainer"
-	iconContainer.Size = UDim2.new(1, 0, 1, 0)
-	iconContainer.Position = UDim2.new(0, 0, 0, 0)
+	iconContainer.Size = UDim2.fromScale(1, 1)
+	iconContainer.Position = UDim2.fromScale(0, 0)
 	iconContainer.BackgroundTransparency = 1
 	iconContainer.ZIndex = 4
 	iconContainer.Parent = slot
 
 	local countLabel = Instance.new("TextLabel")
 	countLabel.Name = "CountLabel"
-	countLabel.Size = UDim2.new(0, 40, 0, 20)
+	countLabel.Size = UDim2.fromOffset(40, 20)
 	countLabel.Position = UDim2.new(1, -4, 1, -4)
 	countLabel.AnchorPoint = Vector2.new(1, 1)
 	countLabel.BackgroundTransparency = 1
@@ -823,8 +823,8 @@ function ChestUI:CreateHotbarSlot(index, x, y)
 	-- Number label in top-left corner
 	local numberLabel = Instance.new("TextLabel")
 	numberLabel.Name = "Number"
-	numberLabel.Size = UDim2.new(0, 20, 0, 20)
-	numberLabel.Position = UDim2.new(0, 4, 0, 4)
+	numberLabel.Size = UDim2.fromOffset(20, 20)
+	numberLabel.Position = UDim2.fromOffset(4, 4)
 	numberLabel.BackgroundTransparency = 1
 	numberLabel.Font = BOLD_FONT
 	numberLabel.TextSize = 12
@@ -882,7 +882,7 @@ end
 function ChestUI:CreateCursorItem()
 	self.cursorFrame = Instance.new("Frame")
 	self.cursorFrame.Name = "CursorItem"
-	self.cursorFrame.Size = UDim2.new(0, CHEST_CONFIG.SLOT_SIZE, 0, CHEST_CONFIG.SLOT_SIZE)
+	self.cursorFrame.Size = UDim2.fromOffset(CHEST_CONFIG.SLOT_SIZE, CHEST_CONFIG.SLOT_SIZE)
 	self.cursorFrame.AnchorPoint = Vector2.new(0.5, 0.5)  -- Center on cursor
 	self.cursorFrame.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 	self.cursorFrame.BackgroundTransparency = 0.7  -- Semi-transparent background, item stays fully visible
@@ -897,13 +897,13 @@ function ChestUI:CreateCursorItem()
 
 	local iconContainer = Instance.new("Frame")
 	iconContainer.Name = "IconContainer"
-	iconContainer.Size = UDim2.new(1, 0, 1, 0)
+	iconContainer.Size = UDim2.fromScale(1, 1)
 	iconContainer.BackgroundTransparency = 1
 	iconContainer.Parent = self.cursorFrame
 
 	local countLabel = Instance.new("TextLabel")
 	countLabel.Name = "CountLabel"
-	countLabel.Size = UDim2.new(0, 40, 0, 20)
+	countLabel.Size = UDim2.fromOffset(40, 20)
 	countLabel.Position = UDim2.new(1, -4, 1, -4)
 	countLabel.AnchorPoint = Vector2.new(1, 1)
 	countLabel.BackgroundTransparency = 1
@@ -949,7 +949,7 @@ function ChestUI:UpdateChestSlotDisplay(index)
 					local newImage = Instance.new("ImageLabel")
 					newImage.Name = "ToolImage"
 					newImage.Size = UDim2.new(1, -6, 1, -6)
-					newImage.Position = UDim2.new(0.5, 0, 0.5, 0)
+					newImage.Position = UDim2.fromScale(0.5, 0.5)
 					newImage.AnchorPoint = Vector2.new(0.5, 0.5)
 					newImage.BackgroundTransparency = 1
 					newImage.Image = info and info.image or ""
@@ -966,7 +966,7 @@ function ChestUI:UpdateChestSlotDisplay(index)
 				local newImage = Instance.new("ImageLabel")
 				newImage.Name = "ArmorImage"
 				newImage.Size = UDim2.new(1, -6, 1, -6)
-				newImage.Position = UDim2.new(0.5, 0, 0.5, 0)
+				newImage.Position = UDim2.fromScale(0.5, 0.5)
 				newImage.AnchorPoint = Vector2.new(0.5, 0.5)
 				newImage.BackgroundTransparency = 1
 				newImage.Image = info and info.image or ""
@@ -981,7 +981,7 @@ function ChestUI:UpdateChestSlotDisplay(index)
 					local overlay = Instance.new("ImageLabel")
 					overlay.Name = "ArmorOverlay"
 					overlay.Size = UDim2.new(1, -6, 1, -6)
-					overlay.Position = UDim2.new(0.5, 0, 0.5, 0)
+					overlay.Position = UDim2.fromScale(0.5, 0.5)
 					overlay.AnchorPoint = Vector2.new(0.5, 0.5)
 					overlay.BackgroundTransparency = 1
 					overlay.Image = info.imageOverlay
@@ -997,7 +997,7 @@ function ChestUI:UpdateChestSlotDisplay(index)
 					end
 				end
 				local icon = SpawnEggIcon.Create(itemId, UDim2.new(1, -6, 1, -6))
-				icon.Position = UDim2.new(0.5, 0, 0.5, 0)
+				icon.Position = UDim2.fromScale(0.5, 0.5)
 				icon.AnchorPoint = Vector2.new(0.5, 0.5)
 				icon.Parent = iconContainer
 			elseif BlockRegistry:IsBucket(itemId) or BlockRegistry:IsPlaceable(itemId) == false then
@@ -1013,7 +1013,7 @@ function ChestUI:UpdateChestSlotDisplay(index)
 				local image = Instance.new("ImageLabel")
 				image.Name = "ItemImage"
 				image.Size = UDim2.new(1, -6, 1, -6)
-				image.Position = UDim2.new(0.5, 0, 0.5, 0)
+				image.Position = UDim2.fromScale(0.5, 0.5)
 				image.AnchorPoint = Vector2.new(0.5, 0.5)
 				image.BackgroundTransparency = 1
 				image.Image = textureId
@@ -1034,7 +1034,7 @@ function ChestUI:UpdateChestSlotDisplay(index)
 							child:Destroy()
 						end
 					end
-					BlockViewportCreator.CreateBlockViewport(iconContainer, itemId, UDim2.new(1, 0, 1, 0))
+					BlockViewportCreator.CreateBlockViewport(iconContainer, itemId, UDim2.fromScale(1, 1))
 				else
 					-- Try to update existing viewport instead of rebuilding
 					local container = iconContainer:FindFirstChild("ViewportContainer")
@@ -1048,7 +1048,7 @@ function ChestUI:UpdateChestSlotDisplay(index)
 								child:Destroy()
 							end
 						end
-						BlockViewportCreator.CreateBlockViewport(iconContainer, itemId, UDim2.new(1, 0, 1, 0))
+						BlockViewportCreator.CreateBlockViewport(iconContainer, itemId, UDim2.fromScale(1, 1))
 					end
 				end
 			end
@@ -1100,7 +1100,7 @@ function ChestUI:UpdateInventorySlotDisplay(index)
 					local newImage = Instance.new("ImageLabel")
 					newImage.Name = "ToolImage"
 					newImage.Size = UDim2.new(1, -6, 1, -6)
-					newImage.Position = UDim2.new(0.5, 0, 0.5, 0)
+					newImage.Position = UDim2.fromScale(0.5, 0.5)
 					newImage.AnchorPoint = Vector2.new(0.5, 0.5)
 					newImage.BackgroundTransparency = 1
 					newImage.Image = info and info.image or ""
@@ -1117,7 +1117,7 @@ function ChestUI:UpdateInventorySlotDisplay(index)
 				local newImage = Instance.new("ImageLabel")
 				newImage.Name = "ArmorImage"
 				newImage.Size = UDim2.new(1, -6, 1, -6)
-				newImage.Position = UDim2.new(0.5, 0, 0.5, 0)
+				newImage.Position = UDim2.fromScale(0.5, 0.5)
 				newImage.AnchorPoint = Vector2.new(0.5, 0.5)
 				newImage.BackgroundTransparency = 1
 				newImage.Image = info and info.image or ""
@@ -1132,7 +1132,7 @@ function ChestUI:UpdateInventorySlotDisplay(index)
 					local overlay = Instance.new("ImageLabel")
 					overlay.Name = "ArmorOverlay"
 					overlay.Size = UDim2.new(1, -6, 1, -6)
-					overlay.Position = UDim2.new(0.5, 0, 0.5, 0)
+					overlay.Position = UDim2.fromScale(0.5, 0.5)
 					overlay.AnchorPoint = Vector2.new(0.5, 0.5)
 					overlay.BackgroundTransparency = 1
 					overlay.Image = info.imageOverlay
@@ -1148,7 +1148,7 @@ function ChestUI:UpdateInventorySlotDisplay(index)
 					end
 				end
 				local icon = SpawnEggIcon.Create(itemId, UDim2.new(1, -6, 1, -6))
-				icon.Position = UDim2.new(0.5, 0, 0.5, 0)
+				icon.Position = UDim2.fromScale(0.5, 0.5)
 				icon.AnchorPoint = Vector2.new(0.5, 0.5)
 				icon.Parent = iconContainer
 			elseif BlockRegistry:IsBucket(itemId) or BlockRegistry:IsPlaceable(itemId) == false then
@@ -1164,7 +1164,7 @@ function ChestUI:UpdateInventorySlotDisplay(index)
 				local image = Instance.new("ImageLabel")
 				image.Name = "ItemImage"
 				image.Size = UDim2.new(1, -6, 1, -6)
-				image.Position = UDim2.new(0.5, 0, 0.5, 0)
+				image.Position = UDim2.fromScale(0.5, 0.5)
 				image.AnchorPoint = Vector2.new(0.5, 0.5)
 				image.BackgroundTransparency = 1
 				image.Image = textureId
@@ -1185,7 +1185,7 @@ function ChestUI:UpdateInventorySlotDisplay(index)
 							child:Destroy()
 						end
 					end
-					BlockViewportCreator.CreateBlockViewport(iconContainer, itemId, UDim2.new(1, 0, 1, 0))
+					BlockViewportCreator.CreateBlockViewport(iconContainer, itemId, UDim2.fromScale(1, 1))
 				else
 					local container = iconContainer:FindFirstChild("ViewportContainer")
 					local viewport = iconContainer:FindFirstChild("BlockViewport")
@@ -1198,7 +1198,7 @@ function ChestUI:UpdateInventorySlotDisplay(index)
 								child:Destroy()
 							end
 						end
-						BlockViewportCreator.CreateBlockViewport(iconContainer, itemId, UDim2.new(1, 0, 1, 0))
+						BlockViewportCreator.CreateBlockViewport(iconContainer, itemId, UDim2.fromScale(1, 1))
 					end
 				end
 			end
@@ -1253,7 +1253,7 @@ function ChestUI:UpdateHotbarSlotDisplay(index)
 				local image = Instance.new("ImageLabel")
 				image.Name = "ToolImage"
 				image.Size = UDim2.new(1, -6, 1, -6)
-				image.Position = UDim2.new(0.5, 0, 0.5, 0)
+				image.Position = UDim2.fromScale(0.5, 0.5)
 				image.AnchorPoint = Vector2.new(0.5, 0.5)
 				image.BackgroundTransparency = 1
 				image.Image = info and info.image or ""
@@ -1264,7 +1264,7 @@ function ChestUI:UpdateHotbarSlotDisplay(index)
 				local image = Instance.new("ImageLabel")
 				image.Name = "ArmorImage"
 				image.Size = UDim2.new(1, -6, 1, -6)
-				image.Position = UDim2.new(0.5, 0, 0.5, 0)
+				image.Position = UDim2.fromScale(0.5, 0.5)
 				image.AnchorPoint = Vector2.new(0.5, 0.5)
 				image.BackgroundTransparency = 1
 				image.Image = info and info.image or ""
@@ -1279,7 +1279,7 @@ function ChestUI:UpdateHotbarSlotDisplay(index)
 					local overlay = Instance.new("ImageLabel")
 					overlay.Name = "ArmorOverlay"
 					overlay.Size = UDim2.new(1, -6, 1, -6)
-					overlay.Position = UDim2.new(0.5, 0, 0.5, 0)
+					overlay.Position = UDim2.fromScale(0.5, 0.5)
 					overlay.AnchorPoint = Vector2.new(0.5, 0.5)
 					overlay.BackgroundTransparency = 1
 					overlay.Image = info.imageOverlay
@@ -1295,14 +1295,14 @@ function ChestUI:UpdateHotbarSlotDisplay(index)
 				local image = Instance.new("ImageLabel")
 				image.Name = "ItemImage"
 				image.Size = UDim2.new(1, -6, 1, -6)
-				image.Position = UDim2.new(0.5, 0, 0.5, 0)
+				image.Position = UDim2.fromScale(0.5, 0.5)
 				image.AnchorPoint = Vector2.new(0.5, 0.5)
 				image.BackgroundTransparency = 1
 				image.Image = textureId
 				image.ScaleType = Enum.ScaleType.Fit
 				image.Parent = iconContainer
 			else
-				BlockViewportCreator.CreateBlockViewport(iconContainer, itemId, UDim2.new(1, 0, 1, 0))
+				BlockViewportCreator.CreateBlockViewport(iconContainer, itemId, UDim2.fromScale(1, 1))
 			end
 
 			-- Set new item ID AFTER creating visuals
@@ -1454,7 +1454,7 @@ function ChestUI:UpdateCursorDisplay()
 				local image = Instance.new("ImageLabel")
 				image.Name = "ToolImage"
 				image.Size = UDim2.new(1, -6, 1, -6)
-				image.Position = UDim2.new(0.5, 0, 0.5, 0)
+				image.Position = UDim2.fromScale(0.5, 0.5)
 				image.AnchorPoint = Vector2.new(0.5, 0.5)
 				image.BackgroundTransparency = 1
 				image.Image = info and info.image or ""
@@ -1466,7 +1466,7 @@ function ChestUI:UpdateCursorDisplay()
 				local image = Instance.new("ImageLabel")
 				image.Name = "ArmorImage"
 				image.Size = UDim2.new(1, -6, 1, -6)
-				image.Position = UDim2.new(0.5, 0, 0.5, 0)
+				image.Position = UDim2.fromScale(0.5, 0.5)
 				image.AnchorPoint = Vector2.new(0.5, 0.5)
 				image.BackgroundTransparency = 1
 				image.Image = info and info.image or ""
@@ -1482,7 +1482,7 @@ function ChestUI:UpdateCursorDisplay()
 					local overlay = Instance.new("ImageLabel")
 					overlay.Name = "ArmorOverlay"
 					overlay.Size = UDim2.new(1, -6, 1, -6)
-					overlay.Position = UDim2.new(0.5, 0, 0.5, 0)
+					overlay.Position = UDim2.fromScale(0.5, 0.5)
 					overlay.AnchorPoint = Vector2.new(0.5, 0.5)
 					overlay.BackgroundTransparency = 1
 					overlay.Image = info.imageOverlay
@@ -1498,7 +1498,7 @@ function ChestUI:UpdateCursorDisplay()
 				local image = Instance.new("ImageLabel")
 				image.Name = "ItemImage"
 				image.Size = UDim2.new(1, -6, 1, -6)
-				image.Position = UDim2.new(0.5, 0, 0.5, 0)
+				image.Position = UDim2.fromScale(0.5, 0.5)
 				image.AnchorPoint = Vector2.new(0.5, 0.5)
 				image.BackgroundTransparency = 1
 				image.Image = textureId
@@ -1506,7 +1506,7 @@ function ChestUI:UpdateCursorDisplay()
 				image.ZIndex = 1001
 				image.Parent = iconContainer
 			else
-				BlockViewportCreator.CreateBlockViewport(iconContainer, itemId, UDim2.new(1, 0, 1, 0))
+				BlockViewportCreator.CreateBlockViewport(iconContainer, itemId, UDim2.fromScale(1, 1))
 			end
 
 			-- Set new item ID AFTER creating visuals
@@ -1768,7 +1768,7 @@ end
 
 -- === LIFECYCLE ===
 
-function ChestUI:Open(chestPos, chestContents, playerInventory, hotbar)
+function ChestUI:Open(chestPos, chestContents, _playerInventory, hotbar)
 	if not self.gui then
 		warn("ChestUI:Open - self.gui is nil! ChestUI not properly initialized!")
 		return
@@ -1904,7 +1904,7 @@ function ChestUI:UpdateCursorPosition()
 
 	-- Cursor ScreenGui has IgnoreGuiInset=true, so use raw mouse position
 	-- AnchorPoint of 0.5,0.5 centers the cursor frame on this position
-	self.cursorFrame.Position = UDim2.new(0, mousePos.X, 0, mousePos.Y)
+	self.cursorFrame.Position = UDim2.fromOffset(mousePos.X, mousePos.Y)
 end
 
 function ChestUI:BindInput()

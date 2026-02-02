@@ -157,14 +157,12 @@ function EventManager:CreateClientEventConfig(managers)
 					local notificationType = notificationData.type or "info"
 					local duration = notificationData.duration
 
-					if notificationType == "success" then
+					if notificationType == "success" or notificationType == "reward" then
 						managers.ToastManager:Success(message, duration)
 					elseif notificationType == "error" then
 						managers.ToastManager:Error(message, duration)
 					elseif notificationType == "warning" then
 						managers.ToastManager:Warning(message, duration)
-					elseif notificationType == "reward" then
-						managers.ToastManager:Success(message, duration)
 					elseif notificationType == "experience" then
 						-- Extract amount from message for experience notifications
 						local amount = tonumber(string.match(message, "+(%d+)") or "0")
@@ -203,21 +201,21 @@ function EventManager:CreateClientEventConfig(managers)
 		},
 		{
 			name = "DailyRewardClaimed",
-			handler = function(rewardData)
+			handler = function(_rewardData)
 				-- This is handled by individual panels via their own event registration
 				-- Just acknowledge the event here to avoid warnings
 			end
 		},
 		{
 			name = "DailyRewardDataUpdated",
-			handler = function(rewardData)
+			handler = function(_rewardData)
 				-- This is handled by individual panels via their own event registration
 				-- Just acknowledge the event here to avoid warnings
 			end
 		},
 		{
 			name = "DailyRewardError",
-			handler = function(errorData)
+			handler = function(_errorData)
 				-- This is handled by individual panels via their own event registration
 				-- Just acknowledge the event here to avoid warnings
 			end
@@ -376,7 +374,6 @@ local EVENT_DEFINITIONS = {
 	-- Crafting events
 	CraftRecipe = {"any"}, -- {recipeId:string, toCursor:boolean}
 	CraftRecipeBatch = {"any"}, -- {recipeId:string, count:number, toCursor:boolean}
-	CraftRecipeBatchResult = {"any"}, -- server->client: {recipeId:string, acceptedCount:number, toCursor:boolean, outputItemId:number, outputPerCraft:number}
     -- Spawner/mob/tooling events removed
     AttackMob = {"any"}, -- {entityId:string, damage:number}
 	-- Ranged combat
@@ -1125,7 +1122,7 @@ function EventManager:CreateServerEventConfig(services)
 				end
 
 				-- Verify targeted block is a crafting table
-				local ok, _ = pcall(function()
+				local _ok, _ = pcall(function()
 					if services and services.VoxelWorldService and services.VoxelWorldService.worldManager then
 						local ReplicatedStorage = game:GetService("ReplicatedStorage")
 						local Constants = require(ReplicatedStorage.Shared.VoxelWorld.Core.Constants)
@@ -1135,13 +1132,10 @@ function EventManager:CreateServerEventConfig(services)
 							return
 						end
 						-- Send open event to this player
-						local EventManager = require(ReplicatedStorage.Shared.EventManager)
-						EventManager:FireEvent("WorkbenchOpened", player, { x = data.x, y = data.y, z = data.z })
+						self:FireEvent("WorkbenchOpened", player, { x = data.x, y = data.y, z = data.z })
 					end
 				end)
-				if not ok then
-					-- Swallow errors; no-op on invalid requests
-				end
+				-- Errors are swallowed; no-op on invalid requests
 			end
 		},
 		-- Minion open request
@@ -1169,7 +1163,6 @@ function EventManager:CreateServerEventConfig(services)
 		{
 			name = "RequestMinionUpgrade",
 			handler = function(player, data)
-				local services = self._services
 				if services and services.VoxelWorldService and services.VoxelWorldService.HandleMinionUpgrade then
 					services.VoxelWorldService:HandleMinionUpgrade(player, data)
 				end
@@ -1178,7 +1171,6 @@ function EventManager:CreateServerEventConfig(services)
 		{
 			name = "RequestMinionCollectAll",
 			handler = function(player, data)
-				local services = self._services
 				if services and services.VoxelWorldService and services.VoxelWorldService.HandleMinionCollectAll then
 					services.VoxelWorldService:HandleMinionCollectAll(player, data)
 				end
@@ -1187,7 +1179,6 @@ function EventManager:CreateServerEventConfig(services)
 		{
 			name = "RequestMinionPickup",
 			handler = function(player, data)
-				local services = self._services
 				if services and services.VoxelWorldService and services.VoxelWorldService.HandleMinionPickup then
 					services.VoxelWorldService:HandleMinionPickup(player, data)
 				end
@@ -1196,7 +1187,6 @@ function EventManager:CreateServerEventConfig(services)
 		{
 			name = "RequestCloseMinion",
 			handler = function(player, data)
-				local services = self._services
 				if services and services.VoxelWorldService and services.VoxelWorldService.HandleCloseMinion then
 					services.VoxelWorldService:HandleCloseMinion(player, data)
 				end

@@ -257,15 +257,41 @@ end
 --[[
 	Category check shortcuts
 ]]
-function ItemRegistry.IsTool(itemId) return ItemRegistry.GetCategory(itemId) == ItemRegistry.Category.TOOL end
-function ItemRegistry.IsWeapon(itemId) return ItemRegistry.GetCategory(itemId) == ItemRegistry.Category.WEAPON end
-function ItemRegistry.IsRanged(itemId) return ItemRegistry.GetCategory(itemId) == ItemRegistry.Category.RANGED end
-function ItemRegistry.IsArmor(itemId) return ItemRegistry.GetCategory(itemId) == ItemRegistry.Category.ARMOR end
-function ItemRegistry.IsArrow(itemId) return ItemRegistry.GetCategory(itemId) == ItemRegistry.Category.ARROW end
-function ItemRegistry.IsMaterial(itemId) return ItemRegistry.GetCategory(itemId) == ItemRegistry.Category.MATERIAL end
-function ItemRegistry.IsDye(itemId) return ItemRegistry.GetCategory(itemId) == ItemRegistry.Category.DYE end
-function ItemRegistry.IsMobEgg(itemId) return ItemRegistry.GetCategory(itemId) == ItemRegistry.Category.MOB_EGG end
-function ItemRegistry.IsBlock(itemId) return ItemRegistry.GetCategory(itemId) == ItemRegistry.Category.BLOCK end
+function ItemRegistry.IsTool(itemId)
+	return ItemRegistry.GetCategory(itemId) == ItemRegistry.Category.TOOL
+end
+
+function ItemRegistry.IsWeapon(itemId)
+	return ItemRegistry.GetCategory(itemId) == ItemRegistry.Category.WEAPON
+end
+
+function ItemRegistry.IsRanged(itemId)
+	return ItemRegistry.GetCategory(itemId) == ItemRegistry.Category.RANGED
+end
+
+function ItemRegistry.IsArmor(itemId)
+	return ItemRegistry.GetCategory(itemId) == ItemRegistry.Category.ARMOR
+end
+
+function ItemRegistry.IsArrow(itemId)
+	return ItemRegistry.GetCategory(itemId) == ItemRegistry.Category.ARROW
+end
+
+function ItemRegistry.IsMaterial(itemId)
+	return ItemRegistry.GetCategory(itemId) == ItemRegistry.Category.MATERIAL
+end
+
+function ItemRegistry.IsDye(itemId)
+	return ItemRegistry.GetCategory(itemId) == ItemRegistry.Category.DYE
+end
+
+function ItemRegistry.IsMobEgg(itemId)
+	return ItemRegistry.GetCategory(itemId) == ItemRegistry.Category.MOB_EGG
+end
+
+function ItemRegistry.IsBlock(itemId)
+	return ItemRegistry.GetCategory(itemId) == ItemRegistry.Category.BLOCK
+end
 
 -- Food check includes both ItemDefinitions and FoodConfig
 function ItemRegistry.IsFood(itemId)

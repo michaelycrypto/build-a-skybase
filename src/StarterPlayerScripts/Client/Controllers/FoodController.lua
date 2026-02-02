@@ -6,7 +6,7 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
+local _UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 
 local EventManager = require(ReplicatedStorage.Shared.EventManager)
@@ -24,7 +24,7 @@ local EatingState = {
 
 local currentState = EatingState.IDLE
 local eatingData = nil -- {foodId, startTime, duration}
-local cooldownEndTime = 0
+local _cooldownEndTime = 0
 
 -- Connections
 local connections = {}
@@ -194,7 +194,7 @@ function FoodController:_onEatingCompleted(data)
 
 	-- Set cooldown
 	currentState = EatingState.COOLDOWN
-	cooldownEndTime = os.clock() + FoodConfig.Eating.cooldown
+	_cooldownEndTime = os.clock() + FoodConfig.Eating.cooldown
 	eatingData = nil
 
 	-- Clear cooldown after duration
@@ -209,7 +209,7 @@ end
 --[[
 	Handle eating cancelled from server
 --]]
-function FoodController:_onEatingCancelled(data)
+function FoodController:_onEatingCancelled(_data)
 	currentState = EatingState.IDLE
 	eatingData = nil
 end

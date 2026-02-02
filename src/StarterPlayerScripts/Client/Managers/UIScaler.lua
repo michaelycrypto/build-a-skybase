@@ -60,7 +60,7 @@ end
 	Rescale all registered components
 ]]
 local function notify_scale_listeners()
-	for listener_id, listener in pairs(scale_listeners) do
+	for _, listener in pairs(scale_listeners) do
 		if listener then
 			local ok, err = pcall(listener)
 			if not ok then
@@ -210,7 +210,7 @@ end
 	Cleanup (called automatically by GameClient on player leaving)
 ]]
 function UIScaler:Cleanup()
-	for layout_component, connection in layout_component_to_rescaling_connection do
+	for _, connection in layout_component_to_rescaling_connection do
 		if connection then
 			connection:Disconnect()
 		end
@@ -237,8 +237,8 @@ function UIScaler:RegisterScaleListener(callback)
 	end
 end
 
-local function notify_scale_listeners()
-	for listener_id, listener in pairs(scale_listeners) do
+local function _notify_scale_listeners()
+	for _, listener in pairs(scale_listeners) do
 		if listener then
 			local ok, err = pcall(listener)
 			if not ok then

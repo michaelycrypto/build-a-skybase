@@ -40,12 +40,16 @@ function NPCService.new()
 end
 
 function NPCService:Init()
-	if self._initialized then return end
+	if self._initialized then
+		return
+	end
 	BaseService.Init(self)
 end
 
 function NPCService:Start()
-	if self._started then return end
+	if self._started then
+		return
+	end
 
 	self._npcFolder = Instance.new("Folder")
 	self._npcFolder.Name = "NPCs"
@@ -95,7 +99,9 @@ function NPCService:Start()
 end
 
 function NPCService:Destroy()
-	if self._destroyed then return end
+	if self._destroyed then
+		return
+	end
 
 	if self._heartbeat then
 		self._heartbeat:Disconnect()
@@ -103,7 +109,9 @@ function NPCService:Destroy()
 	end
 
 	for _, npcData in pairs(self._activeNPCs) do
-		if npcData.model then npcData.model:Destroy() end
+		if npcData.model then
+			npcData.model:Destroy()
+		end
 	end
 	self._activeNPCs = {}
 
@@ -117,11 +125,15 @@ end
 
 function NPCService:UpdateNPCLookAt(dt)
 	local players = Players:GetPlayers()
-	if #players == 0 then return end
+	if #players == 0 then
+		return
+	end
 
 	for _, npcData in pairs(self._activeNPCs) do
 		local root = npcData.model and npcData.model.PrimaryPart
-		if not root then continue end
+		if not root then
+			continue
+		end
 
 		-- Find nearest player
 		local nearestDist = LOOK_AT_RANGE
@@ -164,10 +176,14 @@ function NPCService:SpawnNPC(spawnConfig)
 	end
 
 	local npcTypeDef = NPCConfig.GetNPCTypeDef(spawnConfig.npcType)
-	if not npcTypeDef then return nil end
+	if not npcTypeDef then
+		return nil
+	end
 
 	local blockPos = spawnConfig.blockPosition
-	if not blockPos then return nil end
+	if not blockPos then
+		return nil
+	end
 
 	local worldPosition = Vector3.new(
 		(blockPos.X + 0.5) * BLOCK_SIZE,
@@ -181,7 +197,9 @@ function NPCService:SpawnNPC(spawnConfig)
 	local rootOffset = modelSpec.rootOffset or Vector3.new(0, 0, 0)
 
 	local model = self:CreateNPCModel(spawnConfig, npcTypeDef, worldPosition, modelSpec)
-	if not model then return nil end
+	if not model then
+		return nil
+	end
 
 	local rotation = math.rad(spawnConfig.rotation or 0)
 	self._activeNPCs[spawnConfig.id] = {
@@ -246,7 +264,9 @@ function NPCService:CreateNPCModel(spawnConfig, npcTypeDef, worldPosition, model
 
 		for name, partDef in pairs(modelSpec.parts) do
 			local part = parts[partDef.tag or name]
-			if not part then continue end
+			if not part then
+				continue
+			end
 
 			local parentPart = root
 			if partDef.parent and parts[partDef.parent] then
@@ -262,7 +282,7 @@ function NPCService:CreateNPCModel(spawnConfig, npcTypeDef, worldPosition, model
 	local headPart = parts["Head"] or root
 	local billboard = Instance.new("BillboardGui")
 	billboard.Name = "NameTag"
-	billboard.Size = UDim2.new(0, 300, 0, 70)
+	billboard.Size = UDim2.fromOffset(300, 70)
 	billboard.StudsOffset = Vector3.new(0, 3.5, 0)
 	billboard.Adornee = headPart
 	billboard.AlwaysOnTop = true
@@ -272,7 +292,7 @@ function NPCService:CreateNPCModel(spawnConfig, npcTypeDef, worldPosition, model
 
 	local container = Instance.new("Frame")
 	container.Name = "Container"
-	container.Size = UDim2.new(1, 0, 1, 0)
+	container.Size = UDim2.fromScale(1, 1)
 	container.BackgroundTransparency = 1
 	container.Parent = billboard
 
@@ -283,7 +303,7 @@ function NPCService:CreateNPCModel(spawnConfig, npcTypeDef, worldPosition, model
 	local shadow = Instance.new("TextLabel")
 	shadow.Name = "NameShadow"
 	shadow.Size = UDim2.new(1, 0, 0, 40)
-	shadow.Position = UDim2.new(0, 0, 0, 2)
+	shadow.Position = UDim2.fromOffset(0, 2)
 	shadow.BackgroundTransparency = 1
 	shadow.Text = npcTypeDef.displayName
 	shadow.TextColor3 = shadowColor
@@ -315,7 +335,7 @@ function NPCService:CreateNPCModel(spawnConfig, npcTypeDef, worldPosition, model
 	local desc = Instance.new("TextLabel")
 	desc.Name = "SubtitleLabel"
 	desc.Size = UDim2.new(1, 0, 0, 26)
-	desc.Position = UDim2.new(0, 0, 0, 42)
+	desc.Position = UDim2.fromOffset(0, 42)
 	desc.BackgroundTransparency = 1
 	desc.Text = npcTypeDef.description
 	desc.TextColor3 = Color3.new(1, 1, 1)
@@ -335,14 +355,20 @@ function NPCService:CreateNPCModel(spawnConfig, npcTypeDef, worldPosition, model
 end
 
 function NPCService:HandleNPCInteract(player, data)
-	if not data or not data.npcId then return end
+	if not data or not data.npcId then
+		return
+	end
 
 	local npcData = self._activeNPCs[data.npcId]
-	if not npcData then return end
+	if not npcData then
+		return
+	end
 
 	local character = player.Character
 	local rootPart = character and character:FindFirstChild("HumanoidRootPart")
-	if not rootPart then return end
+	if not rootPart then
+		return
+	end
 
 	if (rootPart.Position - npcData.position).Magnitude > NPCConfig.INTERACTION_RADIUS then
 		return
@@ -404,7 +430,7 @@ end
 
 -- Get shop items filtered by shop type (FARM, BUILDING)
 -- Items must have a matching shopType - items with nil shopType are not shown
-function NPCService:GetShopItemsForPlayer(player, shopFilter)
+function NPCService:GetShopItemsForPlayer(_player, shopFilter)
 	local items = {}
 	for _, item in ipairs(NPCTradeConfig.ShopItems) do
 		-- Only include items that have a shopType matching the filter

@@ -37,7 +37,9 @@ function WorldTeleportService.new()
 end
 
 function WorldTeleportService:Init()
-	if self._initialized then return end
+	if self._initialized then
+		return
+	end
 	if not IS_STUDIO then
 		self._registry = MemoryStoreService:GetSortedMap(WORLD_REGISTRY)
 	end
@@ -45,7 +47,9 @@ function WorldTeleportService:Init()
 end
 
 function WorldTeleportService:Start()
-	if self._started then return end
+	if self._started then
+		return
+	end
 	BaseService.Start(self)
 	self._logger.Info("WorldTeleportService ready")
 end
@@ -60,7 +64,9 @@ local function resolveWorldContext(player, payload)
 	if worldId and type(worldId) == "string" then
 		slotId = slotId or tonumber(string.match(worldId, "[:_](%d+)$"))
 		local extracted = tonumber(string.match(worldId, "^(%d+)"))
-		if extracted then ownerUserId = extracted end
+		if extracted then
+			ownerUserId = extracted
+		end
 	end
 	
 	if not worldId and ownerUserId and slotId then
@@ -72,7 +78,9 @@ end
 
 -- Get active world from registry
 function WorldTeleportService:_getActiveWorld(worldId)
-	if not self._registry then return nil end
+	if not self._registry then
+		return nil
+	end
 	local ok, value = pcall(function()
 		return self._registry:GetAsync(worldId)
 	end)
@@ -81,7 +89,9 @@ end
 
 -- Register world in registry
 function WorldTeleportService:_registerWorld(worldId, ownerUserId, ownerName, accessCode, slotId)
-	if not self._registry then return end
+	if not self._registry then
+		return
+	end
 	pcall(function()
 		self._registry:SetAsync(worldId, {
 			placeId = PLACE_ID,
@@ -136,7 +146,9 @@ function WorldTeleportService:RequestJoinWorld(player, payload)
 		local ok = pcall(function()
 			TeleportService:TeleportAsync(PLACE_ID, { player }, options)
 		end)
-		if ok then return end
+		if ok then
+			return
+		end
 	end
 	
 	-- Only owners can start new instances

@@ -8,6 +8,8 @@ local PanelButton = {}
 PanelButton.__index = PanelButton
 setmetatable(PanelButton, BaseButton)
 
+local COMPONENT_CONFIGS = BaseButton.COMPONENT_CONFIGS
+
 -- Services
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -38,8 +40,8 @@ function PanelButton:CreateUI()
 	-- Create main button (no border frame for panel buttons)
 	self.button = Instance.new("TextButton")
 	self.button.Name = self.name
-	self.button.Size = UDim2.new(1, 0, 1, 0) -- Fill parent container
-	self.button.Position = UDim2.new(0, 0, 0, 0)
+	self.button.Size = UDim2.fromScale(1, 1) -- Fill parent container
+	self.button.Position = UDim2.fromScale(0, 0)
 	self.button.BackgroundColor3 = buttonColor
 	self.button.BackgroundTransparency = Config.UI_SETTINGS.designSystem.transparency.light
 	self.button.Text = text
@@ -103,7 +105,7 @@ end
 	Override SetBorderColor (panel buttons don't have separate borders)
 	@param color: Color3 - Border color (ignored for panel buttons)
 --]]
-function PanelButton:SetBorderColor(color)
+function PanelButton:SetBorderColor(_color)
 	-- Panel buttons don't have separate border frames
 	-- This method is kept for compatibility but does nothing
 end

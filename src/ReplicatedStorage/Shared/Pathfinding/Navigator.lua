@@ -67,7 +67,7 @@ function Navigator:hasPath()
     return self.path ~= nil and self.pathIndex ~= nil and self.path[self.pathIndex] ~= nil
 end
 
-function Navigator:moveToPosition(mob, goal, speed, maxRangeBlocks)
+function Navigator:moveToPosition(mob, goal, speed, _maxRangeBlocks)
     self.speed = speed or self.speed or (mob.definition and mob.definition.walkSpeed) or 4
     self.pathTarget = goal
 

@@ -12,7 +12,7 @@
 
 local Players = game:GetService("Players")
 local InputService = require(script.Parent.Parent.Input.InputService)
-local GuiService = game:GetService("GuiService")
+local _GuiService = game:GetService("GuiService")
 local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
@@ -24,7 +24,7 @@ local ItemStack = require(ReplicatedStorage.Shared.VoxelWorld.Inventory.ItemStac
 local BlockViewportCreator = require(ReplicatedStorage.Shared.VoxelWorld.Rendering.BlockViewportCreator)
 local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
 local ArmorConfig = require(ReplicatedStorage.Configs.ArmorConfig)
-local BlockProperties = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockProperties)
+local _BlockProperties = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockProperties)
 local SpawnEggConfig = require(ReplicatedStorage.Configs.SpawnEggConfig)
 local BlockRegistry = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockRegistry)
 local EventManager = require(ReplicatedStorage.Shared.EventManager)
@@ -33,7 +33,7 @@ local SoundManager = require(script.Parent.Parent.Managers.SoundManager)
 local IconManager = require(script.Parent.Parent.Managers.IconManager)
 local SpawnEggIcon = require(script.Parent.SpawnEggIcon)
 local FontBinder = require(ReplicatedStorage.Shared.UI.FontBinder)
-local UpheavalFont = require(ReplicatedStorage.Fonts["Upheaval BRK"])
+local _UpheavalFont = require(ReplicatedStorage.Fonts["Upheaval BRK"])
 local ViewportPreview = require(script.Parent.Parent.Managers.ViewportPreview)
 local UIScaler = require(script.Parent.Parent.Managers.UIScaler)
 local CharacterRigBuilder = require(script.Parent.CharacterRigBuilder)
@@ -80,23 +80,22 @@ local INVENTORY_CONFIG = {
 
 	-- Colors
 	SLOT_COLOR = Color3.fromRGB(45, 45, 45),
-	BORDER_COLOR = Color3.fromRGB(60, 60, 60),
 	HOVER_COLOR = Color3.fromRGB(80, 80, 80),
 	EQUIPMENT_COLOR = Color3.fromRGB(50, 50, 60),
 	NAV_BG_COLOR = Color3.fromRGB(58, 58, 58),
 	CONTENT_BG_COLOR = Color3.fromRGB(58, 58, 58),
 	INVENTORY_BG_COLOR = Color3.fromRGB(58, 58, 58),
 	SHADOW_COLOR = Color3.fromRGB(43, 43, 43),
-	BORDER_COLOR = Color3.fromRGB(77,77,77),
+	BORDER_COLOR = Color3.fromRGB(77, 77, 77),
 	OVERLAY_COLOR = Color3.fromRGB(4, 4, 6),
 	OVERLAY_TRANSPARENCY = 0.35,
 }
 
 -- Universal grip for character preview (same as HeldItemRenderer)
-local PREVIEW_GRIP = { pos = Vector3.new(0, -0.3, -0.5), rot = Vector3.new(0, 45, 0) }
+local _PREVIEW_GRIP = { pos = Vector3.new(0, -0.3, -0.5), rot = Vector3.new(0, 45, 0) }
 local STUDS_PER_PIXEL = 3 / 16
 
-local function cframeFromPosRotDeg(pos, rot)
+local function _cframeFromPosRotDeg(pos, rot)
 	return CFrame.new(pos) * CFrame.Angles(
 		math.rad(rot.X),
 		math.rad(rot.Y),
@@ -124,7 +123,7 @@ local function playInventoryPopSound()
 	end
 end
 
-local function createToolHandle(itemId)
+local function _createToolHandle(itemId)
 	if not itemId then return nil end
 
 	-- Get item name for model lookup
@@ -415,8 +414,8 @@ function VoxelInventoryPanel:CreateHoverItemLabel()
 	-- Create a label in the top left of the screen to display hovered item name
 	local label = Instance.new("TextLabel")
 	label.Name = "HoverItemLabel"
-	label.Size = UDim2.new(0, 400, 0, 40)
-	label.Position = UDim2.new(0, 20, 0, 20)
+	label.Size = UDim2.fromOffset(400, 40)
+	label.Position = UDim2.fromOffset(20, 20)
 	label.AnchorPoint = Vector2.new(0, 0)
 	label.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 	label.BackgroundTransparency = 0.3
@@ -479,7 +478,7 @@ function VoxelInventoryPanel:CreatePanel()
 	-- Anchor point at center (0.5, 0.5) for consistent positioning
 	self.panel = Instance.new("Frame")
 	self.panel.Name = "InventoryPanel"
-	self.panel.Size = UDim2.new(0, totalWidth, 0, totalHeight)
+	self.panel.Size = UDim2.fromOffset(totalWidth, totalHeight)
 	self.panel.Position = UDim2.new(0.5, 0, 0.5, -INVENTORY_CONFIG.HEADER_HEIGHT)  -- Centered, offset by header
 	self.panel.AnchorPoint = Vector2.new(0.5, 0.5)  -- Center anchor
 	self.panel.BackgroundTransparency = 1  -- Fully transparent
@@ -489,8 +488,8 @@ function VoxelInventoryPanel:CreatePanel()
 	-- Header frame: 1124x54 with title on left, close button on right (vertically centered)
 	local headerFrame = Instance.new("Frame")
 	headerFrame.Name = "Header"
-	headerFrame.Size = UDim2.new(0, totalWidth, 0, INVENTORY_CONFIG.HEADER_HEIGHT)
-	headerFrame.Position = UDim2.new(0, 0, 0, 0)
+	headerFrame.Size = UDim2.fromOffset(totalWidth, INVENTORY_CONFIG.HEADER_HEIGHT)
+	headerFrame.Position = UDim2.fromScale(0, 0)
 	headerFrame.BackgroundTransparency = 1
 	headerFrame.BorderSizePixel = 0
 	headerFrame.Parent = self.panel
@@ -499,7 +498,7 @@ function VoxelInventoryPanel:CreatePanel()
 	local title = Instance.new("TextLabel")
 	title.Name = "Title"
 	title.Size = UDim2.new(1, -50, 1, 0)
-	title.Position = UDim2.new(0, 0, 0, 0)
+	title.Position = UDim2.fromScale(0, 0)
 	title.BackgroundTransparency = 1
 	title.Text = "INVENTORY"
 	title.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -514,8 +513,8 @@ function VoxelInventoryPanel:CreatePanel()
 
 	-- Close button (40x40, vertically centered on right)
 	local closeIcon = IconManager:CreateIcon(headerFrame, "UI", "X", {
-		size = UDim2.new(0, 44, 0, 44),
-		position = UDim2.new(1, 0, 0, 0),
+		size = UDim2.fromOffset(44, 44),
+		position = UDim2.fromScale(1, 0),
 		anchorPoint = Vector2.new(1, 0)
 	})
 
@@ -548,8 +547,8 @@ function VoxelInventoryPanel:CreatePanel()
 	-- Body frame: contains the three columns
 	local bodyFrame = Instance.new("Frame")
 	bodyFrame.Name = "Body"
-	bodyFrame.Size = UDim2.new(0, totalWidth, 0, INVENTORY_CONFIG.BODY_HEIGHT)
-	bodyFrame.Position = UDim2.new(0, 0, 0, INVENTORY_CONFIG.HEADER_HEIGHT)
+	bodyFrame.Size = UDim2.fromOffset(totalWidth, INVENTORY_CONFIG.BODY_HEIGHT)
+	bodyFrame.Position = UDim2.fromOffset(0, INVENTORY_CONFIG.HEADER_HEIGHT)
 	bodyFrame.BackgroundTransparency = 1
 	bodyFrame.BorderSizePixel = 0
 	bodyFrame.Parent = self.panel
@@ -566,8 +565,8 @@ function VoxelInventoryPanel:CreateMenuColumn(parent)
 	-- Menu column: 100x356, transparent, 94px buttons with 6px margin
 	local column = Instance.new("Frame")
 	column.Name = "MenuColumn"
-	column.Size = UDim2.new(0, INVENTORY_CONFIG.MENU_WIDTH, 0, INVENTORY_CONFIG.BODY_HEIGHT)
-	column.Position = UDim2.new(0, 0, 0, 0)
+	column.Size = UDim2.fromOffset(INVENTORY_CONFIG.MENU_WIDTH, INVENTORY_CONFIG.BODY_HEIGHT)
+	column.Position = UDim2.fromScale(0, 0)
 	column.BackgroundTransparency = 1  -- Transparent
 	column.BorderSizePixel = 0
 	column.Parent = parent
@@ -594,7 +593,7 @@ function VoxelInventoryPanel:CreateSectionButton(parent, section, layoutOrder, i
 	local buttonSize = visualSize - 6  -- Frame size: 94px (100 - 6 for 3px borders on each side)
 	local shadowHeight = 18
 	-- Container needs extra height for shadow (shadow extends 12px below button bottom)
-	container.Size = UDim2.new(0, visualSize, 0, visualSize + shadowHeight / 2)  -- Container accommodates shadow
+	container.Size = UDim2.fromOffset(visualSize, visualSize + shadowHeight / 2)  -- Container accommodates shadow
 	container.BackgroundTransparency = 1
 	container.BorderSizePixel = 0
 	container.Parent = parent
@@ -602,8 +601,8 @@ function VoxelInventoryPanel:CreateSectionButton(parent, section, layoutOrder, i
 	-- Main button (frame size, borders are outer)
 	local button = Instance.new("ImageButton")
 	button.Name = string.format("%sButton", section)
-	button.Size = UDim2.new(0, buttonSize, 0, buttonSize)  -- 94x94 (100 - 6)
-	button.Position = UDim2.new(0, 3, 0, 3)  -- 3px offset for border
+	button.Size = UDim2.fromOffset(buttonSize, buttonSize)  -- 94x94 (100 - 6)
+	button.Position = UDim2.fromOffset(3, 3)  -- 3px offset for border
 	button.BackgroundColor3 = INVENTORY_CONFIG.NAV_BG_COLOR
 	button.BackgroundTransparency = 0
 	button.BorderSizePixel = 0
@@ -614,11 +613,11 @@ function VoxelInventoryPanel:CreateSectionButton(parent, section, layoutOrder, i
 	-- Shadow: decorative element, part of the button (positioned at bottom)
 	local shadow = Instance.new("Frame")
 	shadow.Name = "Shadow"
-	shadow.Size = UDim2.new(0, buttonSize, 0, shadowHeight)  -- 24px height
+	shadow.Size = UDim2.fromOffset(buttonSize, shadowHeight)  -- 24px height
 	shadow.AnchorPoint = Vector2.new(0, 0.5)  -- Left-center vertically
 	-- Position: 3px border offset horizontally, at button bottom (centered vertically)
 	-- Button bottom is at: 3 (top) + 94 (height) = 97px from container top
-	shadow.Position = UDim2.new(0, 3, 0, buttonSize + 3)  -- 3px border, at bottom edge
+	shadow.Position = UDim2.fromOffset(3, buttonSize + 3)  -- 3px border, at bottom edge
 	shadow.BackgroundColor3 = INVENTORY_CONFIG.SHADOW_COLOR
 	shadow.BackgroundTransparency = 0
 	shadow.BorderSizePixel = 0
@@ -642,8 +641,8 @@ function VoxelInventoryPanel:CreateSectionButton(parent, section, layoutOrder, i
 
 	-- Create icon using IconManager
 	local icon = IconManager:CreateIcon(button, iconCategory, iconName, {
-		size = UDim2.new(0, 64, 0, 64),
-		position = UDim2.new(0.5, 0, 0.5, 0),
+		size = UDim2.fromOffset(64, 64),
+		position = UDim2.fromScale(0.5, 0.5),
 		anchorPoint = Vector2.new(0.5, 0.5)
 	})
 	icon.ImageColor3 = Color3.fromRGB(185, 185, 195)  -- Default inactive color
@@ -658,8 +657,8 @@ end
 
 function VoxelInventoryPanel:CreateContentColumn(parent)
 	-- Content column: frame size (borders are outer)
-	local visualWidth = INVENTORY_CONFIG.CONTENT_WIDTH + 6  -- 408 visual (402 frame + 6px borders)
-	local visualHeight = INVENTORY_CONFIG.BODY_HEIGHT + 6  -- 362 visual (356 frame + 6px borders)
+	local _visualWidth = INVENTORY_CONFIG.CONTENT_WIDTH + 6  -- 408 visual (402 frame + 6px borders)
+	local _visualHeight = INVENTORY_CONFIG.BODY_HEIGHT + 6  -- 362 visual (356 frame + 6px borders)
 	local columnWidth = INVENTORY_CONFIG.CONTENT_WIDTH  -- 402 frame width
 	local columnHeight = INVENTORY_CONFIG.BODY_HEIGHT  -- 356 frame height
 	local shadowHeight = 18
@@ -670,8 +669,8 @@ function VoxelInventoryPanel:CreateContentColumn(parent)
 	-- Content column: 402x356 frame (408x362 visual with borders)
 	local column = Instance.new("Frame")
 	column.Name = "ContentColumn"
-	column.Size = UDim2.new(0, columnWidth, 0, columnHeight)
-	column.Position = UDim2.new(0, columnX + 3, 0, 3)  -- 3px offset for border
+	column.Size = UDim2.fromOffset(columnWidth, columnHeight)
+	column.Position = UDim2.fromOffset(columnX + 3, 3)  -- 3px offset for border
 	column.BackgroundColor3 = INVENTORY_CONFIG.CONTENT_BG_COLOR
 	column.BackgroundTransparency = 0
 	column.BorderSizePixel = 0
@@ -685,11 +684,11 @@ function VoxelInventoryPanel:CreateContentColumn(parent)
 	-- Shadow: decorative border shadow (positioned at bottom)
 	local shadow = Instance.new("Frame")
 	shadow.Name = "Shadow"
-	shadow.Size = UDim2.new(0, columnWidth, 0, shadowHeight)
+	shadow.Size = UDim2.fromOffset(columnWidth, shadowHeight)
 	shadow.AnchorPoint = Vector2.new(0, 0.5)  -- Left-center vertically
 	-- Position: 3px border offset horizontally, at column bottom (centered vertically)
 	-- Column bottom is at: 3 (top) + 356 (height) = 359px from body top
-	shadow.Position = UDim2.new(0, columnX + 3, 0, columnHeight + 3)  -- 3px border, at bottom edge
+	shadow.Position = UDim2.fromOffset(columnX + 3, columnHeight + 3)  -- 3px border, at bottom edge
 	shadow.BackgroundColor3 = INVENTORY_CONFIG.SHADOW_COLOR
 	shadow.BackgroundTransparency = 0
 	shadow.BorderSizePixel = 0
@@ -716,13 +715,13 @@ function VoxelInventoryPanel:CreateContentColumn(parent)
 
 	local stack = Instance.new("Frame")
 	stack.Name = "SectionStack"
-	stack.Size = UDim2.new(1, 0, 1, 0)
+	stack.Size = UDim2.fromScale(1, 1)
 	stack.BackgroundTransparency = 1
 	stack.Parent = column
 
 	self.craftSection = Instance.new("Frame")
 	self.craftSection.Name = "CraftSection"
-	self.craftSection.Size = UDim2.new(1, 0, 1, 0)
+	self.craftSection.Size = UDim2.fromScale(1, 1)
 	self.craftSection.BackgroundTransparency = 1
 	self.craftSection.Parent = stack
 
@@ -732,7 +731,7 @@ function VoxelInventoryPanel:CreateContentColumn(parent)
 
 	self.armorSection = Instance.new("Frame")
 	self.armorSection.Name = "ArmorSection"
-	self.armorSection.Size = UDim2.new(1, 0, 1, 0)
+	self.armorSection.Size = UDim2.fromScale(1, 1)
 	self.armorSection.BackgroundTransparency = 1
 	self.armorSection.Visible = false
 	self.armorSection.Parent = stack
@@ -818,14 +817,14 @@ function VoxelInventoryPanel:CreateArmorSkeleton(parent)
 	local contentArea = Instance.new("Frame")
 	contentArea.Name = "ContentArea"
 	contentArea.Size = UDim2.new(1, 0, 1, -labelHeight)  -- Remaining height after label
-	contentArea.Position = UDim2.new(0, 0, 0, labelHeight)
+	contentArea.Position = UDim2.fromOffset(0, labelHeight)
 	contentArea.BackgroundTransparency = 1
 	contentArea.Parent = parent
 
 	-- Calculate content area dimensions
 	-- Parent has padding: 12px on all sides
 	-- Content area height = parent height - label height - label spacing
-	local contentAreaHeight = INVENTORY_CONFIG.BODY_HEIGHT - 24 - labelHeight  -- 24px = 12px padding top + 12px padding bottom
+	local _contentAreaHeight = INVENTORY_CONFIG.BODY_HEIGHT - 24 - labelHeight  -- 24px = 12px padding top + 12px padding bottom
 	local contentAreaWidth = INVENTORY_CONFIG.CONTENT_WIDTH - 24  -- 24px = 12px padding left + 12px padding right
 
 	-- Calculate slots container height
@@ -833,14 +832,14 @@ function VoxelInventoryPanel:CreateArmorSkeleton(parent)
 	-- Spacing between slots: 5px (EQUIPMENT_SPACING)
 	-- 4 slots: 4 * 60px + 3 * 5px = 240px + 15px = 255px total height
 	local slotVisualSize = INVENTORY_CONFIG.EQUIPMENT_SLOT_SIZE + 4  -- 56px + 4px borders = 60px
-	local numSlots = 4
+	local _numSlots = 4
 	local slotSpacing = INVENTORY_CONFIG.EQUIPMENT_SPACING + 2  -- Added 2px extra gap for armor column
 	local baseSlotsHeight = 248
 
 	-- Create vertical transparent frame for armor slots
 	local slotsContainer = Instance.new("Frame")
 	slotsContainer.Name = "ArmorSlots"
-	slotsContainer.Size = UDim2.new(0, slotVisualSize, 0, baseSlotsHeight)  -- Fixed width and calculated height
+	slotsContainer.Size = UDim2.fromOffset(slotVisualSize, baseSlotsHeight)  -- Fixed width and calculated height
 	slotsContainer.BackgroundTransparency = 1
 	slotsContainer.AnchorPoint = Vector2.new(0, 0.5)  -- Left-center anchor for vertical centering
 	slotsContainer.Parent = contentArea
@@ -871,21 +870,21 @@ function VoxelInventoryPanel:CreateArmorSkeleton(parent)
 
 	local viewmodelContainer = Instance.new("Frame")
 	viewmodelContainer.Name = "ViewmodelContainer"
-	viewmodelContainer.Size = UDim2.new(0, viewmodelWidth, 0, VIEWMODEL_HEIGHT)
+	viewmodelContainer.Size = UDim2.fromOffset(viewmodelWidth, VIEWMODEL_HEIGHT)
 	viewmodelContainer.BackgroundTransparency = 1
 	viewmodelContainer.AnchorPoint = Vector2.new(0, 0.5)
 	viewmodelContainer.Parent = armorColumn
-	viewmodelContainer.Position = UDim2.new(0, 0, 0.5, 0)
+	viewmodelContainer.Position = UDim2.fromScale(0, 0.5)
 
 	slotsContainer.Parent = armorColumn
 	slotsContainer.Position = UDim2.new(0, viewmodelWidth + gap, 0.5, 0)
 
 	local function refreshArmorColumnHeight()
 		local layoutHeight = math.max(baseSlotsHeight, slotsLayout.AbsoluteContentSize.Y)
-		slotsContainer.Size = UDim2.new(0, slotVisualSize, 0, layoutHeight)
+		slotsContainer.Size = UDim2.fromOffset(slotVisualSize, layoutHeight)
 		local columnHeight = math.max(layoutHeight, VIEWMODEL_HEIGHT)
-		armorColumn.Size = UDim2.new(0, totalWidth, 0, columnHeight)
-		viewmodelContainer.Size = UDim2.new(0, viewmodelWidth, 0, VIEWMODEL_HEIGHT)
+		armorColumn.Size = UDim2.fromOffset(totalWidth, columnHeight)
+		viewmodelContainer.Size = UDim2.fromOffset(viewmodelWidth, VIEWMODEL_HEIGHT)
 	end
 
 	slotsLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(refreshArmorColumnHeight)
@@ -900,8 +899,8 @@ function VoxelInventoryPanel:CreateArmorSkeleton(parent)
 	self.armorViewmodel = ViewportPreview.new({
 		parent = viewmodelContainer,
 		name = "ArmorViewmodel",
-		size = UDim2.new(1, 0, 1, 0),
-		position = UDim2.new(0, 0, 0, 0),
+		size = UDim2.fromScale(1, 1),
+		position = UDim2.fromScale(0, 0),
 		backgroundColor = Color3.fromRGB(31, 31, 31),  -- Matching inventory slot background
 		backgroundTransparency = 0.4,  -- 60% opacity (matching inventory)
 		borderRadius = 2,  -- Matching inventory corner radius
@@ -922,8 +921,8 @@ function VoxelInventoryPanel:CreateArmorSkeleton(parent)
 	-- Add background image to viewmodel container (matching inventory)
 	local viewmodelBgImage = Instance.new("ImageLabel")
 	viewmodelBgImage.Name = "BackgroundImage"
-	viewmodelBgImage.Size = UDim2.new(1, 0, 1, 0)
-	viewmodelBgImage.Position = UDim2.new(0, 0, 0, 0)
+	viewmodelBgImage.Size = UDim2.fromScale(1, 1)
+	viewmodelBgImage.Position = UDim2.fromScale(0, 0)
 	viewmodelBgImage.BackgroundTransparency = 1
 	viewmodelBgImage.Image = "rbxassetid://82824299358542"
 	viewmodelBgImage.ImageTransparency = 0.6  -- Matching inventory
@@ -1072,7 +1071,7 @@ function VoxelInventoryPanel:CreateInventoryColumn(parent)
 	-- Gap between slots = 9px
 	local borderThickness = 2
 	local visualSlotSize = INVENTORY_CONFIG.SLOT_SIZE + borderThickness * 2  -- 60px
-	local slotWidth = visualSlotSize * INVENTORY_CONFIG.COLUMNS +
+	local _slotWidth = visualSlotSize * INVENTORY_CONFIG.COLUMNS +
 	                  INVENTORY_CONFIG.SLOT_SPACING * (INVENTORY_CONFIG.COLUMNS - 1)
 	local storageHeight = visualSlotSize * INVENTORY_CONFIG.ROWS +
 	                      INVENTORY_CONFIG.SLOT_SPACING * (INVENTORY_CONFIG.ROWS - 1)
@@ -1090,8 +1089,8 @@ function VoxelInventoryPanel:CreateInventoryColumn(parent)
 	-- Inventory column: 592x356 frame (598x362 visual with borders)
 	local column = Instance.new("Frame")
 	column.Name = "InventoryColumn"
-	column.Size = UDim2.new(0, columnWidth, 0, columnHeight)
-	column.Position = UDim2.new(0, columnX + 3, 0, 3)  -- 3px offset for border
+	column.Size = UDim2.fromOffset(columnWidth, columnHeight)
+	column.Position = UDim2.fromOffset(columnX + 3, 3)  -- 3px offset for border
 	column.BackgroundColor3 = INVENTORY_CONFIG.INVENTORY_BG_COLOR
 	column.BackgroundTransparency = 0
 	column.BorderSizePixel = 0
@@ -1105,11 +1104,11 @@ function VoxelInventoryPanel:CreateInventoryColumn(parent)
 	-- Shadow: decorative border shadow (positioned at bottom)
 	local shadow = Instance.new("Frame")
 	shadow.Name = "Shadow"
-	shadow.Size = UDim2.new(0, columnWidth, 0, shadowHeight)
+	shadow.Size = UDim2.fromOffset(columnWidth, shadowHeight)
 	shadow.AnchorPoint = Vector2.new(0, 0.5)  -- Left-center vertically
 	-- Position: 3px border offset horizontally, at column bottom (centered vertically)
 	-- Column bottom is at: 3 (top) + 356 (height) = 359px from body top
-	shadow.Position = UDim2.new(0, columnX + 3, 0, columnHeight + 3)  -- 3px border, at bottom edge
+	shadow.Position = UDim2.fromOffset(columnX + 3, columnHeight + 3)  -- 3px border, at bottom edge
 	shadow.BackgroundColor3 = INVENTORY_CONFIG.SHADOW_COLOR
 	shadow.BackgroundTransparency = 0
 	shadow.BorderSizePixel = 0
@@ -1230,8 +1229,8 @@ end
 function VoxelInventoryPanel:CreateInventorySlot(index, parent, x, y)
 	local slot = Instance.new("TextButton")
 	slot.Name = "InventorySlot" .. index
-	slot.Size = UDim2.new(0, 56, 0, 56)  -- Frame size (visual is 60px with 2px border)
-	slot.Position = UDim2.new(0, x, 0, y)
+	slot.Size = UDim2.fromOffset(56, 56)  -- Frame size (visual is 60px with 2px border)
+	slot.Position = UDim2.fromOffset(x, y)
 	slot.BackgroundColor3 = Color3.fromRGB(31, 31, 31)
 	slot.BackgroundTransparency = 0.4  -- 60% opacity
 	slot.BorderSizePixel = 0
@@ -1246,8 +1245,8 @@ function VoxelInventoryPanel:CreateInventorySlot(index, parent, x, y)
 	-- Background image at 50% opacity
 	local bgImage = Instance.new("ImageLabel")
 	bgImage.Name = "BackgroundImage"
-	bgImage.Size = UDim2.new(1, 0, 1, 0)
-	bgImage.Position = UDim2.new(0, 0, 0, 0)
+	bgImage.Size = UDim2.fromScale(1, 1)
+	bgImage.Position = UDim2.fromScale(0, 0)
 	bgImage.BackgroundTransparency = 1
 	bgImage.Image = "rbxassetid://82824299358542"
 	bgImage.ImageTransparency = 0.6  -- 50% opacity
@@ -1276,8 +1275,8 @@ function VoxelInventoryPanel:CreateInventorySlot(index, parent, x, y)
 	-- Create container for viewport - fills entire slot
 	local iconContainer = Instance.new("Frame")
 	iconContainer.Name = "IconContainer"
-	iconContainer.Size = UDim2.new(1, 0, 1, 0)
-	iconContainer.Position = UDim2.new(0, 0, 0, 0)
+	iconContainer.Size = UDim2.fromScale(1, 1)
+	iconContainer.Position = UDim2.fromScale(0, 0)
 	iconContainer.BackgroundTransparency = 1
 	iconContainer.ZIndex = 3  -- Above background image (ZIndex 1)
 	iconContainer.Parent = slot
@@ -1285,7 +1284,7 @@ function VoxelInventoryPanel:CreateInventorySlot(index, parent, x, y)
 	-- Count label overlays in bottom right
 	local countLabel = Instance.new("TextLabel")
 	countLabel.Name = "CountLabel"
-	countLabel.Size = UDim2.new(0, 40, 0, 20)
+	countLabel.Size = UDim2.fromOffset(40, 20)
 	countLabel.Position = UDim2.new(1, -4, 1, -4)
 	countLabel.AnchorPoint = Vector2.new(1, 1)
 	countLabel.BackgroundTransparency = 1
@@ -1342,8 +1341,8 @@ end
 function VoxelInventoryPanel:CreateHotbarSlot(index, parent, x, y)
 	local slot = Instance.new("TextButton")
 	slot.Name = "HotbarSlot" .. index
-	slot.Size = UDim2.new(0, 56, 0, 56)  -- Frame size (visual is 60px with 2px border)
-	slot.Position = UDim2.new(0, x, 0, y)
+	slot.Size = UDim2.fromOffset(56, 56)  -- Frame size (visual is 60px with 2px border)
+	slot.Position = UDim2.fromOffset(x, y)
 	slot.BackgroundColor3 = Color3.fromRGB(31, 31, 31)
 	slot.BackgroundTransparency = 0.4  -- 60% opacity
 	slot.BorderSizePixel = 0
@@ -1358,8 +1357,8 @@ function VoxelInventoryPanel:CreateHotbarSlot(index, parent, x, y)
 	-- Background image at 50% opacity
 	local bgImage = Instance.new("ImageLabel")
 	bgImage.Name = "BackgroundImage"
-	bgImage.Size = UDim2.new(1, 0, 1, 0)
-	bgImage.Position = UDim2.new(0, 0, 0, 0)
+	bgImage.Size = UDim2.fromScale(1, 1)
+	bgImage.Position = UDim2.fromScale(0, 0)
 	bgImage.BackgroundTransparency = 1
 	bgImage.Image = "rbxassetid://82824299358542"
 	bgImage.ImageTransparency = 0.6  -- 50% opacity
@@ -1395,8 +1394,8 @@ function VoxelInventoryPanel:CreateHotbarSlot(index, parent, x, y)
 	-- Create container for viewport - fills entire slot
 	local iconContainer = Instance.new("Frame")
 	iconContainer.Name = "IconContainer"
-	iconContainer.Size = UDim2.new(1, 0, 1, 0)
-	iconContainer.Position = UDim2.new(0, 0, 0, 0)
+	iconContainer.Size = UDim2.fromScale(1, 1)
+	iconContainer.Position = UDim2.fromScale(0, 0)
 	iconContainer.BackgroundTransparency = 1
 	iconContainer.ZIndex = 3  -- Above background image (ZIndex 1)
 	iconContainer.Parent = slot
@@ -1404,7 +1403,7 @@ function VoxelInventoryPanel:CreateHotbarSlot(index, parent, x, y)
 	-- Count label overlays in bottom right
 	local countLabel = Instance.new("TextLabel")
 	countLabel.Name = "CountLabel"
-	countLabel.Size = UDim2.new(0, 40, 0, 20)
+	countLabel.Size = UDim2.fromOffset(40, 20)
 	countLabel.Position = UDim2.new(1, -4, 1, -4)
 	countLabel.AnchorPoint = Vector2.new(1, 1)
 	countLabel.BackgroundTransparency = 1
@@ -1419,8 +1418,8 @@ function VoxelInventoryPanel:CreateHotbarSlot(index, parent, x, y)
 
 	local numberLabel = Instance.new("TextLabel")
 	numberLabel.Name = "Number"
-	numberLabel.Size = UDim2.new(0, 20, 0, 20)
-	numberLabel.Position = UDim2.new(0, 4, 0, 4)
+	numberLabel.Size = UDim2.fromOffset(20, 20)
+	numberLabel.Position = UDim2.fromOffset(4, 4)
 	numberLabel.BackgroundTransparency = 1
 	numberLabel.Font = BOLD_FONT
 	numberLabel.TextSize = MIN_TEXT_SIZE
@@ -1481,7 +1480,7 @@ end
 function VoxelInventoryPanel:CreateEquipmentSlot(index, equipmentType, parent)
 	local slot = Instance.new("TextButton")
 	slot.Name = "EquipmentSlot" .. equipmentType
-	slot.Size = UDim2.new(0, 56, 0, 56)  -- Frame size (visual is 60px with 2px border)
+	slot.Size = UDim2.fromOffset(56, 56)  -- Frame size (visual is 60px with 2px border)
 	slot.BackgroundColor3 = Color3.fromRGB(31, 31, 31)
 	slot.BackgroundTransparency = 0.4  -- 60% opacity
 	slot.BorderSizePixel = 0
@@ -1496,8 +1495,8 @@ function VoxelInventoryPanel:CreateEquipmentSlot(index, equipmentType, parent)
 	-- Background image at 50% opacity
 	local bgImage = Instance.new("ImageLabel")
 	bgImage.Name = "BackgroundImage"
-	bgImage.Size = UDim2.new(1, 0, 1, 0)
-	bgImage.Position = UDim2.new(0, 0, 0, 0)
+	bgImage.Size = UDim2.fromScale(1, 1)
+	bgImage.Position = UDim2.fromScale(0, 0)
 	bgImage.BackgroundTransparency = 1
 	bgImage.Image = "rbxassetid://82824299358542"
 	bgImage.ImageTransparency = 0.6  -- 50% opacity
@@ -1527,7 +1526,7 @@ function VoxelInventoryPanel:CreateEquipmentSlot(index, equipmentType, parent)
 	local iconContainer = Instance.new("Frame")
 	iconContainer.Name = "IconContainer"
 	iconContainer.Size = UDim2.new(1, -6, 1, -6)  -- 3px padding on all sides
-	iconContainer.Position = UDim2.new(0, 3, 0, 3)
+	iconContainer.Position = UDim2.fromOffset(3, 3)
 	iconContainer.BackgroundTransparency = 1
 	iconContainer.ZIndex = 3  -- Above background image (ZIndex 1)
 	iconContainer.Parent = slot
@@ -1535,7 +1534,7 @@ function VoxelInventoryPanel:CreateEquipmentSlot(index, equipmentType, parent)
 	-- Equipment type icon/label (when empty)
 	local typeLabel = Instance.new("TextLabel")
 	typeLabel.Name = "TypeLabel"
-	typeLabel.Size = UDim2.new(1, 0, 1, 0)
+	typeLabel.Size = UDim2.fromScale(1, 1)
 	typeLabel.BackgroundTransparency = 1
 	typeLabel.Font = Enum.Font.Code
 	typeLabel.TextSize = LABEL_SIZE
@@ -1588,7 +1587,7 @@ function VoxelInventoryPanel:CreateCursorItem()
 	-- Item that follows cursor when dragging
 	self.cursorFrame = Instance.new("Frame")
 	self.cursorFrame.Name = "CursorItem"
-	self.cursorFrame.Size = UDim2.new(0, 56, 0, 56)  -- Frame size (visual is 60px with 2px border)
+	self.cursorFrame.Size = UDim2.fromOffset(56, 56)  -- Frame size (visual is 60px with 2px border)
 	self.cursorFrame.AnchorPoint = Vector2.new(0.5, 0.5)  -- Center on cursor
 	self.cursorFrame.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 	self.cursorFrame.BackgroundTransparency = 0.7  -- Semi-transparent background, item stays fully visible
@@ -1613,8 +1612,8 @@ function VoxelInventoryPanel:CreateCursorItem()
 	-- Create container for viewport - fills entire cursor frame
 	local iconContainer = Instance.new("Frame")
 	iconContainer.Name = "IconContainer"
-	iconContainer.Size = UDim2.new(1, 0, 1, 0)
-	iconContainer.Position = UDim2.new(0, 0, 0, 0)
+	iconContainer.Size = UDim2.fromScale(1, 1)
+	iconContainer.Position = UDim2.fromScale(0, 0)
 	iconContainer.BackgroundTransparency = 1
 	iconContainer.ZIndex = 1001
 	iconContainer.Parent = self.cursorFrame
@@ -1622,7 +1621,7 @@ function VoxelInventoryPanel:CreateCursorItem()
 	-- Count label overlays in bottom right
 	local countLabel = Instance.new("TextLabel")
 	countLabel.Name = "CountLabel"
-	countLabel.Size = UDim2.new(0, 40, 0, 20)
+	countLabel.Size = UDim2.fromOffset(40, 20)
 	countLabel.Position = UDim2.new(1, -4, 1, -4)
 	countLabel.AnchorPoint = Vector2.new(1, 1)
 	countLabel.BackgroundTransparency = 1
@@ -1664,7 +1663,7 @@ function VoxelInventoryPanel:UpdateInventorySlotDisplay(index)
 				local image = Instance.new("ImageLabel")
 				image.Name = "ToolImage"
 				image.Size = UDim2.new(1, -6, 1, -6)
-				image.Position = UDim2.new(0.5, 0, 0.5, 0)
+				image.Position = UDim2.fromScale(0.5, 0.5)
 				image.AnchorPoint = Vector2.new(0.5, 0.5)
 				image.BackgroundTransparency = 1
 				image.Image = itemDef and itemDef.image or ""
@@ -1675,7 +1674,7 @@ function VoxelInventoryPanel:UpdateInventorySlotDisplay(index)
 				local image = Instance.new("ImageLabel")
 				image.Name = "ArmorImage"
 				image.Size = UDim2.new(1, -6, 1, -6)
-				image.Position = UDim2.new(0.5, 0, 0.5, 0)
+				image.Position = UDim2.fromScale(0.5, 0.5)
 				image.AnchorPoint = Vector2.new(0.5, 0.5)
 				image.BackgroundTransparency = 1
 				image.Image = info and info.image or ""
@@ -1690,7 +1689,7 @@ function VoxelInventoryPanel:UpdateInventorySlotDisplay(index)
 					local overlay = Instance.new("ImageLabel")
 					overlay.Name = "ArmorOverlay"
 					overlay.Size = UDim2.new(1, -6, 1, -6)
-					overlay.Position = UDim2.new(0.5, 0, 0.5, 0)
+					overlay.Position = UDim2.fromScale(0.5, 0.5)
 					overlay.AnchorPoint = Vector2.new(0.5, 0.5)
 					overlay.BackgroundTransparency = 1
 					overlay.Image = info.imageOverlay
@@ -1700,18 +1699,18 @@ function VoxelInventoryPanel:UpdateInventorySlotDisplay(index)
 				end
 			elseif SpawnEggConfig.IsSpawnEgg(itemId) then
 				local icon = SpawnEggIcon.Create(itemId, UDim2.new(1, -6, 1, -6))
-				icon.Position = UDim2.new(0.5, 0, 0.5, 0)
+				icon.Position = UDim2.fromScale(0.5, 0.5)
 				icon.AnchorPoint = Vector2.new(0.5, 0.5)
 				icon.Parent = slotFrame.iconContainer
 			elseif BlockRegistry:IsBucket(itemId) or BlockRegistry:IsPlaceable(itemId) == false then
 				-- Render non-placeable items (buckets, etc.) as 2D images
 				local blockDef = BlockRegistry:GetBlock(itemId)
 				local textureId = blockDef and blockDef.textures and blockDef.textures.all or ""
-				
+
 				local image = Instance.new("ImageLabel")
 				image.Name = "ItemImage"
 				image.Size = UDim2.new(1, -6, 1, -6)
-				image.Position = UDim2.new(0.5, 0, 0.5, 0)
+				image.Position = UDim2.fromScale(0.5, 0.5)
 				image.AnchorPoint = Vector2.new(0.5, 0.5)
 				image.BackgroundTransparency = 1
 				image.Image = textureId
@@ -1721,7 +1720,7 @@ function VoxelInventoryPanel:UpdateInventorySlotDisplay(index)
 				BlockViewportCreator.CreateBlockViewport(
 					slotFrame.iconContainer,
 					itemId,
-					UDim2.new(1, 0, 1, 0)
+					UDim2.fromScale(1, 1)
 				)
 			end
 
@@ -1773,7 +1772,7 @@ function VoxelInventoryPanel:UpdateHotbarSlotDisplay(index, slot, iconContainer,
 				local image = Instance.new("ImageLabel")
 				image.Name = "ToolImage"
 				image.Size = UDim2.new(1, -6, 1, -6)
-				image.Position = UDim2.new(0.5, 0, 0.5, 0)
+				image.Position = UDim2.fromScale(0.5, 0.5)
 				image.AnchorPoint = Vector2.new(0.5, 0.5)
 				image.BackgroundTransparency = 1
 				image.Image = itemDef and itemDef.image or ""
@@ -1784,7 +1783,7 @@ function VoxelInventoryPanel:UpdateHotbarSlotDisplay(index, slot, iconContainer,
 				local image = Instance.new("ImageLabel")
 				image.Name = "ArmorImage"
 				image.Size = UDim2.new(1, -6, 1, -6)
-				image.Position = UDim2.new(0.5, 0, 0.5, 0)
+				image.Position = UDim2.fromScale(0.5, 0.5)
 				image.AnchorPoint = Vector2.new(0.5, 0.5)
 				image.BackgroundTransparency = 1
 				image.Image = info and info.image or ""
@@ -1799,7 +1798,7 @@ function VoxelInventoryPanel:UpdateHotbarSlotDisplay(index, slot, iconContainer,
 					local overlay = Instance.new("ImageLabel")
 					overlay.Name = "ArmorOverlay"
 					overlay.Size = UDim2.new(1, -6, 1, -6)
-					overlay.Position = UDim2.new(0.5, 0, 0.5, 0)
+					overlay.Position = UDim2.fromScale(0.5, 0.5)
 					overlay.AnchorPoint = Vector2.new(0.5, 0.5)
 					overlay.BackgroundTransparency = 1
 					overlay.Image = info.imageOverlay
@@ -1809,18 +1808,18 @@ function VoxelInventoryPanel:UpdateHotbarSlotDisplay(index, slot, iconContainer,
 				end
 			elseif SpawnEggConfig.IsSpawnEgg(itemId) then
 				local icon = SpawnEggIcon.Create(itemId, UDim2.new(1, -6, 1, -6))
-				icon.Position = UDim2.new(0.5, 0, 0.5, 0)
+				icon.Position = UDim2.fromScale(0.5, 0.5)
 				icon.AnchorPoint = Vector2.new(0.5, 0.5)
 				icon.Parent = iconContainer
 			elseif BlockRegistry:IsBucket(itemId) or BlockRegistry:IsPlaceable(itemId) == false then
 				-- Render non-placeable items (buckets, etc.) as 2D images
 				local blockDef = BlockRegistry:GetBlock(itemId)
 				local textureId = blockDef and blockDef.textures and blockDef.textures.all or ""
-				
+
 				local image = Instance.new("ImageLabel")
 				image.Name = "ItemImage"
 				image.Size = UDim2.new(1, -6, 1, -6)
-				image.Position = UDim2.new(0.5, 0, 0.5, 0)
+				image.Position = UDim2.fromScale(0.5, 0.5)
 				image.AnchorPoint = Vector2.new(0.5, 0.5)
 				image.BackgroundTransparency = 1
 				image.Image = textureId
@@ -1830,7 +1829,7 @@ function VoxelInventoryPanel:UpdateHotbarSlotDisplay(index, slot, iconContainer,
 				BlockViewportCreator.CreateBlockViewport(
 					iconContainer,
 					itemId,
-					UDim2.new(1, 0, 1, 0)
+					UDim2.fromScale(1, 1)
 				)
 			end
 
@@ -1916,8 +1915,8 @@ function VoxelInventoryPanel:UpdateEquipmentSlotDisplay(index)
 		if armorInfo and armorInfo.image then
 			local image = Instance.new("ImageLabel")
 			image.Name = "ArmorImage"
-			image.Size = UDim2.new(1, 0, 1, 0)
-			image.Position = UDim2.new(0.5, 0, 0.5, 0)
+			image.Size = UDim2.fromScale(1, 1)
+			image.Position = UDim2.fromScale(0.5, 0.5)
 			image.AnchorPoint = Vector2.new(0.5, 0.5)
 			image.BackgroundTransparency = 1
 			image.Image = armorInfo.image
@@ -1933,8 +1932,8 @@ function VoxelInventoryPanel:UpdateEquipmentSlotDisplay(index)
 			if armorInfo.imageOverlay then
 				local overlay = Instance.new("ImageLabel")
 				overlay.Name = "ArmorOverlay"
-				overlay.Size = UDim2.new(1, 0, 1, 0)
-				overlay.Position = UDim2.new(0.5, 0, 0.5, 0)
+				overlay.Size = UDim2.fromScale(1, 1)
+				overlay.Position = UDim2.fromScale(0.5, 0.5)
 				overlay.AnchorPoint = Vector2.new(0.5, 0.5)
 				overlay.BackgroundTransparency = 1
 				overlay.Image = armorInfo.imageOverlay
@@ -2074,7 +2073,7 @@ function VoxelInventoryPanel:UpdateCursorDisplay()
 					local image = Instance.new("ImageLabel")
 					image.Name = "ToolImage"
 					image.Size = UDim2.new(1, -6, 1, -6)
-					image.Position = UDim2.new(0.5, 0, 0.5, 0)
+					image.Position = UDim2.fromScale(0.5, 0.5)
 					image.AnchorPoint = Vector2.new(0.5, 0.5)
 					image.BackgroundTransparency = 1
 					image.Image = itemDef and itemDef.image or ""
@@ -2086,7 +2085,7 @@ function VoxelInventoryPanel:UpdateCursorDisplay()
 					local image = Instance.new("ImageLabel")
 					image.Name = "ArmorImage"
 					image.Size = UDim2.new(1, -6, 1, -6)
-					image.Position = UDim2.new(0.5, 0, 0.5, 0)
+					image.Position = UDim2.fromScale(0.5, 0.5)
 					image.AnchorPoint = Vector2.new(0.5, 0.5)
 					image.BackgroundTransparency = 1
 					image.Image = info and info.image or ""
@@ -2102,7 +2101,7 @@ function VoxelInventoryPanel:UpdateCursorDisplay()
 						local overlay = Instance.new("ImageLabel")
 						overlay.Name = "ArmorOverlay"
 						overlay.Size = UDim2.new(1, -6, 1, -6)
-						overlay.Position = UDim2.new(0.5, 0, 0.5, 0)
+						overlay.Position = UDim2.fromScale(0.5, 0.5)
 						overlay.AnchorPoint = Vector2.new(0.5, 0.5)
 						overlay.BackgroundTransparency = 1
 						overlay.Image = info.imageOverlay
@@ -2112,7 +2111,7 @@ function VoxelInventoryPanel:UpdateCursorDisplay()
 					end
 				elseif SpawnEggConfig.IsSpawnEgg(itemId) then
 					local icon = SpawnEggIcon.Create(itemId, UDim2.new(1, -6, 1, -6))
-					icon.Position = UDim2.new(0.5, 0, 0.5, 0)
+					icon.Position = UDim2.fromScale(0.5, 0.5)
 					icon.AnchorPoint = Vector2.new(0.5, 0.5)
 					icon.ZIndex = 1001
 					icon.Parent = iconContainer
@@ -2120,11 +2119,11 @@ function VoxelInventoryPanel:UpdateCursorDisplay()
 					-- Render non-placeable items (buckets, etc.) as 2D images
 					local blockDef = BlockRegistry:GetBlock(itemId)
 					local textureId = blockDef and blockDef.textures and blockDef.textures.all or ""
-					
+
 					local image = Instance.new("ImageLabel")
 					image.Name = "ItemImage"
 					image.Size = UDim2.new(1, -6, 1, -6)
-					image.Position = UDim2.new(0.5, 0, 0.5, 0)
+					image.Position = UDim2.fromScale(0.5, 0.5)
 					image.AnchorPoint = Vector2.new(0.5, 0.5)
 					image.BackgroundTransparency = 1
 					image.Image = textureId
@@ -2135,7 +2134,7 @@ function VoxelInventoryPanel:UpdateCursorDisplay()
 					BlockViewportCreator.CreateBlockViewport(
 						iconContainer,
 						itemId,
-						UDim2.new(1, 0, 1, 0)
+						UDim2.fromScale(1, 1)
 					)
 				end
 
@@ -2425,7 +2424,7 @@ function VoxelInventoryPanel:UpdateCursorPosition()
 
 	-- Cursor ScreenGui has IgnoreGuiInset=true, so use raw mouse position
 	-- AnchorPoint of 0.5,0.5 centers the cursor frame on this position
-	self.cursorFrame.Position = UDim2.new(0, mousePos.X, 0, mousePos.Y)
+	self.cursorFrame.Position = UDim2.fromOffset(mousePos.X, mousePos.Y)
 end
 
 function VoxelInventoryPanel:BindInput()
@@ -2438,7 +2437,7 @@ function VoxelInventoryPanel:BindInput()
 	end)
 
 	-- Drop item when clicking outside inventory
-	self.connections[#self.connections + 1] = InputService.InputBegan:Connect(function(input, gpe)
+	self.connections[#self.connections + 1] = InputService.InputBegan:Connect(function(input, _gpe)
 		if not self.isOpen then return end
 		if input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
 
@@ -2524,7 +2523,7 @@ function VoxelInventoryPanel:Open()
 	-- Set initial state: small at top (just header visible)
 	-- Use center anchor throughout for consistent positioning
 	self.panel.AnchorPoint = Vector2.new(0.5, 0.5)
-	self.panel.Size = UDim2.new(0, finalWidth, 0, startHeight)
+	self.panel.Size = UDim2.fromOffset(finalWidth, startHeight)
 	-- Start position: top of screen (0 scale) with small offset, accounting for center anchor
 	self.panel.Position = UDim2.new(0.5, 0, 0, 60 + startHeight * 0.5)
 	self.panel.BackgroundTransparency = 1
@@ -2536,7 +2535,7 @@ function VoxelInventoryPanel:Open()
 		self.panel,
 		TweenInfo.new(0.2, Enum.EasingStyle.Cubic, Enum.EasingDirection.Out),
 		{
-			Size = UDim2.new(0, finalWidth, 0, finalHeight),
+			Size = UDim2.fromOffset(finalWidth, finalHeight),
 			Position = UDim2.new(0.5, 0, 0.5, -INVENTORY_CONFIG.HEADER_HEIGHT)
 		}
 	)
@@ -2642,7 +2641,7 @@ function VoxelInventoryPanel:Close(nextMode)
 		self.panel,
 		TweenInfo.new(0.2, Enum.EasingStyle.Cubic, Enum.EasingDirection.In),
 		{
-			Size = UDim2.new(0, finalWidth, 0, startHeight),
+			Size = UDim2.fromOffset(finalWidth, startHeight),
 			Position = UDim2.new(0.5, 0, 0, targetPositionY)
 		}
 	)

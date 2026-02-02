@@ -19,7 +19,7 @@ function ButtonExamples:CreateExamples(parent)
 	-- Create a container for examples
 	local container = Instance.new("Frame")
 	container.Name = "ButtonExamples"
-	container.Size = UDim2.new(1, 0, 1, 0)
+	container.Size = UDim2.fromScale(1, 1)
 	container.BackgroundTransparency = 1
 	container.Parent = parent
 
@@ -79,8 +79,8 @@ function ButtonExamples:CreateActionButtonExamples(parent)
 	-- Create different variant buttons
 	local variants = {"primary", "success", "warning", "danger", "info", "secondary"}
 
-	for i, variant in ipairs(variants) do
-		local button = ButtonFactory:CreateActionButton({
+	for _, variant in ipairs(variants) do
+		local _button = ButtonFactory:CreateActionButton({
 			text = variant:gsub("^%l", string.upper), -- Capitalize first letter
 			variant = variant,
 			parent = buttonContainer,
@@ -133,8 +133,8 @@ function ButtonExamples:CreateBuyButtonExamples(parent)
 		{amount = 75, currency = "gems", variant = "danger"}
 	}
 
-	for i, config in ipairs(buyVariants) do
-		local button = ButtonFactory:CreateBuyButton({
+	for _, config in ipairs(buyVariants) do
+		local _button = ButtonFactory:CreateBuyButton({
 			amount = config.amount,
 			currency = config.currency,
 			variant = config.variant,
@@ -197,7 +197,7 @@ function ButtonExamples:CreatePanelButtonExamples(parent)
 		buttonFrame.LayoutOrder = i
 		buttonFrame.Parent = buttonContainer
 
-		local button = ButtonFactory:CreatePanelButton({
+		local _button = ButtonFactory:CreatePanelButton({
 			text = config.text,
 			variant = config.variant,
 			parent = buttonFrame,
@@ -248,8 +248,8 @@ function ButtonExamples:CreateDynamicButtonExample(parent)
 	-- Create state control buttons
 	local states = {"available", "cannot_afford", "out_of_stock"}
 
-	for i, state in ipairs(states) do
-		local controlButton = ButtonFactory:CreateActionButton({
+	for _, state in ipairs(states) do
+		local _controlButton = ButtonFactory:CreateActionButton({
 			text = state:gsub("_", " "):gsub("^%l", string.upper),
 			variant = "secondary",
 			size = "small",

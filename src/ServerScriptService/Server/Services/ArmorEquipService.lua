@@ -239,7 +239,7 @@ end
 function ArmorEquipService:HandleArmorSlotClick(player: Player, data)
 	local slot = data.slot
 	local cursorItemId = data.cursorItemId
-	local cursorCount = data.cursorCount or 1
+	local _cursorCount = data.cursorCount or 1
 
 	local normalizedSlot = self:_normalizeSlot(slot)
 	if not normalizedSlot then

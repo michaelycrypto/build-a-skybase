@@ -109,7 +109,7 @@ function ChestStorageService:InitializeStarterChest(x, y, z)
 	local ItemStack = require(ReplicatedStorage.Shared.VoxelWorld.Inventory.ItemStack)
 	local Constants = require(ReplicatedStorage.Shared.VoxelWorld.Core.Constants)
 
-	local key = self:GetChestKey(x, y, z)
+	local _key = self:GetChestKey(x, y, z)
 
 	-- Get or create the chest
 	local chest = self:GetChest(x, y, z)
@@ -1036,7 +1036,7 @@ function ChestStorageService:SaveChestData()
 	print("[SaveChestData] Starting chest save...")
 	print(string.format("[SaveChestData] Total chests in memory: %d", self:CountChests()))
 
-	for key, chest in pairs(self.chests) do
+	for _, chest in pairs(self.chests) do
 		-- Only save chests that have items
 		local hasItems = false
 		local itemCount = 0
@@ -1130,7 +1130,7 @@ function ChestStorageService:LoadChestData(chestData)
 		end
 
 		print(string.format("[LoadChestData]   Chest.slots table address AFTER load: %s", tostring(chest.slots)))
-		print(string.format("[LoadChestData]   Verifying loaded data in chest.slots:"))
+		print("[LoadChestData]   Verifying loaded data in chest.slots:")
 		local verifiedCount = 0
 		for i = 1, 27 do
 			if chest.slots[i] then

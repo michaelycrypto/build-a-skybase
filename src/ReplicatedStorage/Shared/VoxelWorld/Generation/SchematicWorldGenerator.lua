@@ -106,7 +106,7 @@ end
 
 --- Convert Minecraft block properties to our metadata byte format
 --- Handles both abbreviated (f=n, h=b, s=st) and full (facing=north, half=bottom, shape=straight) property names
-local function convertMetadata(baseName, properties)
+local function convertMetadata(_, properties)
 	if not properties then
 		return 0
 	end
@@ -328,8 +328,12 @@ function SchematicWorldGenerator:_loadSchematic(path)
 
 							-- Track Y bounds
 							local endY = startY + length - 1
-							if startY < self._minY then self._minY = startY end
-							if endY > self._maxY then self._maxY = endY end
+							if startY < self._minY then
+								self._minY = startY
+							end
+							if endY > self._maxY then
+								self._maxY = endY
+							end
 						end
 					end
 
@@ -521,7 +525,9 @@ function SchematicWorldGenerator:GenerateChunk(chunk)
 	if not self._firstChunkLogged then
 		self._firstChunkLogged = true
 		local columnCount = 0
-		for _ in pairs(chunkData) do columnCount = columnCount + 1 end
+		for _ in pairs(chunkData) do
+			columnCount = columnCount + 1
+		end
 		print(string.format("[SchematicWorldGenerator] Generating first chunk %s with %d columns", chunkKey, columnCount))
 	end
 

@@ -10,14 +10,14 @@ local ShopPanel = {}
 -- Services
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
-local InputService = require(script.Parent.Parent.Input.InputService)
+local _InputService = require(script.Parent.Parent.Input.InputService)
 
 -- Dependencies
 local GameConfig = require(game:GetService("ReplicatedStorage").Configs.GameConfig)
 local UIComponents = require(script.Parent.Parent.Managers.UIComponents)
 local IconManager = require(script.Parent.Parent.Managers.IconManager)
 local SoundManager = require(script.Parent.Parent.Managers.SoundManager)
-local EventManager = require(game:GetService("ReplicatedStorage").Shared.EventManager)
+local _EventManager = require(game:GetService("ReplicatedStorage").Shared.EventManager)
 local ShopApi = require(game:GetService("ReplicatedStorage").Shared.Api.ShopApi)
 local GameState = require(script.Parent.Parent.Managers.GameState)
 local ButtonFactory = require(script.Parent.Parent.Managers.Buttons.ButtonFactory)
@@ -26,8 +26,8 @@ local ToastManager = require(script.Parent.Parent.Managers.ToastManager)
 -- State
 local panel = nil
 local itemsList = nil
-local searchBox = nil
-local sortDropdown = nil
+local _searchBox = nil
+local _sortDropdown = nil
 local shopData = {
 	items = {},
 	filteredItems = {},
@@ -64,7 +64,7 @@ local SHOP_CONFIG = {
 --[[
 	Create content for PanelManager integration
 --]]
-function ShopPanel:CreateContent(contentFrame, data)
+function ShopPanel:CreateContent(contentFrame, _data)
 	if not contentFrame then
 		return self:Create()
 	end
@@ -113,7 +113,7 @@ function ShopPanel:CreateCustomLayout(contentFrame)
 	local restockContainer = Instance.new("Frame")
 	restockContainer.Name = "RestockContainer"
 	restockContainer.Size = UDim2.new(1, -20, 0, 20) -- Very compact height, account for 10px padding on each side
-	restockContainer.Position = UDim2.new(0, 10, 0, 0) -- 10px from sides, 0px from top
+	restockContainer.Position = UDim2.fromOffset(10, 0) -- 10px from sides, 0px from top
 	restockContainer.BackgroundTransparency = 1
 	restockContainer.Parent = contentFrame
 
@@ -121,7 +121,7 @@ function ShopPanel:CreateCustomLayout(contentFrame)
 	local scrollContainer = Instance.new("Frame")
 	scrollContainer.Name = "ScrollContainer"
 	scrollContainer.Size = UDim2.new(1, -20, 1, -20) -- Account for 10px padding on sides, 20px for restock timer + 20px spacing
-	scrollContainer.Position = UDim2.new(0, 10, 0, 20) -- 10px from sides, 20px from top (20px timer + 0px spacing)
+	scrollContainer.Position = UDim2.fromOffset(10, 20) -- 10px from sides, 20px from top (20px timer + 0px spacing)
 	scrollContainer.BackgroundTransparency = 1
 	scrollContainer.Parent = contentFrame
 
@@ -154,7 +154,7 @@ function ShopPanel:CreateItemsList(parent)
 	-- Create scroll frame for the content
 	local scrollFrame = UIComponents:CreateScrollFrame({
 		parent = parent,
-		size = UDim2.new(1, 0, 1, 0)
+		size = UDim2.fromScale(1, 1)
 	})
 
 	-- Remove the default UIPadding from UIComponents
@@ -166,7 +166,7 @@ function ShopPanel:CreateItemsList(parent)
 	-- Items list container (direct child of scroll content)
 	itemsList = Instance.new("Frame")
 	itemsList.Name = "ItemsList"
-	itemsList.Size = UDim2.new(1, 0, 0, 0)
+	itemsList.Size = UDim2.fromScale(1, 0)
 	itemsList.AutomaticSize = Enum.AutomaticSize.Y
 	itemsList.BackgroundTransparency = 1
 	itemsList.Parent = scrollFrame.content
@@ -197,7 +197,7 @@ end
 --]]
 function ShopPanel:SetupGameStateListener()
 	-- Listen for player data changes (specifically coins)
-	GameState:OnPropertyChanged("playerData.coins", function(newValue, oldValue, path)
+	GameState:OnPropertyChanged("playerData.coins", function(_newValue, _oldValue, _path)
 		-- Update purchase button states when balance changes
 		self:UpdatePurchaseButtonStates()
 	end)
@@ -208,7 +208,7 @@ end
 --[[
 	Create top bar with balance display and restock timer (legacy function - now handled directly)
 --]]
-function ShopPanel:CreateTopBar(parent)
+function ShopPanel:CreateTopBar(_parent)
 	-- This function is now deprecated - restock timer is created directly in CreateCustomLayout
 	-- Keeping for compatibility but functionality moved to CreateRestockTimer
 end
@@ -220,16 +220,16 @@ function ShopPanel:CreateRestockTimer(parent)
 	-- Create timer container (left-aligned, very compact)
 	local timerContainer = Instance.new("Frame")
 	timerContainer.Name = "RestockTimer"
-	timerContainer.Size = UDim2.new(0, 0, 1, 0) -- Full height of parent, auto-width
+	timerContainer.Size = UDim2.fromScale(0, 1) -- Full height of parent, auto-width
 	timerContainer.AutomaticSize = Enum.AutomaticSize.X -- Auto-size width to fit content
-	timerContainer.Position = UDim2.new(0, 0, 0, 0) -- Left-aligned, no padding
+	timerContainer.Position = UDim2.fromScale(0, 0) -- Left-aligned, no padding
 	timerContainer.BackgroundTransparency = 1 -- Completely transparent background
 	timerContainer.Parent = parent
 
 	-- Create timer label (very compact, left-aligned, no padding)
 	local timerLabel = Instance.new("TextLabel")
 	timerLabel.Name = "TimerLabel"
-	timerLabel.Size = UDim2.new(0, 0, 1, 0) -- Full height of container, auto-width
+	timerLabel.Size = UDim2.fromScale(0, 1) -- Full height of container, auto-width
 	timerLabel.AutomaticSize = Enum.AutomaticSize.X -- Auto-size width to fit text content
 	timerLabel.BackgroundTransparency = 1
 	timerLabel.Text = "Restock: --:--"
@@ -398,7 +398,7 @@ function ShopPanel:CreateItemCard(itemData, index)
 	-- Item content (flex layout: icon left, info center, button right)
 	local itemContent = Instance.new("Frame")
 	itemContent.Name = "ItemContent"
-	itemContent.Size = UDim2.new(1, 0, 1, 0)
+	itemContent.Size = UDim2.fromScale(1, 1)
 	itemContent.BackgroundTransparency = 1
 	itemContent.Parent = itemFrame
 
@@ -409,7 +409,7 @@ function ShopPanel:CreateItemCard(itemData, index)
 	-- Item icon container (left side) - 90x90 frame with transparent black background
 	local iconContainer = Instance.new("Frame")
 	iconContainer.Name = "IconContainer"
-	iconContainer.Size = UDim2.new(0, 90, 0, 90)
+	iconContainer.Size = UDim2.fromOffset(90, 90)
 	iconContainer.Position = UDim2.new(0, 10, 0.5, 0)
 	iconContainer.AnchorPoint = Vector2.new(0, 0.5)
 	iconContainer.BackgroundColor3 = Color3.fromRGB(0, 0, 0) -- Black background
@@ -425,8 +425,8 @@ function ShopPanel:CreateItemCard(itemData, index)
 	-- Item icon (centered in container)
 	local itemIcon = Instance.new("ImageLabel")
 	itemIcon.Name = "ItemIcon"
-	itemIcon.Size = UDim2.new(0, SHOP_CONFIG.cards.iconSize, 0, SHOP_CONFIG.cards.iconSize)
-	itemIcon.Position = UDim2.new(0.5, 0, 0.5, 0)
+	itemIcon.Size = UDim2.fromOffset(SHOP_CONFIG.cards.iconSize, SHOP_CONFIG.cards.iconSize)
+	itemIcon.Position = UDim2.fromScale(0.5, 0.5)
 	itemIcon.AnchorPoint = Vector2.new(0.5, 0.5)
 	itemIcon.BackgroundTransparency = 1 -- Make background fully transparent
 	itemIcon.BorderSizePixel = 0
@@ -444,7 +444,7 @@ function ShopPanel:CreateItemCard(itemData, index)
 	local infoContainer = Instance.new("Frame")
 	infoContainer.Name = "InfoContainer"
 	infoContainer.Size = UDim2.new(1, -90 - 16 - 10, 1, 0) -- Full height, accounting for 90px icon container + 16px spacing + 10px offset
-	infoContainer.Position = UDim2.new(0, 90 + 16 + 10, 0, 0) -- 90px icon container + 16px spacing + 10px offset
+	infoContainer.Position = UDim2.fromOffset(90 + 16 + 10, 0) -- 90px icon container + 16px spacing + 10px offset
 	infoContainer.BackgroundTransparency = 1
 	infoContainer.Parent = itemContent
 
@@ -503,7 +503,7 @@ function ShopPanel:CreateItemCard(itemData, index)
 		amount = itemData.price,
 		variant = "secondary", -- Start with secondary variant (grey) until stock is loaded
 		size = "compact", -- Use compact size for buy buttons
-		position = UDim2.new(0, 0, 0, 0), -- Position will be handled by layout
+		position = UDim2.fromScale(0, 0), -- Position will be handled by layout
 		callback = function()
 			self:PurchaseItem(itemData)
 		end
@@ -807,7 +807,7 @@ function ShopPanel:UpdateStockDisplay(stockData)
 		if itemData.stockInfo then
 			local stockInfo = shopData.stock[itemData.id]
 			local currentStock = 0
-			local previousStock = itemData.previousStock or 0
+			local _previousStock = itemData.previousStock or 0
 
 			-- Handle different stock data structures
 			if type(stockInfo) == "number" then
@@ -865,7 +865,7 @@ function ShopPanel:UpdatePurchaseButtonStates()
 			end
 
 			local inStock = currentStock > 0
-			local canPurchase = canAfford and inStock
+			local _canPurchase = canAfford and inStock
 
 			-- Debug: Log button state update
 			print("ShopPanel: Updating button for", itemData.id, "- canAfford:", canAfford, "inStock:", inStock, "currentStock:", currentStock, "(server-wide stock)")
@@ -966,8 +966,8 @@ function ShopPanel:Cleanup()
 	end
 
 	itemsList = nil
-	searchBox = nil
-	sortDropdown = nil
+	_searchBox = nil
+	_sortDropdown = nil
 	shopData = {
 		items = {},
 		filteredItems = {},

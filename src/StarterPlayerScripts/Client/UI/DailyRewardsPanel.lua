@@ -11,7 +11,7 @@ local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 -- Import dependencies
-local EventManager = require(ReplicatedStorage.Shared.EventManager)
+local _EventManager = require(ReplicatedStorage.Shared.EventManager)
 local RewardsApi = require(ReplicatedStorage.Shared.Api.RewardsApi)
 local Config = require(ReplicatedStorage.Shared.Config)
 local SoundManager = require(script.Parent.Parent.Managers.SoundManager)
@@ -53,7 +53,7 @@ local dailyRewardsData = {
 	@param contentFrame: Frame - The content frame provided by PanelManager
 	@param data: table - Optional data for the panel
 --]]
-function DailyRewardsPanel:CreateContent(contentFrame, data)
+function DailyRewardsPanel:CreateContent(contentFrame, _data)
 	-- If no contentFrame provided, use legacy method
 	if not contentFrame then
 		return self:Create()
@@ -115,7 +115,7 @@ function DailyRewardsPanel:CreateDailyRewardsContent(contentFrame)
 	-- Main container with vertical layout - compact design with no margins
 	local mainContainer = Instance.new("Frame")
 	mainContainer.Name = "DailyRewardsContainer"
-	mainContainer.Size = UDim2.new(1, 0, 1, 0)
+	mainContainer.Size = UDim2.fromScale(1, 1)
 	mainContainer.BackgroundTransparency = 1 -- Transparent, let sections handle backgrounds
 	mainContainer.BorderSizePixel = 0
 	mainContainer.Parent = contentFrame
@@ -239,7 +239,7 @@ function DailyRewardsPanel:CreateCycleDisplay(parent)
 	-- Title text
 	local titleLabel = Instance.new("TextLabel")
 	titleLabel.Name = "Title"
-	titleLabel.Size = UDim2.new(1, 0, 1, 0)
+	titleLabel.Size = UDim2.fromScale(1, 1)
 	titleLabel.BackgroundTransparency = 1
 	titleLabel.Text = "Rewards Cycle - Day " .. dailyRewardsData.cyclePosition
 	titleLabel.TextColor3 = Config.UI_SETTINGS.titleLabel.textColor
@@ -259,13 +259,13 @@ function DailyRewardsPanel:CreateCycleDisplay(parent)
 	local cycleGrid = Instance.new("Frame")
 	cycleGrid.Name = "CycleGrid"
 	cycleGrid.Size = UDim2.new(1, 0, 1, -40) -- Account for header
-	cycleGrid.Position = UDim2.new(0, 0, 0, 40)
+	cycleGrid.Position = UDim2.fromOffset(0, 40)
 	cycleGrid.BackgroundTransparency = 1
 	cycleGrid.Parent = cycleContainer
 
 	local gridLayout = Instance.new("UIGridLayout")
-	gridLayout.CellSize = UDim2.new(0, 72, 0, 72) -- Compact card size
-	gridLayout.CellPadding = UDim2.new(0, 4, 0, 4) -- Tight spacing
+	gridLayout.CellSize = UDim2.fromOffset(72, 72) -- Compact card size
+	gridLayout.CellPadding = UDim2.fromOffset(4, 4) -- Tight spacing
 	gridLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 	gridLayout.VerticalAlignment = Enum.VerticalAlignment.Center
 	gridLayout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -304,7 +304,7 @@ function DailyRewardsPanel:CreateCycleRewardCard(parent, rewardData, dayIndex)
 	-- Card frame
 	local cardFrame = Instance.new("Frame")
 	cardFrame.Name = "CycleDay" .. dayIndex
-	cardFrame.Size = UDim2.new(1, 0, 1, 0)
+	cardFrame.Size = UDim2.fromScale(1, 1)
 
 	-- Set background color based on state
 	if isPastReward then
@@ -365,8 +365,8 @@ function DailyRewardsPanel:CreateCycleRewardCard(parent, rewardData, dayIndex)
 
 	-- Reward icon with fallback to Currency category
 	local iconCategory = rewardData.iconCategory or "Currency"
-	local rewardIcon = IconManager:CreateIcon(cardFrame, iconCategory, rewardData.icon, {
-		size = UDim2.new(0, 24, 0, 24), -- Smaller icon
+	local _rewardIcon = IconManager:CreateIcon(cardFrame, iconCategory, rewardData.icon, {
+		size = UDim2.fromOffset(24, 24), -- Smaller icon
 		layoutOrder = 2
 	})
 
@@ -387,7 +387,7 @@ function DailyRewardsPanel:CreateCycleRewardCard(parent, rewardData, dayIndex)
 	if isCurrentDay then
 		local indicator = Instance.new("Frame")
 		indicator.Name = "CurrentIndicator"
-		indicator.Size = UDim2.new(0, 4, 0, 4)
+		indicator.Size = UDim2.fromOffset(4, 4)
 		indicator.Position = UDim2.new(0.5, -2, 1, -8)
 		indicator.BackgroundColor3 = Config.UI_SETTINGS.colors.semantic.button.success
 		indicator.BorderSizePixel = 0
@@ -409,8 +409,8 @@ function DailyRewardsPanel:CreateCycleRewardCard(parent, rewardData, dayIndex)
 
 		-- Add checkmark for completed days in the current cycle
 	if isCompletedDay then
-		local checkmark = IconManager:CreateIcon(cardFrame, "UI", "CheckMark", {
-			size = UDim2.new(0, 16, 0, 16),
+		local _checkmark = IconManager:CreateIcon(cardFrame, "UI", "CheckMark", {
+			size = UDim2.fromOffset(16, 16),
 			position = UDim2.new(1, -18, 0, 2),
 			anchorPoint = Vector2.new(1, 0)
 		})
@@ -441,7 +441,7 @@ function DailyRewardsPanel:CreateClaimButton(parent)
 	local cornerFix = Instance.new("Frame")
 	cornerFix.Name = "CornerFix"
 	cornerFix.Size = UDim2.new(1, 0, 0, Config.UI_SETTINGS.designSystem.borderRadius.lg)
-	cornerFix.Position = UDim2.new(0, 0, 0, 0)
+	cornerFix.Position = UDim2.fromScale(0, 0)
 	cornerFix.BackgroundColor3 = Config.UI_SETTINGS.colors.backgroundSecondary
 	cornerFix.BackgroundTransparency = Config.UI_SETTINGS.designSystem.transparency.subtle
 	cornerFix.BorderSizePixel = 0
@@ -456,7 +456,7 @@ function DailyRewardsPanel:CreateClaimButton(parent)
 	buttonPadding.Parent = buttonContainer
 
 	-- Get current reward info
-	local currentReward = dailyRewardsData.rewardCycle[dailyRewardsData.cyclePosition]
+	local _currentReward = dailyRewardsData.rewardCycle[dailyRewardsData.cyclePosition]
 	local buttonText = self:GetClaimButtonText()
 	local canClaim = dailyRewardsData.canClaim and not dailyRewardsData.claimedToday
 
@@ -575,12 +575,12 @@ function DailyRewardsPanel:UpdateStreakDisplay()
 	if not streakDisplay then return false end
 
 	-- Update streak value and status
-	local streakValue = dailyRewardsData.currentStreak .. " Days"
-	local statusText = self:GetStatusText()
-	local statusColor = self:GetStatusColor()
+	local _streakValue = dailyRewardsData.currentStreak .. " Days"
+	local _statusText = self:GetStatusText()
+	local _statusColor = self:GetStatusColor()
 
 	-- Try to update the info topbar items
-	local success, err = pcall(function()
+	local success, _err = pcall(function()
 		-- This assumes the UIComponents:CreateInfoTopbar creates updatable elements
 		-- We might need to access the specific text elements and update them
 		-- For now, we'll return false to trigger a full refresh
@@ -651,7 +651,7 @@ function DailyRewardsPanel:UpdateCycleCard(cardFrame, dayIndex)
 	if isCompletedDay and not existingCheckmark then
 		-- Add checkmark
 		local checkmark = IconManager:CreateIcon(cardFrame, "UI", "CheckMark", {
-			size = UDim2.new(0, 16, 0, 16),
+			size = UDim2.fromOffset(16, 16),
 			position = UDim2.new(1, -18, 0, 2),
 			anchorPoint = Vector2.new(1, 0)
 		})
@@ -760,7 +760,7 @@ function DailyRewardsPanel:Initialize()
     end)
 
 	-- Single GameState listener for all data updates
-	GameState:OnPropertyChanged("playerData.dailyRewards", function(newValue, oldValue, path)
+	GameState:OnPropertyChanged("playerData.dailyRewards", function(newValue, _oldValue, _path)
 		if newValue then
 			self:UpdateFromGameState(newValue)
 		end

@@ -93,10 +93,18 @@ local function animateZombie(self, t)
 	end
 
     if speed < 0.05 then
-		if leftLeg then leftLeg.Transform = CFrame.new() end
-		if rightLeg then rightLeg.Transform = CFrame.new() end
-        if leftArm then leftArm.Transform = CFrame.Angles(armBasePitch + attackOverlay, 0, 0) end
-        if rightArm then rightArm.Transform = CFrame.Angles(armBasePitch + attackOverlay, 0, 0) end
+		if leftLeg then
+			leftLeg.Transform = CFrame.new()
+		end
+		if rightLeg then
+			rightLeg.Transform = CFrame.new()
+		end
+        if leftArm then
+			leftArm.Transform = CFrame.Angles(armBasePitch + attackOverlay, 0, 0)
+		end
+        if rightArm then
+			rightArm.Transform = CFrame.Angles(armBasePitch + attackOverlay, 0, 0)
+		end
 		return
 	end
 
@@ -147,10 +155,18 @@ local function animateSheep(self, t)
 	local headMotor = safeMotor(motors, "HeadSkinMotor") or safeMotor(motors, "HeadWoolMotor")
 
 	if speed < 0.05 then
-		if frontLeft then frontLeft.Transform = CFrame.new() end
-		if frontRight then frontRight.Transform = CFrame.new() end
-		if backLeft then backLeft.Transform = CFrame.new() end
-		if backRight then backRight.Transform = CFrame.new() end
+		if frontLeft then
+			frontLeft.Transform = CFrame.new()
+		end
+		if frontRight then
+			frontRight.Transform = CFrame.new()
+		end
+		if backLeft then
+			backLeft.Transform = CFrame.new()
+		end
+		if backRight then
+			backRight.Transform = CFrame.new()
+		end
 		-- Head motion while stopped is handled by idle animation path
 		return
 	end
@@ -191,10 +207,18 @@ local function animateSheepIdle(self, t)
 	local frontRight = safeMotor(motors, "FrontRightLegMotor") or safeMotor(motors, "RightFrontLegMotor")
 	local backLeft = safeMotor(motors, "BackLeftLegMotor") or safeMotor(motors, "LeftBackLegMotor")
 	local backRight = safeMotor(motors, "BackRightLegMotor") or safeMotor(motors, "RightBackLegMotor")
-	if frontLeft then frontLeft.Transform = CFrame.new() end
-	if frontRight then frontRight.Transform = CFrame.new() end
-	if backLeft then backLeft.Transform = CFrame.new() end
-	if backRight then backRight.Transform = CFrame.new() end
+	if frontLeft then
+		frontLeft.Transform = CFrame.new()
+	end
+	if frontRight then
+		frontRight.Transform = CFrame.new()
+	end
+	if backLeft then
+		backLeft.Transform = CFrame.new()
+	end
+	if backRight then
+		backRight.Transform = CFrame.new()
+	end
 
 	-- Subtle head look-around (Minecraft-style idle)
 	local headMotor = safeMotor(motors, "HeadSkinMotor") or safeMotor(motors, "HeadWoolMotor")
@@ -212,10 +236,18 @@ local function animateSheepGraze(self, t)
     local frontRight = safeMotor(motors, "FrontRightLegMotor") or safeMotor(motors, "RightFrontLegMotor")
     local backLeft = safeMotor(motors, "BackLeftLegMotor") or safeMotor(motors, "LeftBackLegMotor")
     local backRight = safeMotor(motors, "BackRightLegMotor") or safeMotor(motors, "RightBackLegMotor")
-    if frontLeft then frontLeft.Transform = CFrame.new() end
-    if frontRight then frontRight.Transform = CFrame.new() end
-    if backLeft then backLeft.Transform = CFrame.new() end
-    if backRight then backRight.Transform = CFrame.new() end
+    if frontLeft then
+		frontLeft.Transform = CFrame.new()
+	end
+    if frontRight then
+		frontRight.Transform = CFrame.new()
+	end
+    if backLeft then
+		backLeft.Transform = CFrame.new()
+	end
+    if backRight then
+		backRight.Transform = CFrame.new()
+	end
 
     -- Head down with subtle nibble motion
     local headMotor = safeMotor(motors, "HeadSkinMotor") or safeMotor(motors, "HeadWoolMotor")
@@ -239,10 +271,18 @@ local function animateCow(self, t)
 
 	if speed < 0.05 then
 		-- Idle animation
-		if frontLeft then frontLeft.Transform = CFrame.new() end
-		if frontRight then frontRight.Transform = CFrame.new() end
-		if backLeft then backLeft.Transform = CFrame.new() end
-		if backRight then backRight.Transform = CFrame.new() end
+		if frontLeft then
+			frontLeft.Transform = CFrame.new()
+		end
+		if frontRight then
+			frontRight.Transform = CFrame.new()
+		end
+		if backLeft then
+			backLeft.Transform = CFrame.new()
+		end
+		if backRight then
+			backRight.Transform = CFrame.new()
+		end
 
 		-- Subtle head movement when idle
 		if headMotor then
@@ -291,10 +331,18 @@ local function animateCowIdle(self, t)
 	local frontRight = safeMotor(motors, "FrontRightLegMotor")
 	local backLeft = safeMotor(motors, "BackLeftLegMotor")
 	local backRight = safeMotor(motors, "BackRightLegMotor")
-	if frontLeft then frontLeft.Transform = CFrame.new() end
-	if frontRight then frontRight.Transform = CFrame.new() end
-	if backLeft then backLeft.Transform = CFrame.new() end
-	if backRight then backRight.Transform = CFrame.new() end
+	if frontLeft then
+		frontLeft.Transform = CFrame.new()
+	end
+	if frontRight then
+		frontRight.Transform = CFrame.new()
+	end
+	if backLeft then
+		backLeft.Transform = CFrame.new()
+	end
+	if backRight then
+		backRight.Transform = CFrame.new()
+	end
 
 	-- Subtle head look-around
 	local headMotor = safeMotor(motors, "HeadMotor")
@@ -317,8 +365,12 @@ local function animateChicken(self, t)
 
 	if speed < 0.05 then
 		-- Idle animation
-		if leftLeg then leftLeg.Transform = CFrame.new() end
-		if rightLeg then rightLeg.Transform = CFrame.new() end
+		if leftLeg then
+			leftLeg.Transform = CFrame.new()
+		end
+		if rightLeg then
+			rightLeg.Transform = CFrame.new()
+		end
 
 		-- Idle head bob (chickens constantly move their head)
 		if headMotor then
@@ -381,8 +433,12 @@ local function animateChickenIdle(self, t)
 	-- Reset legs
 	local leftLeg = safeMotor(motors, "LeftLegMotor")
 	local rightLeg = safeMotor(motors, "RightLegMotor")
-	if leftLeg then leftLeg.Transform = CFrame.new() end
-	if rightLeg then rightLeg.Transform = CFrame.new() end
+	if leftLeg then
+		leftLeg.Transform = CFrame.new()
+	end
+	if rightLeg then
+		rightLeg.Transform = CFrame.new()
+	end
 
 	-- Constant head bobbing (chickens are always moving their head)
 	local headMotor = safeMotor(motors, "HeadMotor")
@@ -403,13 +459,13 @@ local function animateChickenIdle(self, t)
 	end
 end
 
-function MobAnimator:Step(deltaTime)
+function MobAnimator:Step(_deltaTime)
 	local now = os.clock()
 	if not self.definition then
 		return
 	end
 
-	if self.definition.id == "ZOMBIE" then
+	if self.definition.id == "ZOMBIE" or self.definition.id == "COBBLE_MINION" then
 		animateZombie(self, now)
 	elseif self.definition.id == "SHEEP" then
 		if self.state == "graze" then
@@ -431,9 +487,6 @@ function MobAnimator:Step(deltaTime)
 		else
 			animateChicken(self, now)
 		end
-	elseif self.definition.id == "COBBLE_MINION" then
-		-- Simple idle animation for minion (slight arm swing when mining)
-		animateZombie(self, now)
 	else
 		-- Reset transforms for unsupported mobs
 		for _, motor in pairs(self.motors) do

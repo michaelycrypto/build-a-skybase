@@ -23,19 +23,19 @@ function Panel:CreateContent(contentFrame, data)
 	-- Scrolling container (full content area)
 	local scroll = UIComponents:CreateScrollFrame({
 		parent = contentFrame,
-		size = UDim2.new(1, 0, 1, 0)
+		size = UDim2.fromScale(1, 1)
 	})
 
 	-- Grid container for preview cards (two columns)
 	local grid = Instance.new("Frame")
 	grid.Name = "OptionsGrid"
-	grid.Size = UDim2.new(1, 0, 0, 0)
+	grid.Size = UDim2.fromScale(1, 0)
 	grid.BackgroundTransparency = 1
 	grid.AutomaticSize = Enum.AutomaticSize.Y
 	grid.Parent = scroll.content
 
 	local gridLayout = Instance.new("UIGridLayout")
-	gridLayout.CellPadding = UDim2.new(0, 10, 0, 10)
+	gridLayout.CellPadding = UDim2.fromOffset(10, 10)
 	gridLayout.CellSize = UDim2.new(0.5, -8, 0, 210) -- two columns, taller to allow square previews
 	gridLayout.FillDirectionMaxCells = 2
 	gridLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
@@ -75,7 +75,7 @@ function Panel:CreateContent(contentFrame, data)
 	local function createCard(option)
 		local button = Instance.new("TextButton")
 		button.Name = option.name .. "Card"
-		button.Size = UDim2.new(0, 0, 0, 0) -- sized by UIGridLayout
+		button.Size = UDim2.fromScale(0, 0) -- sized by UIGridLayout
 		button.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 		button.AutoButtonColor = true
 		button.Text = ""
@@ -97,13 +97,13 @@ function Panel:CreateContent(contentFrame, data)
 		local previewContainer = Instance.new("Frame")
 		previewContainer.Name = "PreviewContainer"
 		previewContainer.Size = UDim2.new(1, -20, 1, -44)
-		previewContainer.Position = UDim2.new(0, 10, 0, 10)
+		previewContainer.Position = UDim2.fromOffset(10, 10)
 		previewContainer.BackgroundTransparency = 1
 		previewContainer.Parent = button
 
 		local squareArea = Instance.new("Frame")
 		squareArea.Name = "SquareArea"
-		squareArea.Size = UDim2.new(1, 0, 1, 0)
+		squareArea.Size = UDim2.fromScale(1, 1)
 		squareArea.BackgroundTransparency = 1
 		squareArea.Parent = previewContainer
 
@@ -115,7 +115,7 @@ function Panel:CreateContent(contentFrame, data)
 		-- Viewport preview inside square area
 		local preview = ViewportPreview.new({
 			parent = squareArea,
-			size = UDim2.new(1, 0, 1, 0),
+			size = UDim2.fromScale(1, 1),
 			borderRadius = 6,
 			backgroundColor = Color3.fromRGB(18, 18, 18),
 			backgroundTransparency = 0,

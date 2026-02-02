@@ -8,7 +8,7 @@ local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
 
 local Constants = require(script.Parent.Parent.Core.Constants)
-local Config = require(script.Parent.Parent.Core.Config)
+
 
 local ChunkPersistence = {}
 ChunkPersistence.__index = ChunkPersistence
@@ -89,7 +89,7 @@ function ChunkPersistence:DecompressChunk(chunk, compressedData)
 	for _, run in ipairs(data.blocks) do
 		local blockId, count = run[1], run[2]
 
-		for i = 1, count do
+		for _ = 1, count do
 			local x = index % Constants.CHUNK_SIZE_X
 			local y = math.floor(index / (Constants.CHUNK_SIZE_X * Constants.CHUNK_SIZE_Z))
 			local z = math.floor((index % (Constants.CHUNK_SIZE_X * Constants.CHUNK_SIZE_Z)) / Constants.CHUNK_SIZE_X)
@@ -133,7 +133,9 @@ function ChunkPersistence:QueueChunkSave(chunk)
 
 	-- Process queue if it's getting full (count keys)
 	local qsize = 0
-	for _ in pairs(self.saveQueue) do qsize += 1 end
+	for _ in pairs(self.saveQueue) do
+		qsize += 1
+	end
 	if qsize >= self.maxSaveQueueSize then
 		self:ProcessSaveQueue()
 	end

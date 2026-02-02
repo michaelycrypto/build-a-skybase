@@ -35,7 +35,7 @@ end
 local sounds = {}
 local musicTracks = {}
 local currentMusic = nil
-local masterVolume = 1
+local _masterVolume = 1
 local musicVolume = 0.5
 local sfxVolume = 0.7
 local soundEnabled = true
@@ -396,14 +396,10 @@ end
 	@param pitch: number - Optional pitch modifier (default: 1)
 	@param volume: number - Optional volume modifier (default: 1)
 --]]
-function SoundManager:PlaySoundByCategory(soundName, category, pitch, volume)
-	if category == "Music" then
-		-- For music, we might want different handling
-		self:PlaySFX(soundName, pitch, volume)
-	else
-		-- Default to SFX handling
-		self:PlaySFX(soundName, pitch, volume)
-	end
+function SoundManager:PlaySoundByCategory(soundName, _category, pitch, volume)
+	-- Currently all categories use standard SFX handling
+	-- categories like "Music" can be handled differently here in the future
+	self:PlaySFX(soundName, pitch, volume)
 end
 
 --[[

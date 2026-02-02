@@ -6,7 +6,7 @@
 
 local DataStoreService = game:GetService("DataStoreService")
 local RunService = game:GetService("RunService")
-local HttpService = game:GetService("HttpService")
+local _HttpService = game:GetService("HttpService")
 
 local WorldDataStore = {}
 WorldDataStore.__index = WorldDataStore
@@ -174,7 +174,7 @@ function WorldDataStore:RemovePermission(worldId: string, userId: number): boole
 end
 
 -- Get all permissions for world (expensive operation)
-function WorldDataStore:GetWorldPermissions(worldId: string): table
+function WorldDataStore:GetWorldPermissions(_worldId: string): table
 	-- Note: This is a simplified version
 	-- In production, you'd want to maintain a separate index
 	warn("WorldDataStore: GetWorldPermissions is not fully implemented (requires permission indexing)")
@@ -182,7 +182,7 @@ function WorldDataStore:GetWorldPermissions(worldId: string): table
 end
 
 -- Clear all permissions for world
-function WorldDataStore:ClearWorldPermissions(worldId: string)
+function WorldDataStore:ClearWorldPermissions(_worldId: string)
 	-- Note: This is a simplified version
 	-- In production, you'd iterate through a permission index
 	warn("WorldDataStore: ClearWorldPermissions is not fully implemented (requires permission indexing)")
@@ -278,7 +278,7 @@ function WorldDataStore:GetWorldMetadata(worldId: string): table?
 end
 
 -- List public worlds (simplified - in production use ordered data store)
-function WorldDataStore:ListPublicWorlds(limit: number): {table}
+function WorldDataStore:ListPublicWorlds(_limit: number): {table}
 	warn("WorldDataStore: ListPublicWorlds requires indexed public worlds (not fully implemented)")
 	-- In production, maintain a separate OrderedDataStore for public worlds
 	return {}

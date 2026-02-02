@@ -208,35 +208,35 @@ function PlayerDataStoreService:LoadPlayerData(player: Player)
 		local success, result = pcall(function()
 			return self._dataStore:UpdateAsync(key, function(oldData)
 				local now = os.time()
-				
+
 				-- Check if session is locked by another server
 				if oldData and oldData.sessionLock then
 					local lock = oldData.sessionLock
 					local lockAge = now - (lock.timestamp or 0)
-					
+
 					-- Same server = always ok
-					if lock.serverId == SERVER_ID then
-						-- We already have the lock
-					-- Same-game teleport = always allow takeover (seamless)
-					elseif isSameGameTeleport then
-						self._logger.Info("Seamless teleport handoff", {
-							player = player.Name,
-							previousServer = lock.serverId,
-							lockAge = lockAge
-						})
-						-- Allow immediate takeover for same-game teleports
-					-- External join with recent lock = block
-					elseif lockAge < SESSION_LOCK_TIMEOUT then
-						self._logger.Warn("Session locked by another server", {
-							player = player.Name,
-							lockServer = lock.serverId,
-							lockAge = lockAge
-						})
-						return nil -- Don't update, signal locked
+					if lock.serverId ~= SERVER_ID then
+						-- Same-game teleport = always allow takeover (seamless)
+						if isSameGameTeleport then
+							self._logger.Info("Seamless teleport handoff", {
+								player = player.Name,
+								previousServer = lock.serverId,
+								lockAge = lockAge
+							})
+							-- Allow immediate takeover for same-game teleports
+						-- External join with recent lock = block
+						elseif lockAge < SESSION_LOCK_TIMEOUT then
+							self._logger.Warn("Session locked by another server", {
+								player = player.Name,
+								lockServer = lock.serverId,
+								lockAge = lockAge
+							})
+							return nil -- Don't update, signal locked
+						end
+						-- Stale lock (> timeout) = allow takeover
 					end
-					-- Stale lock (> timeout) = allow takeover
 				end
-				
+
 				-- Create or use existing data
 				local data = oldData
 				if not data then
@@ -244,7 +244,7 @@ function PlayerDataStoreService:LoadPlayerData(player: Player)
 				else
 					data = self:_validateAndMigrate(data, player)
 				end
-				
+
 				-- Acquire session lock
 				data.sessionLock = {
 					serverId = SERVER_ID,
@@ -253,7 +253,7 @@ function PlayerDataStoreService:LoadPlayerData(player: Player)
 					placeId = PLACE_ID
 				}
 				data.lastLogin = now
-				
+
 				return data
 			end)
 		end)
@@ -263,7 +263,7 @@ function PlayerDataStoreService:LoadPlayerData(player: Player)
 				-- Session acquired successfully
 				loadedData = result
 				sessionAcquired = true
-				
+
 				self._playerSessions[player.UserId] = {
 					player = player,
 					data = result,
@@ -339,7 +339,7 @@ function PlayerDataStoreService:SavePlayerData(player: Player)
 		local success, result = pcall(function()
 			return self._dataStore:UpdateAsync(key, function(oldData)
 				local now = os.time()
-				
+
 				-- Verify we still own the session lock
 				if oldData and oldData.sessionLock then
 					local lock = oldData.sessionLock
@@ -353,7 +353,7 @@ function PlayerDataStoreService:SavePlayerData(player: Player)
 						return nil -- Abort save
 					end
 				end
-				
+
 				-- Update session data
 				local dataToSave = session.data
 				dataToSave.lastSave = now
@@ -362,7 +362,7 @@ function PlayerDataStoreService:SavePlayerData(player: Player)
 					timestamp = now,
 					playerName = player.Name
 				}
-				
+
 				return dataToSave
 			end)
 		end)
@@ -397,7 +397,7 @@ function PlayerDataStoreService:SavePlayerData(player: Player)
 	if not saveSucceeded then
 		self._logger.Error("Failed to save player data", {player = player.Name})
 	end
-	
+
 	return saveSucceeded
 end
 
@@ -520,16 +520,16 @@ function PlayerDataStoreService:SaveAndReleaseLock(player: Player)
 	if not session or not session.data then
 		return false
 	end
-	
+
 	if not self._dataStore then
 		return false
 	end
-	
+
 	local key = self:_getPlayerKey(player)
 	local success = pcall(function()
 		self._dataStore:UpdateAsync(key, function(oldData)
 			if not oldData then return nil end
-			
+
 			-- Only save and release if we own the lock
 			if oldData.sessionLock and oldData.sessionLock.serverId == SERVER_ID then
 				-- Save current data
@@ -540,11 +540,11 @@ function PlayerDataStoreService:SaveAndReleaseLock(player: Player)
 				self._logger.Info("Saved and released lock for teleport", {player = player.Name})
 				return dataToSave
 			end
-			
+
 			return oldData
 		end)
 	end)
-	
+
 	return success
 end
 
@@ -554,25 +554,25 @@ end
 ]]
 function PlayerDataStoreService:OnPlayerRemoving(player: Player)
 	local session = self._playerSessions[player.UserId]
-	
+
 	-- Release session lock in DataStore
 	if self._dataStore and session then
 		local key = self:_getPlayerKey(player)
 		pcall(function()
 			self._dataStore:UpdateAsync(key, function(oldData)
 				if not oldData then return nil end
-				
+
 				-- Only release lock if we own it
 				if oldData.sessionLock and oldData.sessionLock.serverId == SERVER_ID then
 					oldData.sessionLock = nil
 					self._logger.Debug("Released session lock", {player = player.Name})
 				end
-				
+
 				return oldData
 			end)
 		end)
 	end
-	
+
 	-- Remove local session
 	self._playerSessions[player.UserId] = nil
 	self._logger.Debug("Removed player session", {player = player.Name})
@@ -588,7 +588,7 @@ function PlayerDataStoreService:SaveAllPlayers()
 	local savedCount = 0
 	local failedCount = 0
 
-	for userId, session in pairs(self._playerSessions) do
+	for _userId, session in pairs(self._playerSessions) do
 		if session.player and session.player:IsDescendantOf(Players) then
 			if self:SavePlayerData(session.player) then
 				savedCount = savedCount + 1
@@ -610,7 +610,7 @@ function PlayerDataStoreService:_getPlayerKey(player: Player)
 	return "Player_" .. tostring(player.UserId)
 end
 
-function PlayerDataStoreService:_createDefaultData(player: Player)
+function PlayerDataStoreService:_createDefaultData(_player: Player)
 	local data = deepCopy(DEFAULT_PLAYER_DATA)
 
 	-- Set timestamps
@@ -660,7 +660,7 @@ function PlayerDataStoreService:_validateAndMigrate(data: any, player: Player)
 	return data
 end
 
-function PlayerDataStoreService:_migrateData(data: any, fromVersion: number, toVersion: number)
+function PlayerDataStoreService:_migrateData(data: any, _fromVersion: number, _toVersion: number)
 	-- Add migration logic here as the data structure evolves
 	-- Example:
 	-- if fromVersion < 1 then
@@ -681,7 +681,7 @@ function PlayerDataStoreService:_startAutoSave()
 
 			-- Save all dirty sessions
 			local saveCount = 0
-			for userId, session in pairs(self._playerSessions) do
+			for _userId, session in pairs(self._playerSessions) do
 				if session.dirty and session.player and session.player:IsDescendantOf(Players) then
 					self:SavePlayerData(session.player)
 					saveCount = saveCount + 1

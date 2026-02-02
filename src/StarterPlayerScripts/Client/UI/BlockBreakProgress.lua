@@ -13,9 +13,9 @@ local BlockBreakProgress = {}
 local progressContainer
 local progressBar
 local progressBarBackground
-local lastUpdateTime = 0
+local _lastUpdateTime = 0
 local hideTimer = nil
-local currentProgress = 0
+local _currentProgress = 0
 
 -- Configuration
 local BAR_WIDTH = 120				-- Width of progress bar in pixels
@@ -118,10 +118,10 @@ local function updateProgress(progress)
 
 	-- Clamp progress between 0 and 1
 	progress = math.clamp(progress, 0, 1)
-	currentProgress = progress
+	_currentProgress = progress
 
 	-- Smooth transition to new width
-	local targetSize = UDim2.new(progress, 0, 1, 0)
+	local targetSize = UDim2.fromScale(progress, 1)
 	local tween = TweenService:Create(progressBar, TWEEN_INFO_PROGRESS, {
 		Size = targetSize
 	})
@@ -139,7 +139,7 @@ function BlockBreakProgress:Create(parentHudGui)
 	progressContainer.BorderSizePixel = 0
 	progressContainer.AnchorPoint = Vector2.new(0.5, 0)
 	progressContainer.Position = UDim2.new(0.5, 0, 0.5, BAR_OFFSET_Y)
-	progressContainer.Size = UDim2.new(0, BAR_WIDTH, 0, BAR_HEIGHT)
+	progressContainer.Size = UDim2.fromOffset(BAR_WIDTH, BAR_HEIGHT)
 	progressContainer.ZIndex = 15
 	progressContainer.Visible = false
 	progressContainer.GroupTransparency = 1 -- Start invisible
@@ -170,8 +170,8 @@ function BlockBreakProgress:Create(parentHudGui)
 	progressBarBackground.Name = "Background"
 	progressBarBackground.BackgroundColor3 = BAR_BG_COLOR
 	progressBarBackground.BorderSizePixel = 0
-	progressBarBackground.Size = UDim2.new(1, 0, 1, 0)
-	progressBarBackground.Position = UDim2.new(0, 0, 0, 0)
+	progressBarBackground.Size = UDim2.fromScale(1, 1)
+	progressBarBackground.Position = UDim2.fromScale(0, 0)
 	progressBarBackground.ZIndex = 15
 	progressBarBackground.Parent = progressContainer
 	createCorner(progressBarBackground)
@@ -188,8 +188,8 @@ function BlockBreakProgress:Create(parentHudGui)
 	progressBar.Name = "Fill"
 	progressBar.BackgroundColor3 = BAR_COLOR
 	progressBar.BorderSizePixel = 0
-	progressBar.Size = UDim2.new(0, 0, 1, 0) -- Start at 0 width
-	progressBar.Position = UDim2.new(0, 0, 0, 0)
+	progressBar.Size = UDim2.fromScale(0, 1) -- Start at 0 width
+	progressBar.Position = UDim2.fromScale(0, 0)
 	progressBar.ZIndex = 16
 	progressBar.Parent = progressContainer
 	createCorner(progressBar)
@@ -206,7 +206,7 @@ end
 function BlockBreakProgress:UpdateProgress(progress)
 	if not progressContainer then return end
 
-	lastUpdateTime = tick()
+	_lastUpdateTime = tick()
 
 	-- Show bar if hidden
 	showBar()

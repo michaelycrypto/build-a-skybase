@@ -39,7 +39,9 @@ end
 
 local function scaleMeshToPixels(part, pxX, pxY)
 	local longest = math.max(pxX or 0, pxY or 0)
-	if longest <= 0 then return end
+	if longest <= 0 then
+		return
+	end
 	local target = longest * STUDS_PER_PIXEL
 	local maxDim = math.max(part.Size.X, part.Size.Y, part.Size.Z)
 	if maxDim > 0 then
@@ -49,7 +51,9 @@ end
 
 local function isPlaceableBlock(itemId)
 	local def = BlockRegistry.Blocks[itemId]
-	if not def or not def.solid or def.crossShape or def.craftingMaterial then return false end
+	if not def or not def.solid or def.crossShape or def.craftingMaterial then
+		return false
+	end
 	return def.textures ~= nil
 end
 
@@ -84,7 +88,9 @@ end
 
 local function createItemPart(itemId, itemName)
 	local template = ItemModelLoader.GetModelTemplate(itemName, itemId)
-	if not template then return nil end
+	if not template then
+		return nil
+	end
 
 	local part = template:Clone()
 	part.Name = "HeldItemHandle"
@@ -94,7 +100,9 @@ local function createItemPart(itemId, itemName)
 	part.Anchored = false
 
 	local px = ItemPixelSizes.GetSize(itemName)
-	if px then scaleMeshToPixels(part, px.x, px.y) end
+	if px then
+		scaleMeshToPixels(part, px.x, px.y)
+	end
 
 	return part
 end
@@ -103,7 +111,9 @@ function HeldItemRenderer.ClearItem(character)
 	if not character then return end
 	for _, child in ipairs(character:GetDescendants()) do
 		if child.Name == "HeldItemHandle" then
-			pcall(function() child:Destroy() end)
+			pcall(function()
+				child:Destroy()
+			end)
 		end
 	end
 end

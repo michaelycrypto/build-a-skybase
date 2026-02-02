@@ -103,7 +103,7 @@ function NoiseGenerator:OctaveNoise2D(x: number, y: number, octaves: number, per
     local amplitude = 1
     local maxValue = 0
 
-	for i = 1, octaves do
+	for _ = 1, octaves do
 		total = total + self:Noise2D(x * frequency, y * frequency) * amplitude
 		maxValue = maxValue + amplitude
 		amplitude = amplitude * persistence

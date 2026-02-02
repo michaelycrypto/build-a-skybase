@@ -19,7 +19,7 @@ local isProcessingUpdates = false
 
 -- Constants
 local MAX_QUEUE_SIZE = 100
-local UPDATE_INTERVAL = 0.1 -- Process updates every 100ms for better performance
+local _UPDATE_INTERVAL = 0.1 -- Process updates every 100ms for better performance
 
 --[[
 	Initialize the GameState with default values
@@ -509,7 +509,7 @@ function GameState:GetLevelProgress()
 	local expUsed = 0
 	local requiredXP = baseXP
 
-	for i = 2, level do
+	for _ = 2, level do
 		expUsed = expUsed + requiredXP
 		requiredXP = math.floor(requiredXP * multiplier)
 	end

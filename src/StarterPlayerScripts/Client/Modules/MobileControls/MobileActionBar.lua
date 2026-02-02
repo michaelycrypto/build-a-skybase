@@ -106,7 +106,7 @@ function MobileActionBar:CreateUI()
 	
 	self.container = Instance.new("Frame")
 	self.container.Name = "ActionBarContainer"
-	self.container.Size = UDim2.new(0, UI_CONFIG.BUTTON_SIZE, 0, totalHeight)
+	self.container.Size = UDim2.fromOffset(UI_CONFIG.BUTTON_SIZE, totalHeight)
 	self.container.Position = UDim2.new(1, -UI_CONFIG.RIGHT_OFFSET - UI_CONFIG.BUTTON_SIZE, 1, -UI_CONFIG.BOTTOM_OFFSET - totalHeight)
 	self.container.BackgroundTransparency = 1
 	self.container.Parent = self.gui
@@ -132,7 +132,7 @@ end
 function MobileActionBar:CreateButton(buttonDef, layoutOrder)
 	local button = Instance.new("TextButton")
 	button.Name = buttonDef.id .. "Button"
-	button.Size = UDim2.new(0, UI_CONFIG.BUTTON_SIZE, 0, UI_CONFIG.BUTTON_SIZE)
+	button.Size = UDim2.fromOffset(UI_CONFIG.BUTTON_SIZE, UI_CONFIG.BUTTON_SIZE)
 	button.BackgroundColor3 = UI_CONFIG.BG_COLOR
 	button.BackgroundTransparency = UI_CONFIG.BG_TRANSPARENCY
 	button.BorderSizePixel = 0
@@ -158,7 +158,7 @@ function MobileActionBar:CreateButton(buttonDef, layoutOrder)
 	local iconLabel = Instance.new("TextLabel")
 	iconLabel.Name = "Icon"
 	iconLabel.Size = UDim2.new(1, -8, 1, -8)
-	iconLabel.Position = UDim2.new(0.5, 0, 0.5, 0)
+	iconLabel.Position = UDim2.fromScale(0.5, 0.5)
 	iconLabel.AnchorPoint = Vector2.new(0.5, 0.5)
 	iconLabel.BackgroundTransparency = 1
 	iconLabel.Text = buttonDef.iconText
@@ -283,7 +283,7 @@ function MobileActionBar:AnimatePress(buttonData)
 	local tweenInfo = TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 	
 	TweenService:Create(buttonData.frame, tweenInfo, {
-		Size = UDim2.new(0, UI_CONFIG.BUTTON_SIZE * 0.92, 0, UI_CONFIG.BUTTON_SIZE * 0.92),
+		Size = UDim2.fromOffset(UI_CONFIG.BUTTON_SIZE * 0.92, UI_CONFIG.BUTTON_SIZE * 0.92),
 		BackgroundTransparency = UI_CONFIG.BG_TRANSPARENCY * 0.5
 	}):Play()
 end
@@ -295,7 +295,7 @@ function MobileActionBar:AnimateRelease(buttonData)
 	local tweenInfo = TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 	
 	TweenService:Create(buttonData.frame, tweenInfo, {
-		Size = UDim2.new(0, UI_CONFIG.BUTTON_SIZE, 0, UI_CONFIG.BUTTON_SIZE),
+		Size = UDim2.fromOffset(UI_CONFIG.BUTTON_SIZE, UI_CONFIG.BUTTON_SIZE),
 		BackgroundTransparency = UI_CONFIG.BG_TRANSPARENCY
 	}):Play()
 end

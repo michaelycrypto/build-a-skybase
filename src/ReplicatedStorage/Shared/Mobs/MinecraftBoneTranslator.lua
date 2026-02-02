@@ -71,9 +71,7 @@ function MinecraftBoneTranslator.CalculateCubeTransform(origin, size, pivot, rot
 
 		-- Rotate the size as well for the final part size
 		-- For 90° X rotation: Y→Z, Z→Y
-		if rotation.X == 90 then
-			inflatedSize = Vector3.new(inflatedSize.X, inflatedSize.Z, inflatedSize.Y)
-		elseif rotation.X == -90 then
+		if rotation.X == 90 or rotation.X == -90 then
 			inflatedSize = Vector3.new(inflatedSize.X, inflatedSize.Z, inflatedSize.Y)
 		end
 	end
@@ -97,7 +95,7 @@ end
 	@return CFrame - C0 offset
 	@return CFrame - C1 offset
 ]]
-function MinecraftBoneTranslator.CalculateMotorOffsets(pivot, cubeCenter, parentBone)
+function MinecraftBoneTranslator.CalculateMotorOffsets(pivot, cubeCenter, _parentBone)
     local pivotStuds = Vector3.new(px(pivot.X), px(pivot.Y), px(pivot.Z))
 
     -- C0: joint frame relative to Part0 (root) – place joint at the bone pivot
@@ -118,7 +116,7 @@ end
 ]]
 function MinecraftBoneTranslator.BuildSheepGeometry()
 	-- Sheared sheep geometry (no wool on body/legs)
-	local shearedGeometry = {
+	local _shearedGeometry = {
 		body = {
 			pivot = Vector3.new(0, 19, 2),
 			rotation = Vector3.new(90, 0, 0),
@@ -244,7 +242,7 @@ function MinecraftBoneTranslator.ProcessGeometry(geometry)
 		local rotation = boneData.rotation or Vector3.new(0, 0, 0)
 
 		for cubeIndex, cube in ipairs(boneData.cubes) do
-			local center, size, rotCFrame = MinecraftBoneTranslator.CalculateCubeTransform(
+			local center, size, _rotCFrame = MinecraftBoneTranslator.CalculateCubeTransform(
 				cube.origin,
 				cube.size,
 				pivot,
@@ -280,7 +278,11 @@ end
 	Build complete sheep model spec from Minecraft geometry
 ]]
 function MinecraftBoneTranslator.BuildSheepModel(scale)
-	local function px(p) return (p / 16) * BLOCK_SIZE end
+	-- Note: This local px shadows the module-level px, which is intentional to avoid repeated division
+	-- selene: allow(shadowing)
+	local function px(p)
+		return (p / 16) * BLOCK_SIZE
+	end
     local s = (type(scale) == "number" and scale > 0) and scale or 1
 
 	-- Use the woolly geometry definition
@@ -456,7 +458,9 @@ function MinecraftBoneTranslator.BuildZombieModel(scale)
     local parts = {}
 
     local function scaleCFrame(cf)
-        if not cf then return nil end
+        if not cf then
+        	return nil
+        end
         local pos = cf.Position
         local rot = cf - cf.Position
         return CFrame.new(pos.X * s, pos.Y * s, pos.Z * s) * rot
@@ -464,7 +468,9 @@ function MinecraftBoneTranslator.BuildZombieModel(scale)
 
     local function addFrom(nameKey, tag, motorName, color)
         local d = processed[nameKey]
-        if not d then return end
+        if not d then
+        	return
+        end
         parts[tag] = {
             size = d.size * s,
             cframe = scaleCFrame(d.cframe),
@@ -516,7 +522,9 @@ function MinecraftBoneTranslator.BuildMinionModel(scale)
     local parts = {}
 
     local function scaleCFrame(cf)
-        if not cf then return nil end
+        if not cf then
+        	return nil
+        end
         local pos = cf.Position
         local rot = cf - cf.Position
         return CFrame.new(pos.X * s, pos.Y * s, pos.Z * s) * rot
@@ -524,7 +532,9 @@ function MinecraftBoneTranslator.BuildMinionModel(scale)
 
     local function addFrom(nameKey, tag, motorName, color)
         local d = processed[nameKey]
-        if not d then return end
+        if not d then
+        	return
+        end
         parts[tag] = {
             size = d.size * s,
             cframe = scaleCFrame(d.cframe),
@@ -947,7 +957,9 @@ function MinecraftBoneTranslator.BuildNPCModel(scale, outfitColor, npcType)
     local parts = {}
 
     local function scaleCFrame(cf)
-        if not cf then return nil end
+        if not cf then
+        	return nil
+        end
         local pos = cf.Position
         local rot = cf - cf.Position
         return CFrame.new(pos.X * s, pos.Y * s, pos.Z * s) * rot
@@ -955,7 +967,9 @@ function MinecraftBoneTranslator.BuildNPCModel(scale, outfitColor, npcType)
 
     local function addFrom(nameKey, tag, motorName, color)
         local d = processed[nameKey]
-        if not d then return end
+        if not d then
+        	return
+        end
         parts[tag] = {
             size = d.size * s,
             cframe = scaleCFrame(d.cframe),

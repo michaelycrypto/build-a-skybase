@@ -43,9 +43,13 @@ end
 
 local function getAnimatorForPlayer(targetPlayer)
 	local character = targetPlayer and targetPlayer.Character
-	if not character then return nil end
+	if not character then
+		return nil
+	end
 	local humanoid = character:FindFirstChildOfClass("Humanoid")
-	if not humanoid then return nil end
+	if not humanoid then
+		return nil
+	end
 	local animator = humanoid:FindFirstChildOfClass("Animator")
 	if not animator then
 		animator = Instance.new("Animator")
@@ -65,7 +69,9 @@ local function getAnimation(animId)
 end
 
 local function playSwingForPlayer(targetPlayer, isRemote)
-	if not targetPlayer then return end
+	if not targetPlayer then
+		return
+	end
 
 	-- For local player, suppress if bow is equipped
 	if targetPlayer == localPlayer and isBowEquipped() then
@@ -88,7 +94,9 @@ local function playSwingForPlayer(targetPlayer, isRemote)
 	end
 
 	local animator = getAnimatorForPlayer(targetPlayer)
-	if not animator then return end
+	if not animator then
+		return
+	end
 
 	-- Determine animation: tool swing vs bare-hand punch
 	local animId = PUNCH_ANIMATION_ID
@@ -110,7 +118,9 @@ local function playSwingForPlayer(targetPlayer, isRemote)
 
 	-- Load and play animation
 	local track = animator:LoadAnimation(getAnimation(animId))
-	if not track then return end
+	if not track then
+		return
+	end
 
 	trackData.track = track
 	trackData.lastSwingTime = now
@@ -128,14 +138,16 @@ function controller:Initialize()
 
 	-- Input hook for local player - track hold state
 	InputService.InputBegan:Connect(function(input, gameProcessed)
-		if gameProcessed then return end
+		if gameProcessed then
+			return
+		end
 		if input.UserInputType == Enum.UserInputType.MouseButton1 then
 			isSwingHeld = true
 			playSwingForPlayer(localPlayer) -- Initial swing
 		end
 	end)
 
-	InputService.InputEnded:Connect(function(input, gameProcessed)
+	InputService.InputEnded:Connect(function(input, _gameProcessed)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 then
 			isSwingHeld = false
 		end
@@ -143,8 +155,12 @@ function controller:Initialize()
 
 	-- Continuous swinging while mouse is held
 	heartbeatConn = RunService.Heartbeat:Connect(function()
-		if not isSwingHeld then return end
-		if isBowEquipped() then return end
+		if not isSwingHeld then
+			return
+		end
+		if isBowEquipped() then
+			return
+		end
 
 		-- Try to play swing - will only succeed if previous animation finished
 		playSwingForPlayer(localPlayer)
@@ -168,7 +184,9 @@ end
 
 -- Public API: play swing animation for a specific player by userId (used for remote replication)
 function controller:PlaySwingForUserId(userId)
-	if not userId then return end
+	if not userId then
+		return
+	end
 	local targetPlayer = Players:GetPlayerByUserId(userId)
 	if targetPlayer then
 		-- Mark as remote so cooldown doesn't apply (server rate-limits)

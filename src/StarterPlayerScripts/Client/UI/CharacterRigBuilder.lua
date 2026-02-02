@@ -287,14 +287,9 @@ local function ensureNeckAlignment(model)
 	end
 
 	neckMotor.Transform = CFrame.new()
-	local isR15 = model:FindFirstChild("UpperTorso") ~= nil
-	if isR15 then
-		neckMotor.C0 = CFrame.new(0, 1, 0)
-		neckMotor.C1 = CFrame.new(0, -0.5, 0)
-	else
-		neckMotor.C0 = CFrame.new(0, 1, 0)
-		neckMotor.C1 = CFrame.new(0, -0.5, 0)
-	end
+	local _isR15 = model:FindFirstChild("UpperTorso") ~= nil
+	neckMotor.C0 = CFrame.new(0, 1, 0)
+	neckMotor.C1 = CFrame.new(0, -0.5, 0)
 
 	if neckMotor.Part0 and neckMotor.Part1 then
 		local torsoCFrame = neckMotor.Part0.CFrame
@@ -529,15 +524,9 @@ function CharacterRigBuilder.BuildCharacterRig(player)
 				neckMotor.C1 = sourceMotor.C1
 			else
 				-- Use standard R15 values
-				if rig:FindFirstChild("UpperTorso") then
-					-- R15: Neck connects UpperTorso to Head
-					neckMotor.C0 = CFrame.new(0, 1, 0, 1, 0, 0, 0, 0, -1, 0, 1, 0)
-					neckMotor.C1 = CFrame.new(0, -0.5, 0, 1, 0, 0, 0, 0, -1, 0, 1, 0)
-				else
-					-- R6: Neck connects Torso to Head
-					neckMotor.C0 = CFrame.new(0, 1, 0, 1, 0, 0, 0, 0, -1, 0, 1, 0)
-					neckMotor.C1 = CFrame.new(0, -0.5, 0, 1, 0, 0, 0, 0, -1, 0, 1, 0)
-				end
+				-- Default neck connections
+				neckMotor.C0 = CFrame.new(0, 1, 0, 1, 0, 0, 0, 0, -1, 0, 1, 0)
+				neckMotor.C1 = CFrame.new(0, -0.5, 0, 1, 0, 0, 0, 0, -1, 0, 1, 0)
 			end
 
 			-- Manually position head based on Motor6D CFrame values

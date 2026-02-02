@@ -301,12 +301,22 @@ function TextureManager:GetTextureAssetIdsForBlocks(blockIds: {number}): {string
 				table.insert(textureNames, def.textures.all)
 			end
 			-- Face-specific textures (for regular blocks)
-			if def.textures.top then table.insert(textureNames, def.textures.top) end
-			if def.textures.bottom then table.insert(textureNames, def.textures.bottom) end
-			if def.textures.side then table.insert(textureNames, def.textures.side) end
+			if def.textures.top then
+				table.insert(textureNames, def.textures.top)
+			end
+			if def.textures.bottom then
+				table.insert(textureNames, def.textures.bottom)
+			end
+			if def.textures.side then
+				table.insert(textureNames, def.textures.side)
+			end
 			-- Half-specific textures (for two-block tall plants like tall grass)
-			if def.textures.lower then table.insert(textureNames, def.textures.lower) end
-			if def.textures.upper then table.insert(textureNames, def.textures.upper) end
+			if def.textures.lower then
+				table.insert(textureNames, def.textures.lower)
+			end
+			if def.textures.upper then
+				table.insert(textureNames, def.textures.upper)
+			end
 
 			for _, textureName in ipairs(textureNames) do
 				local assetId = self:GetTextureId(textureName)

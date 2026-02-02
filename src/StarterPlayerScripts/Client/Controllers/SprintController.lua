@@ -142,7 +142,7 @@ function SprintController:Initialize()
 		end
 	end)
 
-	InputService.InputEnded:Connect(function(input, gameProcessed)
+	InputService.InputEnded:Connect(function(input, _gameProcessed)
 		if input.KeyCode == Enum.KeyCode.LeftShift then
 			sprintInputHeld = false
 			stopSprint()

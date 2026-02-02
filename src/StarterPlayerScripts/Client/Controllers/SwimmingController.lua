@@ -18,7 +18,7 @@
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
+local _UserInputService = game:GetService("UserInputService")
 local Lighting = game:GetService("Lighting")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -28,7 +28,7 @@ local GameConfig = require(ReplicatedStorage.Configs.GameConfig)
 
 -- Water detection will be required once we have the world manager
 local WaterDetector = nil
-local Constants = nil
+local _Constants = nil
 
 local SwimmingController = {}
 
@@ -90,7 +90,7 @@ local underwaterColorCorrection = nil
 local originalFogColor = nil
 local originalFogStart = nil
 local originalFogEnd = nil
-local fogTransitionTween = nil
+local _fogTransitionTween = nil
 
 -- BodyMovers for swimming physics
 local bodyVelocity = nil
@@ -198,7 +198,7 @@ local function destroyBodyMovers()
 	end
 end
 
-local function updateSwimmingPhysics(dt)
+local function updateSwimmingPhysics(_dt)
 	if not isSwimming or not rootPart or not bodyVelocity then return end
 
 	local cfg = getSwimmingConfig()
@@ -366,7 +366,7 @@ local function onInputBegan(input, gameProcessed)
 	end
 end
 
-local function onInputEnded(input, gameProcessed)
+local function onInputEnded(input, _gameProcessed)
 	if input.KeyCode == Enum.KeyCode.Space then
 		spaceHeld = false
 		isAscending = false
@@ -587,7 +587,7 @@ function SwimmingController:Initialize()
 	-- Load modules
 	local success, err = pcall(function()
 		WaterDetector = require(ReplicatedStorage.Shared.VoxelWorld.World.WaterDetector)
-		Constants = require(ReplicatedStorage.Shared.VoxelWorld.Core.Constants)
+		_Constants = require(ReplicatedStorage.Shared.VoxelWorld.Core.Constants)
 	end)
 
 	if not success then

@@ -44,7 +44,7 @@ local STATUS_COPY = {
 	}
 }
 
-local function ensureWorldStatusGui()
+local function _ensureWorldStatusGui()
 	if worldStatusGui then
 		return
 	end
@@ -60,13 +60,13 @@ local function ensureWorldStatusGui()
 	local backdrop = Instance.new("Frame")
 	backdrop.BackgroundColor3 = Color3.fromRGB(6, 8, 12)
 	backdrop.BackgroundTransparency = 0.35
-	backdrop.Size = UDim2.new(1, 0, 1, 0)
+	backdrop.Size = UDim2.fromScale(1, 1)
 	backdrop.Parent = worldStatusGui
 
 	local container = Instance.new("Frame")
 	container.AnchorPoint = Vector2.new(0.5, 0.5)
-	container.Position = UDim2.new(0.5, 0, 0.5, 0)
-	container.Size = UDim2.new(0, 380, 0, 160)
+	container.Position = UDim2.fromScale(0.5, 0.5)
+	container.Size = UDim2.fromOffset(380, 160)
 	container.BackgroundTransparency = 1
 	container.Parent = backdrop
 
@@ -244,7 +244,7 @@ function UIManager:GetSafeAreaInsets()
 	}
 end
 
-function UIManager:ShowWorldStatus(title, subtitle)
+function UIManager:ShowWorldStatus(_title, _subtitle)
 	-- World status overlay disabled - no longer showing "Syncing world" loading UI
 	return
 end

@@ -230,7 +230,7 @@ function Cooldownable.Methods:GetActiveCooldowns(player)
 	local activeCooldowns = {}
 	local playerKey = player and tostring(player.UserId) or "global"
 
-	for cooldownKey, cooldownData in pairs(self._cooldowns) do
+	for _, cooldownData in pairs(self._cooldowns) do
 		local matchesPlayer = (player and cooldownData.player == playerKey) or (not player and not cooldownData.player)
 
 		if matchesPlayer and os.time() < cooldownData.endTime then

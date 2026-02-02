@@ -1,6 +1,6 @@
 --[[
 	LoadingHandler.client.lua (ReplicatedFirst)
-	
+
 	Runs before anything else loads.
 	- Removes Roblox's default loading screen
 	- Sets custom teleport GUI for seamless server transitions
@@ -31,14 +31,14 @@ local function createTeleportGui()
 	gui.ResetOnSpawn = false
 	gui.IgnoreGuiInset = true
 	gui.DisplayOrder = 9999
-	
+
 	local backdrop = Instance.new("Frame")
 	backdrop.Name = "Backdrop"
-	backdrop.Size = UDim2.new(1, 0, 1, 0)
+	backdrop.Size = UDim2.fromScale(1, 1)
 	backdrop.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 	backdrop.BorderSizePixel = 0
 	backdrop.Parent = gui
-	
+
 	return gui
 end
 

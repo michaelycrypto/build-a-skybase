@@ -87,7 +87,7 @@ local function createTitle(parent, name, text, yOffset)
 	label.TextColor3 = TITLE_COLOR
 	label.TextXAlignment = Enum.TextXAlignment.Left
 	label.Size = UDim2.new(1, -PADDING * 2, 0, LINE_HEIGHT)
-	label.Position = UDim2.new(0, PADDING, 0, yOffset)
+	label.Position = UDim2.fromOffset(PADDING, yOffset)
 	label.Text = text
 	label.Parent = parent
 
@@ -112,7 +112,7 @@ local function createLabel(parent, name, text, yOffset)
 	label.TextColor3 = TEXT_COLOR
 	label.TextXAlignment = Enum.TextXAlignment.Left
 	label.Size = UDim2.new(1, -PADDING * 2, 0, LINE_HEIGHT)
-	label.Position = UDim2.new(0, PADDING, 0, yOffset)
+	label.Position = UDim2.fromOffset(PADDING, yOffset)
 	label.Text = text
 	label.Parent = parent
 	return label
@@ -136,7 +136,7 @@ local function createUI()
 	leftPanel.BackgroundColor3 = BACKGROUND_COLOR
 	leftPanel.BackgroundTransparency = BACKGROUND_TRANSPARENCY
 	leftPanel.BorderSizePixel = 0
-	leftPanel.Position = UDim2.new(0, 4, 0, 36)
+	leftPanel.Position = UDim2.fromOffset(4, 36)
 	leftPanel.Parent = screenGui
 
 	local leftCorner = Instance.new("UICorner")
@@ -180,7 +180,7 @@ local function createUI()
 
 	labels.ping = createLabel(leftPanel, "Ping", "Ping: 0 ms", y)
 
-	leftPanel.Size = UDim2.new(0, 220, 0, y + PADDING + LINE_HEIGHT)
+	leftPanel.Size = UDim2.fromOffset(220, y + PADDING + LINE_HEIGHT)
 
 	-- Right panel content
 	y = PADDING
@@ -208,7 +208,7 @@ local function createUI()
 
 	labels.targetDist = createLabel(rightPanel, "TargetDist", "Distance: -", y)
 
-	rightPanel.Size = UDim2.new(0, 220, 0, y + PADDING + LINE_HEIGHT)
+	rightPanel.Size = UDim2.fromOffset(220, y + PADDING + LINE_HEIGHT)
 end
 
 --[[
@@ -225,7 +225,9 @@ end
 	Calculate smoothed FPS
 ]]
 local function getSmoothedFPS()
-	if #fpsHistory == 0 then return 0 end
+	if #fpsHistory == 0 then
+		return 0
+	end
 	local sum = 0
 	for _, fps in ipairs(fpsHistory) do
 		sum = sum + fps
@@ -248,10 +250,14 @@ end
 	Update all debug information
 ]]
 local function updateDebugInfo()
-	if not labels.coords then return end
+	if not labels.coords then
+		return
+	end
 
 	local character = player.Character
-	if not character then return end
+	if not character then
+		return
+	end
 
 	local rootPart = character:FindFirstChild("HumanoidRootPart")
 	local camera = workspace.CurrentCamera
@@ -270,7 +276,9 @@ local function updateDebugInfo()
 	if camera then
 		local lookVector = camera.CFrame.LookVector
 		local yaw = math.deg(math.atan2(lookVector.X, lookVector.Z))
-		if yaw < 0 then yaw = yaw + 360 end
+		if yaw < 0 then
+			yaw = yaw + 360
+		end
 		labels.facing.Text = string.format("Facing: %s (%.0f°)", getCardinalDirection(yaw), yaw)
 	end
 
@@ -367,19 +375,27 @@ function F3DebugOverlay:IsVisible()
 end
 
 function F3DebugOverlay:Show()
-	if not isVisible then self:Toggle() end
+	if not isVisible then
+		self:Toggle()
+	end
 end
 
 function F3DebugOverlay:Hide()
-	if isVisible then self:Toggle() end
+	if isVisible then
+		self:Toggle()
+	end
 end
 
 function F3DebugOverlay:Create()
-	if screenGui then return end
+	if screenGui then
+		return
+	end
 	createUI()
 
 	InputService.InputBegan:Connect(function(input, gameProcessed)
-		if gameProcessed then return end
+		if gameProcessed then
+			return
+		end
 		if input.KeyCode == Enum.KeyCode.F3 then
 			self:Toggle()
 		end

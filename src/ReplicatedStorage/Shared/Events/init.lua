@@ -1,6 +1,10 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local EventFolder = ReplicatedStorage:FindFirstChild("Events") or Instance.new("Folder", ReplicatedStorage)
-EventFolder.Name = "Events"
+local EventFolder = ReplicatedStorage:FindFirstChild("Events")
+if not EventFolder then
+	EventFolder = Instance.new("Folder")
+	EventFolder.Name = "Events"
+	EventFolder.Parent = ReplicatedStorage
+end
 
 local events = {}
 

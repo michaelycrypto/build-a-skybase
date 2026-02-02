@@ -3,7 +3,6 @@
 	Thin client wrappers around EventManager for existing API modules
 ]]
 
-local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local EventManager = require(ReplicatedStorage.Shared.EventManager)
 

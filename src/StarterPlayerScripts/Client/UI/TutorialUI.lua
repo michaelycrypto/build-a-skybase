@@ -72,7 +72,9 @@ local ANIMATION = {
 	Initialize the tutorial UI container
 ]]
 function TutorialUI:Initialize()
-	if tutorialGui then return end
+	if tutorialGui then
+		return
+	end
 
 	tutorialGui = Instance.new("ScreenGui")
 	tutorialGui.Name = "TutorialUI"
@@ -89,7 +91,7 @@ end
 local function createStyledFrame(props)
 	local frame = Instance.new("Frame")
 	frame.Name = props.name or "StyledFrame"
-	frame.Size = props.size or UDim2.new(0, 300, 0, 150)
+	frame.Size = props.size or UDim2.fromOffset(300, 150)
 	frame.Position = props.position or UDim2.new(0.5, -150, 0.5, -75)
 	frame.AnchorPoint = props.anchorPoint or Vector2.new(0.5, 0.5)
 	frame.BackgroundColor3 = props.backgroundColor or COLORS.background
@@ -113,7 +115,7 @@ local function createStyledFrame(props)
 		local shadow = Instance.new("Frame")
 		shadow.Name = "Shadow"
 		shadow.Size = UDim2.new(1, 10, 1, 10)
-		shadow.Position = UDim2.new(0, -5, 0, 3)
+		shadow.Position = UDim2.fromOffset(-5, 3)
 		shadow.AnchorPoint = Vector2.new(0, 0)
 		shadow.BackgroundColor3 = Color3.new(0, 0, 0)
 		shadow.BackgroundTransparency = 0.7
@@ -135,7 +137,7 @@ local function createLabel(props)
 	local label = Instance.new("TextLabel")
 	label.Name = props.name or "Label"
 	label.Size = props.size or UDim2.new(1, -24, 0, 24)
-	label.Position = props.position or UDim2.new(0, 12, 0, 12)
+	label.Position = props.position or UDim2.fromOffset(12, 12)
 	label.BackgroundTransparency = 1
 	label.Text = props.text or ""
 	label.TextColor3 = props.color or COLORS.text
@@ -155,7 +157,7 @@ end
 local function createButton(props)
 	local button = Instance.new("TextButton")
 	button.Name = props.name or "Button"
-	button.Size = props.size or UDim2.new(0, 120, 0, 36)
+	button.Size = props.size or UDim2.fromOffset(120, 36)
 	button.Position = props.position or UDim2.new(0.5, -60, 1, -48)
 	button.AnchorPoint = props.anchorPoint or Vector2.new(0.5, 0)
 	button.BackgroundColor3 = props.backgroundColor or COLORS.primary
@@ -213,8 +215,8 @@ function TutorialUI:ShowPopup(step)
 	-- Popup container (on top of backdrop)
 	local popup = createStyledFrame({
 		name = "TutorialPopup",
-		size = UDim2.new(0, 420, 0, 280),
-		position = UDim2.new(0.5, 0, 0.5, 0),
+		size = UDim2.fromOffset(420, 280),
+		position = UDim2.fromScale(0.5, 0.5),
 		parent = tutorialGui,
 		shadow = true,
 		border = true,
@@ -223,49 +225,49 @@ function TutorialUI:ShowPopup(step)
 	popup.ZIndex = 10
 
 	-- Icon/emoji
-	local iconLabel = createLabel({
+	local _iconLabel = createLabel({
 		name = "Icon",
 		text = step.id == "tutorial_complete" and "🎉" or "⭐",
 		textSize = 48,
 		size = UDim2.new(1, 0, 0, 60),
-		position = UDim2.new(0, 0, 0, 20),
+		position = UDim2.fromOffset(0, 20),
 		alignX = Enum.TextXAlignment.Center,
 		parent = popup,
 	})
 
 	-- Title
-	local titleLabel = createLabel({
+	local _titleLabel = createLabel({
 		name = "Title",
 		text = step.title,
 		textSize = 24,
 		font = BOLD_FONT,
 		size = UDim2.new(1, -40, 0, 36),
-		position = UDim2.new(0, 20, 0, 85),
+		position = UDim2.fromOffset(20, 85),
 		alignX = Enum.TextXAlignment.Center,
 		parent = popup,
 	})
 
 	-- Description
-	local descLabel = createLabel({
+	local _descLabel = createLabel({
 		name = "Description",
 		text = step.description,
 		textSize = 16,
 		color = COLORS.textMuted,
 		size = UDim2.new(1, -40, 0, 60),
-		position = UDim2.new(0, 20, 0, 125),
+		position = UDim2.fromOffset(20, 125),
 		alignX = Enum.TextXAlignment.Center,
 		parent = popup,
 	})
 
 	-- Hint
 	if step.hint then
-		local hintLabel = createLabel({
+		local _hintLabel = createLabel({
 			name = "Hint",
 			text = "💡 " .. step.hint,
 			textSize = 14,
 			color = COLORS.secondary,
 			size = UDim2.new(1, -40, 0, 40),
-			position = UDim2.new(0, 20, 0, 185),
+			position = UDim2.fromOffset(20, 185),
 			alignX = Enum.TextXAlignment.Center,
 			parent = popup,
 		})
@@ -275,7 +277,7 @@ function TutorialUI:ShowPopup(step)
 	local continueButton = createButton({
 		name = "ContinueButton",
 		text = step.id == "tutorial_complete" and "Start Playing!" or "Got it!",
-		size = UDim2.new(0, 140, 0, 40),
+		size = UDim2.fromOffset(140, 40),
 		position = UDim2.new(0.5, 0, 1, -20),
 		anchorPoint = Vector2.new(0.5, 1),
 		parent = popup,
@@ -291,7 +293,7 @@ function TutorialUI:ShowPopup(step)
 		local skipButton = createButton({
 			name = "SkipButton",
 			text = "Skip Tutorial",
-			size = UDim2.new(0, 100, 0, 30),
+			size = UDim2.fromOffset(100, 30),
 			position = UDim2.new(1, -10, 0, 10),
 			anchorPoint = Vector2.new(1, 0),
 			backgroundColor = Color3.fromRGB(71, 85, 105),
@@ -306,11 +308,11 @@ function TutorialUI:ShowPopup(step)
 	end
 
 	-- Animate in
-	popup.Position = UDim2.new(0.5, 0, 0.6, 0)
+	popup.Position = UDim2.fromScale(0.5, 0.6)
 	popup.BackgroundTransparency = 1
 
 	TweenService:Create(popup, ANIMATION.slideIn, {
-		Position = UDim2.new(0.5, 0, 0.5, 0),
+		Position = UDim2.fromScale(0.5, 0.5),
 		BackgroundTransparency = 0
 	}):Play()
 
@@ -332,7 +334,9 @@ function TutorialUI:HidePopup()
 
 		local popup = activePopup
 		task.delay(0.2, function()
-			if popup.popup then popup.popup:Destroy() end
+			if popup.popup then
+				popup.popup:Destroy()
+			end
 		end)
 		activePopup = nil
 
@@ -357,7 +361,7 @@ function TutorialUI:ShowTooltip(step)
 
 	local tooltip = createStyledFrame({
 		name = "TutorialTooltip",
-		size = UDim2.new(0, 320, 0, 100),
+		size = UDim2.fromOffset(320, 100),
 		position = UDim2.new(0.5, 0, 0, 100),
 		parent = tutorialGui,
 		border = true,
@@ -373,31 +377,31 @@ function TutorialUI:ShowTooltip(step)
 	glow.Parent = tooltip
 
 	-- Title
-	local titleLabel = createLabel({
+	local _titleLabel = createLabel({
 		name = "Title",
 		text = "💡 " .. step.title,
 		textSize = 16,
 		font = BOLD_FONT,
 		color = COLORS.secondary,
 		size = UDim2.new(1, -20, 0, 24),
-		position = UDim2.new(0, 10, 0, 10),
+		position = UDim2.fromOffset(10, 10),
 		parent = tooltip,
 	})
 
 	-- Hint text
-	local hintLabel = createLabel({
+	local _hintLabel = createLabel({
 		name = "Hint",
 		text = step.hint or step.description,
 		textSize = 14,
 		color = COLORS.textMuted,
 		size = UDim2.new(1, -20, 0, 50),
-		position = UDim2.new(0, 10, 0, 38),
+		position = UDim2.fromOffset(10, 38),
 		parent = tooltip,
 	})
 
 	-- Skip text (if allowed)
 	if step.canSkip then
-		local skipHint = createLabel({
+		local _skipHint = createLabel({
 			name = "SkipHint",
 			text = "[Press Tab to skip]",
 			textSize = 11,
@@ -410,7 +414,7 @@ function TutorialUI:ShowTooltip(step)
 	end
 
 	-- Resize to fit content
-	tooltip.Size = UDim2.new(0, 320, 0, step.canSkip and 100 or 85)
+	tooltip.Size = UDim2.fromOffset(320, step.canSkip and 100 or 85)
 
 	-- Animate in
 	tooltip.Position = UDim2.new(0.5, 0, 0, -50)
@@ -422,7 +426,7 @@ function TutorialUI:ShowTooltip(step)
 	}):Play()
 
 	-- Pulsing glow animation
-	local pulseConn = RunService.Heartbeat:Connect(function(dt)
+	local pulseConn = RunService.Heartbeat:Connect(function(_dt)
 		local t = tick() * 2
 		glow.Transparency = 0.3 + math.sin(t) * 0.2
 	end)
@@ -443,7 +447,9 @@ function TutorialUI:HideTooltip()
 
 		local tooltip = activeTooltip
 		task.delay(0.2, function()
-			if tooltip.frame then tooltip.frame:Destroy() end
+			if tooltip.frame then
+				tooltip.frame:Destroy()
+			end
 		end)
 		activeTooltip = nil
 	end
@@ -459,7 +465,7 @@ function TutorialUI:ShowObjective(step)
 
 	local objective = createStyledFrame({
 		name = "TutorialObjective",
-		size = UDim2.new(0, 280, 0, 90),
+		size = UDim2.fromOffset(280, 90),
 		position = UDim2.new(1, -20, 0.3, 0),
 		anchorPoint = Vector2.new(1, 0),
 		parent = tutorialGui,
@@ -483,53 +489,53 @@ function TutorialUI:ShowObjective(step)
 
 	-- Fix corner rounding (only top corners rounded)
 	local headerFix = Instance.new("Frame")
-	headerFix.Size = UDim2.new(1, 0, 0.5, 0)
-	headerFix.Position = UDim2.new(0, 0, 0.5, 0)
+	headerFix.Size = UDim2.fromScale(1, 0.5)
+	headerFix.Position = UDim2.fromScale(0, 0.5)
 	headerFix.BackgroundColor3 = COLORS.primaryDark
 	headerFix.BackgroundTransparency = 0.3
 	headerFix.BorderSizePixel = 0
 	headerFix.Parent = header
 
-	local headerLabel = createLabel({
+	local _headerLabel = createLabel({
 		name = "HeaderText",
 		text = "📋 OBJECTIVE",
 		textSize = 11,
 		font = BOLD_FONT,
 		color = COLORS.textMuted,
 		size = UDim2.new(1, -16, 1, 0),
-		position = UDim2.new(0, 8, 0, 0),
+		position = UDim2.fromOffset(8, 0),
 		alignY = Enum.TextYAlignment.Center,
 		parent = header,
 	})
 
 	-- Task title
-	local titleLabel = createLabel({
+	local _titleLabel = createLabel({
 		name = "Title",
 		text = step.title,
 		textSize = 15,
 		font = BOLD_FONT,
 		size = UDim2.new(1, -16, 0, 22),
-		position = UDim2.new(0, 8, 0, 32),
+		position = UDim2.fromOffset(8, 32),
 		parent = objective,
 	})
 
 	-- Task description/hint
-	local descLabel = createLabel({
+	local _descLabel = createLabel({
 		name = "Description",
 		text = step.hint or step.description,
 		textSize = 12,
 		color = COLORS.textMuted,
 		size = UDim2.new(1, -16, 0, 30),
-		position = UDim2.new(0, 8, 0, 54),
+		position = UDim2.fromOffset(8, 54),
 		parent = objective,
 	})
 
 	-- Progress bar (if applicable)
 	if step.objective and step.objective.count and step.objective.count > 1 then
-		objective.Size = UDim2.new(0, 280, 0, 110)
+		objective.Size = UDim2.fromOffset(280, 110)
 
 		-- Progress text label (shows "0/4" format)
-		local progressText = createLabel({
+		local _progressText = createLabel({
 			name = "ProgressText",
 			text = string.format("0/%d", step.objective.count),
 			textSize = 11,
@@ -555,7 +561,7 @@ function TutorialUI:ShowObjective(step)
 
 		local progressFill = Instance.new("Frame")
 		progressFill.Name = "ProgressFill"
-		progressFill.Size = UDim2.new(0, 0, 1, 0)
+		progressFill.Size = UDim2.fromScale(0, 1)
 		progressFill.BackgroundColor3 = COLORS.success
 		progressFill.Parent = progressBg
 
@@ -573,50 +579,44 @@ function TutorialUI:ShowObjective(step)
 		BackgroundTransparency = 0
 	}):Play()
 
-	activeObjective = {frame = objective}
+	activeObjective = {
+		frame = objective,
+		stepId = step.id
+	}
 end
 
 --[[
 	Update progress bar in objective tracker
 ]]
 function TutorialUI:UpdateProgress(step, progressData)
-	if not activeObjective or not activeObjective.frame then
-		warn("[TutorialUI] UpdateProgress: No active objective frame")
+	if not activeObjective or not activeObjective.frame or activeObjective.stepId ~= step.id then
 		return
 	end
 
 	local progressBg = activeObjective.frame:FindFirstChild("ProgressBg")
-	if not progressBg then
-		warn("[TutorialUI] UpdateProgress: No ProgressBg found")
+	local progressFill = progressBg and progressBg:FindFirstChild("ProgressFill")
+	local progressText = activeObjective.frame:FindFirstChild("ProgressText")
+
+	-- If no UI elements to update, just return
+	if not progressFill and not progressText then
 		return
 	end
 
-	local progressFill = progressBg:FindFirstChild("ProgressFill")
-	local progressText = activeObjective.frame:FindFirstChild("ProgressText")
-
-	if progressFill and step.objective and step.objective.count then
+	if step.objective and step.objective.count then
 		local current = progressData.count or 0
 		local target = step.objective.count
 		local percent = math.clamp(current / target, 0, 1)
 
 		-- Update progress bar
-		TweenService:Create(progressFill, TweenInfo.new(0.3), {
-			Size = UDim2.new(percent, 0, 1, 0)
-		}):Play()
+		if progressFill then
+			TweenService:Create(progressFill, TweenInfo.new(0.3), {
+				Size = UDim2.fromScale(percent, 1)
+			}):Play()
+		end
 
 		-- Update progress text label
 		if progressText then
 			progressText.Text = string.format("%d/%d", current, target)
-		end
-	else
-		if not progressFill then
-			warn("[TutorialUI] UpdateProgress: No ProgressFill found")
-		end
-		if not step.objective then
-			warn("[TutorialUI] UpdateProgress: No step.objective")
-		end
-		if not step.objective or not step.objective.count then
-			warn("[TutorialUI] UpdateProgress: No step.objective.count")
 		end
 	end
 end
@@ -633,7 +633,9 @@ function TutorialUI:HideObjective()
 
 		local obj = activeObjective
 		task.delay(0.2, function()
-			if obj.frame then obj.frame:Destroy() end
+			if obj.frame then
+				obj.frame:Destroy()
+			end
 		end)
 		activeObjective = nil
 	end
@@ -664,20 +666,20 @@ function TutorialUI:HighlightKey(keyName)
 	-- Create a key hint overlay
 	local keyHint = createStyledFrame({
 		name = "KeyHint",
-		size = UDim2.new(0, 60, 0, 60),
-		position = UDim2.new(0.5, 0, 0.7, 0),
+		size = UDim2.fromOffset(60, 60),
+		position = UDim2.fromScale(0.5, 0.7),
 		parent = tutorialGui,
 		backgroundColor = COLORS.backgroundLight,
 		border = true,
 		cornerRadius = 8,
 	})
 
-	local keyLabel = createLabel({
+	local _keyLabel = createLabel({
 		name = "KeyLabel",
 		text = keyName,
 		textSize = 24,
 		font = BOLD_FONT,
-		size = UDim2.new(1, 0, 1, 0),
+		size = UDim2.fromScale(1, 1),
 		alignX = Enum.TextXAlignment.Center,
 		alignY = Enum.TextYAlignment.Center,
 		parent = keyHint,

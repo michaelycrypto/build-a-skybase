@@ -156,18 +156,22 @@ end
 
 local function shortestAngleDiffDeg(a, b)
 	local d = (b - a) % 360
-	if d > 180 then d -= 360 end
+	if d > 180 then
+		d -= 360
+	end
 	return d
 end
 
-local function angleLerpDeg(a, b, t)
+local function _angleLerpDeg(a, b, t)
 	return a + shortestAngleDiffDeg(a, b) * math.clamp(t, 0, 1)
 end
 
 -- Simple Minecraft-style death animation: tip over and sink, then cleanup
 local function playDeathAnimation(model, onComplete)
 	if not model or not model:IsA("Model") then
-		if onComplete then onComplete() end
+		if onComplete then
+			onComplete()
+		end
 		return
 	end
 	-- Use a CFrameValue tween driving Model:PivotTo
@@ -224,7 +228,9 @@ local function playDeathAnimation(model, onComplete)
 	cfVal:Destroy()
 	alphaVal:Destroy()
 	-- Finish
-	if onComplete then onComplete() end
+	if onComplete then
+		onComplete()
+	end
 end
 
 function MobReplicationController:_onMobSpawned(data)
@@ -565,7 +571,9 @@ function MobReplicationController:_onRenderStep(deltaTime)
 
 	-- Second pass: animate remaining near-but-farther mobs until budget is met
 	for i = 1, #deferred do
-		if animatedCount >= maxAnimate then break end
+		if animatedCount >= maxAnimate then
+			break
+		end
 		local mob = deferred[i]
 		mob.animator:SetVelocity(mob.velocity)
 		mob.animator:SetState(mob.state)

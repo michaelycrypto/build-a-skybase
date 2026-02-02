@@ -104,7 +104,7 @@ function BlockBatcher:Flush(): number
 	end
 
 	-- Now mark all affected chunks dirty and enqueue for meshing
-	for chunkKey, chunk in pairs(self.dirtyChunks) do
+	for _, chunk in pairs(self.dirtyChunks) do
 		chunk.isDirty = true
 		-- Update heightmap for affected columns
 		self:UpdateHeightmapForChunk(chunk)

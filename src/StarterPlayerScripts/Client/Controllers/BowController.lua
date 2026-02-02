@@ -43,7 +43,9 @@ local function cancelStageThreads()
 end
 
 local function setStage(stage)
-    if stage == currentStage then return end
+    if stage == currentStage then
+    	return
+    end
     currentStage = stage
     ToolVisualController:SetBowPullStage(stage)
     GameState:Set("voxelWorld.bowPullStage", stage, true)
@@ -57,18 +59,24 @@ local function resetDraw()
 end
 
 local function getElapsed()
-    if not drawStart then return 0 end
+    if not drawStart then
+    	return 0
+    end
     return os.clock() - drawStart
 end
 
 local function hasArrows()
-    if not inventoryManager then return false end
+    if not inventoryManager then
+    	return false
+    end
     local arrowCount = inventoryManager:CountItem(BowConfig.ARROW_ITEM_ID)
     return arrowCount > 0
 end
 
 local function playShootSound()
-    if not BowConfig.SHOOT_SOUNDS or #BowConfig.SHOOT_SOUNDS == 0 then return end
+    if not BowConfig.SHOOT_SOUNDS or #BowConfig.SHOOT_SOUNDS == 0 then
+    	return
+    end
 
     local soundId = BowConfig.SHOOT_SOUNDS[math.random(1, #BowConfig.SHOOT_SOUNDS)]
 
@@ -86,7 +94,9 @@ end
 
 local function computeAimDirection()
     local camera = Workspace.CurrentCamera
-    if not camera then return nil end
+    if not camera then
+    	return nil
+    end
 
     local character = player.Character
 
@@ -125,11 +135,17 @@ end
 
 local function sendShot()
     local direction = computeAimDirection()
-    if not direction then return end
+    if not direction then
+    	return
+    end
 
     local slotIndex = GameState:Get("voxelWorld.selectedToolSlotIndex") or GameState:Get("voxelWorld.selectedSlot")
-    if typeof(slotIndex) ~= "number" then return end
-    if not isEquipped then return end
+    if typeof(slotIndex) ~= "number" then
+    	return
+    end
+    if not isEquipped then
+    	return
+    end
 
     -- Check for arrows before playing sound or shooting
     if not hasArrows() then
@@ -151,14 +167,22 @@ end
 ----------------------------------------------------------------
 
 local function startDraw()
-    if isDrawing then return end
-    if not isEquipped then return end
+    if isDrawing then
+    	return
+    end
+    if not isEquipped then
+    	return
+    end
 
     -- Block shooting when UI is open (inventory, chest, worlds, minion, etc.)
-    if InputService:IsGameplayBlocked() then return end
+    if InputService:IsGameplayBlocked() then
+    	return
+    end
 
     -- Don't allow drawing if player has no arrows
-    if not hasArrows() then return end
+    if not hasArrows() then
+    	return
+    end
 
     isDrawing = true
     drawStart = os.clock()
@@ -171,16 +195,22 @@ local function startDraw()
     setStage(0)
 
     table.insert(stageThreads, task.delay(times[2] or 0.2, function()
-        if isDrawing then setStage(1) end
+        if isDrawing then
+        	setStage(1)
+        end
     end))
 
     table.insert(stageThreads, task.delay(times[3] or 0.6, function()
-        if isDrawing then setStage(2) end
+        if isDrawing then
+        	setStage(2)
+        end
     end))
 end
 
 local function endDraw()
-    if not isDrawing then return end
+    if not isDrawing then
+    	return
+    end
 
     local elapsed = getElapsed()
     local now = os.clock()
@@ -195,13 +225,19 @@ local function endDraw()
 end
 
 local function onInputBegan(input, gameProcessed)
-    if gameProcessed then return end
-    if input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
+    if gameProcessed then
+    	return
+    end
+    if input.UserInputType ~= Enum.UserInputType.MouseButton1 then
+    	return
+    end
     startDraw()
 end
 
 local function onInputEnded(input)
-    if input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
+    if input.UserInputType ~= Enum.UserInputType.MouseButton1 then
+    	return
+    end
     endDraw()
 end
 

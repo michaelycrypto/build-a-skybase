@@ -73,7 +73,7 @@ function Network:DefineEvent(name, paramTypes)
 	local remote = self:_getOrCreateRemote(name, "RemoteEvent")
 
 	local interface = {
-		Fire = function(interface, ...)
+		Fire = function(_, ...)
 			if RunService:IsServer() then
 				local player = select(1, ...)
 				local params = {select(2, ...)}
@@ -85,7 +85,7 @@ function Network:DefineEvent(name, paramTypes)
 			end
 		end,
 
-		FireAll = function(interface, ...)
+		FireAll = function(_, ...)
 			if RunService:IsServer() then
 				self:_validateParams(name, paramTypes, {...})
 				remote:FireAllClients(...)
@@ -94,7 +94,7 @@ function Network:DefineEvent(name, paramTypes)
 			end
 		end,
 
-		Connect = function(interface, callback)
+		Connect = function(_, callback)
 			if RunService:IsServer() then
 				return remote.OnServerEvent:Connect(function(player, ...)
 					self:_validateParams(name, paramTypes, {...})
@@ -131,13 +131,13 @@ function Network:DefineFunction(name, paramTypes)
 	local returnTypes = {}
 
 	local interface = {
-		Returns = function(interface, types)
+		Returns = function(self_interface, types)
 			assert(type(types) == "table", "Return types must be a table")
 			returnTypes = types
-			return interface
+			return self_interface
 		end,
 
-		SetCallback = function(interface, callback)
+		SetCallback = function(_, callback)
 			if RunService:IsServer() then
 				remote.OnServerInvoke = function(player, ...)
 					Network.GetInstance():_validateParams(name, paramTypes, {...})
@@ -152,7 +152,7 @@ function Network:DefineFunction(name, paramTypes)
 			end
 		end,
 
-		Invoke = function(interface, ...)
+		Invoke = function(_, ...)
 			if RunService:IsClient() then
 				Network.GetInstance():_validateParams(name, paramTypes, {...})
 				local results = {remote:InvokeServer(...)}
@@ -214,13 +214,15 @@ function Network:_validateParams(name, paramTypes, params)
 	end
 
 	for i, paramType in ipairs(paramTypes) do
+		if paramType == "any" then
+			continue
+		end
+
 		local param = params[i]
 		local actualType = type(param)
 
 		-- Handle special type checks
-		if paramType == "any" then
-			-- Any type is valid
-		elseif paramType == "Player" then
+		if paramType == "Player" then
 			if actualType ~= "userdata" or not param:IsA("Player") then
 				error(string.format("Parameter %d for %s: expected Player, got %s",
 					i, name, actualType))

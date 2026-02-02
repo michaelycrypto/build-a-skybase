@@ -55,8 +55,9 @@ function FeedbackSystem:Initialize(soundManager)
 	self.soundManager = soundManager
 
 	-- Load sounds if SoundManager is available
+	-- selene: allow(empty_if)
 	if soundManager then
-		-- Load sounds from SoundManager (implementation depends on your sound system)
+		-- Implement sound loading if needed
 	end
 
 	print("✅ FeedbackSystem: Initialized")
@@ -89,7 +90,7 @@ function FeedbackSystem:PlayHaptic(feedbackType, customIntensity)
 	}
 
 	local baseIntensity = intensityMap[feedbackType] or 0.5
-	local finalIntensity = baseIntensity * intensity
+	local _finalIntensity = baseIntensity * intensity
 
 	-- Note: Roblox doesn't have native haptic feedback API yet
 	-- This is prepared for when the feature becomes available
@@ -106,7 +107,7 @@ end
 function FeedbackSystem:PlayAudio(feedbackType, customVolume)
 	if not self.audioEnabled then return end
 
-	local volume = customVolume or self.audioVolume
+	local _volume = customVolume or self.audioVolume
 
 	-- Use SoundManager if available
 	if self.soundManager and self.soundManager.PlaySFXSafely then
@@ -237,8 +238,8 @@ function FeedbackSystem:CreateRipple(parent, position, color)
 	if not self.visualEnabled or not parent then return end
 
 	local ripple = Instance.new("Frame")
-	ripple.Size = UDim2.new(0, 10, 0, 10)
-	ripple.Position = UDim2.new(0, position.X - 5, 0, position.Y - 5)
+	ripple.Size = UDim2.fromOffset(10, 10)
+	ripple.Position = UDim2.fromOffset(position.X - 5, position.Y - 5)
 	ripple.AnchorPoint = Vector2.new(0.5, 0.5)
 	ripple.BackgroundColor3 = color or Color3.fromRGB(255, 255, 255)
 	ripple.BackgroundTransparency = 0.5
@@ -254,7 +255,7 @@ function FeedbackSystem:CreateRipple(parent, position, color)
 	local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
 	local expand = TweenService:Create(ripple, tweenInfo, {
-		Size = UDim2.new(0, 100, 0, 100),
+		Size = UDim2.fromOffset(100, 100),
 		BackgroundTransparency = 1
 	})
 

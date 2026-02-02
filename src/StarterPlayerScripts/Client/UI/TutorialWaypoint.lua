@@ -81,7 +81,7 @@ end
 local function createWorldMarker(config)
 	local billboard = Instance.new("BillboardGui")
 	billboard.Name = "WaypointMarker"
-	billboard.Size = UDim2.new(0, 80, 0, 100)
+	billboard.Size = UDim2.fromOffset(80, 100)
 	billboard.StudsOffset = Vector3.new(0, 4, 0)
 	billboard.AlwaysOnTop = true
 	billboard.MaxDistance = 500
@@ -90,15 +90,15 @@ local function createWorldMarker(config)
 	-- Container frame
 	local container = Instance.new("Frame")
 	container.Name = "Container"
-	container.Size = UDim2.new(1, 0, 1, 0)
+	container.Size = UDim2.fromScale(1, 1)
 	container.BackgroundTransparency = 1
 	container.Parent = billboard
 	
 	-- Marker icon (diamond shape)
 	local marker = Instance.new("ImageLabel")
 	marker.Name = "Marker"
-	marker.Size = UDim2.new(0, 40, 0, 40)
-	marker.Position = UDim2.new(0.5, 0, 0, 0)
+	marker.Size = UDim2.fromOffset(40, 40)
+	marker.Position = UDim2.fromScale(0.5, 0)
 	marker.AnchorPoint = Vector2.new(0.5, 0)
 	marker.BackgroundTransparency = 1
 	marker.Image = "rbxassetid://6031094678" -- Diamond marker icon
@@ -116,7 +116,7 @@ local function createWorldMarker(config)
 	local labelBg = Instance.new("Frame")
 	labelBg.Name = "LabelBg"
 	labelBg.Size = UDim2.new(1, 0, 0, 24)
-	labelBg.Position = UDim2.new(0, 0, 0, 45)
+	labelBg.Position = UDim2.fromOffset(0, 45)
 	labelBg.BackgroundColor3 = COLORS.background
 	labelBg.BackgroundTransparency = 0.3
 	labelBg.Parent = container
@@ -128,7 +128,7 @@ local function createWorldMarker(config)
 	-- Label text
 	local label = Instance.new("TextLabel")
 	label.Name = "Label"
-	label.Size = UDim2.new(1, 0, 1, 0)
+	label.Size = UDim2.fromScale(1, 1)
 	label.BackgroundTransparency = 1
 	label.Text = config.label or "Objective"
 	label.TextColor3 = COLORS.white
@@ -140,7 +140,7 @@ local function createWorldMarker(config)
 	local distanceLabel = Instance.new("TextLabel")
 	distanceLabel.Name = "Distance"
 	distanceLabel.Size = UDim2.new(1, 0, 0, 18)
-	distanceLabel.Position = UDim2.new(0, 0, 0, 72)
+	distanceLabel.Position = UDim2.fromOffset(0, 72)
 	distanceLabel.BackgroundTransparency = 1
 	distanceLabel.Text = "0m"
 	distanceLabel.TextColor3 = config.color or COLORS.gold
@@ -171,7 +171,7 @@ end
 local function createScreenIndicator(config)
 	local indicator = Instance.new("Frame")
 	indicator.Name = "ScreenIndicator"
-	indicator.Size = UDim2.new(0, 24, 0, 24)
+	indicator.Size = UDim2.fromOffset(24, 24)
 	indicator.BackgroundTransparency = 1
 	indicator.Visible = false
 	indicator.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -180,8 +180,8 @@ local function createScreenIndicator(config)
 	-- Diamond shape (rotated square)
 	local diamond = Instance.new("Frame")
 	diamond.Name = "Diamond"
-	diamond.Size = UDim2.new(0, 12, 0, 12)
-	diamond.Position = UDim2.new(0.5, 0, 0.5, 0)
+	diamond.Size = UDim2.fromOffset(12, 12)
+	diamond.Position = UDim2.fromScale(0.5, 0.5)
 	diamond.AnchorPoint = Vector2.new(0.5, 0.5)
 	diamond.Rotation = 45 -- Tilt to make diamond shape
 	diamond.BackgroundColor3 = config.color or COLORS.gold
@@ -278,7 +278,7 @@ local function updateWaypoint()
 			local edgeX = centerX + math.cos(angle) * radius
 			local edgeY = centerY + math.sin(angle) * radius
 			
-			indicator.Position = UDim2.new(0, edgeX, 0, edgeY)
+			indicator.Position = UDim2.fromOffset(edgeX, edgeY)
 			-- Diamond shape doesn't need rotation - stays tilted at 45 degrees
 		end
 	end

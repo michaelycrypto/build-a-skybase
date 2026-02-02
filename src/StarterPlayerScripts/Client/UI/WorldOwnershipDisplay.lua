@@ -50,7 +50,7 @@ function WorldOwnershipDisplay:CreateUI()
 	ownerLabel.Name = "OwnerLabel"
 	ownerLabel.AutomaticSize = Enum.AutomaticSize.XY
 	ownerLabel.BackgroundTransparency = 1
-	ownerLabel.Position = UDim2.new(0, 8, 0, 2)
+	ownerLabel.Position = UDim2.fromOffset(8, 2)
 	ownerLabel.Text = "🏠 Owner: Loading..."
 	ownerLabel.TextColor3 = Color3.fromRGB(235, 235, 235)
 	ownerLabel.TextSize = 14

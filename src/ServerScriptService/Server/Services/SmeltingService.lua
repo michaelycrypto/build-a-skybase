@@ -12,7 +12,7 @@
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Players = game:GetService("Players")
+local _Players = game:GetService("Players")
 
 local BaseService = require(script.Parent.BaseService)
 local Logger = require(ReplicatedStorage.Shared.Logger)
@@ -401,7 +401,7 @@ end
 	@param player: Player
 	@param data: table - {furnacePos}
 ]]
-function SmeltingService:HandleCancelSmelt(player, data)
+function SmeltingService:HandleCancelSmelt(player, _data)
 	if not player then
 		return
 	end
@@ -576,7 +576,7 @@ end
 	Consume ore materials (not coal)
 	@return: table - List of consumed items for potential refund
 ]]
-function SmeltingService:ConsumeOreMaterials(player, recipe, playerInv)
+function SmeltingService:ConsumeOreMaterials(_player, recipe, playerInv)
 	local consumedItems = {}
 
 	for _, input in ipairs(recipe.inputs) do

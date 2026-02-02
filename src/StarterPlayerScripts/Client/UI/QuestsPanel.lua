@@ -6,15 +6,15 @@
 
 local QuestsPanel = {}
 
-local Players = game:GetService("Players")
+local _Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 -- Imports
-local Config = require(ReplicatedStorage.Shared.Config)
-local EventManager = require(ReplicatedStorage.Shared.EventManager)
+local _Config = require(ReplicatedStorage.Shared.Config)
+local _EventManager = require(ReplicatedStorage.Shared.EventManager)
 local QuestsApi = require(ReplicatedStorage.Shared.Api.QuestsApi)
 local UIComponents = require(script.Parent.Parent.Managers.UIComponents)
-local IconManager = require(script.Parent.Parent.Managers.IconManager)
+local _IconManager = require(script.Parent.Parent.Managers.IconManager)
 local QuestConfigFallback = require(ReplicatedStorage.Configs.QuestConfig)
 
 -- State
@@ -38,7 +38,9 @@ local refs = {
 
 local function clearChildren(parent)
 	for _, child in ipairs(parent:GetChildren()) do
-		if child:IsA("GuiObject") then child:Destroy() end
+		if child:IsA("GuiObject") then
+			child:Destroy()
+		end
 	end
 end
 
@@ -113,7 +115,9 @@ local function filterCards(cards, filter)
 end
 
 local function updateTabBadges()
-	if not refs.tabBar then return end
+	if not refs.tabBar then
+		return
+	end
 
 	local cards = getQuestCards()
 	local claimableCount = 0
@@ -148,7 +152,9 @@ local function updateTabBadges()
 end
 
 function QuestsPanel:Render()
-	if not refs.listContainer then return end
+	if not refs.listContainer then
+		return
+	end
 	clearChildren(refs.listContainer)
 
 	print("QuestsPanel: Rendering with playerQuests:", playerQuests)
@@ -165,7 +171,7 @@ function QuestsPanel:Render()
 	if #filteredCards == 0 then
 		local label = Instance.new("TextLabel")
 		label.Size = UDim2.new(1, -12, 0, 40)
-		label.Position = UDim2.new(0, 6, 0, 20)
+		label.Position = UDim2.fromOffset(6, 20)
 		label.BackgroundTransparency = 1
 		label.Text = activeTab == "all" and "No active quests" or
 					 "No rewards ready to collect"
@@ -202,7 +208,7 @@ function QuestsPanel:Render()
 	-- Badges already updated earlier in this render
 end
 
-function QuestsPanel:CreateContent(contentFrame, data)
+function QuestsPanel:CreateContent(contentFrame, _data)
 	refs.contentFrame = contentFrame
 	clearChildren(contentFrame)
 
@@ -239,25 +245,25 @@ function QuestsPanel:CreateContent(contentFrame, data)
 			QuestsPanel:Render()
 		end
 	})
-	refs.tabBar.frame.Position = UDim2.new(0, 0, 0, 8)
+	refs.tabBar.frame.Position = UDim2.fromOffset(0, 8)
 
 	-- Scrolling list
 	local scroll = Instance.new("ScrollingFrame")
 	scroll.Name = "QuestScroll"
 	scroll.Size = UDim2.new(1, 0, 1, -80)
-	scroll.Position = UDim2.new(0, 0, 0, 54)
+	scroll.Position = UDim2.fromOffset(0, 54)
 	scroll.BackgroundTransparency = 1
 	scroll.BorderSizePixel = 0
 	scroll.ScrollBarThickness = 4
 	scroll.ScrollBarImageColor3 = Color3.fromRGB(100, 149, 237)
 	scroll.ScrollBarImageTransparency = 0.3
-	scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+	scroll.CanvasSize = UDim2.fromScale(0, 0)
 	scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
 	scroll.Parent = contentFrame
 
 	local list = Instance.new("Frame")
 	list.Name = "List"
-	list.Size = UDim2.new(1, 0, 0, 0)
+	list.Size = UDim2.fromScale(1, 0)
 	list.BackgroundTransparency = 1
 	list.AutomaticSize = Enum.AutomaticSize.Y
 	list.Parent = scroll
@@ -326,7 +332,9 @@ function QuestsPanel:CreateContent(contentFrame, data)
 
         QuestsApi.OnProgressUpdated(function(update)
 			print("QuestsPanel: Received QuestProgressUpdated", update.mobType, "kills:", update.kills)
-			if not playerQuests then return end
+			if not playerQuests then
+				return
+			end
 			playerQuests.mobs = playerQuests.mobs or {}
 			local mobType = update.mobType
 			playerQuests.mobs[mobType] = playerQuests.mobs[mobType] or {kills = 0, claimed = {}}
@@ -341,9 +349,15 @@ function QuestsPanel:CreateContent(contentFrame, data)
 			-- Show success toast with reward details
 			local parts = {}
 			if result.reward then
-				if result.reward.coins then table.insert(parts, "💰" .. tostring(result.reward.coins)) end
-				if result.reward.gems then table.insert(parts, "💎" .. tostring(result.reward.gems)) end
-				if result.reward.experience then table.insert(parts, "⭐" .. tostring(result.reward.experience)) end
+				if result.reward.coins then
+					table.insert(parts, "💰" .. tostring(result.reward.coins))
+				end
+				if result.reward.gems then
+					table.insert(parts, "💎" .. tostring(result.reward.gems))
+				end
+				if result.reward.experience then
+					table.insert(parts, "⭐" .. tostring(result.reward.experience))
+				end
 			end
 
 			local msg = "Quest reward claimed!"

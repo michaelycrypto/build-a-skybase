@@ -608,7 +608,6 @@ local IconMapping = {
         ArrowBack = 140147067434547, -- Arrow Back
         Arrow = 122236925672170, -- Arrow
         Arrow1 = 115138890850132, -- Arrow (1)
-        Arrow2 = 85755086031401, -- Arrow (2)
         Arrow3 = 77511760146325, -- Arrow (3)
         ArrowsExpand = 83928485047980, -- Arrows Expand
         ArrowsShrink = 84109492887093, -- Arrows Shrink

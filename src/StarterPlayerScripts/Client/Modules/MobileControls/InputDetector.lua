@@ -184,7 +184,7 @@ end
 --[[
 	Detect touch move
 ]]
-function InputDetector:DetectTouchMove(inputObject, gameProcessed)
+function InputDetector:DetectTouchMove(inputObject, _gameProcessed)
 	local touchData = self.activeTouches[inputObject]
 	if not touchData then return end
 
@@ -222,7 +222,7 @@ end
 --[[
 	Detect touch end
 ]]
-function InputDetector:DetectTouchEnd(inputObject, gameProcessed)
+function InputDetector:DetectTouchEnd(inputObject, _gameProcessed)
 	local touchData = self.activeTouches[inputObject]
 	if not touchData then return end
 

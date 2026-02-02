@@ -16,20 +16,20 @@ local GameState = require(script.Parent.Parent.Managers.GameState)
 local BOLD_FONT = Config.UI_SETTINGS.typography.fonts.bold
 
 -- Services and instances
-local player = Players.LocalPlayer
+local _player = Players.LocalPlayer
 
 -- UI Elements
-local panel = nil
+local _panel = nil
 
 --[[
 	Create content for PanelManager integration
 --]]
-function SettingsPanel:CreateContent(contentFrame, data)
-	panel = {contentFrame = contentFrame}
+function SettingsPanel:CreateContent(contentFrame, _data)
+	_panel = {contentFrame = contentFrame}
 
 	local mainContainer = Instance.new("Frame")
 	mainContainer.Size = UDim2.new(1, -40, 1, -40) -- Add 20px margin on all sides
-	mainContainer.Position = UDim2.new(0, 20, 0, 20)
+	mainContainer.Position = UDim2.fromOffset(20, 20)
 	mainContainer.BackgroundTransparency = 1
 	mainContainer.Parent = contentFrame
 
@@ -113,7 +113,7 @@ end
 
 function SettingsPanel:Initialize()
 	-- Listen for GameState changes to update UI
-	GameState:OnPropertyChanged("settings.soundEnabled", function(newValue, oldValue, path)
+	GameState:OnPropertyChanged("settings.soundEnabled", function(newValue, _oldValue, _path)
 		if self.masterToggle and newValue ~= nil then
 			self.masterToggle.setEnabled(newValue, true) -- Silent update to prevent callback loop
 
@@ -127,13 +127,13 @@ function SettingsPanel:Initialize()
 		end
 	end)
 
-	GameState:OnPropertyChanged("settings.musicVolume", function(newValue, oldValue, path)
+	GameState:OnPropertyChanged("settings.musicVolume", function(newValue, _oldValue, _path)
 		if self.musicSlider and newValue ~= nil then
 			self.musicSlider.setValue(newValue, true) -- Silent update to prevent callback loop
 		end
 	end)
 
-	GameState:OnPropertyChanged("settings.sfxVolume", function(newValue, oldValue, path)
+	GameState:OnPropertyChanged("settings.sfxVolume", function(newValue, _oldValue, _path)
 		if self.sfxSlider and newValue ~= nil then
 			self.sfxSlider.setValue(newValue, true) -- Silent update to prevent callback loop
 		end

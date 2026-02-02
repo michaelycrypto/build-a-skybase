@@ -13,7 +13,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local ArmorConfig = require(ReplicatedStorage.Configs.ArmorConfig)
+local _ArmorConfig = require(ReplicatedStorage.Configs.ArmorConfig)
 local ArmorRenderer = require(ReplicatedStorage.Shared.ArmorRenderer)
 local EventManager = require(ReplicatedStorage.Shared.EventManager)
 
@@ -48,7 +48,9 @@ local originalColors = {}
 -- ═══════════════════════════════════════════════════════════════════════════
 
 local function destroySlotParts(slot)
-	if not armorParts[slot] then return end
+	if not armorParts[slot] then
+		return
+	end
 	for _, part in pairs(armorParts[slot]) do
 		if part and part.Parent then
 			part:Destroy()
@@ -59,7 +61,9 @@ end
 
 local function updateSlot(slot, itemId)
 	local character = player.Character
-	if not character then return end
+	if not character then
+		return
+	end
 
 	if slot == "helmet" then
 		destroySlotParts("helmet")
@@ -94,7 +98,9 @@ end
 
 local function refreshAllArmor()
 	local character = player.Character
-	if not character then return end
+	if not character then
+		return
+	end
 
 	-- Clear all physical parts
 	destroySlotParts("helmet")
@@ -132,7 +138,9 @@ end
 -- ═══════════════════════════════════════════════════════════════════════════
 
 local function onArmorSync(data)
-	if not data or not data.equippedArmor then return end
+	if not data or not data.equippedArmor then
+		return
+	end
 
 	equippedArmor = {
 		helmet = data.equippedArmor.helmet,
@@ -145,17 +153,23 @@ local function onArmorSync(data)
 end
 
 local function onArmorEquipped(data)
-	if not data or not data.slot then return end
+	if not data or not data.slot then
+		return
+	end
 	updateSlot(data.slot, data.itemId)
 end
 
 local function onArmorUnequipped(data)
-	if not data or not data.slot then return end
+	if not data or not data.slot then
+		return
+	end
 	updateSlot(data.slot, nil)
 end
 
 local function onArmorSlotResult(data)
-	if not data or not data.equippedArmor then return end
+	if not data or not data.equippedArmor then
+		return
+	end
 
 	local oldArmor = equippedArmor
 	equippedArmor = {
@@ -229,9 +243,7 @@ end
 
 function controller.Destroy()
 	for _, conn in ipairs(connections) do
-		if typeof(conn) == "RBXScriptConnection" then
-			conn:Disconnect()
-		elseif typeof(conn) == "table" and conn.Disconnect then
+		if typeof(conn) == "RBXScriptConnection" or (typeof(conn) == "table" and conn.Disconnect) then
 			conn:Disconnect()
 		end
 	end

@@ -170,7 +170,7 @@ function ChunkCache:UpdatePredictions()
 	local chunkZ = math.floor(self.lastPosition.Z / Constants.CHUNK_WORLD_SIZE_Z)
 
 	-- Clear old predictions
-	for key, entry in pairs(self.cache) do
+	for _, entry in pairs(self.cache) do
 		if entry.state == CacheState.PREDICTED then
 			entry.state = CacheState.CACHED
 		end

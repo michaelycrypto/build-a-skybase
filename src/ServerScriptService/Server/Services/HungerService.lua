@@ -148,7 +148,7 @@ function HungerService:Destroy()
 	end
 
 	-- Clean up all player states and their connections
-	for player, state in pairs(self._playerStates) do
+	for _, state in pairs(self._playerStates) do
 		if state.stateChangedConnection then
 			state.stateChangedConnection:Disconnect()
 		end
@@ -220,7 +220,6 @@ function HungerService:OnPlayerAdded(player)
 		local rootPart = player.Character:FindFirstChild("HumanoidRootPart")
 		if rootPart then
 			-- Initialize position tracking
-			local state = self._playerStates[player]
 			if state then
 				state.lastPosition = rootPart.Position
 				state.lastPositionTime = os.clock()
@@ -262,15 +261,14 @@ function HungerService:OnPlayerAdded(player)
 
 			-- Initialize position tracking
 			local rootPart = character:FindFirstChild("HumanoidRootPart")
-			if rootPart and self._playerStates[player] then
-				local respawnState = self._playerStates[player]
+			if rootPart and respawnState then
 				respawnState.lastPosition = rootPart.Position
 				respawnState.lastPositionTime = os.clock()
 			end
 
-			local hunger = self.Deps.PlayerService:GetHunger(player)
-			local saturation = self.Deps.PlayerService:GetSaturation(player)
-			self:_syncHungerToClient(player, hunger, saturation)
+			local h = self.Deps.PlayerService:GetHunger(player)
+			local s = self.Deps.PlayerService:GetSaturation(player)
+			self:_syncHungerToClient(player, h, s)
 		end)
 	end)
 
@@ -654,7 +652,8 @@ function HungerService:_setupJumpDetection(player, character)
 	end
 
 	-- Use StateChanged event for jump detection (more efficient than Heartbeat polling)
-	local connection = humanoid.StateChanged:Connect(function(oldState, newState)
+	local connection
+	connection = humanoid.StateChanged:Connect(function(_oldState, newState)
 		-- Safety checks: ensure player, state, character, and humanoid still exist
 		if not self._playerStates[player] or not player.Parent then
 			connection:Disconnect()

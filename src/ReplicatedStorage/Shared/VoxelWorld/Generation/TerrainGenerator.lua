@@ -4,7 +4,6 @@
 ]]
 
 local Constants = require(script.Parent.Parent.Core.Constants)
-local WorldConfig = require(script.Parent.Parent.Core.WorldConfig)
 local NoiseGenerator = require(script.Parent.NoiseGenerator)
 
 local TerrainGenerator = {}

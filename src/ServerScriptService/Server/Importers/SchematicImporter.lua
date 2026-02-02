@@ -21,8 +21,6 @@
 		})
 ]]
 
-local RunService = game:GetService("RunService")
-
 local Constants = require(game.ReplicatedStorage.Shared.VoxelWorld.Core.Constants)
 local BlockMapping = require(game.ReplicatedStorage.Shared.VoxelWorld.Core.BlockMapping)
 local Logger = require(game.ReplicatedStorage.Shared.Logger)
@@ -167,7 +165,7 @@ end
 --- @param baseName string The base block name (for context)
 --- @param properties table|nil Parsed properties from block name
 --- @return number metadata Our BlockMetadata format (0-255)
-local function convertMetadata(baseName, properties)
+local function convertMetadata(_baseName, properties)
 	if not properties then
 		return 0
 	end
@@ -226,7 +224,9 @@ local function getBlockId(baseName, properties)
 				-- Clamp age to valid range for this crop
 				local maxAge = 0
 				for ageKey, _ in pairs(cropStages) do
-					if ageKey > maxAge then maxAge = ageKey end
+					if ageKey > maxAge then
+						maxAge = ageKey
+					end
 				end
 				age = math.min(age, maxAge)
 				return cropStages[age]

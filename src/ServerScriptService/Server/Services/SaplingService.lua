@@ -3,7 +3,7 @@
 	Straightforward Minecraft-like sapling growth for voxel world (Oak only for now)
 ]]
 
-local Players = game:GetService("Players")
+local _Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local BaseService = require(script.Parent.BaseService)
@@ -205,13 +205,17 @@ function SaplingService.new()
 end
 
 function SaplingService:Init()
-	if self._initialized then return end
+	if self._initialized then
+		return
+	end
 	BaseService.Init(self)
 	print("SaplingService: Initialized")
 end
 
 function SaplingService:Start()
-	if self._started then return end
+	if self._started then
+		return
+	end
 	BaseService.Start(self)
 
 	-- Periodic growth checks
@@ -243,14 +247,16 @@ function SaplingService:Start()
 end
 
 function SaplingService:Destroy()
-	if self._destroyed then return end
+	if self._destroyed then
+		return
+	end
 	self._saplings = {}
 	BaseService.Destroy(self)
 	print("SaplingService: Destroyed")
 end
 
 -- Called by VoxelWorldService whenever a block changes
-function SaplingService:OnBlockChanged(x, y, z, newBlockId, newMetadata, oldBlockId)
+function SaplingService:OnBlockChanged(x, y, z, newBlockId, _newMetadata, oldBlockId)
 	local k = keyFor(x, y, z)
 	if ALL_SAPLINGS[newBlockId] then
 		self._saplings[k] = {x = x, y = y, z = z}
@@ -294,7 +300,9 @@ function SaplingService:_tick()
 	local keys = self._iterKeys
 
 	local vm = self.Deps and self.Deps.VoxelWorldService and self.Deps.VoxelWorldService.worldManager
-	if not vm then return end
+	if not vm then
+		return
+	end
 
 	local total = #keys
 	if total > 0 then
@@ -337,14 +345,18 @@ end
 function SaplingService:_randomTickLeaves()
     local vws = self.Deps and self.Deps.VoxelWorldService
     local vm = vws and vws.worldManager
-    if not vws or not vm then return end
+    if not vws or not vm then
+    	return
+    end
 
     local viewers = vws.chunkViewers or {}
     local chunkKeys = {}
     for key in pairs(viewers) do
         chunkKeys[#chunkKeys + 1] = key
     end
-    if #chunkKeys == 0 then return end
+    if #chunkKeys == 0 then
+    	return
+    end
 
     local rng = Random.new()
     local maxChunks = (SaplingConfig.LEAF_DECAY and SaplingConfig.LEAF_DECAY.MAX_CHUNKS_PER_TICK) or 16
@@ -367,7 +379,7 @@ function SaplingService:_randomTickLeaves()
         local baseZ = cz * Constants.CHUNK_SIZE_Z
 
         local chunk = vws.worldManager and vws.worldManager:GetChunk(cx, cz)
-        for s = 1, samplesPer do
+        for _ = 1, samplesPer do
             local lx = rng:NextInteger(0, Constants.CHUNK_SIZE_X - 1)
             local lz = rng:NextInteger(0, Constants.CHUNK_SIZE_Z - 1)
             local x = baseX + lx
@@ -415,7 +427,9 @@ function SaplingService:_randomTickLeaves()
         end
 
         processed += 1
-        if processed >= maxChunks then break end
+        if processed >= maxChunks then
+        	break
+        end
     end
 
 end
@@ -488,7 +502,9 @@ function SaplingService:_recomputeLeafDistances(vm, cx, cy, cz, radius)
 							if vws and vws.SetBlock then
 								vws:SetBlock(nx, ny, nz, leafTarget)
 							else
-								if vm and vm.SetBlock then vm:SetBlock(nx, ny, nz, leafTarget) end
+								if vm and vm.SetBlock then
+									vm:SetBlock(nx, ny, nz, leafTarget)
+								end
 							end
 							-- Preserve persistent bit if it was set
 							if wasPersistent then
@@ -578,11 +594,15 @@ end
 -- Called when a chunk is streamed to any player; scans once and applies offline fast-forward
 function SaplingService:OnChunkStreamed(cx, cz)
 	local k = string.format("%d,%d", cx, cz)
-	if self._scannedChunks[k] then return end
+	if self._scannedChunks[k] then
+		return
+	end
 	self._scannedChunks[k] = true
 
 	local vm = self.Deps and self.Deps.VoxelWorldService and self.Deps.VoxelWorldService.worldManager
-	if not vm then return end
+	if not vm then
+		return
+	end
 
 	local baseX = cx * Constants.CHUNK_SIZE_X
 	local baseZ = cz * Constants.CHUNK_SIZE_Z
@@ -617,12 +637,18 @@ function SaplingService:OnChunkStreamed(cx, cz)
 				if LOG_ANCHORS[id] then
 					local leafId = LOG_TO_LEAVES[id]
 					local code = leafId and LEAF_TO_SPECIES_CODE[leafId]
-					if code ~= nil then hint = code break end
+					if code ~= nil then
+						hint = code break
+					end
 				end
 			end
-			if hint ~= nil then break end
+			if hint ~= nil then
+				break
+			end
 		end
-		if hint ~= nil then break end
+		if hint ~= nil then
+			break
+		end
 	end
 	if hint ~= nil then
 		self._chunkSpecies[string.format("%d,%d", cx, cz)] = hint
@@ -676,13 +702,19 @@ end
 
 function SaplingService:_fastForwardIfOffline(vm, x, y, z, meta)
 	local ownerSvc = self.Deps and self.Deps.WorldOwnershipService
-	if not ownerSvc then return end
+	if not ownerSvc then
+		return
+	end
 	local wd = ownerSvc:GetWorldData()
-	if not wd then return end
+	if not wd then
+		return
+	end
 
 	local lastSaved = wd.lastSaved or wd.created or os.time()
 	local elapsed = math.max(0, os.time() - lastSaved)
-	if elapsed <= 0 then return end
+	if elapsed <= 0 then
+		return
+	end
 
 	local rate = (SaplingConfig.ATTEMPT_CHANCE or (1/7)) / (SaplingConfig.TICK_INTERVAL or 5)
 	local lambda = rate * elapsed
@@ -692,7 +724,9 @@ function SaplingService:_fastForwardIfOffline(vm, x, y, z, meta)
 	local p1 = lambda * p0
 	local u = Random.new(self:_seedFor(x, y, z)):NextNumber()
 	local k
-	if u < p0 then k = 0 elseif u < (p0 + p1) then k = 1 else k = 2 end
+	if u < p0 then
+		k = 0 elseif u < (p0 + p1) then k = 1 else k = 2
+	end
 
 	local stage = getStageFromMeta(meta or 0)
 	if stage == 0 and k >= 1 then
@@ -748,7 +782,9 @@ function SaplingService:_fastForwardIfOffline(vm, x, y, z, meta)
 							removed += 1
 							-- Track for deterministic processing removal
 							self._unsupportedSet[keyFor(x, y, z)] = nil
-							if removed >= burstLimit then return end
+							if removed >= burstLimit then
+								return
+							end
 						end
 					end
 				end
@@ -762,10 +798,14 @@ end
 function SaplingService:_processUnsupportedLeaves()
     local vws = self.Deps and self.Deps.VoxelWorldService
     local vm = vws and vws.worldManager
-    if not vws or not vm then return end
+    if not vws or not vm then
+    	return
+    end
 
     local limit = (SaplingConfig.LEAF_DECAY and SaplingConfig.LEAF_DECAY.PROCESS_PER_TICK) or 128
-    if limit <= 0 then return end
+    if limit <= 0 then
+    	return
+    end
 
     local saplingChance = (SaplingConfig.LEAF_DECAY and SaplingConfig.LEAF_DECAY.SAPLING_DROP_CHANCE) or 0.05
     local appleChance = (SaplingConfig.LEAF_DECAY and SaplingConfig.LEAF_DECAY.APPLE_DROP_CHANCE) or 0.005
@@ -809,7 +849,9 @@ function SaplingService:_processUnsupportedLeaves()
 						self._unsupportedSet[k] = nil
 						self._unsupportedSchedule[k] = nil
 						processed += 1
-						if processed >= limit then break end
+						if processed >= limit then
+							break
+						end
 					else
 						-- Leaf became supported; clear from queues without decaying
 						self._unsupportedSet[k] = nil
@@ -835,7 +877,9 @@ function SaplingService:_seedFor(x, y, z)
 	local s = bit32.bxor(seedBase * 73856093, x * 19349663)
 	s = bit32.bxor(s, z * 83492791)
 	s = bit32.bxor(s, y * 2654435761)
-	if s < 0 then s = -s end
+	if s < 0 then
+		s = -s
+	end
 	return s % 2147483647
 end
 
@@ -850,7 +894,9 @@ function SaplingService:_pickSaplingDropForLeaf(vm, x, y, z)
     local leafId = vm:GetBlock(x, y, z)
     if leafId ~= BLOCK.LEAVES then
         local mapped = LEAVES_TO_SAPLING[leafId]
-        if mapped then return mapped end
+        if mapped then
+        	return mapped
+        end
     end
     -- If legacy generic LEAVES, first try to infer from metadata/chunk hint, then nearby species leaves, then logs
     if leafId == BLOCK.LEAVES then
@@ -915,7 +961,9 @@ function SaplingService:_canPlaceOakAt(vm, x, y, z)
 		for dz = -2, 2 do
 			if not (math.abs(dx) == 2 and math.abs(dz) == 2) then
 				if not (dx == 0 and dz == 0) then
-					if not can(dx, 3, dz) then return false end
+					if not can(dx, 3, dz) then
+						return false
+					end
 				end
 			end
 		end
@@ -926,7 +974,9 @@ function SaplingService:_canPlaceOakAt(vm, x, y, z)
 		for dz = -2, 2 do
 			if not (math.abs(dx) == 2 and math.abs(dz) == 2) then
 				if not (dx == 0 and dz == 0) then
-					if not can(dx, 4, dz) then return false end
+					if not can(dx, 4, dz) then
+						return false
+					end
 				end
 			end
 		end
@@ -935,7 +985,9 @@ function SaplingService:_canPlaceOakAt(vm, x, y, z)
 	-- Layer y+5: 3x3
 	for dx = -1, 1 do
 		for dz = -1, 1 do
-			if not can(dx, 5, dz) then return false end
+			if not can(dx, 5, dz) then
+				return false
+			end
 		end
 	end
 
@@ -944,7 +996,9 @@ end
 
 function SaplingService:_placeOakAt(vm, x, y, z)
 	local vws = self.Deps and self.Deps.VoxelWorldService
-	if not vws then return end
+	if not vws then
+		return
+	end
 
 	-- Replace sapling block (at y-1) with trunk base
 	vws:SetBlock(x, y - 1, z, BLOCK.WOOD)
@@ -955,13 +1009,17 @@ function SaplingService:_placeOakAt(vm, x, y, z)
 	end
 
 	local function place(dx, dy, dz, skipTrunk)
-		if skipTrunk and dx == 0 and dz == 0 then return end
+		if skipTrunk and dx == 0 and dz == 0 then
+			return
+		end
 		local leafId = LOG_TO_LEAVES[BLOCK.WOOD] or BLOCK.LEAVES
 		vws:SetBlock(x + dx, y + dy, z + dz, leafId)
 		-- Stamp species bits for persistence
 		local meta = vm:GetBlockMetadata(x + dx, y + dy, z + dz) or 0
 		local code = LEAF_TO_SPECIES_CODE[leafId]
-		if code then vm:SetBlockMetadata(x + dx, y + dy, z + dz, setLeafSpecies(meta, code)) end
+		if code then
+			vm:SetBlockMetadata(x + dx, y + dy, z + dz, setLeafSpecies(meta, code))
+		end
 	end
 
 	-- Layer y+3: 5x5 minus corners, skip center
@@ -999,7 +1057,9 @@ end
 -- Generic placement for small trees, using specified logId for trunk
 function SaplingService:_placeTreeAt(vm, x, y, z, logId)
 	local vws = self.Deps and self.Deps.VoxelWorldService
-	if not vws then return end
+	if not vws then
+		return
+	end
 
 	local trunkId = logId or BLOCK.WOOD
 
@@ -1012,13 +1072,17 @@ function SaplingService:_placeTreeAt(vm, x, y, z, logId)
 	end
 
 	local function place(dx, dy, dz, skipTrunk)
-		if skipTrunk and dx == 0 and dz == 0 then return end
+		if skipTrunk and dx == 0 and dz == 0 then
+			return
+		end
 		local saplingLeafId = LOG_TO_LEAVES[trunkId] or LOG_TO_LEAVES[BLOCK.WOOD] or BLOCK.LEAVES
 		vws:SetBlock(x + dx, y + dy, z + dz, saplingLeafId)
 		-- Stamp species bits for persistence
 		local meta = vm:GetBlockMetadata(x + dx, y + dy, z + dz) or 0
 		local code = LEAF_TO_SPECIES_CODE[saplingLeafId]
-		if code then vm:SetBlockMetadata(x + dx, y + dy, z + dz, setLeafSpecies(meta, code)) end
+		if code then
+			vm:SetBlockMetadata(x + dx, y + dy, z + dz, setLeafSpecies(meta, code))
+		end
 	end
 
 	-- Layer y+3: 5x5 minus corners, skip center

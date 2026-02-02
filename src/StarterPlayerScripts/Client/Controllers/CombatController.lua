@@ -10,8 +10,8 @@ local InputService = require(script.Parent.Parent.Input.InputService)
 
 local EventManager = require(ReplicatedStorage.Shared.EventManager)
 local CombatConfig = require(ReplicatedStorage.Configs.CombatConfig)
-local BlockProperties = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockProperties)
-local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
+local _BlockProperties = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockProperties)
+local _ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
 local ToolAnimationController = require(script.Parent.ToolAnimationController)
 local BowConfig = require(ReplicatedStorage.Configs.BowConfig)
 local GameState = require(script.Parent.Parent.Managers.GameState)
@@ -33,7 +33,9 @@ end
 -- Compute aim ray based on camera mode (1st person vs 3rd person)
 local function computeAimRay()
     local camera = workspace.CurrentCamera
-    if not camera then return nil, nil end
+    if not camera then
+    	return nil, nil
+    end
 
     local isFirstPerson = GameState:Get("camera.isFirstPerson")
     local origin, dir
@@ -55,16 +57,22 @@ end
 
 local function findTarget()
     local camera = workspace.CurrentCamera
-    if not camera then return nil end
+    if not camera then
+    	return nil
+    end
 
     local origin, dir = computeAimRay()
-    if not origin or not dir then return nil end
+    if not origin or not dir then
+    	return nil
+    end
 
     local reach = CombatConfig.REACH_STUDS or 10
     local rayParams = RaycastParams.new()
-    rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+    rayParams.FilterType = Enum.RaycastFilterType.Exclude
     local char = player.Character
-    if char then rayParams.FilterDescendantsInstances = {char} end
+    if char then
+    	rayParams.FilterDescendantsInstances = {char}
+    end
     local result = workspace:Raycast(origin, dir * reach, rayParams)
     if result and result.Instance then
         local model = result.Instance:FindFirstAncestorOfClass("Model")
@@ -81,16 +89,22 @@ end
 
 local function findMobEntityId()
 	local camera = workspace.CurrentCamera
-	if not camera then return nil end
+	if not camera then
+		return nil
+	end
 
 	local origin, dir = computeAimRay()
-	if not origin or not dir then return nil end
+	if not origin or not dir then
+		return nil
+	end
 
 	local reach = CombatConfig.REACH_STUDS or 10
 	local rayParams = RaycastParams.new()
-	rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+	rayParams.FilterType = Enum.RaycastFilterType.Exclude
 	local char = player.Character
-	if char then rayParams.FilterDescendantsInstances = {char} end
+	if char then
+		rayParams.FilterDescendantsInstances = {char}
+	end
 	local result = workspace:Raycast(origin, dir * reach, rayParams)
 	if result and result.Instance then
 		local model = result.Instance:FindFirstAncestorOfClass("Model")
@@ -107,12 +121,14 @@ end
 function CombatController:Initialize()
     -- Input: track LMB hold state for repeated swings
     InputService.InputBegan:Connect(function(input, gpe)
-        if gpe then return end
+        if gpe then
+        	return
+        end
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             isHolding = true
         end
     end)
-    InputService.InputEnded:Connect(function(input, gpe)
+    InputService.InputEnded:Connect(function(input, _gpe)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             isHolding = false
         end
@@ -120,11 +136,17 @@ function CombatController:Initialize()
 
     -- We send hits on swing cadence while LMB is held; server validates reach/FOV
     RunService.Heartbeat:Connect(function()
-        if not isHolding then return end
+        if not isHolding then
+        	return
+        end
         -- Bow only shoots arrows, no melee (Minecraft-style)
-        if isBowEquipped() then return end
+        if isBowEquipped() then
+        	return
+        end
         -- Block combat when UI is open (inventory, chest, worlds, minion, etc.)
-        if InputService:IsGameplayBlocked() then return end
+        if InputService:IsGameplayBlocked() then
+        	return
+        end
 
         local now = os.clock()
         if (now - lastSwing) >= (CombatConfig.SWING_COOLDOWN or 0.35) then

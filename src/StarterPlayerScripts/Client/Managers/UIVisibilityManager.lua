@@ -6,7 +6,7 @@
 
 local UIVisibilityManager = {}
 
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local _ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 -- Import dependencies
 local GameState = require(script.Parent.GameState)

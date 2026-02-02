@@ -26,19 +26,19 @@ print("[GameClient] Server role:", serverRole)
 if ServerRoleDetector.IsRouter() then
 	-- Minimal UI while routing
 	pcall(function() StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, false) end)
-	
+
 	local gui = Instance.new("ScreenGui")
 	gui.Name = "RouterUI"
 	gui.ResetOnSpawn = false
 	gui.IgnoreGuiInset = true
 	gui.Parent = player:WaitForChild("PlayerGui")
-	
+
 	local bg = Instance.new("Frame")
-	bg.Size = UDim2.new(1, 0, 1, 0)
+	bg.Size = UDim2.fromScale(1, 1)
 	bg.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 	bg.BorderSizePixel = 0
 	bg.Parent = gui
-	
+
 	local label = Instance.new("TextLabel")
 	label.Size = UDim2.new(1, 0, 0, 50)
 	label.Position = UDim2.new(0, 0, 0.5, -25)
@@ -48,7 +48,7 @@ if ServerRoleDetector.IsRouter() then
 	label.TextSize = 24
 	label.Font = Enum.Font.GothamBold
 	label.Parent = bg
-	
+
 	return -- Exit - server will teleport us
 end
 -- ═══════════════════════════════════════════════════════════════════════════
@@ -62,7 +62,8 @@ local Constants = require(ReplicatedStorage.Shared.VoxelWorld.Core.Constants)
 local CameraFrustum = require(ReplicatedStorage.Shared.VoxelWorld.Rendering.Culling.Camera)
 
 -- Texture system
-local TextureManager = require(ReplicatedStorage.Shared.VoxelWorld.Rendering.TextureManager)
+-- TextureManager loaded for initialization side-effects
+local _TextureManager = require(ReplicatedStorage.Shared.VoxelWorld.Rendering.TextureManager)
 local BlockBreakOverlayController = require(script.Parent.Controllers.BlockBreakOverlayController)
 local CloudController = require(script.Parent.Controllers.CloudController)
 local voxelWorldHandle = nil
@@ -83,6 +84,14 @@ local FOG_UPDATE_DISTANCE_THRESHOLD = 16  -- Studs - only recalc if camera moved
 local isHubWorld = Workspace:GetAttribute("IsHubWorld") == true
 local hubRenderDistance = Workspace:GetAttribute("HubRenderDistance")
 local hubInitialMeshPending = isHubWorld
+
+-- Hub world: 44 chunks (based on schematic size). Player world: based on loading radius (7×7 = 49)
+local HUB_WORLD_CHUNK_COUNT = 44
+-- Spawn chunk tracking for loading screen
+local loadingChunkRadius = 3  -- Radius around spawn chunk to require (1 = 3x3, 2 = 5x5, 3 = 7x7, 4 = 9x9)
+local PLAYER_WORLD_CHUNK_COUNT = (loadingChunkRadius * 2 + 1) * (loadingChunkRadius * 2 + 1)  -- 49 for radius 3
+local minimumChunksRequired = isHubWorld and HUB_WORLD_CHUNK_COUNT or PLAYER_WORLD_CHUNK_COUNT
+
 Workspace:GetAttributeChangedSignal("IsHubWorld"):Connect(function()
 	isHubWorld = Workspace:GetAttribute("IsHubWorld") == true
 	if isHubWorld then
@@ -103,17 +112,14 @@ local meshBuildingSet = {} -- Keys currently being built (prevent duplicates)
 local meshWorkerRunning = false
 
 -- Spawn chunk tracking for loading screen
+-- selene: allow(unused_variable)
 local spawnChunkKey = nil  -- "cx,cz" key for the chunk player spawns in
 local spawnChunkReady = false
 local onSpawnChunkReadyCallbacks = {}  -- Callbacks to fire when spawn chunk loads
 
 -- Multi-chunk loading tracking
 local requiredChunkKeys = {}  -- All chunk keys we want loaded before completing
-local loadingChunkRadius = 3  -- Radius around spawn chunk to require (1 = 3x3, 2 = 5x5, 3 = 7x7, 4 = 9x9)
--- Hub world: 44 chunks (based on schematic size). Player world: based on loading radius (7×7 = 49)
-local HUB_WORLD_CHUNK_COUNT = 44
-local PLAYER_WORLD_CHUNK_COUNT = (loadingChunkRadius * 2 + 1) * (loadingChunkRadius * 2 + 1)  -- 49 for radius 3
-local minimumChunksRequired = isHubWorld and HUB_WORLD_CHUNK_COUNT or PLAYER_WORLD_CHUNK_COUNT
+
 -- S3-FIX: Track if server already provided the required chunk list (don't overwrite)
 local serverProvidedChunkList = false
 
@@ -152,7 +158,9 @@ end
 
 -- Fire spawn chunk ready callbacks
 local function fireSpawnChunkReady()
-	if spawnChunkReady then return end
+	if spawnChunkReady then
+		return
+	end
 	spawnChunkReady = true
 	for _, callback in ipairs(onSpawnChunkReadyCallbacks) do
 		task.defer(callback)
@@ -162,7 +170,9 @@ end
 
 -- Check spawn readiness when a chunk loads (called from mesh parenting)
 local function checkSpawnChunksReady()
-	if spawnChunkReady then return end
+	if spawnChunkReady then
+		return
+	end
 	if areMinimumChunksLoaded() then
 		fireSpawnChunkReady()
 	end
@@ -222,7 +232,9 @@ end
 
 -- Background mesh worker - runs in a separate task, doesn't block rendering
 local function startMeshWorker()
-	if meshWorkerRunning then return end
+	if meshWorkerRunning then
+		return
+	end
 	meshWorkerRunning = true
 
 	task.spawn(function()
@@ -299,8 +311,12 @@ local function startMeshWorker()
 
 			for _, item in ipairs(candidates) do
 				-- Check both chunk limit AND frame budget
-				if chunksBuiltThisCycle >= maxChunksPerCycle then break end
-				if shouldYieldForFrameBudget() then break end
+				if chunksBuiltThisCycle >= maxChunksPerCycle then
+					break
+				end
+				if shouldYieldForFrameBudget() then
+					break
+				end
 
 				local key = item.key
 				local chunk = item.chunk
@@ -345,7 +361,9 @@ local function startMeshWorker()
 					elseif nz >= CHUNK_SZ then cz += 1; nz -= CHUNK_SZ end
 					local nkey = Constants.ToChunkKey(cx, cz)
 					local neighbor = neighborCache[nkey]
-					if not neighbor then return AIR end
+					if not neighbor then
+						return AIR
+					end
 					return neighbor:GetBlock(nx, ly, nz)
 				end
 
@@ -586,7 +604,8 @@ local BOLD_FONT = Config.UI_SETTINGS.typography.fonts.bold
 local Logger = require(ReplicatedStorage.Shared.Logger)
 local Network = require(ReplicatedStorage.Shared.Network)
 local EventManager = require(ReplicatedStorage.Shared.EventManager)
-local Initializer = require(ReplicatedStorage.Shared.Initializer)
+-- Initializer loaded for initialization side-effects
+local _Initializer = require(ReplicatedStorage.Shared.Initializer)
 
 	-- Controllers (DELETED - using pure Roblox native)
 	-- local ClientPlayerController = require(script.Parent.Controllers.ClientPlayerController)
@@ -596,21 +615,25 @@ local Initializer = require(ReplicatedStorage.Shared.Initializer)
 	-- local remoteReplicator = RemotePlayerReplicator.new()
 
 	-- Import client managers
+	-- Note: Some modules pre-loaded here for caching, but also re-required in completeInitialization()
+	-- They're prefixed with _ to indicate intentional preloading
 	local IconManager = require(script.Parent.Managers.IconManager)
 	local UIComponents = require(script.Parent.Managers.UIComponents)
 	local GameState = require(script.Parent.Managers.GameState)
-	local UIManager = require(script.Parent.Managers.UIManager)
-	local SoundManager = require(script.Parent.Managers.SoundManager)
-	local ToastManager = require(script.Parent.Managers.ToastManager)
-	local EmoteManager = require(script.Parent.Managers.EmoteManager)
-	local PanelManager = require(script.Parent.Managers.PanelManager)
+	local _UIManager = require(script.Parent.Managers.UIManager)
+	local _SoundManager = require(script.Parent.Managers.SoundManager)
+	local _ToastManager = require(script.Parent.Managers.ToastManager)
+	local _EmoteManager = require(script.Parent.Managers.EmoteManager)
+	local _PanelManager = require(script.Parent.Managers.PanelManager)
 	local InputService = require(script.Parent.Input.InputService)
 
 	-- Import UI components
 	local LoadingScreen = require(script.Parent.UI.LoadingScreen)
-	local MainHUD = require(script.Parent.UI.MainHUD)
-	local DailyRewardsPanel = require(script.Parent.UI.DailyRewardsPanel)
-	local SettingsPanel = require(script.Parent.UI.SettingsPanel)
+	-- Note: The following are pre-loaded here for caching, but also re-required in functions
+	-- They're prefixed with _ to indicate intentional preloading
+	local _MainHUD = require(script.Parent.UI.MainHUD)
+	local _DailyRewardsPanel = require(script.Parent.UI.DailyRewardsPanel)
+	local _SettingsPanel = require(script.Parent.UI.SettingsPanel)
 
 -- Global client state
 local Client = {
@@ -643,7 +666,7 @@ local function hideWorldStatus()
 	-- The loading screen is released by the terrain loading system (onSpawnChunkReady)
 	-- after spawn chunks are actually meshed on the client.
 	-- WorldStateChanged just means the SERVER is ready, not that CLIENT terrain is loaded.
-	
+
 	-- Only hide UIManager status (for post-loading status messages)
 	if Client.managers.UIManager and Client.managers.UIManager.HideWorldStatus then
 		Client.managers.UIManager:HideWorldStatus()
@@ -731,7 +754,7 @@ end
 --[[
 	Complete initialization after loading screen
 --]]
-local function completeInitialization(EmoteManager)
+local function completeInitialization(_preloadedEmoteManager)
 	-- Initialize UIScaler first (before any UI is created)
 	local UIScaler = require(script.Parent.Managers.UIScaler)
 	if UIScaler.Initialize then
@@ -774,6 +797,8 @@ local function completeInitialization(EmoteManager)
 	Client.managers.PanelManager = PanelManager
 
 	-- Initialize EmoteManager with preloaded assets (if available)
+	-- Note: preloadedEmoteManager is the parameter passed to this function
+	local EmoteManager = require(script.Parent.Managers.EmoteManager)
 	if EmoteManager and EmoteManager.Initialize then
 		local initSuccess = EmoteManager:Initialize({
 			Network = Network,
@@ -1015,7 +1040,9 @@ local function completeInitialization(EmoteManager)
 
 	-- Centralize inventory/chest key handling to avoid duplicate listeners
 	InputService.InputBegan:Connect(function(input, gameProcessed)
-		if gameProcessed then return end
+		if gameProcessed then
+			return
+		end
 		if input.KeyCode == Enum.KeyCode.E then
 			if not canProcessUiToggle() then
 				return
@@ -1115,7 +1142,7 @@ local function completeInitialization(EmoteManager)
 	end)
 
 	-- Open Workbench (crafting table interaction)
-	EventManager:RegisterEvent("WorkbenchOpened", function(data)
+	EventManager:RegisterEvent("WorkbenchOpened", function(_data)
 		if inventory then
 			-- Close chest if open
 			if chestUI and chestUI.isOpen then
@@ -1192,7 +1219,7 @@ local function completeInitialization(EmoteManager)
 	Client.f3DebugOverlay = F3DebugOverlay
 
 	-- Setup character handling
-	player.CharacterAdded:Connect(function(character)
+	player.CharacterAdded:Connect(function(_character)
 		task.wait(2) -- Wait for character to load
 		if Client.isInitialized and EventManager then
             EventManager:SendToServer("RequestDataRefresh")
@@ -1354,7 +1381,9 @@ local function initialize()
 	-- S3: Handle spawn chunks pre-streaming notification from server
 	-- This tells us which chunks are needed before the loading screen should fade
 	EventManager:RegisterEvent("SpawnChunksStreamed", function(data)
-		if not data then return end
+		if not data then
+			return
+		end
 
 		-- Update required chunk keys to include the spawn chunks
 		-- This ensures the loading screen waits for these specific chunks
@@ -1405,11 +1434,17 @@ local function initialize()
 		remeshBatchStartTime = nil
 		pendingWaterChanges = false
 
-		if not voxelWorldHandle then return end
+		if not voxelWorldHandle then
+			return
+		end
 		local wm = voxelWorldHandle:GetWorldManager()
-		if not wm then return end
+		if not wm then
+			return
+		end
 		local cm = voxelWorldHandle.chunkManager
-		if not cm then return end
+		if not cm then
+			return
+		end
 
 		-- Queue all pending chunks for mesh update
 		-- Skip chunks currently being built to prevent duplicate work
@@ -1464,9 +1499,13 @@ local function initialize()
 	end
 
 	EventManager:RegisterEvent("BlockChanged", function(data)
-		if not voxelWorldHandle then return end
+		if not voxelWorldHandle then
+			return
+		end
 		local wm = voxelWorldHandle:GetWorldManager()
-		if not wm then return end
+		if not wm then
+			return
+		end
 
 		-- Update block data immediately
 		wm:SetBlock(data.x, data.y, data.z, data.blockId)
@@ -1590,9 +1629,11 @@ local function initialize()
 
     -- Request initial chunks after our custom entity spawns
     local initializedFromEntity = false
-    local playerSpawnPosition = nil
+    local _playerSpawnPosition = nil
     EventManager:RegisterEvent("PlayerEntitySpawned", function(data)
-        if initializedFromEntity then return end
+        if initializedFromEntity then
+        	return
+        end
         initializedFromEntity = true
 
         -- Use Roblox default camera (no custom control)
@@ -1617,7 +1658,7 @@ local function initialize()
 
         -- Get current position from character (server already spawned it at correct location)
         local pos = rootPart.Position
-        playerSpawnPosition = pos
+        _playerSpawnPosition = pos
 
         -- Set spawn chunk for loading tracking (all worlds)
         setSpawnPosition(pos.X, pos.Z)
@@ -1771,14 +1812,14 @@ local function initialize()
 		local toastIconConfig = Config.TOAST_ICONS
 
 		-- Register all toast type icons
-		for toastType, iconConfig in pairs(toastIconConfig.types) do
+		for _, iconConfig in pairs(toastIconConfig.types) do
 			IconManager:RegisterIcon(iconConfig.iconCategory, iconConfig.iconName, {
 				context = iconConfig.context
 			})
 		end
 
 		-- Register fallback icons
-		for fallbackType, iconConfig in pairs(toastIconConfig.fallbacks) do
+		for _, iconConfig in pairs(toastIconConfig.fallbacks) do
 			IconManager:RegisterIcon(iconConfig.iconCategory, iconConfig.iconName, {
 				context = iconConfig.context
 			})
@@ -1793,11 +1834,11 @@ local function initialize()
 
 		-- Load block textures and Vector Icons
 		LoadingScreen:LoadAllAssets(
-			function(loaded, total, progress)
+			function(_loaded, _total, _progress)
 				-- Progress callback
 				-- Loading progress update
 			end,
-			function(loadedCount, failedCount)
+			function(_loadedCount, _failedCount)
 				-- Completion callback (called after fade-out)
 				EventManager:SendToServer("ClientLoadingComplete")
 			end,
@@ -1828,7 +1869,7 @@ local function safeInitialize()
 		errorGui.Parent = player:WaitForChild("PlayerGui")
 
 		local errorFrame = Instance.new("Frame")
-		errorFrame.Size = UDim2.new(0, 400, 0, 200)
+		errorFrame.Size = UDim2.fromOffset(400, 200)
 		errorFrame.Position = UDim2.new(0.5, -200, 0.5, -100)
 		errorFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 35)
 		errorFrame.BorderSizePixel = 0
@@ -1840,7 +1881,7 @@ local function safeInitialize()
 
 		local titleLabel = Instance.new("TextLabel")
 		titleLabel.Size = UDim2.new(1, -20, 0, 40)
-		titleLabel.Position = UDim2.new(0, 10, 0, 10)
+		titleLabel.Position = UDim2.fromOffset(10, 10)
 		titleLabel.BackgroundTransparency = 1
 		titleLabel.Text = "Initialization Failed"
 		titleLabel.TextColor3 = Color3.fromRGB(255, 200, 100)
@@ -1850,7 +1891,7 @@ local function safeInitialize()
 
 		local errorLabel = Instance.new("TextLabel")
 		errorLabel.Size = UDim2.new(1, -20, 1, -60)
-		errorLabel.Position = UDim2.new(0, 10, 0, 50)
+		errorLabel.Position = UDim2.fromOffset(10, 50)
 		errorLabel.BackgroundTransparency = 1
 		errorLabel.Text = "Please rejoin the game.\n\nError: " .. tostring(error)
 		errorLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -1865,7 +1906,7 @@ end
 Players.PlayerRemoving:Connect(function(leavingPlayer)
 	if leavingPlayer == player then
 		if Client.managers then
-			for name, manager in pairs(Client.managers) do
+			for _, manager in pairs(Client.managers) do
 				if manager and manager.Cleanup then
 					pcall(manager.Cleanup, manager)
 				end
@@ -1881,9 +1922,13 @@ safeInitialize()
 Client.IconManager = IconManager
 -- Hook LMB hold/release for combat using ContextActionService
 local ContextActionService = game:GetService("ContextActionService")
-local function handleCombat(actionName, inputState, inputObject)
-	if actionName ~= "CombatLMB" then return end
-	if not Client or not Client.combatController then return end
+local function handleCombat(actionName, inputState, _inputObject)
+	if actionName ~= "CombatLMB" then
+		return
+	end
+	if not Client or not Client.combatController then
+		return
+	end
 	if inputState == Enum.UserInputState.Begin then
 		Client.combatController:SetHolding(true)
 	elseif inputState == Enum.UserInputState.End then

@@ -82,7 +82,7 @@ function DamageService:_setupPlayerHealth(player)
 			end)
 
 			-- Track health changes
-			humanoid.HealthChanged:Connect(function(newHealth)
+			humanoid.HealthChanged:Connect(function(_newHealth)
 				self:_broadcastHealthUpdate(player)
 			end)
 
@@ -277,7 +277,7 @@ end
 	@param attacker: Player? - Optional attacker
 	@return number - Damage dealt
 ]]
-function DamageService:DamageMob(mob, rawDamage: number, attacker: Player?): number
+function DamageService:DamageMob(_mob, rawDamage: number, _attacker: Player?): number
 	-- Mobs don't have armor currently, just return raw damage
 	-- Could extend this later for armored mobs
 	return rawDamage

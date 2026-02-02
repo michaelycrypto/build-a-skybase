@@ -59,7 +59,7 @@ end
 	Update state slice (server only)
 	Following framework: server mutates then fires StateChanged via Network
 --]]
-function State:UpdateSlice(sliceName, newValue, path)
+function State:UpdateSlice(sliceName, newValue, _path)
 	local slice = STATE_SLICES[sliceName]
 	if not slice then
 		warn("Unknown state slice:", sliceName)

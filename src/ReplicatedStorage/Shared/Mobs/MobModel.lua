@@ -146,7 +146,9 @@ local resolvedVariant = resolveVariant(definition, variant)
 			-- Avoid tinting textured MeshParts; otherwise apply color
 			local applyColor = true
 			if part:IsA("MeshPart") then
-				local ok, tex = pcall(function() return part.TextureID end)
+				local ok, tex = pcall(function()
+					return part.TextureID
+				end)
 				if ok and tex and tostring(tex) ~= "" then
 					applyColor = false
 				end

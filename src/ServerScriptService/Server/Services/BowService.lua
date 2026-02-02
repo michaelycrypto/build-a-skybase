@@ -168,7 +168,9 @@ end
 -- Arrow originates from chest/upper torso area like Minecraft
 local function getPlayerShootPosition(player)
 	local character = player and player.Character
-	if not character then return nil end
+	if not character then
+		return nil
+	end
 
 	-- Try to get UpperTorso (R15) or Torso (R6)
 	local upperTorso = character:FindFirstChild("UpperTorso") or character:FindFirstChild("Torso")
@@ -215,7 +217,9 @@ end
 
 function BowService:_handleImpact(projectile, hit, hitPos, info)
 	self._projectiles[projectile] = nil
-	if not projectile then return end
+	if not projectile then
+		return
+	end
 
 	pcall(function()
 		projectile.AssemblyLinearVelocity = Vector3.zero
@@ -302,7 +306,9 @@ function BowService:_handleImpact(projectile, hit, hitPos, info)
 end
 
 function BowService:_stepProjectiles(dt)
-	if not next(self._projectiles) then return end
+	if not next(self._projectiles) then
+		return
+	end
 
 	local gravity = Vector3.new(0, -Workspace.Gravity, 0)
 
@@ -315,7 +321,9 @@ function BowService:_stepProjectiles(dt)
 		local now = os.clock()
 		if (now - data.spawnTime) > BowConfig.MAX_LIFETIME then
 			local trail = projectile:FindFirstChild("ArrowTrail")
-			if trail then trail.Enabled = false end
+			if trail then
+				trail.Enabled = false
+			end
 			projectile:Destroy()
 			self._projectiles[projectile] = nil
 			continue
@@ -345,7 +353,9 @@ function BowService:_stepProjectiles(dt)
 				if result.Instance:IsDescendantOf(data.player.Character) then
 					projectile.CFrame = CFrame.lookAt(newPos, newPos + data.velocity)
 					data.lastPos = newPos
-					pcall(function() projectile.AssemblyLinearVelocity = data.velocity end)
+					pcall(function()
+						projectile.AssemblyLinearVelocity = data.velocity
+					end)
 					continue
 				end
 			end
@@ -360,18 +370,26 @@ function BowService:_stepProjectiles(dt)
 		else
 			projectile.CFrame = CFrame.lookAt(newPos, newPos + data.velocity)
 			data.lastPos = newPos
-			pcall(function() projectile.AssemblyLinearVelocity = data.velocity end)
+			pcall(function()
+				projectile.AssemblyLinearVelocity = data.velocity
+			end)
 		end
 	end
 end
 
 function BowService:_validateBowHeld(player, slotIndex)
 	local inv = self.Deps and self.Deps.PlayerInventoryService
-	if not inv then return false end
-	if not slotIndex then return true end
+	if not inv then
+		return false
+	end
+	if not slotIndex then
+		return true
+	end
 
 	local stack = inv:GetHotbarSlot(player, slotIndex)
-	if not stack or stack:IsEmpty() then return false end
+	if not stack or stack:IsEmpty() then
+		return false
+	end
 
 	return stack:GetItemId() == BowConfig.BOW_ITEM_ID
 end
@@ -393,33 +411,49 @@ function BowService:_resolveSlotIndex(player, slotIndex)
 end
 
 function BowService:OnBowShoot(player, data)
-	if not player or not data then return end
+	if not player or not data then
+		return
+	end
 
 	local direction = coerceVector(data.direction)
 	local charge = tonumber(data.charge) or 0
 
-	if not direction or direction.Magnitude < 0.1 then return end
+	if not direction or direction.Magnitude < 0.1 then
+		return
+	end
 	direction = direction.Unit
 
 	local slotIndex = self:_resolveSlotIndex(player, data.slotIndex)
-	if not slotIndex then return end
+	if not slotIndex then
+		return
+	end
 
 	local inv = self.Deps and self.Deps.PlayerInventoryService
-	if not inv then return end
+	if not inv then
+		return
+	end
 
-	if inv:GetItemCount(player, BowConfig.ARROW_ITEM_ID) < 1 then return end
+	if inv:GetItemCount(player, BowConfig.ARROW_ITEM_ID) < 1 then
+		return
+	end
 
 	local clampedCharge = math.clamp(charge, BowConfig.MIN_CHARGE_TIME, BowConfig.MAX_DRAW_TIME)
-	if clampedCharge < BowConfig.MIN_CHARGE_TIME then return end
+	if clampedCharge < BowConfig.MIN_CHARGE_TIME then
+		return
+	end
 
 	local now = os.clock()
 	local last = self._lastShotAt[player] or 0
-	if (now - last) < BowConfig.FIRE_COOLDOWN then return end
+	if (now - last) < BowConfig.FIRE_COOLDOWN then
+		return
+	end
 	self._lastShotAt[player] = now
 
 	-- Server-authoritative: always use the player's upper torso position
 	local origin = getPlayerShootPosition(player)
-	if not origin then return end
+	if not origin then
+		return
+	end
 
 	inv:RemoveItem(player, BowConfig.ARROW_ITEM_ID, 1)
 

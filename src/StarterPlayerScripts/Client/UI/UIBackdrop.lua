@@ -81,8 +81,8 @@ local function initialize()
 	-- TextButton with empty text acts like a Frame but supports Modal
 	overlayFrame = Instance.new("TextButton")
 	overlayFrame.Name = "Overlay"
-	overlayFrame.Size = UDim2.new(1, 0, 1, 0)
-	overlayFrame.Position = UDim2.new(0, 0, 0, 0)
+	overlayFrame.Size = UDim2.fromScale(1, 1)
+	overlayFrame.Position = UDim2.fromScale(0, 0)
 	overlayFrame.BackgroundColor3 = DEFAULT_CONFIG.overlayColor
 	overlayFrame.BackgroundTransparency = 1  -- Start hidden
 	overlayFrame.BorderSizePixel = 0

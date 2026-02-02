@@ -626,8 +626,7 @@ function BlockProperties:GetBreakTime(blockId: number, toolType: string?, toolTi
     end
 
     -- Determine if correct tool type is used for this block and tier meets requirement
-    local currentTier = toolTier or BlockProperties.ToolTier.NONE
-    local requiredTier = props.minToolTier or BlockProperties.ToolTier.NONE
+
     local requiredType = props.toolType
 
     local usingCorrectTool = false
