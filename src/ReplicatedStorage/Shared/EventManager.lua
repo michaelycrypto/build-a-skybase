@@ -1122,6 +1122,14 @@ function EventManager:CreateServerEventConfig(services)
 				end
 			end
 		},
+		{
+			name = "ChestQuickTransfer",
+			handler = function(player, data)
+				if services.ChestStorageService and services.ChestStorageService.HandleQuickTransfer then
+					services.ChestStorageService:HandleQuickTransfer(player, data)
+				end
+			end
+		},
 		-- Workbench open request (no server storage; just validate block type and open client UI)
 		{
 			name = "RequestOpenWorkbench",

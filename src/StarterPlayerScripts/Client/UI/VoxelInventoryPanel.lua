@@ -11,6 +11,7 @@
 ]]
 
 local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
 local InputService = require(script.Parent.Parent.Input.InputService)
 local _GuiService = game:GetService("GuiService")
 local CollectionService = game:GetService("CollectionService")
@@ -197,6 +198,11 @@ local function GetItemDisplayName(itemId)
 	local BlockRegistry = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockRegistry)
 	local blockDef = BlockRegistry.Blocks[itemId]
 	return blockDef and blockDef.name or "Item"
+end
+
+-- Helper: Check if shift key is held (for quick transfer)
+local function IsShiftHeld()
+	return UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) or UserInputService:IsKeyDown(Enum.KeyCode.RightShift)
 end
 
 function VoxelInventoryPanel.new(inventoryManager)
@@ -2163,6 +2169,54 @@ end
 function VoxelInventoryPanel:OnInventorySlotLeftClick(index)
 	local slotStack = self.inventoryManager:GetInventorySlot(index)
 
+	-- Shift-click: Quick transfer from inventory to hotbar
+	if IsShiftHeld() and self.cursorStack:IsEmpty() then
+		if not slotStack:IsEmpty() then
+			local itemId = slotStack:GetItemId()
+			local remaining = slotStack:GetCount()
+
+			-- 1. Try to stack in existing hotbar slots with same item
+			for i = 1, 9 do
+				if remaining <= 0 then break end
+				local hotbarSlot = self.inventoryManager:GetHotbarSlot(i)
+				if hotbarSlot:GetItemId() == itemId and not hotbarSlot:IsFull() then
+					local spaceLeft = hotbarSlot:GetRemainingSpace()
+					local toAdd = math.min(remaining, spaceLeft)
+					hotbarSlot:AddCount(toAdd)
+					self.inventoryManager:SetHotbarSlot(i, hotbarSlot)
+					remaining = remaining - toAdd
+				end
+			end
+
+			-- 2. Try empty hotbar slots
+			for i = 1, 9 do
+				if remaining <= 0 then break end
+				local hotbarSlot = self.inventoryManager:GetHotbarSlot(i)
+				if hotbarSlot:IsEmpty() then
+					local maxStack = ItemStack.new(itemId, 1):GetMaxStack()
+					local toAdd = math.min(remaining, maxStack)
+					self.inventoryManager:SetHotbarSlot(i, ItemStack.new(itemId, toAdd))
+					remaining = remaining - toAdd
+				end
+			end
+
+			-- Update source slot with remaining items
+			local transferred = slotStack:GetCount() - remaining
+			if transferred > 0 then
+				slotStack:RemoveCount(transferred)
+				if slotStack:IsEmpty() then
+					self.inventoryManager:SetInventorySlot(index, ItemStack.new(0, 0))
+				else
+					self.inventoryManager:SetInventorySlot(index, slotStack)
+				end
+				self:UpdateInventorySlotDisplay(index)
+				self:UpdateAllDisplays()
+				self.inventoryManager:SendUpdateToServer()
+			end
+			return
+		end
+	end
+
 	if self.cursorStack:IsEmpty() then
 		-- No item on cursor: Pick up entire stack
 		if not slotStack:IsEmpty() then
@@ -2244,6 +2298,53 @@ function VoxelInventoryPanel:OnHotbarSlotLeftClick(index)
 	if not self.hotbar then return end
 
 	local slotStack = self.inventoryManager:GetHotbarSlot(index)
+
+	-- Shift-click: Quick transfer from hotbar to inventory
+	if IsShiftHeld() and self.cursorStack:IsEmpty() then
+		if not slotStack:IsEmpty() then
+			local itemId = slotStack:GetItemId()
+			local remaining = slotStack:GetCount()
+
+			-- 1. Try to stack in existing inventory slots with same item
+			for i = 1, 27 do
+				if remaining <= 0 then break end
+				local invSlot = self.inventoryManager:GetInventorySlot(i)
+				if invSlot:GetItemId() == itemId and not invSlot:IsFull() then
+					local spaceLeft = invSlot:GetRemainingSpace()
+					local toAdd = math.min(remaining, spaceLeft)
+					invSlot:AddCount(toAdd)
+					self.inventoryManager:SetInventorySlot(i, invSlot)
+					remaining = remaining - toAdd
+				end
+			end
+
+			-- 2. Try empty inventory slots
+			for i = 1, 27 do
+				if remaining <= 0 then break end
+				local invSlot = self.inventoryManager:GetInventorySlot(i)
+				if invSlot:IsEmpty() then
+					local maxStack = ItemStack.new(itemId, 1):GetMaxStack()
+					local toAdd = math.min(remaining, maxStack)
+					self.inventoryManager:SetInventorySlot(i, ItemStack.new(itemId, toAdd))
+					remaining = remaining - toAdd
+				end
+			end
+
+			-- Update source slot with remaining items
+			local transferred = slotStack:GetCount() - remaining
+			if transferred > 0 then
+				slotStack:RemoveCount(transferred)
+				if slotStack:IsEmpty() then
+					self.inventoryManager:SetHotbarSlot(index, ItemStack.new(0, 0))
+				else
+					self.inventoryManager:SetHotbarSlot(index, slotStack)
+				end
+				self:UpdateAllDisplays()
+				self.inventoryManager:SendUpdateToServer()
+			end
+			return
+		end
+	end
 
 	if self.cursorStack:IsEmpty() then
 		if not slotStack:IsEmpty() then

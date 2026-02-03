@@ -61,11 +61,7 @@ end
 
 -- Steps that can progress on hub servers (hub-specific objectives)
 local HUB_ALLOWED_STEPS = {
-	-- New craft-first tutorial hub steps
-	go_to_hub = true,           -- Completes when entering hub
-	buy_water = true,           -- Buy water bucket from farm shop
-	return_home = true,         -- Completes when returning to player world
-	-- Legacy steps (for backwards compatibility)
+	-- Legacy/future hub steps (for backwards compatibility)
 	use_portal = true,          -- Completes when entering hub
 	find_merchant = true,       -- NPC interaction
 	sell_crops = true,          -- Selling items
@@ -961,7 +957,22 @@ function TutorialService:_grantReward(player, reward)
 			local metadata = itemData.metadata
 			
 			-- Add item to player inventory
-			local success = self.Deps.PlayerInventoryService:AddItem(player, itemId, count, metadata)
+			-- Use AddItemWithMetadata for items that have metadata (e.g., golems with level/type)
+			local success
+			if metadata then
+				-- Items with metadata need AddItemWithMetadata (adds one at a time)
+				success = true
+				for _ = 1, count do
+					if not self.Deps.PlayerInventoryService:AddItemWithMetadata(player, itemId, metadata) then
+						success = false
+						break
+					end
+				end
+			else
+				-- Simple items without metadata use AddItem
+				success = self.Deps.PlayerInventoryService:AddItem(player, itemId, count)
+			end
+			
 			if success then
 				table.insert(granted.items, {itemId = itemId, count = count})
 				self._logger.Info("Tutorial item reward granted", {

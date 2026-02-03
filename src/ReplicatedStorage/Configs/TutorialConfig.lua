@@ -2,12 +2,13 @@
 	TutorialConfig.lua - Tutorial/Onboarding Configuration
 
 	Craft-First Tutorial:
-	Players learn core Minecraft mechanics: gather → craft → build → mine → farm → trade → automate
+	Players learn core Minecraft mechanics: gather → craft → build → mine → farm → automate
 
-	Progression Loop:
-	Chop Tree → Craft Planks → Craft Workbench → Build Bridge → Mine Stone →
-	Open Chest → Plant Seeds → Harvest → Trade for Water → Irrigate Farm →
-	Smelt Copper → Craft Tool → Receive Golem → Automate!
+	Progression Loop (16 steps):
+	Open Chest → Chop Tree → Craft Planks → Craft Workbench → Craft Pickaxe →
+	Build Bridge → Open Stone Chest → Mine Cobblestone → Setup Furnace →
+	Smelt Copper → Craft Shovel → Till Soil → Irrigate → Plant Seeds →
+	Harvest Wheat → Place Golem → Complete!
 
 	Tutorial Philosophy:
 	- Non-intrusive guidance (tooltips, not forced cutscenes)
@@ -268,7 +269,7 @@ TutorialConfig.Steps = {
 		objective = {
 			type = "collect_item",
 			itemId = 98, -- COPPER_ORE
-			count = 6,
+			count = 3,
 		},
 		reward = {
 			coins = 15,
@@ -292,7 +293,7 @@ TutorialConfig.Steps = {
 		objective = {
 			type = "collect_item",
 			itemId = 14, -- COBBLESTONE
-			count = 16,
+			count = 8,
 		},
 		reward = {
 			coins = 20,
@@ -352,50 +353,40 @@ Complete in any order!
 		objective = {
 			type = "collect_item",
 			itemId = 105, -- COPPER_INGOT
-			count = 6,
+			count = 2,
 		},
 		reward = {
 			coins = 25,
-			message = "Copper smelted! Now craft your copper tools.",
+			message = "Copper smelted! Now craft a Copper Shovel.",
 		},
-		nextStep = "craft_copper_tools",
+		nextStep = "craft_copper_shovel",
 		uiType = "objective",
 		canSkip = true,
 	},
 
 	-- ═══════════════════════════════════════════════════════════════════════════
-	-- PHASE 6: TOOLS - Craft copper tools (merged - player chooses order)
+	-- PHASE 6: TOOLS - Craft copper shovel for farming
 	-- ═══════════════════════════════════════════════════════════════════════════
 	{
-		id = "craft_copper_tools",
+		id = "craft_copper_shovel",
 		category = "crafting",
-		title = "Craft Copper Tools",
-		description = "Craft all three copper tools to complete your toolkit!",
-		hint = [[
-Requirements:
-• Copper Axe: 3 Copper Ingots + 2 Sticks (top row + middle column)
-• Copper Shovel: 1 Copper Ingot + 2 Sticks (single ingot on top)
-• Copper Sword: 2 Copper Ingots + 1 Stick (2 ingots stacked + stick below)
-
-Right-click the Crafting Table to craft each tool in any order!
-		]],
+		title = "Craft a Copper Shovel",
+		description = "Craft a Copper Shovel to till soil for farming!",
+		hint = "Right-click Crafting Table → 1 Copper Ingot on top + 2 Sticks below.",
 		trigger = {
 			type = "step_complete",
 			step = "smelt_copper",
 		},
 		objective = {
-			type = "craft_items",
-			items = {
-				{ itemId = 1011, count = 1, name = "Copper Axe" },     -- COPPER_AXE
-				{ itemId = 1021, count = 1, name = "Copper Shovel" },  -- COPPER_SHOVEL
-				{ itemId = 1041, count = 1, name = "Copper Sword" },   -- COPPER_SWORD
-			},
+			type = "craft_item",
+			itemId = 1021, -- COPPER_SHOVEL
+			count = 1,
 		},
 		reward = {
-			coins = 70,
-			message = "Full copper toolkit complete! Now let's set up a farm.",
+			coins = 30,
+			message = "Shovel crafted! Now let's set up a farm.",
 		},
-		nextStep = "start_farm",
+		nextStep = "till_soil",
 		uiType = "objective",
 		canSkip = true,
 	},
@@ -418,7 +409,7 @@ Farmland is required for planting crops!
 		]],
 		trigger = {
 			type = "step_complete",
-			step = "craft_copper_tools",
+			step = "craft_copper_shovel",
 		},
 		objective = {
 			type = "place_block",
@@ -519,10 +510,11 @@ Break it to get:
 			count = 4,
 		},
 		reward = {
-			coins = 20,
-			message = "First harvest complete! Your farm is self-sustaining now.",
+			coins = 50,
+			items = {{itemId = 384, count = 1, metadata = {level = 1, minionType = "COPPER"}}}, -- Copper Golem!
+			message = "First harvest complete! You've earned a Copper Golem for your hard work!",
 		},
-		nextStep = "go_to_hub",
+		nextStep = "place_golem",
 		uiType = "objective",
 		-- Tutorial accelerated growth
 		tutorialBoost = {
@@ -532,110 +524,7 @@ Break it to get:
 	},
 
 	-- ═══════════════════════════════════════════════════════════════════════════
-	-- PHASE 8: ECONOMY - Trade wheat for water
-	-- ═══════════════════════════════════════════════════════════════════════════
-	{
-		id = "go_to_hub",
-		category = "economy",
-		title = "Visit the Hub",
-		description = "Use the purple portal on your island to travel to the Hub!",
-		hint = "Walk into the glowing purple portal to teleport to the Hub.",
-		trigger = {
-			type = "step_complete",
-			step = "harvest_wheat",
-		},
-		objective = {
-			type = "enter_world",
-			worldType = "hub",
-		},
-		reward = {
-			coins = 10,
-			message = "Welcome to the Hub! Find the Farm Shop to buy a Water Bucket.",
-		},
-		nextStep = "buy_water",
-		uiType = "objective",
-		waypoint = "portal",
-		canSkip = true,
-	},
-
-	{
-		id = "buy_water",
-		category = "economy",
-		title = "Buy a Water Bucket",
-		description = "Find the Farm Shop and buy a Water Bucket (50 coins)!",
-		hint = "Look for the farmer NPC. You can also sell your wheat to the Merchant first!",
-		trigger = {
-			type = "step_complete",
-			step = "go_to_hub",
-		},
-		objective = {
-			type = "buy_item",
-			itemId = 383, -- WATER_BUCKET
-			count = 1,
-		},
-		reward = {
-			coins = 25,
-			message = "Water acquired! Return home and set up irrigation.",
-		},
-		nextStep = "return_home",
-		uiType = "objective",
-		waypoint = "farm_shop",
-		canSkip = true,
-	},
-
-	{
-		id = "return_home",
-		category = "economy",
-		title = "Return Home",
-		description = "Use the Warp Master to return to your island!",
-		hint = "Talk to the Warp Master and select your island.",
-		trigger = {
-			type = "step_complete",
-			step = "buy_water",
-		},
-		objective = {
-			type = "enter_world",
-			worldType = "player",
-		},
-		reward = {
-			coins = 10,
-			message = "Home sweet home! Now irrigate your farm.",
-		},
-		nextStep = "place_water",
-		uiType = "objective",
-		canSkip = true,
-	},
-
-	-- ═══════════════════════════════════════════════════════════════════════════
-	-- PHASE 9: IRRIGATION - Set up water for faster crop growth
-	-- ═══════════════════════════════════════════════════════════════════════════
-	{
-		id = "place_water",
-		category = "farming",
-		title = "Irrigate Your Farm",
-		description = "Place the Water Bucket near your farmland to irrigate it!",
-		hint = "Dig a 1-block hole near your crops, then right-click with the Water Bucket to place water.",
-		trigger = {
-			type = "step_complete",
-			step = "return_home",
-		},
-		objective = {
-			type = "place_block",
-			blockId = 380, -- WATER_SOURCE
-			count = 1,
-		},
-		reward = {
-			coins = 50,
-			items = {{itemId = 384, count = 1, metadata = {level = 1, minionType = "COPPER"}}}, -- Copper Golem!
-			message = "Irrigation complete! You've earned a Copper Golem for your hard work!",
-		},
-		nextStep = "place_golem",
-		uiType = "objective",
-		canSkip = true,
-	},
-
-	-- ═══════════════════════════════════════════════════════════════════════════
-	-- PHASE 10: AUTOMATION - Place the copper golem
+	-- PHASE 8: AUTOMATION - Place the copper golem
 	-- ═══════════════════════════════════════════════════════════════════════════
 	{
 		id = "place_golem",
@@ -645,7 +534,7 @@ Break it to get:
 		hint = "Select the Copper Golem from your inventory and right-click on a flat block.",
 		trigger = {
 			type = "step_complete",
-			step = "place_water",
+			step = "harvest_wheat",
 		},
 		objective = {
 			type = "place_block",

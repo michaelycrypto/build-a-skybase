@@ -67,6 +67,7 @@ local Manifest = {
 		RequestCloseChest = {"any"}, -- {x, y, z} - Close chest
 		ChestItemTransfer = {"any"}, -- {chestPos, fromSlot, toSlot, isDeposit} - Transfer item
 		ChestSlotClick = {"any"}, -- NEW: {chestPosition, slotIndex, isChestSlot, clickType} - Server-authoritative click
+		ChestQuickTransfer = {"any"}, -- {chestPosition, slotIndex, sourceType} - Shift-click quick transfer
 		ChestContentsUpdate = {"any"}, -- {x, y, z, contents} - Client updated chest contents (LEGACY)
 		PlayerInventoryUpdate = {"any"}, -- {inventory} - Client updated player inventory (from chest UI) (LEGACY)
 		InventoryUpdate = {"any"}, -- {inventory, hotbar} - Client updated inventory (from inventory panel)

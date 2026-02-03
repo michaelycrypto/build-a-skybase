@@ -469,6 +469,7 @@ end
 
 --[[
 	Add item to player's inventory (server-side)
+	Prioritizes hotbar first (Minecraft-style crafting output placement)
 	@param playerInv: table - {hotbar, inventory}
 	@param itemId: number
 	@param amount: number
@@ -476,20 +477,7 @@ end
 function CraftingService:AddItemToInventory(playerInv, itemId, amount)
 	local remaining = amount
 
-	-- Try to add to existing stacks in inventory
-	for i = 1, 27 do
-		if remaining <= 0 then break end
-
-		local stack = playerInv.inventory[i]
-		if stack:GetItemId() == itemId and not stack:IsFull() then
-			local spaceLeft = stack:GetRemainingSpace()
-			local toAdd = math.min(remaining, spaceLeft)
-			stack:AddCount(toAdd)
-			remaining = remaining - toAdd
-		end
-	end
-
-	-- Try to add to existing stacks in hotbar
+	-- 1. First try to add to existing stacks in HOTBAR (priority)
 	for i = 1, 9 do
 		if remaining <= 0 then break end
 
@@ -502,20 +490,20 @@ function CraftingService:AddItemToInventory(playerInv, itemId, amount)
 		end
 	end
 
-	-- Create new stacks in empty inventory slots
+	-- 2. Then try to add to existing stacks in inventory
 	for i = 1, 27 do
 		if remaining <= 0 then break end
 
 		local stack = playerInv.inventory[i]
-		if stack:IsEmpty() then
-			local maxStack = ItemStack.new(itemId, 1):GetMaxStack()
-			local toAdd = math.min(remaining, maxStack)
-			playerInv.inventory[i] = ItemStack.new(itemId, toAdd)
+		if stack:GetItemId() == itemId and not stack:IsFull() then
+			local spaceLeft = stack:GetRemainingSpace()
+			local toAdd = math.min(remaining, spaceLeft)
+			stack:AddCount(toAdd)
 			remaining = remaining - toAdd
 		end
 	end
 
-	-- Create new stacks in empty hotbar slots
+	-- 3. Create new stacks in empty HOTBAR slots (priority)
 	for i = 1, 9 do
 		if remaining <= 0 then break end
 
@@ -524,6 +512,19 @@ function CraftingService:AddItemToInventory(playerInv, itemId, amount)
 			local maxStack = ItemStack.new(itemId, 1):GetMaxStack()
 			local toAdd = math.min(remaining, maxStack)
 			playerInv.hotbar[i] = ItemStack.new(itemId, toAdd)
+			remaining = remaining - toAdd
+		end
+	end
+
+	-- 4. Finally create new stacks in empty inventory slots
+	for i = 1, 27 do
+		if remaining <= 0 then break end
+
+		local stack = playerInv.inventory[i]
+		if stack:IsEmpty() then
+			local maxStack = ItemStack.new(itemId, 1):GetMaxStack()
+			local toAdd = math.min(remaining, maxStack)
+			playerInv.inventory[i] = ItemStack.new(itemId, toAdd)
 			remaining = remaining - toAdd
 		end
 	end

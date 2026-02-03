@@ -1171,7 +1171,7 @@ local function handlePlayerJoin(player, isExisting)
 		end
 	end)
 
-	-- Track tutorial progress: entered player world (for return_home step)
+	-- Track tutorial progress: entered player world
 	if tutorialService and tutorialService.TrackProgress then
 		tutorialService:TrackProgress(player, "enter_world", { worldType = "player" })
 	end

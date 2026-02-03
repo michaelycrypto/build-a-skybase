@@ -520,6 +520,250 @@ function ChestStorageService:HandleChestSlotClick(player, data)
     })
 end
 
+--[[
+	Handle quick transfer (shift-click) for Minecraft-style chest interactions
+	@param player: Player - Player making the request
+	@param data: table - {chestPosition, slotIndex, sourceType}
+	sourceType: "chest" | "inventory" | "hotbar"
+]]
+function ChestStorageService:HandleQuickTransfer(player, data)
+	if not data or not data.chestPosition or not data.slotIndex or not data.sourceType then
+		warn("Invalid quick transfer request from", player.Name)
+		return
+	end
+
+	-- Anti-duplication: Block chest interactions while teleporting
+	local Injector = require(script.Parent.Parent.Injector)
+	local playerService = Injector:Resolve("PlayerService")
+	if playerService and playerService:IsTeleporting(player) then
+		warn(string.format("BLOCKED: Player %s tried to quick transfer while teleporting", player.Name))
+		return
+	end
+
+	-- Normalize numeric inputs
+	local x = tonumber(data.chestPosition.x) or data.chestPosition.x
+	local y = tonumber(data.chestPosition.y) or data.chestPosition.y
+	local z = tonumber(data.chestPosition.z) or data.chestPosition.z
+	local slotIndex = tonumber(data.slotIndex)
+	local sourceType = data.sourceType
+
+	if not slotIndex then
+		warn("Invalid slotIndex for quick transfer from", player.Name)
+		return
+	end
+
+	local chest = self:GetChest(x, y, z)
+
+	-- Verify player is viewing this chest
+	if not chest.viewers[player] then
+		warn(player.Name, "tried to quick transfer with chest they're not viewing")
+		return
+	end
+
+	-- Get player inventory
+	if not self.Deps or not self.Deps.PlayerInventoryService then
+		warn("PlayerInventoryService not available")
+		return
+	end
+
+	local ItemStack = require(ReplicatedStorage.Shared.VoxelWorld.Inventory.ItemStack)
+	local invData = self.Deps.PlayerInventoryService.inventories[player]
+	if not invData then return end
+
+	-- Track what changed for delta sync
+	local chestDelta = {}
+	local inventoryDelta = {}
+	local hotbarDelta = {}
+
+	if sourceType == "chest" then
+		-- Transfer from chest to player (hotbar first, then inventory)
+		local chestSlotData = chest.slots[slotIndex]
+		if not chestSlotData or not isValidItem(chestSlotData) then
+			return -- Nothing to transfer
+		end
+
+		local sourceStack = ItemStack.Deserialize(chestSlotData)
+		local itemId = sourceStack:GetItemId()
+		local remaining = sourceStack:GetCount()
+
+		-- 1. Try to stack in existing hotbar slots
+		for i = 1, 9 do
+			if remaining <= 0 then break end
+			local slot = invData.hotbar[i]
+			if slot:GetItemId() == itemId and not slot:IsFull() then
+				local spaceLeft = slot:GetRemainingSpace()
+				local toAdd = math.min(remaining, spaceLeft)
+				slot:AddCount(toAdd)
+				remaining = remaining - toAdd
+				hotbarDelta[i] = slot:Serialize()
+			end
+		end
+
+		-- 2. Try to stack in existing inventory slots
+		for i = 1, 27 do
+			if remaining <= 0 then break end
+			local slot = invData.inventory[i]
+			if slot:GetItemId() == itemId and not slot:IsFull() then
+				local spaceLeft = slot:GetRemainingSpace()
+				local toAdd = math.min(remaining, spaceLeft)
+				slot:AddCount(toAdd)
+				remaining = remaining - toAdd
+				inventoryDelta[i] = slot:Serialize()
+			end
+		end
+
+		-- 3. Try empty hotbar slots
+		for i = 1, 9 do
+			if remaining <= 0 then break end
+			local slot = invData.hotbar[i]
+			if slot:IsEmpty() then
+				local maxStack = ItemStack.new(itemId, 1):GetMaxStack()
+				local toAdd = math.min(remaining, maxStack)
+				invData.hotbar[i] = ItemStack.new(itemId, toAdd)
+				remaining = remaining - toAdd
+				hotbarDelta[i] = invData.hotbar[i]:Serialize()
+			end
+		end
+
+		-- 4. Try empty inventory slots
+		for i = 1, 27 do
+			if remaining <= 0 then break end
+			local slot = invData.inventory[i]
+			if slot:IsEmpty() then
+				local maxStack = ItemStack.new(itemId, 1):GetMaxStack()
+				local toAdd = math.min(remaining, maxStack)
+				invData.inventory[i] = ItemStack.new(itemId, toAdd)
+				remaining = remaining - toAdd
+				inventoryDelta[i] = invData.inventory[i]:Serialize()
+			end
+		end
+
+		-- Update chest slot (remove transferred items)
+		local transferred = sourceStack:GetCount() - remaining
+		if transferred > 0 then
+			sourceStack:RemoveCount(transferred)
+			if sourceStack:IsEmpty() then
+				chest.slots[slotIndex] = nil
+			else
+				chest.slots[slotIndex] = sourceStack:Serialize()
+			end
+			chestDelta[slotIndex] = chest.slots[slotIndex] or ItemStack.new(0, 0):Serialize()
+		end
+
+	elseif sourceType == "inventory" then
+		-- Transfer from player inventory to chest
+		local sourceStack = invData.inventory[slotIndex]
+		if not sourceStack or sourceStack:IsEmpty() then
+			return -- Nothing to transfer
+		end
+
+		local itemId = sourceStack:GetItemId()
+		local remaining = sourceStack:GetCount()
+
+		-- 1. Try to stack in existing chest slots
+		for i = 1, 27 do
+			if remaining <= 0 then break end
+			local chestSlotData = chest.slots[i]
+			if chestSlotData and isValidItem(chestSlotData) then
+				local chestStack = ItemStack.Deserialize(chestSlotData)
+				if chestStack:GetItemId() == itemId and not chestStack:IsFull() then
+					local spaceLeft = chestStack:GetRemainingSpace()
+					local toAdd = math.min(remaining, spaceLeft)
+					chestStack:AddCount(toAdd)
+					remaining = remaining - toAdd
+					chest.slots[i] = chestStack:Serialize()
+					chestDelta[i] = chest.slots[i]
+				end
+			end
+		end
+
+		-- 2. Try empty chest slots
+		for i = 1, 27 do
+			if remaining <= 0 then break end
+			local chestSlotData = chest.slots[i]
+			if not chestSlotData or not isValidItem(chestSlotData) then
+				local maxStack = ItemStack.new(itemId, 1):GetMaxStack()
+				local toAdd = math.min(remaining, maxStack)
+				chest.slots[i] = ItemStack.new(itemId, toAdd):Serialize()
+				remaining = remaining - toAdd
+				chestDelta[i] = chest.slots[i]
+			end
+		end
+
+		-- Update player inventory slot (remove transferred items)
+		local transferred = sourceStack:GetCount() - remaining
+		if transferred > 0 then
+			sourceStack:RemoveCount(transferred)
+			if sourceStack:IsEmpty() then
+				invData.inventory[slotIndex] = ItemStack.new(0, 0)
+			end
+			inventoryDelta[slotIndex] = invData.inventory[slotIndex]:Serialize()
+		end
+
+	elseif sourceType == "hotbar" then
+		-- Transfer from player hotbar to chest
+		local sourceStack = invData.hotbar[slotIndex]
+		if not sourceStack or sourceStack:IsEmpty() then
+			return -- Nothing to transfer
+		end
+
+		local itemId = sourceStack:GetItemId()
+		local remaining = sourceStack:GetCount()
+
+		-- 1. Try to stack in existing chest slots
+		for i = 1, 27 do
+			if remaining <= 0 then break end
+			local chestSlotData = chest.slots[i]
+			if chestSlotData and isValidItem(chestSlotData) then
+				local chestStack = ItemStack.Deserialize(chestSlotData)
+				if chestStack:GetItemId() == itemId and not chestStack:IsFull() then
+					local spaceLeft = chestStack:GetRemainingSpace()
+					local toAdd = math.min(remaining, spaceLeft)
+					chestStack:AddCount(toAdd)
+					remaining = remaining - toAdd
+					chest.slots[i] = chestStack:Serialize()
+					chestDelta[i] = chest.slots[i]
+				end
+			end
+		end
+
+		-- 2. Try empty chest slots
+		for i = 1, 27 do
+			if remaining <= 0 then break end
+			local chestSlotData = chest.slots[i]
+			if not chestSlotData or not isValidItem(chestSlotData) then
+				local maxStack = ItemStack.new(itemId, 1):GetMaxStack()
+				local toAdd = math.min(remaining, maxStack)
+				chest.slots[i] = ItemStack.new(itemId, toAdd):Serialize()
+				remaining = remaining - toAdd
+				chestDelta[i] = chest.slots[i]
+			end
+		end
+
+		-- Update player hotbar slot (remove transferred items)
+		local transferred = sourceStack:GetCount() - remaining
+		if transferred > 0 then
+			sourceStack:RemoveCount(transferred)
+			if sourceStack:IsEmpty() then
+				invData.hotbar[slotIndex] = ItemStack.new(0, 0)
+			end
+			hotbarDelta[slotIndex] = invData.hotbar[slotIndex]:Serialize()
+		end
+	end
+
+	-- Send authoritative state back to player (delta-based)
+	EventManager:FireEvent("ChestActionResult", player, {
+		chestPosition = {x = x, y = y, z = z},
+		chestDelta = chestDelta,
+		inventoryDelta = inventoryDelta,
+		hotbarDelta = hotbarDelta,
+		cursorItem = nil -- Cursor should remain empty for quick transfer
+	})
+
+	print(string.format("[QuickTransfer] %s transferred from %s slot %d",
+		player.Name, sourceType, slotIndex))
+end
+
 -- Execute click logic (works for both chest and inventory slots)
 function ChestStorageService:ExecuteSlotClick(slotStack, cursor, clickType)
 	local ItemStack = require(ReplicatedStorage.Shared.VoxelWorld.Inventory.ItemStack)

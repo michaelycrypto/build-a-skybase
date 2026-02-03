@@ -6,6 +6,7 @@
 ]]
 
 local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
 local InputService = require(script.Parent.Parent.Input.InputService)
 local _GuiService = game:GetService("GuiService")
 local CollectionService = game:GetService("CollectionService")
@@ -1533,6 +1534,22 @@ end
 
 -- === CLICK HANDLERS ===
 
+-- Helper: Check if shift key is held
+local function IsShiftHeld()
+	return UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) or UserInputService:IsKeyDown(Enum.KeyCode.RightShift)
+end
+
+-- Quick transfer item (shift-click) from one container to another
+-- sourceType: "chest", "inventory", "hotbar"
+function ChestUI:QuickTransfer(slotIndex, sourceType)
+	-- Send to server for authoritative handling
+	EventManager:SendToServer("ChestQuickTransfer", {
+		chestPosition = self.chestPosition,
+		slotIndex = slotIndex,
+		sourceType = sourceType, -- "chest", "inventory", "hotbar"
+	})
+end
+
 -- Local helper: simulate Minecraft-style click on a slot
 function ChestUI:_simulateSlotClick(slotStack, cursorStack, clickType)
 	-- Work on clones to avoid mutating originals before applying
@@ -1586,6 +1603,15 @@ function ChestUI:_simulateSlotClick(slotStack, cursorStack, clickType)
 end
 
 function ChestUI:OnChestSlotLeftClick(index)
+	-- Shift-click: Quick transfer from chest to player (hotbar first, then inventory)
+	if IsShiftHeld() and self.cursorStack:IsEmpty() then
+		local slotStack = self.chestSlots[index]
+		if slotStack and not slotStack:IsEmpty() then
+			self:QuickTransfer(index, "chest")
+			return
+		end
+	end
+
 	-- Predictive visual update for instant feedback
 	local currentSlot = self.chestSlots[index]
 	local newSlot, newCursor = self:_simulateSlotClick(currentSlot, self.cursorStack, "left")
@@ -1626,6 +1652,15 @@ function ChestUI:OnChestSlotRightClick(index)
 end
 
 function ChestUI:OnInventorySlotLeftClick(index)
+	-- Shift-click: Quick transfer from inventory to chest
+	if IsShiftHeld() and self.cursorStack:IsEmpty() then
+		local slotStack = self.inventoryManager:GetInventorySlot(index)
+		if slotStack and not slotStack:IsEmpty() then
+			self:QuickTransfer(index, "inventory")
+			return
+		end
+	end
+
 	-- Predictive visual update for instant feedback (player inventory slot)
 	local currentSlot = self.inventoryManager:GetInventorySlot(index)
 	local newSlot, newCursor = self:_simulateSlotClick(currentSlot, self.cursorStack, "left")
@@ -1667,6 +1702,15 @@ end
 
 function ChestUI:OnHotbarSlotLeftClick(index)
 	if not self.hotbar then return end
+
+	-- Shift-click: Quick transfer from hotbar to chest
+	if IsShiftHeld() and self.cursorStack:IsEmpty() then
+		local slotStack = self.inventoryManager:GetHotbarSlot(index)
+		if slotStack and not slotStack:IsEmpty() then
+			self:QuickTransfer(index, "hotbar")
+			return
+		end
+	end
 
 	-- Predictive visual update for instant feedback (hotbar slot)
 	local currentSlot = self.inventoryManager:GetHotbarSlot(index)

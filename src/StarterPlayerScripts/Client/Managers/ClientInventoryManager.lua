@@ -471,6 +471,7 @@ end
 
 --[[
 	Add item to inventory/hotbar (smart stacking)
+	Prioritizes hotbar first (Minecraft-style crafting output placement)
 	@param itemId: number - Item ID to add
 	@param amount: number - Amount to add
 	@return: boolean - True if all added successfully
@@ -481,23 +482,7 @@ function ClientInventoryManager:AddItem(itemId, amount)
     local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
     local isTool = ToolConfig.IsTool(itemId)
 
-    -- Try to add to existing stacks first (inventory) - skip for tools
-    if not isTool then
-        for i = 1, 27 do
-            if remaining <= 0 then break end
-
-            local stack = self:GetInventorySlot(i)
-            if stack:GetItemId() == itemId and not stack:IsFull() then
-                local spaceLeft = stack:GetRemainingSpace()
-                local toAdd = math.min(remaining, spaceLeft)
-                stack:AddCount(toAdd)
-                self:SetInventorySlot(i, stack)
-                remaining = remaining - toAdd
-            end
-        end
-    end
-
-    -- Try to add to existing stacks in hotbar - skip for tools
+    -- 1. First try to add to existing stacks in HOTBAR (priority) - skip for tools
     if not isTool then
         for i = 1, 9 do
             if remaining <= 0 then break end
@@ -513,20 +498,23 @@ function ClientInventoryManager:AddItem(itemId, amount)
         end
     end
 
-	-- Create new stacks in empty slots (inventory)
-	for i = 1, 27 do
-		if remaining <= 0 then break end
+    -- 2. Then try to add to existing stacks in inventory - skip for tools
+    if not isTool then
+        for i = 1, 27 do
+            if remaining <= 0 then break end
 
-		local stack = self:GetInventorySlot(i)
-		if stack:IsEmpty() then
-            local maxStack = ItemStack.new(itemId, 1):GetMaxStack()
-			local toAdd = math.min(remaining, maxStack)
-			self:SetInventorySlot(i, ItemStack.new(itemId, toAdd))
-			remaining = remaining - toAdd
-		end
-	end
+            local stack = self:GetInventorySlot(i)
+            if stack:GetItemId() == itemId and not stack:IsFull() then
+                local spaceLeft = stack:GetRemainingSpace()
+                local toAdd = math.min(remaining, spaceLeft)
+                stack:AddCount(toAdd)
+                self:SetInventorySlot(i, stack)
+                remaining = remaining - toAdd
+            end
+        end
+    end
 
-	-- Create new stacks in empty slots (hotbar)
+	-- 3. Create new stacks in empty HOTBAR slots (priority)
 	for i = 1, 9 do
 		if remaining <= 0 then break end
 
@@ -535,6 +523,19 @@ function ClientInventoryManager:AddItem(itemId, amount)
             local maxStack = ItemStack.new(itemId, 1):GetMaxStack()
 			local toAdd = math.min(remaining, maxStack)
 			self:SetHotbarSlot(i, ItemStack.new(itemId, toAdd))
+			remaining = remaining - toAdd
+		end
+	end
+
+	-- 4. Finally create new stacks in empty inventory slots
+	for i = 1, 27 do
+		if remaining <= 0 then break end
+
+		local stack = self:GetInventorySlot(i)
+		if stack:IsEmpty() then
+            local maxStack = ItemStack.new(itemId, 1):GetMaxStack()
+			local toAdd = math.min(remaining, maxStack)
+			self:SetInventorySlot(i, ItemStack.new(itemId, toAdd))
 			remaining = remaining - toAdd
 		end
 	end
