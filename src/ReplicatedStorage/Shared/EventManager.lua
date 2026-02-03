@@ -1051,6 +1051,15 @@ function EventManager:CreateServerEventConfig(services)
 				end
 			end
 		},
+		-- Shovel interactions (farmland creation/reversion)
+		{
+			name = "RequestShovelInteraction",
+			handler = function(player, data)
+				if services.VoxelWorldService and services.VoxelWorldService.HandleShovelInteraction then
+					services.VoxelWorldService:HandleShovelInteraction(player, data)
+				end
+			end
+		},
 		-- PvP melee
 		{
 			name = "PlayerMeleeHit",

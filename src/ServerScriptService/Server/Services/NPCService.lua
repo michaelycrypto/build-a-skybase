@@ -606,6 +606,14 @@ function NPCService:HandleNPCBuy(player, data)
 		cost = totalCost
 	})
 
+	-- Track tutorial progress for buy_item objective
+	if self.Deps.TutorialService and self.Deps.TutorialService.TrackProgress then
+		self.Deps.TutorialService:TrackProgress(player, "buy_item", {
+			itemId = itemId,
+			count = itemsToGive
+		})
+	end
+
 	EventManager:FireEvent("NPCTradeResult", player, {
 		success = true,
 		message = successMessage,

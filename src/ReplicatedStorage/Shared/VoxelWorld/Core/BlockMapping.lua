@@ -621,6 +621,8 @@ BlockMapping.Map = {
 	-- CROPS (Cross-shaped plants)
 	-- ═══════════════════════════════════════════════════════════════════════
 	["farmland"] = BLOCK.FARMLAND,
+	["farmland_wet"] = BLOCK.FARMLAND_WET,
+	["wet_farmland"] = BLOCK.FARMLAND_WET,
 	["wheat"] = BLOCK.WHEAT_CROP_7,
 	["potatoes"] = BLOCK.POTATO_CROP_3,
 	["carrots"] = BLOCK.CARROT_CROP_3,

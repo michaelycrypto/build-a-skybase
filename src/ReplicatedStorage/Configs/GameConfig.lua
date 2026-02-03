@@ -138,40 +138,38 @@ local GameConfig = {
 	-- Data Store settings
 	DataStore = {
 		PlayerData = {
-			DataStoreVersion = "PlayerData_v87", -- Keep in sync with PlayerDataStoreService (updated for 4-tier system)
+			DataStoreVersion = "PlayerData_v93", -- Keep in sync with PlayerDataStoreService (updated for 4-tier system)
 			SchemaVersion = 6, -- Increment to force migrations/default resets
 			AutoSaveInterval = 300 -- 5 minutes in seconds
 		},
 	},
 
 	-- ═══════════════════════════════════════════════════════════════════════════
-	-- STARTER INVENTORY (Farming-First Skyblock loadout)
+	-- STARTER INVENTORY (Craft-First Tutorial loadout)
 	--
-	-- Design: Optimized for the farming tutorial flow
-	-- - Seeds in hotbar for immediate planting
-	-- - Tools ready but farming comes first
-	-- - Food supply for early survival
-	-- - Saplings for tree farming
+	-- Design: Minimal start - player earns everything through crafting
+	-- Tutorial Flow:
+	-- 1. Chop tree → get logs
+	-- 2. Craft planks → workbench
+	-- 3. Build bridge to stone island
+	-- 4. Mine cobblestone
+	-- 5. Open chest → get seeds + dirt
+	-- 6. Plant and harvest wheat
+	-- 7. Trade wheat for water bucket
+	-- 8. Set up irrigated farm
+	-- 9. Receive copper ore reward → smelt → craft tool
+	-- 10. Receive copper golem → automate
 	-- ═══════════════════════════════════════════════════════════════════════════
 	Inventory = {
-		-- Hotbar: Tools ready, seeds in inventory for tutorial
+		-- Hotbar: Nearly empty - only survival food
 		StarterHotbar = {
-			{slot = 1, itemId = 1021, count = 1},  -- Copper Shovel (make farmland)
-			{slot = 2, itemId = 1011, count = 1},  -- Copper Axe (woodcutting)
-			{slot = 3, itemId = 1001, count = 1},  -- Copper Pickaxe (mining)
-			{slot = 4, itemId = 1041, count = 1},  -- Copper Sword (defense)
-			{slot = 5, itemId = 348, count = 16},  -- Bread (food)
+			{slot = 1, itemId = 348, count = 8},   -- Bread (survival food)
+			-- Slots 2-9 empty - player fills with crafted tools
 		},
 
-		-- Inventory: Starter resources
+		-- Inventory: Empty - player gathers everything
 		StarterInventory = {
-			-- ═══════════════════════════════════════════════════════════════
-			-- FARMING SUPPLIES - Seeds in inventory (tutorial teaches moving to hotbar)
-			-- ═══════════════════════════════════════════════════════════════
-
-			-- Wheat seeds (player must move to hotbar - tutorial step!)
-			{itemId = 70, count = 8},   -- Wheat Seeds
-
+			-- Empty! Player must chop tree, craft, mine, etc.
 		}
 	},
 
@@ -600,7 +598,7 @@ local GameConfig = {
 	-- World system configuration
 	Worlds = {
 		MaxWorldsPerPlayer = 10, -- Maximum worlds a player can create
-		DataStoreVersion = "PlayerOwnedWorlds_v73" -- Updated for multi-world support
+		DataStoreVersion = "PlayerOwnedWorlds_v79" -- Updated for multi-world support
 	},
 
 	-- Single-Place Architecture Configuration

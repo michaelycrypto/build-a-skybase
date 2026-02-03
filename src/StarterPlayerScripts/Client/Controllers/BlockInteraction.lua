@@ -89,6 +89,7 @@ end
 local function _isMinionBlock(blockId)
 	return blockId == Constants.BlockType.COBBLESTONE_MINION
 		or blockId == Constants.BlockType.COAL_MINION
+		or blockId == Constants.BlockType.COPPER_MINION
 end
 
 local lastCancelKey = nil
@@ -815,6 +816,47 @@ local function interactOrPlace()
 			return true
 		end
 		return false  -- Can't place water without a target
+	end
+	-- ═══════════════════════════════════════════════════════════════════════════
+
+	-- ═══════════════════════════════════════════════════════════════════════════
+	-- SHOVEL INTERACTIONS (Farmland creation/reversion)
+	-- ═══════════════════════════════════════════════════════════════════════════
+	local selectedToolItemId = GameState:Get("voxelWorld.selectedToolItemId")
+	local isHoldingTool = GameState:Get("voxelWorld.isHoldingTool")
+
+	if isHoldingTool and selectedToolItemId and ToolConfig.IsTool(selectedToolItemId) and blockPos then
+		local toolType = select(1, ToolConfig.GetBlockProps(selectedToolItemId))
+		if toolType == BlockProperties.ToolType.SHOVEL then
+			local worldManager = blockAPI and blockAPI.worldManager
+			if worldManager then
+				local targetBlockId = worldManager:GetBlock(blockPos.X, blockPos.Y, blockPos.Z)
+
+				-- Dirt/Grass -> Farmland
+				if targetBlockId == Constants.BlockType.DIRT or targetBlockId == Constants.BlockType.GRASS then
+					EventManager:SendToServer("RequestShovelInteraction", {
+						x = blockPos.X,
+						y = blockPos.Y,
+						z = blockPos.Z,
+						hotbarSlot = selectedSlot,
+						interactionType = "create_farmland"
+					})
+					return true
+				end
+
+				-- Farmland -> Dirt (revert)
+				if targetBlockId == Constants.BlockType.FARMLAND or targetBlockId == Constants.BlockType.FARMLAND_WET then
+					EventManager:SendToServer("RequestShovelInteraction", {
+						x = blockPos.X,
+						y = blockPos.Y,
+						z = blockPos.Z,
+						hotbarSlot = selectedSlot,
+						interactionType = "revert_farmland"
+					})
+					return true
+				end
+			end
+		end
 	end
 	-- ═══════════════════════════════════════════════════════════════════════════
 

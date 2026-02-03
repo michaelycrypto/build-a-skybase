@@ -25,6 +25,7 @@ do
 	-- Minion item is non-stackable
 	MAX_STACK_SIZES[Constants.BlockType.COBBLESTONE_MINION] = 1
 	MAX_STACK_SIZES[Constants.BlockType.COAL_MINION] = 1
+	MAX_STACK_SIZES[Constants.BlockType.COPPER_MINION] = 1
 
 	-- Bucket stack sizes (Minecraft-style)
 	MAX_STACK_SIZES[Constants.BlockType.BUCKET] = 16  -- Empty buckets stack to 16

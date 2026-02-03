@@ -52,11 +52,14 @@ end
 local function _isMinionBlock(blockId)
 	return blockId == Constants.BlockType.COBBLESTONE_MINION
 		or blockId == Constants.BlockType.COAL_MINION
+		or blockId == Constants.BlockType.COPPER_MINION
 end
 
 local function _defaultMinionTypeForBlock(blockId)
 	if blockId == Constants.BlockType.COAL_MINION then
 		return "COAL"
+	elseif blockId == Constants.BlockType.COPPER_MINION then
+		return "COPPER"
 	end
 	return "COBBLESTONE"
 end
@@ -827,21 +830,31 @@ function VoxelWorldService:InitializeWorld(seed, renderDistance, worldTypeId)
 		worldSeed, self.renderDistance))
 end
 
--- Initialize starter chest for Skyblock (called after world generation)
+-- Initialize starter chests for Skyblock (called after world generation)
 function VoxelWorldService:InitializeStarterChest()
-	-- Skyblock starter chest is at world coordinates (7, 66, 4)
-	-- Center is (7, 65, 7), chest is 3 blocks north on the grass surface + 1
-	local chestX = 7
-	local chestY = 66  -- One block above grass surface (Y=65)
-	local chestZ = 4   -- 3 blocks north of center
-
 	-- Check if ChestStorageService is available
-	if self.Deps and self.Deps.ChestStorageService then
-		self.Deps.ChestStorageService:InitializeStarterChest(chestX, chestY, chestZ)
-		print(string.format("VoxelWorldService: Initialized starter chest at (%d, %d, %d)", chestX, chestY, chestZ))
-	else
-		warn("VoxelWorldService: ChestStorageService not available, cannot initialize starter chest")
+	if not self.Deps or not self.Deps.ChestStorageService then
+		warn("VoxelWorldService: ChestStorageService not available, cannot initialize chests")
+		return
 	end
+
+	-- Starter island chest position:
+	-- Island center = (48, 48), chest offset = (2, 2), raise = 1
+	-- Final position = (50, 66, 50)
+	local starterChestX = 50
+	local starterChestY = 66  -- topY (65) + raise (1)
+	local starterChestZ = 50
+	self.Deps.ChestStorageService:InitializeStarterChest(starterChestX, starterChestY, starterChestZ)
+	print(string.format("VoxelWorldService: Initialized starter chest at (%d, %d, %d)", starterChestX, starterChestY, starterChestZ))
+
+	-- Stone island chest position:
+	-- Stone island center = (48, 68), chest offset = (0, 0), raise = 1
+	-- Final position = (48, 66, 68)
+	local stoneChestX = 48
+	local stoneChestY = 66  -- topY (65) + raise (1)
+	local stoneChestZ = 68  -- 48 + 20 (stone island offsetZ)
+	self.Deps.ChestStorageService:InitializeStoneIslandChest(stoneChestX, stoneChestY, stoneChestZ)
+	print(string.format("VoxelWorldService: Initialized stone island chest at (%d, %d, %d)", stoneChestX, stoneChestY, stoneChestZ))
 end
 
 function VoxelWorldService:_applyWorldAttributes(descriptor)
@@ -1319,6 +1332,20 @@ function VoxelWorldService:SetBlock(x, y, z, blockId, player, metadata)
 	if waterService and waterService.OnBlockChanged then
 		local metaNow = metadata or self.worldManager:GetBlockMetadata(x, y, z) or 0
 		waterService:OnBlockChanged(x, y, z, blockId, metaNow, prevBlockId)
+	end
+
+	-- Notify FarmlandService about block change (for farmland hydration)
+	local farmlandService = self.Deps and self.Deps.FarmlandService
+	if farmlandService and farmlandService.OnBlockChanged then
+		local metaNow = metadata or self.worldManager:GetBlockMetadata(x, y, z) or 0
+		farmlandService:OnBlockChanged(x, y, z, blockId, metaNow, prevBlockId)
+	end
+
+	-- Notify GrassService about block change (for grass spreading)
+	local grassService = self.Deps and self.Deps.GrassService
+	if grassService and grassService.OnBlockChanged then
+		local metaNow = metadata or self.worldManager:GetBlockMetadata(x, y, z) or 0
+		grassService:OnBlockChanged(x, y, z, blockId, metaNow, prevBlockId)
 	end
 
 	-- Minion block: if removed/replaced, despawn linked minion
@@ -1971,14 +1998,15 @@ function VoxelWorldService:RequestBlockPlace(player, placeData)
 	local redirectedCropId = seedToCrop(blockId)
 	local plantingCrop = false
 	if redirectedCropId then
-		-- Must be placing into air with farmland below
+		-- Must be placing into air with farmland below (dry or wet)
 		local belowId = self.worldManager:GetBlock(x, y - 1, z)
 		local atId = self.worldManager:GetBlock(x, y, z)
 		if atId ~= BLOCK.AIR then
 			self:RejectBlockChange(player, {x = x, y = y, z = z}, "space_occupied")
 			return
 		end
-		if belowId ~= BLOCK.FARMLAND then
+		local isFarmland = (belowId == BLOCK.FARMLAND or belowId == BLOCK.FARMLAND_WET)
+		if not isFarmland then
 			self:RejectBlockChange(player, {x = x, y = y - 1, z = z}, "no_support")
 			return
 		end
@@ -3480,6 +3508,11 @@ function VoxelWorldService:HandleBucketPickup(player, data)
 		self.Deps.WaterService:OnBlockChanged(x, y, z, Constants.BlockType.AIR, 0, Constants.BlockType.WATER_SOURCE)
 	end
 
+	-- Notify FarmlandService to potentially dry nearby farmland
+	if self.Deps and self.Deps.FarmlandService and self.Deps.FarmlandService.OnBlockChanged then
+		self.Deps.FarmlandService:OnBlockChanged(x, y, z, Constants.BlockType.AIR, 0, Constants.BlockType.WATER_SOURCE)
+	end
+
 	-- Sync inventory to client
 	invService:SyncInventoryToClient(player)
 
@@ -3602,15 +3635,192 @@ function VoxelWorldService:HandleBucketPlace(player, data)
 	})
 
 	-- Trigger water flow from the new source
+	local prevBlock = existingBlock or Constants.BlockType.AIR
 	if self.Deps and self.Deps.WaterService then
-		local prevBlock = existingBlock or Constants.BlockType.AIR
 		self.Deps.WaterService:OnBlockChanged(x, y, z, Constants.BlockType.WATER_SOURCE, 0, prevBlock)
+	end
+
+	-- Notify FarmlandService to hydrate nearby farmland
+	if self.Deps and self.Deps.FarmlandService and self.Deps.FarmlandService.OnBlockChanged then
+		self.Deps.FarmlandService:OnBlockChanged(x, y, z, Constants.BlockType.WATER_SOURCE, 0, prevBlock)
 	end
 
 	-- Sync inventory to client
 	invService:SyncInventoryToClient(player)
 
 	print(string.format("[Bucket] %s placed water at (%d,%d,%d)", player.Name, x, y, z))
+end
+
+--[[
+	Check if farmland at position should be hydrated (water within 4 blocks)
+	@param x, y, z: Block coordinates
+	@return boolean - true if water is within range
+]]
+function VoxelWorldService:IsFarmlandHydrated(x, y, z)
+	local BLOCK = Constants.BlockType
+	local WaterUtils = require(ReplicatedStorage.Shared.VoxelWorld.World.WaterUtils)
+
+	-- Check a 4-block radius horizontally (same Y or Y-1)
+	for dx = -4, 4 do
+		for dz = -4, 4 do
+			-- Check if within 4-block Manhattan-style radius (square, not circular)
+			if math.abs(dx) <= 4 and math.abs(dz) <= 4 then
+				-- Check same Y level
+				local blockId = self.worldManager:GetBlock(x + dx, y, z + dz)
+				if WaterUtils.IsWater(blockId) then
+					return true
+				end
+				-- Check one level below (Y-1)
+				blockId = self.worldManager:GetBlock(x + dx, y - 1, z + dz)
+				if WaterUtils.IsWater(blockId) then
+					return true
+				end
+			end
+		end
+	end
+	return false
+end
+
+--[[
+	Handle shovel interaction (farmland creation/reversion)
+	@param player: Player - The player performing the action
+	@param data: table - {x, y, z, hotbarSlot, interactionType}
+]]
+function VoxelWorldService:HandleShovelInteraction(player, data)
+	if not data or not data.x or not data.y or not data.z or not data.hotbarSlot or not data.interactionType then
+		warn("Invalid shovel interaction data from", player.Name)
+		return
+	end
+
+	local x, y, z = data.x, data.y, data.z
+	local hotbarSlot = data.hotbarSlot
+	local interactionType = data.interactionType
+	local playerData = self.players[player]
+	if not playerData then
+		return
+	end
+
+	-- Hub worlds are read-only
+	if self:IsHubWorld() then
+		self:RejectBlockChange(player, { x = x, y = y, z = z }, "hub_read_only")
+		return
+	end
+
+	-- Distance check
+	local character = player.Character
+	if not character then
+		return
+	end
+	local head = character:FindFirstChild("Head")
+	if not head then
+		return
+	end
+
+	local bs = Constants.BLOCK_SIZE
+	local blockCenter = Vector3.new(x * bs + bs * 0.5, y * bs + bs * 0.5, z * bs + bs * 0.5)
+	local distance = (blockCenter - head.Position).Magnitude
+	local maxReach = 4.5 * bs + 2
+
+	if distance > maxReach then
+		self:RejectBlockChange(player, { x = x, y = y, z = z }, "too_far")
+		return
+	end
+
+	-- Verify player is holding a shovel in the specified slot
+	local invService = self.Deps and self.Deps.PlayerInventoryService
+	if not invService then
+		warn("PlayerInventoryService not available")
+		return
+	end
+
+	local hotbarItem = invService:GetHotbarSlot(player, hotbarSlot)
+	local heldItemId = hotbarItem and hotbarItem:GetItemId() or 0
+
+	-- Verify it's a shovel
+	if not ToolConfig.IsTool(heldItemId) then
+		self:RejectBlockChange(player, { x = x, y = y, z = z }, "not_holding_tool")
+		return
+	end
+
+	local toolType = select(1, ToolConfig.GetBlockProps(heldItemId))
+	if toolType ~= BlockProperties.ToolType.SHOVEL then
+		self:RejectBlockChange(player, { x = x, y = y, z = z }, "not_holding_shovel")
+		return
+	end
+
+	local BLOCK = Constants.BlockType
+	local targetBlockId = self.worldManager:GetBlock(x, y, z)
+
+	if interactionType == "create_farmland" then
+		-- Verify target is dirt or grass
+		if targetBlockId ~= BLOCK.DIRT and targetBlockId ~= BLOCK.GRASS then
+			self:RejectBlockChange(player, { x = x, y = y, z = z }, "invalid_block_for_farmland")
+			return
+		end
+
+		-- Check if block above is air (can't create farmland under solid blocks)
+		local blockAbove = self.worldManager:GetBlock(x, y + 1, z)
+		local BlockRegistry = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockRegistry)
+		local aboveDef = BlockRegistry:GetBlock(blockAbove)
+		if blockAbove ~= BLOCK.AIR and aboveDef and aboveDef.solid then
+			self:RejectBlockChange(player, { x = x, y = y, z = z }, "block_above_is_solid")
+			return
+		end
+
+		-- Determine if farmland should be wet (water nearby)
+		local isHydrated = self:IsFarmlandHydrated(x, y, z)
+		local newBlockId = isHydrated and BLOCK.FARMLAND_WET or BLOCK.FARMLAND
+
+		-- Convert to farmland
+		self.worldManager:SetBlock(x, y, z, newBlockId, 0)
+		self.modifiedChunks[Constants.ToChunkKey(
+			math.floor(x / Constants.CHUNK_SIZE_X),
+			math.floor(z / Constants.CHUNK_SIZE_Z)
+		)] = true
+
+		-- Broadcast the block change
+		EventManager:FireEventToAll("BlockChanged", {
+			x = x, y = y, z = z,
+			blockId = newBlockId,
+			metadata = 0
+		})
+
+		-- Notify FarmlandService if available
+		if self.Deps and self.Deps.FarmlandService then
+			self.Deps.FarmlandService:OnBlockChanged(x, y, z, newBlockId, 0, targetBlockId)
+		end
+
+		print(string.format("[Shovel] %s created %s at (%d,%d,%d)",
+			player.Name, isHydrated and "wet farmland" or "farmland", x, y, z))
+
+	elseif interactionType == "revert_farmland" then
+		-- Verify target is farmland
+		if targetBlockId ~= BLOCK.FARMLAND and targetBlockId ~= BLOCK.FARMLAND_WET then
+			self:RejectBlockChange(player, { x = x, y = y, z = z }, "not_farmland")
+			return
+		end
+
+		-- Convert back to dirt
+		self.worldManager:SetBlock(x, y, z, BLOCK.DIRT, 0)
+		self.modifiedChunks[Constants.ToChunkKey(
+			math.floor(x / Constants.CHUNK_SIZE_X),
+			math.floor(z / Constants.CHUNK_SIZE_Z)
+		)] = true
+
+		-- Broadcast the block change
+		EventManager:FireEventToAll("BlockChanged", {
+			x = x, y = y, z = z,
+			blockId = BLOCK.DIRT,
+			metadata = 0
+		})
+
+		-- Notify FarmlandService if available
+		if self.Deps and self.Deps.FarmlandService then
+			self.Deps.FarmlandService:OnBlockChanged(x, y, z, BLOCK.DIRT, 0, targetBlockId)
+		end
+
+		print(string.format("[Shovel] %s reverted farmland to dirt at (%d,%d,%d)", player.Name, x, y, z))
+	end
 end
 
 return VoxelWorldService

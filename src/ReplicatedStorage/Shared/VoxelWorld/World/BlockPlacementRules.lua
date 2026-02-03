@@ -173,6 +173,7 @@ function BlockPlacementRules:CanSupport(blockId: number): boolean
 	return blockId == Constants.BlockType.GRASS
 		or blockId == Constants.BlockType.DIRT
 		or blockId == Constants.BlockType.FARMLAND
+		or blockId == Constants.BlockType.FARMLAND_WET
 		or blockId == Constants.BlockType.STONE
 		or blockId == Constants.BlockType.BEDROCK
 end

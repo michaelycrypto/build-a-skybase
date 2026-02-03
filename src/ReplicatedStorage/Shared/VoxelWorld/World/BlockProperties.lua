@@ -457,6 +457,12 @@ BlockProperties.Properties = {
 		minToolTier = nil,
 		resistance = 0.6
 	},
+	[Constants.BlockType.FARMLAND_WET] = {
+		hardness = 0.6,
+		toolType = BlockProperties.ToolType.SHOVEL,
+		minToolTier = nil,
+		resistance = 0.6
+	},
 
 	-- Inventory items (instant break if ever placed)
 	[Constants.BlockType.WHEAT_SEEDS] = { hardness = 0, toolType = nil, minToolTier = nil, resistance = 0 },

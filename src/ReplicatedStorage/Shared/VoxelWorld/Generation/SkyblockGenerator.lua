@@ -149,7 +149,7 @@ local DEFAULT_TEMPLATES = {
 				raise = 1,
 			},
 			{
-				-- Minecraft-style Nether portal to hub
+				-- Minecraft-style Nether portal to hub (unlocked after tutorial)
 				kind = "portal",
 				offsetX = -3,
 				offsetZ = 0,
@@ -160,14 +160,38 @@ local DEFAULT_TEMPLATES = {
 				frameBlockId = BlockType.OBSIDIAN,
 				innerBlockId = BlockType.PURPLE_STAINED_GLASS,
 			},
+			-- Farmland removed - player builds it themselves in tutorial
+		},
+	},
+	{
+		-- Stone island 10 blocks south - player builds bridge to reach it
+		-- Starter island edge: ~5.5 blocks, gap: 10 blocks, stone radius: 4.5
+		-- Total offset: 5.5 + 10 + 4.5 = 20 blocks south
+		id = "stone_island",
+		profile = "portal", -- Rocky cobblestone/stone profile
+		offsetX = 0,
+		offsetZ = 20, -- 10 blocks gap from starter island edge
+		topRadius = 4.5,
+		topY = 65, -- Same height as starter island for easy bridging
+		baseTopY = 62,
+		depth = 8,
+		taper = 0.35,
+		decorations = {
+			-- Chest with copper ingots for crafting first pickaxe
 			{
-				-- Pre-built 3x3 farmland with water center
-				kind = "farmland",
+				kind = "chest",
 				offsetX = 0,
-				offsetZ = 2,
-				raise = 0,
-				size = 3, -- 3x3 grid
-				waterCenter = true,
+				offsetZ = 0,
+				raise = 1,
+			},
+			-- Small copper ore vein embedded in the island (decorative hint)
+			{
+				kind = "ore_vein",
+				offsetX = 1,
+				offsetZ = 1,
+				raise = -1, -- Below surface
+				blockId = BlockType.COPPER_ORE,
+				count = 3,
 			},
 		},
 	},
@@ -250,6 +274,7 @@ function SkyblockGenerator:_planDecorations()
 		chests = {},
 		portals = {},
 		farmlands = {},
+		oreVeins = {},
 	}
 
 	for _, template in ipairs(self._templates) do
@@ -294,6 +319,14 @@ function SkyblockGenerator:_planDecorations()
 							y = surface.surfaceY + (decoration.raise or 0),
 							size = decoration.size or 3,
 							waterCenter = decoration.waterCenter or false,
+						})
+					elseif decoration.kind == "ore_vein" then
+						table.insert(plans.oreVeins, {
+							centerX = wx,
+							centerZ = wz,
+							y = surface.surfaceY + (decoration.raise or 0),
+							blockId = decoration.blockId or BlockType.COPPER_ORE,
+							count = decoration.count or 3,
 						})
 					end
 				end
@@ -364,6 +397,7 @@ function SkyblockGenerator:PostProcessChunk(chunk, chunkWorldX, chunkWorldZ)
 	self:_placeChests(chunk, chunkWorldX, chunkWorldZ)
 	self:_placePortals(chunk, chunkWorldX, chunkWorldZ)
 	self:_placeFarmlands(chunk, chunkWorldX, chunkWorldZ)
+	self:_placeOreVeins(chunk, chunkWorldX, chunkWorldZ)
 end
 
 function SkyblockGenerator:_placeTrees(chunk, chunkWorldX, chunkWorldZ)
@@ -469,6 +503,39 @@ function SkyblockGenerator:_placeFarmlands(chunk, chunkWorldX, chunkWorldZ)
 						self:_setChunkBlockAndHeight(chunk, chunkWorldX, chunkWorldZ, wx, farm.y, wz, BlockType.FARMLAND)
 					end
 				end
+			end
+		end
+	end
+end
+
+function SkyblockGenerator:_placeOreVeins(chunk, chunkWorldX, chunkWorldZ)
+	-- Place small ore veins as decorations (visible on island surface/edges)
+	for _, vein in ipairs(self._decorPlans.oreVeins or {}) do
+		-- Simple cluster pattern: center + random adjacent blocks
+		local positions = {
+			{dx = 0, dy = 0, dz = 0},
+			{dx = 1, dy = 0, dz = 0},
+			{dx = 0, dy = 0, dz = 1},
+			{dx = 0, dy = -1, dz = 0},
+			{dx = -1, dy = 0, dz = 0},
+			{dx = 0, dy = 0, dz = -1},
+		}
+		
+		local placed = 0
+		for _, pos in ipairs(positions) do
+			if placed >= vein.count then
+				break
+			end
+			
+			local wx = vein.centerX + pos.dx
+			local wz = vein.centerZ + pos.dz
+			local wy = vein.y + pos.dy
+			local lx = wx - chunkWorldX
+			local lz = wz - chunkWorldZ
+			
+			if lx >= 0 and lx < Constants.CHUNK_SIZE_X and lz >= 0 and lz < Constants.CHUNK_SIZE_Z then
+				self:_setChunkBlockAndHeight(chunk, chunkWorldX, chunkWorldZ, wx, wy, wz, vein.blockId)
+				placed = placed + 1
 			end
 		end
 	end

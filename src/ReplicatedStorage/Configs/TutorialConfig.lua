@@ -1,19 +1,19 @@
 --[[
 	TutorialConfig.lua - Tutorial/Onboarding Configuration
 
-	Farming-First Economy Tutorial:
-	Players learn farming on their island, then travel to hub to sell and buy.
+	Craft-First Tutorial:
+	Players learn core Minecraft mechanics: gather → craft → build → mine → farm → trade → automate
 
 	Progression Loop:
-	Move → Look → Inventory → Find Farm → Plant Seeds → Harvest →
-	Use Portal → Find Merchant → Sell Crops → Visit Shop → Buy Seeds →
-	Return Home → Expand Farm → Complete!
+	Chop Tree → Craft Planks → Craft Workbench → Build Bridge → Mine Stone →
+	Open Chest → Plant Seeds → Harvest → Trade for Water → Irrigate Farm →
+	Smelt Copper → Craft Tool → Receive Golem → Automate!
 
 	Tutorial Philosophy:
 	- Non-intrusive guidance (tooltips, not forced cutscenes)
 	- Progressive revelation (only show relevant info)
-	- Skippable but incentivized with small rewards
-	- Focus on the ECONOMY loop (farm → sell → buy → expand)
+	- Earn everything through gameplay (no pre-provided tools)
+	- Focus on the CRAFT → BUILD → AUTOMATE loop
 ]]
 
 local TutorialConfig = {}
@@ -21,181 +21,528 @@ local TutorialConfig = {}
 -- Tutorial step categories
 TutorialConfig.Categories = {
 	BASICS = "basics",           -- Movement, camera, UI
-	FARMING = "farming",         -- Planting, harvesting (FIRST!)
-	TRAVEL = "travel",           -- Portal, hub navigation
-	ECONOMY = "economy",         -- Shop, merchant, selling
-	CRAFTING = "crafting",       -- Workbench, recipes
 	GATHERING = "gathering",     -- Breaking blocks, collecting resources
+	CRAFTING = "crafting",       -- Workbench, recipes
+	BUILDING = "building",       -- Placing blocks, bridging
+	MINING = "mining",           -- Mining ores, cobblestone
+	FARMING = "farming",         -- Planting, harvesting
+	ECONOMY = "economy",         -- Shop, merchant, trading
+	AUTOMATION = "automation",   -- Golems, passive income
 }
 
 -- Waypoint configuration for guiding players
 TutorialConfig.Waypoints = {
 	-- Island waypoints (player world)
+	starter_tree = {
+		type = "block_area",
+		offsetFromSpawn = Vector3.new(6, 0, -6), -- Tree at offset (2, -2) from center
+		radius = 3,
+		color = Color3.fromRGB(139, 90, 43), -- Brown for tree
+		label = "Starter Tree",
+	},
+	stone_island = {
+		type = "block_area",
+		-- Stone island center is 20 blocks south, radius 4.5 blocks
+		-- Near edge (where bridge lands) is at 20 - 4.5 = 15.5 blocks south
+		-- In studs: 15.5 * 3 = 46.5 studs
+		offsetFromSpawn = Vector3.new(0, 0, 47), -- Near edge of stone island
+		radius = 3,
+		color = Color3.fromRGB(128, 128, 128), -- Gray for stone
+		label = "Stone Island",
+	},
+	starter_chest = {
+		type = "block_area",
+		offsetFromSpawn = Vector3.new(6, 3, 6), -- Chest at offset (2, 2) from center
+		radius = 2,
+		color = Color3.fromRGB(139, 90, 43), -- Brown for chest
+		label = "Starter Chest",
+	},
 	portal = {
 		type = "block_area",
-		offsetFromSpawn = Vector3.new(-9, 0, 0), -- Portal at offset (-3, 0) * BLOCK_SIZE
+		offsetFromSpawn = Vector3.new(-9, 0, 0), -- Portal at offset (-3, 0)
 		radius = 2,
 		color = Color3.fromRGB(128, 0, 128), -- Purple for portal
 		label = "Hub Portal",
 	},
 	-- Hub waypoints (use NPC positions from NPCSpawnConfig)
-	merchant = {
-		type = "npc",
-		npcId = "hub_merchant_1",
-		color = Color3.fromRGB(255, 215, 0), -- Gold
-		label = "Merchant",
-	},
 	farm_shop = {
 		type = "npc",
 		npcId = "hub_farm_shop_1",
 		color = Color3.fromRGB(34, 197, 94), -- Green
 		label = "Farm Shop",
 	},
-	warp_master = {
-		type = "npc",
-		npcId = "hub_warp_master_1",
-		color = Color3.fromRGB(88, 101, 242), -- Blue
-		label = "Warp Master",
-	},
 }
 
 -- Individual tutorial steps with triggers and objectives
 TutorialConfig.Steps = {
 	-- ═══════════════════════════════════════════════════════════════════════════
-	-- PHASE 1: BASICS - Movement & Interface
+	-- PHASE 1: DISCOVERY - Open the nearby chest first (natural curiosity!)
 	-- ═══════════════════════════════════════════════════════════════════════════
 	{
 		id = "welcome",
 		category = "basics",
 		title = "Welcome to Skyblox!",
-		description = "Your island adventure begins! You have a portal to the hub, pre-built farmland, and starter seeds. Let's grow your fortune!",
-		hint = "Use WASD to move around. Look around with your mouse.",
+		description = "Your island adventure begins! Check out the chest nearby for supplies.",
+		hint = "Use WASD to move. Right-click the chest to open it!",
 		trigger = {
 			type = "immediate",
 		},
 		objective = {
 			type = "move",
-			distance = 10,
+			distance = 5,
 		},
 		reward = nil,
-		nextStep = "look_around",
+		nextStep = "open_chest",
 		uiType = "popup",
 		canSkip = false,
 	},
 
 	{
-		id = "look_around",
-		category = "basics",
-		title = "Look Around",
-		description = "Press F5 to cycle through camera modes. Try all 3!",
-		hint = "F5 cycles: First Person → Third Person Lock → Third Person Free",
+		id = "open_chest",
+		category = "gathering",
+		title = "Open the Chest",
+		description = "Open the chest to find supplies: copper ingots, sticks, seeds, and dirt!",
+		hint = "Right-click the chest near the tree to open it.",
 		trigger = {
 			type = "step_complete",
 			step = "welcome",
 		},
 		objective = {
-			type = "camera_cycle",
+			type = "collect_item",
+			itemId = 105, -- COPPER_INGOT
 			count = 3,
 		},
-		reward = nil,
-		nextStep = "open_inventory",
+		reward = {
+			coins = 15,
+			message = "Supplies acquired! Now chop the tree for wood.",
+		},
+		nextStep = "chop_tree",
 		uiType = "objective",
+		waypoint = "starter_chest",
 		canSkip = true,
 	},
 
+	-- ═══════════════════════════════════════════════════════════════════════════
+	-- PHASE 2: GATHERING - Chop the starter tree
+	-- ═══════════════════════════════════════════════════════════════════════════
 	{
-		id = "open_inventory",
-		category = "basics",
-		title = "Equip Your Seeds",
-		description = "Press E to open your inventory. Find the Wheat Seeds and drag them to your hotbar!",
-		hint = "Press E → Find Wheat Seeds in your inventory → Drag to an empty hotbar slot at the bottom.",
+		id = "chop_tree",
+		category = "gathering",
+		title = "Chop the Tree",
+		description = "Break the tree trunk to collect Oak Logs!",
+		hint = "Hold left-click on the tree trunk (brown wood) to break it.",
 		trigger = {
 			type = "step_complete",
-			step = "look_around",
+			step = "open_chest",
 		},
 		objective = {
-			type = "equip_item",
-			itemId = 70, -- Wheat Seeds
+			type = "collect_item",
+			itemId = 5, -- WOOD (Oak Log)
+			count = 4,
 		},
 		reward = {
-			coins = 5,
-			message = "Great! Now you can use the seeds from your hotbar.",
+			coins = 10,
+			message = "Great! Now craft those logs into planks.",
 		},
-		nextStep = "plant_seeds",
+		nextStep = "craft_planks",
+		uiType = "objective",
+		waypoint = "starter_tree",
+		highlightBlockTypes = {5}, -- WOOD
+		canSkip = true,
+	},
+
+	-- ═══════════════════════════════════════════════════════════════════════════
+	-- PHASE 3: CRAFTING - Make planks, workbench, and pickaxe
+	-- ═══════════════════════════════════════════════════════════════════════════
+	{
+		id = "craft_planks",
+		category = "crafting",
+		title = "Craft Planks",
+		description = "Open your inventory and craft Oak Logs into Planks!",
+		hint = "Press E → Click on Oak Logs in the crafting grid → Take the planks.",
+		trigger = {
+			type = "step_complete",
+			step = "chop_tree",
+		},
+		objective = {
+			type = "craft_item",
+			itemId = 12, -- OAK_PLANKS
+			count = 8,
+		},
+		reward = {
+			coins = 10,
+			message = "Now craft a Workbench for advanced recipes!",
+		},
+		nextStep = "craft_workbench",
 		uiType = "objective",
 		highlightKey = "E",
 		canSkip = true,
 	},
 
-	-- ═══════════════════════════════════════════════════════════════════════════
-	-- PHASE 2: FARMING - Your First Harvest (on island)
-	-- ═══════════════════════════════════════════════════════════════════════════
 	{
-		id = "plant_seeds",
-		category = "farming",
-		title = "Plant Your Seeds",
-		description = "Select the Wheat Seeds from your hotbar and right-click on the brown farmland!",
-		hint = "Look for the tilled brown soil near the water. Right-click farmland to plant seeds.",
+		id = "craft_workbench",
+		category = "crafting",
+		title = "Craft a Workbench",
+		description = "Craft a Crafting Table using 4 planks in a 2x2 pattern.",
+		hint = "Press E → Fill 2x2 grid with planks → Take the Crafting Table.",
 		trigger = {
 			type = "step_complete",
-			step = "open_inventory",
+			step = "craft_planks",
 		},
 		objective = {
-			type = "place_block",
-			blockId = 76, -- WHEAT_CROP_0 (placed when wheat seeds are planted)
-			count = 4,
+			type = "craft_item",
+			itemId = 13, -- CRAFTING_TABLE
+			count = 1,
 		},
 		reward = {
 			coins = 15,
-			message = "Seeds planted! Now wait for them to grow...",
+			message = "Workbench crafted! Now craft a Copper Pickaxe with your supplies.",
 		},
-		nextStep = "harvest_crops",
+		nextStep = "craft_pickaxe",
 		uiType = "objective",
-		-- Highlight the farmland blocks so player knows where to plant
-		highlightBlockTypes = {69}, -- FARMLAND block type
 		canSkip = true,
 	},
 
 	{
-		id = "harvest_crops",
+		id = "craft_pickaxe",
+		category = "crafting",
+		title = "Craft a Copper Pickaxe",
+		description = "Use your Copper Ingots and Sticks from the chest to craft a pickaxe!",
+		hint = "Place the Crafting Table → Right-click it → 3 Copper Ingots on top + 2 Sticks below.",
+		trigger = {
+			type = "step_complete",
+			step = "craft_workbench",
+		},
+		objective = {
+			type = "craft_item",
+			itemId = 1001, -- COPPER_PICKAXE
+			count = 1,
+		},
+		reward = {
+			coins = 25,
+			message = "Pickaxe crafted! Now build a bridge to the Stone Island.",
+		},
+		nextStep = "build_bridge",
+		uiType = "objective",
+		canSkip = true,
+	},
+
+	-- ═══════════════════════════════════════════════════════════════════════════
+	-- PHASE 4: EXPLORE STONE ISLAND - Bridge, loot chest, mine, smelt, craft tools
+	-- ═══════════════════════════════════════════════════════════════════════════
+	{
+		id = "build_bridge",
+		category = "building",
+		title = "Build a Bridge",
+		description = "Place planks to build a bridge to the Stone Island to the south!",
+		hint = "Select planks in your hotbar → Right-click to place blocks → Bridge the gap.",
+		trigger = {
+			type = "step_complete",
+			step = "craft_pickaxe",
+		},
+		objective = {
+			type = "place_block",
+			blockId = 12, -- OAK_PLANKS
+			count = 10,
+		},
+		reward = {
+			coins = 20,
+			message = "Bridge built! Cross over and check out the chest.",
+		},
+		nextStep = "open_stone_chest",
+		uiType = "objective",
+		waypoint = "stone_island",
+		canSkip = true,
+	},
+
+	{
+		id = "open_stone_chest",
+		category = "gathering",
+		title = "Open the Stone Chest",
+		description = "Open the chest on the Stone Island to find copper ore and coal!",
+		hint = "Right-click the chest to open it. Take everything inside!",
+		trigger = {
+			type = "step_complete",
+			step = "build_bridge",
+		},
+		objective = {
+			type = "collect_item",
+			itemId = 98, -- COPPER_ORE
+			count = 6,
+		},
+		reward = {
+			coins = 15,
+			message = "Copper ore acquired! Now mine some cobblestone.",
+		},
+		nextStep = "mine_cobblestone",
+		uiType = "objective",
+		canSkip = true,
+	},
+
+	{
+		id = "mine_cobblestone",
+		category = "mining",
+		title = "Mine Cobblestone",
+		description = "Use your Copper Pickaxe to mine the stone blocks!",
+		hint = "Equip your pickaxe and hold left-click on stone blocks.",
+		trigger = {
+			type = "step_complete",
+			step = "open_stone_chest",
+		},
+		objective = {
+			type = "collect_item",
+			itemId = 14, -- COBBLESTONE
+			count = 16,
+		},
+		reward = {
+			coins = 20,
+			message = "Cobblestone collected! Now craft a furnace to smelt your copper.",
+		},
+		nextStep = "setup_furnace",
+		uiType = "objective",
+		highlightBlockTypes = {14, 3}, -- COBBLESTONE, STONE
+		canSkip = true,
+	},
+
+	-- ═══════════════════════════════════════════════════════════════════════════
+	-- PHASE 5: SMELTING - Set up furnace and smelt copper
+	-- ═══════════════════════════════════════════════════════════════════════════
+	{
+		id = "setup_furnace",
+		category = "crafting",
+		title = "Set Up Your Furnace",
+		description = "Craft a Furnace and place it to start smelting!",
+		hint = [[
+Requirements:
+• Craft a Furnace: 8 Cobblestone in a ring pattern at the Crafting Table
+• Place the Furnace: Select it and right-click on a flat surface
+
+Complete in any order!
+		]],
+		trigger = {
+			type = "step_complete",
+			step = "mine_cobblestone",
+		},
+		objective = {
+			type = "multi_objective",
+			objectives = {
+				{ type = "craft_item", itemId = 35, count = 1, name = "Craft Furnace" },
+				{ type = "place_block", blockId = 35, count = 1, name = "Place Furnace" },
+			},
+		},
+		reward = {
+			coins = 25,
+			message = "Furnace ready! Now smelt your copper ore.",
+		},
+		nextStep = "smelt_copper",
+		uiType = "objective",
+		canSkip = true,
+	},
+
+	{
+		id = "smelt_copper",
+		category = "crafting",
+		title = "Smelt Copper Ore",
+		description = "Use your Furnace to smelt Copper Ore into Copper Ingots!",
+		hint = "Right-click Furnace → Copper Ore in top → Coal in bottom → Wait.",
+		trigger = {
+			type = "step_complete",
+			step = "setup_furnace",
+		},
+		objective = {
+			type = "collect_item",
+			itemId = 105, -- COPPER_INGOT
+			count = 6,
+		},
+		reward = {
+			coins = 25,
+			message = "Copper smelted! Now craft your copper tools.",
+		},
+		nextStep = "craft_copper_tools",
+		uiType = "objective",
+		canSkip = true,
+	},
+
+	-- ═══════════════════════════════════════════════════════════════════════════
+	-- PHASE 6: TOOLS - Craft copper tools (merged - player chooses order)
+	-- ═══════════════════════════════════════════════════════════════════════════
+	{
+		id = "craft_copper_tools",
+		category = "crafting",
+		title = "Craft Copper Tools",
+		description = "Craft all three copper tools to complete your toolkit!",
+		hint = [[
+Requirements:
+• Copper Axe: 3 Copper Ingots + 2 Sticks (top row + middle column)
+• Copper Shovel: 1 Copper Ingot + 2 Sticks (single ingot on top)
+• Copper Sword: 2 Copper Ingots + 1 Stick (2 ingots stacked + stick below)
+
+Right-click the Crafting Table to craft each tool in any order!
+		]],
+		trigger = {
+			type = "step_complete",
+			step = "smelt_copper",
+		},
+		objective = {
+			type = "craft_items",
+			items = {
+				{ itemId = 1011, count = 1, name = "Copper Axe" },     -- COPPER_AXE
+				{ itemId = 1021, count = 1, name = "Copper Shovel" },  -- COPPER_SHOVEL
+				{ itemId = 1041, count = 1, name = "Copper Sword" },   -- COPPER_SWORD
+			},
+		},
+		reward = {
+			coins = 70,
+			message = "Full copper toolkit complete! Now let's set up a farm.",
+		},
+		nextStep = "start_farm",
+		uiType = "objective",
+		canSkip = true,
+	},
+
+	-- ═══════════════════════════════════════════════════════════════════════════
+	-- PHASE 7: FARMING - Step by step farm setup
+	-- ═══════════════════════════════════════════════════════════════════════════
+	{
+		id = "till_soil",
 		category = "farming",
-		title = "Harvest Your Crops",
-		description = "Break the fully-grown wheat to harvest! Tip: Crops grow faster near water.",
-		hint = "Left-click on mature wheat to harvest. You'll get wheat AND seeds back!",
+		title = "Till the Soil",
+		description = "Use your Copper Shovel to turn dirt into farmland!",
+		hint = [[
+How to till:
+1. Place Dirt blocks from your starter chest
+2. Equip your Copper Shovel
+3. Right-click on dirt to turn it into farmland
+
+Farmland is required for planting crops!
+		]],
+		trigger = {
+			type = "step_complete",
+			step = "craft_copper_tools",
+		},
+		objective = {
+			type = "place_block",
+			anyOf = {69, 385}, -- FARMLAND or FARMLAND_WET
+			count = 4,
+		},
+		reward = {
+			coins = 10,
+			message = "Farmland ready! Now irrigate it for faster crop growth.",
+		},
+		nextStep = "irrigate_farm",
+		uiType = "objective",
+		canSkip = true,
+	},
+
+	{
+		id = "irrigate_farm",
+		category = "farming",
+		title = "Irrigate Your Farm",
+		description = "Place water near your farmland to make crops grow faster!",
+		hint = [[
+The Stone Island chest contains a Water Bucket!
+
+How to irrigate:
+1. Get the Water Bucket from the stone island chest
+2. Place water next to your farmland (right-click)
+3. Farmland within 4 blocks of water turns darker (wet)
+
+Wet farmland = 2x faster crop growth!
+		]],
+		trigger = {
+			type = "step_complete",
+			step = "till_soil",
+		},
+		objective = {
+			type = "place_block",
+			blockId = 380, -- WATER_SOURCE - track placing water, not the resulting wet farmland
+			count = 1,
+		},
+		reward = {
+			coins = 10,
+			message = "Farm irrigated! Wet farmland grows crops twice as fast.",
+		},
+		nextStep = "plant_seeds",
+		uiType = "objective",
+		canSkip = true,
+	},
+
+	{
+		id = "plant_seeds",
+		category = "farming",
+		title = "Plant Seeds",
+		description = "Plant Wheat Seeds on your farmland!",
+		hint = [[
+How to plant:
+1. Select Wheat Seeds from your hotbar
+2. Right-click on farmland to plant
+
+Seeds are in your starter chest. Plant on wet farmland for faster growth!
+		]],
+		trigger = {
+			type = "step_complete",
+			step = "irrigate_farm",
+		},
+		objective = {
+			type = "place_block",
+			blockId = 76, -- WHEAT_CROP_0
+			count = 4,
+		},
+		reward = {
+			coins = 10,
+			message = "Seeds planted! Wait for them to grow tall and golden.",
+		},
+		nextStep = "harvest_wheat",
+		uiType = "objective",
+		canSkip = true,
+	},
+
+	{
+		id = "harvest_wheat",
+		category = "farming",
+		title = "Harvest Wheat",
+		description = "Break fully grown wheat to harvest!",
+		hint = [[
+Fully grown wheat is tall and golden.
+
+Break it to get:
+• Wheat (for crafting bread or trading)
+• Wheat Seeds (to replant)
+		]],
 		trigger = {
 			type = "step_complete",
 			step = "plant_seeds",
 		},
 		objective = {
 			type = "collect_item",
-			itemId = 71, -- Wheat only
+			itemId = 71, -- WHEAT
 			count = 4,
 		},
 		reward = {
 			coins = 20,
-			message = "Great harvest! Now let's sell these for coins.",
+			message = "First harvest complete! Your farm is self-sustaining now.",
 		},
-		nextStep = "use_portal",
+		nextStep = "go_to_hub",
 		uiType = "objective",
-		-- Tutorial accelerated growth hint
+		-- Tutorial accelerated growth
 		tutorialBoost = {
-			cropGrowthMultiplier = 5, -- Crops grow 5x faster during this step
+			cropGrowthMultiplier = 10, -- Crops grow 10x faster during this step
 		},
 		canSkip = true,
 	},
 
 	-- ═══════════════════════════════════════════════════════════════════════════
-	-- PHASE 3: TRAVEL - Portal to Hub
+	-- PHASE 8: ECONOMY - Trade wheat for water
 	-- ═══════════════════════════════════════════════════════════════════════════
 	{
-		id = "use_portal",
-		category = "travel",
-		title = "Use the Hub Portal",
-		description = "Walk into the purple portal to travel to the Hub! The Hub has shops and merchants.",
-		hint = "The obsidian portal with purple glass teleports you to the Hub.",
+		id = "go_to_hub",
+		category = "economy",
+		title = "Visit the Hub",
+		description = "Use the purple portal on your island to travel to the Hub!",
+		hint = "Walk into the glowing purple portal to teleport to the Hub.",
 		trigger = {
 			type = "step_complete",
-			step = "harvest_crops",
+			step = "harvest_wheat",
 		},
 		objective = {
 			type = "enter_world",
@@ -203,123 +550,48 @@ TutorialConfig.Steps = {
 		},
 		reward = {
 			coins = 10,
-			message = "Welcome to the Hub! This is where you sell crops and buy supplies.",
+			message = "Welcome to the Hub! Find the Farm Shop to buy a Water Bucket.",
 		},
-		nextStep = "find_merchant",
+		nextStep = "buy_water",
 		uiType = "objective",
 		waypoint = "portal",
 		canSkip = true,
 	},
 
-	-- ═══════════════════════════════════════════════════════════════════════════
-	-- PHASE 4: ECONOMY - Sell & Buy in Hub
-	-- ═══════════════════════════════════════════════════════════════════════════
 	{
-		id = "find_merchant",
+		id = "buy_water",
 		category = "economy",
-		title = "Find the Merchant",
-		description = "The Merchant buys your crops! Look for the NPC with a gold coin icon.",
-		hint = "Walk up to the Merchant NPC and press E to interact.",
+		title = "Buy a Water Bucket",
+		description = "Find the Farm Shop and buy a Water Bucket (50 coins)!",
+		hint = "Look for the farmer NPC. You can also sell your wheat to the Merchant first!",
 		trigger = {
 			type = "step_complete",
-			step = "use_portal",
+			step = "go_to_hub",
 		},
 		objective = {
-			type = "npc_interact",
-			npcType = "merchant",
+			type = "buy_item",
+			itemId = 383, -- WATER_BUCKET
+			count = 1,
 		},
 		reward = {
-			coins = 10,
-			message = "You found the Merchant! Now sell your harvest.",
+			coins = 25,
+			message = "Water acquired! Return home and set up irrigation.",
 		},
-		nextStep = "sell_crops",
-		uiType = "objective",
-		waypoint = "merchant",
-		canSkip = true,
-	},
-
-	{
-		id = "sell_crops",
-		category = "economy",
-		title = "Sell Your Harvest",
-		description = "Sell your wheat to the Merchant for coins!",
-		hint = "Click SELL on your wheat. Each wheat sells for 3 coins!",
-		trigger = {
-			type = "step_complete",
-			step = "find_merchant",
-		},
-		objective = {
-			type = "sell_item",
-			count = 4, -- Sell at least 4 items
-		},
-		reward = {
-			coins = 20,
-			message = "Profit! Now buy more seeds to expand your farm.",
-		},
-		nextStep = "visit_farm_shop",
-		uiType = "objective",
-		canSkip = true,
-	},
-
-	{
-		id = "visit_farm_shop",
-		category = "economy",
-		title = "Visit the Farm Shop",
-		description = "The Farm Shop sells seeds and saplings. Time to invest in more crops!",
-		hint = "Look for the NPC with a green plant icon.",
-		trigger = {
-			type = "step_complete",
-			step = "sell_crops",
-		},
-		objective = {
-			type = "npc_interact",
-			npcType = "shop",
-		},
-		reward = {
-			coins = 10,
-			message = "The Farm Shop has all the seeds you need!",
-		},
-		nextStep = "buy_seeds",
+		nextStep = "return_home",
 		uiType = "objective",
 		waypoint = "farm_shop",
 		canSkip = true,
 	},
 
 	{
-		id = "buy_seeds",
-		category = "economy",
-		title = "Buy More Seeds",
-		description = "Spend your coins on Wheat Seeds! More seeds = bigger farm = more profit!",
-		hint = "Click BUY on Wheat Seeds. They're cheap at just 2 coins per stack!",
-		trigger = {
-			type = "step_complete",
-			step = "visit_farm_shop",
-		},
-		objective = {
-			type = "buy_item",
-			count = 1,
-		},
-		reward = {
-			coins = 15,
-			message = "Smart investment! Now return home and plant them.",
-		},
-		nextStep = "return_home",
-		uiType = "objective",
-		canSkip = true,
-	},
-
-	-- ═══════════════════════════════════════════════════════════════════════════
-	-- PHASE 5: RETURN & EXPAND
-	-- ═══════════════════════════════════════════════════════════════════════════
-	{
 		id = "return_home",
-		category = "travel",
-		title = "Return to Your Island",
+		category = "economy",
+		title = "Return Home",
 		description = "Use the Warp Master to return to your island!",
-		hint = "Talk to the Warp Master NPC and select your island.",
+		hint = "Talk to the Warp Master and select your island.",
 		trigger = {
 			type = "step_complete",
-			step = "buy_seeds",
+			step = "buy_water",
 		},
 		objective = {
 			type = "enter_world",
@@ -327,115 +599,65 @@ TutorialConfig.Steps = {
 		},
 		reward = {
 			coins = 10,
-			message = "Welcome home! Time to expand your farm.",
+			message = "Home sweet home! Now irrigate your farm.",
 		},
-		nextStep = "expand_farm",
+		nextStep = "place_water",
 		uiType = "objective",
-		waypoint = "warp_master",
 		canSkip = true,
 	},
 
+	-- ═══════════════════════════════════════════════════════════════════════════
+	-- PHASE 9: IRRIGATION - Set up water for faster crop growth
+	-- ═══════════════════════════════════════════════════════════════════════════
 	{
-		id = "expand_farm",
+		id = "place_water",
 		category = "farming",
-		title = "Expand Your Farm",
-		description = "Create more farmland with your shovel and plant your new wheat seeds!",
-		hint = "Right-click dirt with your shovel to make farmland. Then plant seeds!",
+		title = "Irrigate Your Farm",
+		description = "Place the Water Bucket near your farmland to irrigate it!",
+		hint = "Dig a 1-block hole near your crops, then right-click with the Water Bucket to place water.",
 		trigger = {
 			type = "step_complete",
 			step = "return_home",
 		},
 		objective = {
-			type = "multi_objective",
-			objectives = {
-				{ type = "place_block", blockId = 69, count = 4 }, -- Place 4 farmland
-				{ type = "place_block", blockId = 76, count = 4 }, -- Plant 4 wheat (WHEAT_CROP_0)
-			},
+			type = "place_block",
+			blockId = 380, -- WATER_SOURCE
+			count = 1,
 		},
 		reward = {
-			coins = 30,
-			message = "Farm expanded! You've mastered the economy loop!",
+			coins = 50,
+			items = {{itemId = 384, count = 1, metadata = {level = 1, minionType = "COPPER"}}}, -- Copper Golem!
+			message = "Irrigation complete! You've earned a Copper Golem for your hard work!",
 		},
-		nextStep = "gather_wood",
+		nextStep = "place_golem",
 		uiType = "objective",
 		canSkip = true,
 	},
 
 	-- ═══════════════════════════════════════════════════════════════════════════
-	-- PHASE 6: ADDITIONAL SKILLS (Optional continuation)
+	-- PHASE 10: AUTOMATION - Place the copper golem
 	-- ═══════════════════════════════════════════════════════════════════════════
 	{
-		id = "gather_wood",
-		category = "gathering",
-		title = "Chop Some Trees",
-		description = "Use your Copper Axe to chop trees! Wood is valuable - you can sell it.",
-		hint = "Select your axe (slot 2) and hold left-click on tree trunks. Axes chop faster!",
+		id = "place_golem",
+		category = "automation",
+		title = "Place the Copper Golem",
+		description = "Place your Copper Golem on a flat surface to start automation!",
+		hint = "Select the Copper Golem from your inventory and right-click on a flat block.",
 		trigger = {
 			type = "step_complete",
-			step = "expand_farm",
-		},
-		objective = {
-			type = "collect_item",
-			itemType = "log",
-			anyOf = {5, 38, 43, 48, 53, 58}, -- All log types
-			count = 8,
-		},
-		reward = {
-			coins = 15,
-			message = "Nice haul! Logs sell for 4-7 coins each at the Merchant.",
-		},
-		nextStep = "plant_sapling",
-		uiType = "objective",
-		highlightBlockTypes = {5, 38, 43, 48, 53, 58},
-		canSkip = true,
-	},
-
-	{
-		id = "plant_sapling",
-		category = "farming",
-		title = "Plant a Sapling",
-		description = "Plant one of your Oak Saplings. Trees regrow - infinite wood!",
-		hint = "Select a sapling from your inventory and right-click on dirt or grass to plant.",
-		trigger = {
-			type = "step_complete",
-			step = "gather_wood",
+			step = "place_water",
 		},
 		objective = {
 			type = "place_block",
-			blockId = 16, -- OAK_SAPLING
+			blockId = 384, -- COPPER_MINION
 			count = 1,
 		},
 		reward = {
-			coins = 10,
-			message = "Sapling planted! It will grow into a tree over time.",
-		},
-		nextStep = "craft_chest",
-		uiType = "objective",
-		canSkip = true,
-	},
-
-	{
-		id = "craft_chest",
-		category = "crafting",
-		title = "Craft a Chest",
-		description = "Chests store your items! Open your inventory and craft one.",
-		hint = "Press E → Crafting tab → Find Chest (8 planks). Use your Crafting Table for more recipes!",
-		trigger = {
-			type = "step_complete",
-			step = "plant_sapling",
-		},
-		objective = {
-			type = "craft_item",
-			itemId = 9, -- CHEST
-			count = 1,
-		},
-		reward = {
-			coins = 15,
-			message = "Chest crafted! Place it to store your valuables.",
+			coins = 50,
+			message = "Golem placed! It will automatically mine cobblestone and copper ore!",
 		},
 		nextStep = "tutorial_complete",
 		uiType = "objective",
-		highlightUI = "crafting_tab",
 		canSkip = true,
 	},
 
@@ -446,22 +668,22 @@ TutorialConfig.Steps = {
 		id = "tutorial_complete",
 		category = "basics",
 		title = "Tutorial Complete!",
-		description = "You've mastered the Skyblox economy! Farm crops, sell to the Merchant, buy upgrades from the Shop, and expand!",
+		description = "You've mastered the basics of Skyblox! Gather, craft, build, mine, farm, trade, and automate!",
 		hint = [[
 Next goals:
-• Grow more crops for steady income
-• Mine ores and smelt them for big profits
-• Buy a Furnace (150 coins) from the Building Shop
-• Save up for automation (Minions cost 2500+ coins!)
+• Expand your farm for steady crop income
+• Mine deeper for better ores (Iron, Steel, Bluesteel)
+• Craft better tools and armor
+• Get more Golems to automate everything!
 		]],
 		trigger = {
 			type = "step_complete",
-			step = "craft_chest",
+			step = "place_golem",
 		},
 		objective = nil,
 		reward = {
-			coins = 50,
-			message = "Tutorial Complete! Here's a bonus to grow your island!",
+			coins = 100,
+			message = "Tutorial Complete! Here's a bonus to grow your island empire!",
 		},
 		nextStep = nil,
 		uiType = "popup",
@@ -555,7 +777,7 @@ TutorialConfig.Settings = {
 	persistProgress = true,
 
 	-- Tutorial special actions
-	instantGrowCropsOnPlant = true, -- Instantly grow crops when plant_seeds step completes
+	instantGrowCropsOnPlant = false, -- Disabled; using tutorialBoost multiplier instead
 }
 
 return TutorialConfig

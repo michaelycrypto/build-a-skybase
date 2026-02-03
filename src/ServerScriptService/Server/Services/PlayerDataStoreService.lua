@@ -373,9 +373,8 @@ function PlayerDataStoreService:SavePlayerData(player: Player)
 				session.dirty = false
 				saveSucceeded = true
 
-				self._logger.Debug("Saved player data with lock", {
-					player = player.Name,
-					serverId = SERVER_ID
+				self._logger.Info("✅ Player data saved to DataStore", {
+					player = player.Name
 				})
 			else
 				-- Lock was taken by another server

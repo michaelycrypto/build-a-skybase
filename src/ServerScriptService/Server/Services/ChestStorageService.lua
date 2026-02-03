@@ -128,51 +128,20 @@ function ChestStorageService:InitializeStarterChest(x, y, z)
 		return
 	end
 
-	-- Starter chest items tuned for testing new wood families and recipes
-	-- Baseline essentials
+	-- Starter chest items for Craft-First Tutorial
+	-- Player opens this FIRST - contains everything needed for early game
 	local blockTypes = {
-		-- Requested essentials
-		{id = Constants.BlockType.COBBLESTONE_MINION, count = 1, metadata = { level = 1, minionType = "COBBLESTONE" }}, -- Level 1 Cobblestone Minion
-		{id = Constants.BlockType.BIRCH_SAPLING, count = 8},      -- Birch saplings (requested)
-		{id = Constants.BlockType.COBBLESTONE, count = 64},       -- 1 stack cobblestone (requested)
-
-		{id = Constants.BlockType.GRASS, count = 64},           -- 1 stack grass blocks
-		{id = Constants.BlockType.OAK_SAPLING, count = 8},      -- Oak saplings
-		{id = Constants.BlockType.WOOD, count = 64},            -- Oak logs
-		{id = Constants.BlockType.OAK_PLANKS, count = 64},      -- Oak planks
-		{id = Constants.BlockType.STONE_BRICKS, count = 64},    -- Building block: Stone Bricks
-		{id = Constants.BlockType.BRICKS, count = 64},          -- Building block: Bricks
-
-		-- Spruce samples
-		{id = Constants.BlockType.SPRUCE_SAPLING, count = 8},
-		{id = Constants.BlockType.SPRUCE_LOG, count = 32},
-		{id = Constants.BlockType.SPRUCE_PLANKS, count = 32},
-
-		-- Jungle samples
-		{id = Constants.BlockType.JUNGLE_SAPLING, count = 8},
-		{id = Constants.BlockType.JUNGLE_LOG, count = 32},
-		{id = Constants.BlockType.JUNGLE_PLANKS, count = 32},
-
-		-- Dark Oak samples
-		{id = Constants.BlockType.DARK_OAK_SAPLING, count = 8},
-		{id = Constants.BlockType.DARK_OAK_LOG, count = 32},
-		{id = Constants.BlockType.DARK_OAK_PLANKS, count = 32},
-
-		-- Birch samples
-		{id = Constants.BlockType.BIRCH_LOG, count = 32},
-		{id = Constants.BlockType.BIRCH_PLANKS, count = 32},
-
-		-- Acacia samples
-		{id = Constants.BlockType.ACACIA_SAPLING, count = 8},
-		{id = Constants.BlockType.ACACIA_LOG, count = 32},
-		{id = Constants.BlockType.ACACIA_PLANKS, count = 32},
-
-		-- Pre-crafted stairs for quick placement tests (one per family)
-		{id = Constants.BlockType.SPRUCE_STAIRS, count = 16},
-		{id = Constants.BlockType.JUNGLE_STAIRS, count = 16},
-		{id = Constants.BlockType.DARK_OAK_STAIRS, count = 16},
-		{id = Constants.BlockType.BIRCH_STAIRS, count = 16},
-		{id = Constants.BlockType.ACACIA_STAIRS, count = 16},
+		-- Tool crafting materials (craft pickaxe before mining)
+		{id = Constants.BlockType.COPPER_INGOT, count = 3},    -- For copper pickaxe
+		{id = Constants.BlockType.STICK, count = 8},           -- For tools (pickaxe + shovel later)
+		
+		-- Farming essentials
+		{id = Constants.BlockType.WHEAT_SEEDS, count = 16},    -- Wheat seeds for first farm
+		{id = Constants.BlockType.DIRT, count = 32},           -- Dirt blocks for farmland
+		{id = Constants.BlockType.OAK_SAPLING, count = 4},     -- Saplings for sustainable wood
+		
+		-- Smelting supplies
+		{id = Constants.BlockType.COAL, count = 12},           -- Coal for smelting copper ore
 	}
 
 	-- Fill chest slots
@@ -190,6 +159,55 @@ function ChestStorageService:InitializeStarterChest(x, y, z)
 	end
 
 	print(string.format("[InitializeStarterChest] ✅ Initialized starter chest at (%d,%d,%d) with %d block types", x, y, z, #blockTypes))
+end
+
+-- Initialize stone island chest with copper ingots for crafting first pickaxe
+function ChestStorageService:InitializeStoneIslandChest(x, y, z)
+	local ItemStack = require(ReplicatedStorage.Shared.VoxelWorld.Inventory.ItemStack)
+	local Constants = require(ReplicatedStorage.Shared.VoxelWorld.Core.Constants)
+
+	local _key = self:GetChestKey(x, y, z)
+
+	-- Get or create the chest
+	local chest = self:GetChest(x, y, z)
+
+	-- Only initialize if chest is empty (prevent overwriting existing data)
+	local hasItems = false
+	for i = 1, CHEST_SLOTS do
+		if isValidItem(chest.slots[i]) then
+			hasItems = true
+			break
+		end
+	end
+
+	if hasItems then
+		print(string.format("[InitializeStoneIslandChest] Chest at (%d,%d,%d) already has items, skipping initialization", x, y, z))
+		return
+	end
+
+	-- Stone island chest items - copper ore for smelting into tools + water bucket for farming
+	local blockTypes = {
+		{id = Constants.BlockType.COPPER_ORE, count = 8},    -- Copper ore to smelt (need 6 for tools)
+		{id = Constants.BlockType.IRON_ORE, count = 4},      -- Hint at progression
+		{id = Constants.BlockType.COAL, count = 8},          -- Fuel for smelting
+		{id = Constants.BlockType.WATER_BUCKET, count = 1},  -- Water bucket for irrigating farmland
+	}
+
+	-- Fill chest slots
+	for i, blockData in ipairs(blockTypes) do
+		if i <= CHEST_SLOTS then
+			local stack = ItemStack.new(blockData.id, blockData.count)
+			if blockData.metadata then
+				for k, v in pairs(blockData.metadata) do
+					stack.metadata[k] = v
+				end
+			end
+			chest.slots[i] = stack:Serialize()
+			print(string.format("[InitializeStoneIslandChest] Added block ID %d (x%d) to slot %d", blockData.id, blockData.count, i))
+		end
+	end
+
+	print(string.format("[InitializeStoneIslandChest] ✅ Initialized stone island chest at (%d,%d,%d) with %d item types", x, y, z, #blockTypes))
 end
 
 -- Handle player requesting to open chest

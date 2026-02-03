@@ -223,7 +223,7 @@ end
 	Handle player leaving
 --]]
 function PlayerService:OnPlayerRemoving(player)
-	self._logger.Debug("Player leaving", {playerName = player.Name})
+	self._logger.Info("Saving player data on leave", {playerName = player.Name})
 
 	-- Clear teleporting status (cleanup)
 	self._teleportingPlayers[player.UserId] = nil
@@ -447,7 +447,7 @@ function PlayerService:SavePlayerData(player)
 		self.Deps.PlayerDataStoreService:SavePlayerData(player)
 	end
 
-	self._logger.Debug("Saved player data", {playerName = player.Name})
+	self._logger.Info("Player data save completed", {playerName = player.Name})
 end
 
 --[[

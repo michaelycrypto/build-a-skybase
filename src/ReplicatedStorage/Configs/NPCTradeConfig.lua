@@ -96,6 +96,9 @@ NPCTradeConfig.ShopItems = {
 	{ itemId = B.DARK_OAK_SAPLING, price = 12000, stock = 2, stackSize = 8, category = "Saplings", shopType = "FARM" }, -- 1500/ea
 	{ itemId = B.ACACIA_SAPLING,   price = 24000, stock = 2, stackSize = 8, category = "Saplings", shopType = "FARM" }, -- 3000/ea
 
+	-- Water Bucket for irrigation (tutorial item - trade wheat for water!)
+	{ itemId = 383, price = 50, stock = 8, stackSize = 1, category = "Tools", shopType = "FARM" }, -- Water Bucket (cheap for tutorial)
+
 	-- ═══════════════════════════════════════════════════════════════════════
 	-- BUILDING SHOP - Blocks ONLY
 	-- ═══════════════════════════════════════════════════════════════════════

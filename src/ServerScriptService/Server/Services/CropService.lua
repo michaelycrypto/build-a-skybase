@@ -103,8 +103,16 @@ function CropService:Start()
 				continue
 			end
 			local nextId = NEXT_STAGE[id]
-			if nextId and math.random() < chance then
-				vws:SetBlock(x, y, z, nextId)
+			if nextId then
+				-- Check if farmland below is wet for faster growth
+				local farmlandBelow = vm:GetBlock(x, y - 1, z)
+				local growthChance = chance
+				if farmlandBelow == BLOCK.FARMLAND_WET then
+					growthChance = chance * 2 -- Wet farmland = 2x growth speed
+				end
+				if math.random() < growthChance then
+					vws:SetBlock(x, y, z, nextId)
+				end
 			end
 		end
 		if cursor > #self._iterKeys then

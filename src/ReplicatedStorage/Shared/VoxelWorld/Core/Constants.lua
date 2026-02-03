@@ -564,9 +564,15 @@ local Constants = {
 
 		-- Bucket items
 		BUCKET = 382,
-		WATER_BUCKET = 383
+		WATER_BUCKET = 383,
 
-		-- Note: Block IDs continue from 384+
+		-- Minion blocks (additional)
+		COPPER_MINION = 384,
+
+		-- Wet farmland (hydrated by nearby water)
+		FARMLAND_WET = 385,
+
+		-- Note: Block IDs continue from 386+
 	},
 
 	-- Mapping: Slab block ID → Full block ID (when two slabs combine)

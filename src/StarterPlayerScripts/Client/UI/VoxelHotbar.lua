@@ -94,7 +94,8 @@ local BLOCK_INFO = {
 	[35] = {name = "Furnace", icon = "🔥", category = "Utility"},
 	[36] = {name = "Glass", icon = "🪟", category = "Building"},
 	[97] = {name = "Stone Golem", icon = "🗿", category = "Utility"},
-	[123] = {name = "Coal Golem", icon = "⚫", category = "Utility"}
+	[123] = {name = "Coal Golem", icon = "⚫", category = "Utility"},
+	[384] = {name = "Copper Golem", icon = "🟠", category = "Utility"}
 }
 
 function VoxelHotbar.new()

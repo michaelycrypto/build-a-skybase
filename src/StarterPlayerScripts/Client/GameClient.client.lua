@@ -1516,13 +1516,16 @@ local function initialize()
 		end
 
 		-- Check if this is a water block (for batching optimization)
-		local isWaterBlock = data.blockId == Constants.BlockType.WATER_SOURCE
-			or data.blockId == Constants.BlockType.FLOWING_WATER
+		local isWaterSource = data.blockId == Constants.BlockType.WATER_SOURCE
+		local isFlowingWater = data.blockId == Constants.BlockType.FLOWING_WATER
+		local isWaterBlock = isWaterSource or isFlowingWater
 
 		-- Also check if previous block was water (water removal)
 		local prevBlock = wm:GetBlock(data.x, data.y, data.z)
 		local wasWaterBlock = prevBlock == Constants.BlockType.WATER_SOURCE
 			or prevBlock == Constants.BlockType.FLOWING_WATER
+		
+		-- Play sound and track tutorial for non-water blocks
 		if data.blockId and data.blockId ~= 0 and not isWaterBlock then
 			local SoundManager = Client.managers and Client.managers.SoundManager
 			if SoundManager and SoundManager.PlaySFXSafely then
@@ -1533,6 +1536,12 @@ local function initialize()
 			if Client.managers.TutorialManager then
 				Client.managers.TutorialManager:OnBlockPlaced(data.blockId)
 			end
+		end
+		
+		-- Tutorial tracking for WATER_SOURCE only (not flowing water spam)
+		-- This allows tracking irrigation step when player places water from bucket
+		if isWaterSource and Client.managers.TutorialManager then
+			Client.managers.TutorialManager:OnBlockPlaced(data.blockId)
 		end
 
 		-- Collect affected chunks (block's chunk + edge neighbors)

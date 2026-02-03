@@ -238,6 +238,14 @@ elseif IS_WORLD then
 		dependencies = {"VoxelWorldService", "WorldOwnershipService"},
 		mixins = {}
 	})
+	Injector:Bind("FarmlandService", script.Parent.Parent.Services.FarmlandService, {
+		dependencies = {"VoxelWorldService"},
+		mixins = {}
+	})
+	Injector:Bind("GrassService", script.Parent.Parent.Services.GrassService, {
+		dependencies = {"VoxelWorldService"},
+		mixins = {}
+	})
 	Injector:Bind("ChestStorageService", script.Parent.Parent.Services.ChestStorageService, {
 		dependencies = {"VoxelWorldService", "PlayerInventoryService"},
 		mixins = {}
@@ -284,6 +292,8 @@ local voxelWorldService = Injector:Resolve("VoxelWorldService")
 local waterService = Injector:Resolve("WaterService")
 local saplingService = IS_WORLD and Injector:Resolve("SaplingService") or nil
 local cropService = IS_WORLD and Injector:Resolve("CropService") or nil
+local farmlandService = IS_WORLD and Injector:Resolve("FarmlandService") or nil
+local grassService = IS_WORLD and Injector:Resolve("GrassService") or nil
 local worldOwnershipService = IS_WORLD and Injector:Resolve("WorldOwnershipService") or nil
 local chestStorageService = IS_WORLD and Injector:Resolve("ChestStorageService") or nil
 local smeltingService = IS_WORLD and Injector:Resolve("SmeltingService") or nil
@@ -313,6 +323,8 @@ end
 if voxelWorldService then
 	voxelWorldService.Deps.SaplingService = saplingService
 	voxelWorldService.Deps.CropService = cropService
+	voxelWorldService.Deps.FarmlandService = farmlandService
+	voxelWorldService.Deps.GrassService = grassService
 end
 
 -- Create services table for EventManager
@@ -1191,15 +1203,16 @@ Players.PlayerRemoving:Connect(function(player)
 		worldPlayerCharConnections[player.UserId] = nil
 	end
 
-	-- Save world data if owner leaving
+	-- IMPORTANT: Save player data FIRST before world data
+	-- World save yields and can race with server shutdown, destroying PlayerDataStoreService
+	if playerService then
+		playerService:OnPlayerRemoving(player)
+	end
+
+	-- Save world data if owner leaving (this yields - must be after player save)
 	if worldOwnershipService:GetOwnerId() == player.UserId then
 		voxelWorldService:SaveWorldData()
 		logger.Info("✅ World data saved (owner left)")
-	end
-
-	-- Save player data (includes inventory, armor via PlayerService)
-	if playerService then
-		playerService:OnPlayerRemoving(player)
 	end
 
 	-- Service cleanup

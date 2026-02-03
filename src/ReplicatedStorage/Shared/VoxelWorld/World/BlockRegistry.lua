@@ -1675,6 +1675,16 @@ BlockRegistry.Blocks = {
 		crossShape = false,
 		interactable = true
 	},
+	-- Utility: Copper Golem block (visual mob, block itself is invisible)
+	[Constants.BlockType.COPPER_MINION] = {
+		name = "Copper Golem",
+		solid = false,
+		transparent = true,
+		color = Color3.fromRGB(255, 255, 255),
+		textures = nil, -- invisible like AIR
+		crossShape = false,
+		interactable = true
+	},
 
 	[Constants.BlockType.APPLE] = {
 		name = "Apple",
@@ -2063,6 +2073,18 @@ BlockRegistry.Blocks = {
 		color = Color3.fromRGB(150, 100, 70),
 		textures = {
 			top = "rbxassetid://94222438062668",
+			side = "dirt",
+			bottom = "dirt"
+		},
+		crossShape = false
+	},
+	[Constants.BlockType.FARMLAND_WET] = {
+		name = "Farmland (Wet)",
+		solid = true,
+		transparent = false,
+		color = Color3.fromRGB(255, 255, 255), -- White tint to show true texture colors
+		textures = {
+			top = "rbxassetid://113228153713517", -- Moist soil texture
 			side = "dirt",
 			bottom = "dirt"
 		},

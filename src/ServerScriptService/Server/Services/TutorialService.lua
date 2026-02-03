@@ -61,6 +61,11 @@ end
 
 -- Steps that can progress on hub servers (hub-specific objectives)
 local HUB_ALLOWED_STEPS = {
+	-- New craft-first tutorial hub steps
+	go_to_hub = true,           -- Completes when entering hub
+	buy_water = true,           -- Buy water bucket from farm shop
+	return_home = true,         -- Completes when returning to player world
+	-- Legacy steps (for backwards compatibility)
 	use_portal = true,          -- Completes when entering hub
 	find_merchant = true,       -- NPC interaction
 	sell_crops = true,          -- Selling items
@@ -68,7 +73,6 @@ local HUB_ALLOWED_STEPS = {
 	buy_soil = true,            -- Buying soil/farmland
 	visit_farm_shop = true,     -- NPC interaction (Farmer)
 	buy_seeds = true,           -- Buying seeds
-	return_home = true,         -- Completes when returning to player world
 }
 
 -- Objective types that can be tracked on hub servers
@@ -284,13 +288,20 @@ function TutorialService:CompleteStep(player, stepId)
 
 	-- Mark step as completed
 	data.completedSteps[stepId] = os.time()
+	
+	-- Reset progress counters for next step
+	data.craftProgressCount = 0
+	data.placeProgressCount = 0
+	data.buyProgressCount = 0
+	data.sellProgressCount = 0
+	
 	self._logger.Info("Tutorial step completed", {
 		player = player.Name,
 		stepId = stepId
 	})
 
-	-- Special action: Instantly grow crops when plant_seeds completes
-	if stepId == "plant_seeds" and TutorialConfig.Settings.instantGrowCropsOnPlant then
+	-- Special action: Instantly grow crops when start_farm completes
+	if stepId == "start_farm" and TutorialConfig.Settings.instantGrowCropsOnPlant then
 		local cropService = self.Deps and self.Deps.CropService
 		if cropService and cropService.InstantGrowAllCrops then
 			local grownCount = cropService:InstantGrowAllCrops()
@@ -498,7 +509,29 @@ function TutorialService:TrackProgress(player, progressType, progressData)
 	local objective = currentStep.objective
 
 	-- Check if progress type matches objective type
-	if objective.type ~= progressType then
+	-- Allow multi_objective to receive any progress type it contains
+	local typeMatches = (objective.type == progressType)
+	if not typeMatches and objective.type == "multi_objective" then
+		-- Check if any sub-objective matches this progress type
+		for _, subObj in ipairs(objective.objectives or {}) do
+			if subObj.type == progressType then
+				typeMatches = true
+				break
+			end
+		end
+	end
+	-- Also allow craft_items to receive craft_item events
+	if not typeMatches and objective.type == "craft_items" and progressType == "craft_item" then
+		typeMatches = true
+	end
+
+	if not typeMatches then
+		self._logger.Debug("Tutorial progress type mismatch", {
+			player = player.Name,
+			stepId = data.currentStep,
+			progressType = progressType,
+			objectiveType = objective.type
+		})
 		return
 	end
 
@@ -557,6 +590,8 @@ function TutorialService:TrackProgress(player, progressType, progressData)
 	elseif progressType == "craft_item" then
 		local itemId = progressData.itemId
 		local craftedCount = progressData.count or 1
+
+		-- Handle single item objective
 		if objective.itemId and itemId == objective.itemId then
 			-- Track cumulative craft progress
 			data.craftProgressCount = (data.craftProgressCount or 0) + craftedCount
@@ -574,15 +609,103 @@ function TutorialService:TrackProgress(player, progressType, progressData)
 
 			-- Update progressData for UI display
 			progressData.count = data.craftProgressCount
+
+		-- Handle multi-item objective (craft_items type uses craft_item progress events)
+		elseif objective.items and objective.type == "craft_items" then
+			-- Initialize tracking table if needed
+			if not data.craftItemsProgress then
+				data.craftItemsProgress = {}
+			end
+
+			-- Check if this item is in our requirements
+			for _, req in ipairs(objective.items) do
+				if itemId == req.itemId then
+					-- Track progress for this specific item
+					local key = tostring(req.itemId)
+					data.craftItemsProgress[key] = (data.craftItemsProgress[key] or 0) + craftedCount
+
+					self._logger.Debug("Tutorial craft_items progress", {
+						player = player.Name,
+						stepId = data.currentStep,
+						itemId = itemId,
+						craftedCount = craftedCount,
+						totalForItem = data.craftItemsProgress[key],
+						requiredForItem = req.count or 1
+					})
+					break
+				end
+			end
+
+			-- Check if ALL items are complete
+			isComplete = true
+			for _, req in ipairs(objective.items) do
+				local key = tostring(req.itemId)
+				local progress = data.craftItemsProgress[key] or 0
+				if progress < (req.count or 1) then
+					isComplete = false
+					break
+				end
+			end
+
+			self._logger.Debug("Tutorial craft_items overall", {
+				player = player.Name,
+				stepId = data.currentStep,
+				isComplete = isComplete,
+				progress = data.craftItemsProgress
+			})
+
+		-- Handle multi_objective (mixed types like craft + place)
+		elseif objective.type == "multi_objective" and objective.objectives then
+			-- Initialize tracking table if needed
+			if not data.multiObjectiveProgress then
+				data.multiObjectiveProgress = {}
+			end
+
+			-- Check each sub-objective for craft_item matches
+			for i, subObj in ipairs(objective.objectives) do
+				if subObj.type == "craft_item" and itemId == subObj.itemId then
+					local key = "obj_" .. i
+					data.multiObjectiveProgress[key] = (data.multiObjectiveProgress[key] or 0) + craftedCount
+
+					self._logger.Debug("Tutorial multi_objective craft progress", {
+						player = player.Name,
+						stepId = data.currentStep,
+						subObjIndex = i,
+						itemId = itemId,
+						progress = data.multiObjectiveProgress[key],
+						required = subObj.count or 1
+					})
+					break
+				end
+			end
+
+			-- Check if ALL sub-objectives are complete
+			isComplete = self:_checkMultiObjectiveComplete(data, objective)
 		end
 
 	elseif progressType == "place_block" then
 		local blockId = progressData.blockId
+		self._logger.Debug("Tutorial place_block progress", {
+			player = player.Name,
+			stepId = data.currentStep,
+			blockId = blockId,
+			objectiveBlockId = objective.blockId,
+			objectiveAnyOf = objective.anyOf,
+			objectiveType = objective.type
+		})
 		if objective.blockId and blockId == objective.blockId then
 			-- Track cumulative progress
 			data.placeProgressCount = (data.placeProgressCount or 0) + 1
 			isComplete = data.placeProgressCount >= (objective.count or 1)
 			progressData.count = data.placeProgressCount
+			self._logger.Info("Tutorial place_block MATCHED", {
+				player = player.Name,
+				stepId = data.currentStep,
+				blockId = blockId,
+				progress = data.placeProgressCount,
+				required = objective.count or 1,
+				isComplete = isComplete
+			})
 		elseif objective.anyOf then
 			for _, targetId in ipairs(objective.anyOf) do
 				if blockId == targetId then
@@ -592,6 +715,47 @@ function TutorialService:TrackProgress(player, progressType, progressData)
 					break
 				end
 			end
+		-- Handle multi_objective (mixed types like craft + place)
+		elseif objective.type == "multi_objective" and objective.objectives then
+			-- Initialize tracking table if needed
+			if not data.multiObjectiveProgress then
+				data.multiObjectiveProgress = {}
+			end
+
+			-- Check each sub-objective for place_block matches
+			for i, subObj in ipairs(objective.objectives) do
+				if subObj.type == "place_block" then
+					local matches = false
+					if subObj.blockId and blockId == subObj.blockId then
+						matches = true
+					elseif subObj.anyOf then
+						for _, targetId in ipairs(subObj.anyOf) do
+							if blockId == targetId then
+								matches = true
+								break
+							end
+						end
+					end
+
+					if matches then
+						local key = "obj_" .. i
+						data.multiObjectiveProgress[key] = (data.multiObjectiveProgress[key] or 0) + 1
+
+						self._logger.Debug("Tutorial multi_objective place progress", {
+							player = player.Name,
+							stepId = data.currentStep,
+							subObjIndex = i,
+							blockId = blockId,
+							progress = data.multiObjectiveProgress[key],
+							required = subObj.count or 1
+						})
+						break
+					end
+				end
+			end
+
+			-- Check if ALL sub-objectives are complete
+			isComplete = self:_checkMultiObjectiveComplete(data, objective)
 		end
 
 	elseif progressType == "break_block" then
@@ -685,11 +849,23 @@ function TutorialService:TrackProgress(player, progressType, progressData)
 		progressData.count = data.sellProgressCount
 
 	elseif progressType == "buy_item" then
+		local itemId = progressData.itemId
 		local count = progressData.count or 1
-		-- Track cumulative buy progress
-		data.buyProgressCount = (data.buyProgressCount or 0) + count
-		isComplete = data.buyProgressCount >= (objective.count or 1)
-		progressData.count = data.buyProgressCount
+		
+		-- If objective specifies an itemId, only count matching purchases
+		if objective.itemId then
+			if itemId == objective.itemId then
+				-- Track cumulative buy progress for specific item
+				data.buyProgressCount = (data.buyProgressCount or 0) + count
+				isComplete = data.buyProgressCount >= (objective.count or 1)
+				progressData.count = data.buyProgressCount
+			end
+		else
+			-- No specific item required, count any purchase
+			data.buyProgressCount = (data.buyProgressCount or 0) + count
+			isComplete = data.buyProgressCount >= (objective.count or 1)
+			progressData.count = data.buyProgressCount
+		end
 
 	elseif progressType == "enter_world" then
 		local worldType = progressData.worldType
@@ -725,6 +901,31 @@ function TutorialService:TrackProgress(player, progressType, progressData)
 end
 
 --[[
+	Check if all sub-objectives in a multi_objective are complete
+]]
+function TutorialService:_checkMultiObjectiveComplete(data, objective)
+	if not objective.objectives then
+		return false
+	end
+
+	if not data.multiObjectiveProgress then
+		return false
+	end
+
+	for i, subObj in ipairs(objective.objectives) do
+		local key = "obj_" .. i
+		local progress = data.multiObjectiveProgress[key] or 0
+		local required = subObj.count or 1
+
+		if progress < required then
+			return false
+		end
+	end
+
+	return true
+end
+
+--[[
 	Grant reward for completing a step
 ]]
 function TutorialService:_grantReward(player, reward)
@@ -749,6 +950,34 @@ function TutorialService:_grantReward(player, reward)
 	if reward.experience and self.Deps.PlayerService then
 		self.Deps.PlayerService:AddExperience(player, reward.experience)
 		granted.experience = reward.experience
+	end
+
+	-- Grant item rewards (e.g., copper ore, copper golem)
+	if reward.items and self.Deps.PlayerInventoryService then
+		granted.items = {}
+		for _, itemData in ipairs(reward.items) do
+			local itemId = itemData.itemId
+			local count = itemData.count or 1
+			local metadata = itemData.metadata
+			
+			-- Add item to player inventory
+			local success = self.Deps.PlayerInventoryService:AddItem(player, itemId, count, metadata)
+			if success then
+				table.insert(granted.items, {itemId = itemId, count = count})
+				self._logger.Info("Tutorial item reward granted", {
+					player = player.Name,
+					itemId = itemId,
+					count = count,
+					hasMetadata = metadata ~= nil
+				})
+			else
+				self._logger.Warn("Failed to grant tutorial item reward", {
+					player = player.Name,
+					itemId = itemId,
+					count = count
+				})
+			end
+		end
 	end
 
 	self._logger.Info("Tutorial reward granted", {

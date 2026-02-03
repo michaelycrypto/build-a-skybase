@@ -91,6 +91,7 @@ local VALID_ITEM_IDS = {
 	[Constants.BlockType.ACACIA_LEAVES] = true,
 		-- Farming items
 		[Constants.BlockType.FARMLAND] = true,
+		[Constants.BlockType.FARMLAND_WET] = true,
 		[Constants.BlockType.WHEAT_SEEDS] = true,
 		[Constants.BlockType.WHEAT] = true,
 		[Constants.BlockType.POTATO] = true,
@@ -122,6 +123,7 @@ local VALID_ITEM_IDS = {
 	[Constants.BlockType.COMPOST] = true,
 	[Constants.BlockType.COBBLESTONE_MINION] = true,
 	[Constants.BlockType.COAL_MINION] = true,
+	[Constants.BlockType.COPPER_MINION] = true,
 	-- Ores (4-tier progression: Copper → Iron → Steel → Bluesteel)
 	[Constants.BlockType.COPPER_ORE] = true,
 	[Constants.BlockType.BLUESTEEL_ORE] = true,

@@ -57,6 +57,8 @@ local Manifest = {
 		-- Bucket interactions (Minecraft-style water pickup/placement)
 		RequestBucketPickup = {"any"}, -- {x, y, z, hotbarSlot} - Pick up water source with bucket
 		RequestBucketPlace = {"any"}, -- {x, y, z, hotbarSlot, targetBlockPos, faceNormal} - Place water from bucket
+		-- Shovel interactions (farmland creation/reversion)
+		RequestShovelInteraction = {"any"}, -- {x, y, z, hotbarSlot, interactionType} - Till dirt/grass to farmland or revert
 		-- PvP melee
 		PlayerMeleeHit = {"any"}, -- {targetUserId, swingTimeMs}
 
