@@ -1026,11 +1026,17 @@ local function completeInitialization(_preloadedEmoteManager)
 	chestUI:Initialize()
 	Client.chestUI = chestUI
 
-	-- Initialize Furnace UI (smelting mini-game)
+	-- Initialize Furnace UI (Minecraft-style auto-smelting)
 	local FurnaceUI = require(script.Parent.UI.FurnaceUI)
 	local furnaceUI = FurnaceUI.new(inventoryManager)
 	furnaceUI:Initialize()
 	Client.furnaceUI = furnaceUI
+
+	-- Initialize Smithing UI (Anvil with temperature mini-game)
+	local SmithingUI = require(script.Parent.UI.SmithingUI)
+	local smithingUI = SmithingUI.new(inventoryManager)
+	smithingUI:Initialize()
+	Client.smithingUI = smithingUI
 
 	-- Initialize Minion UI (after ChestUI due to dependency)
 	local MinionUI = require(script.Parent.UI.MinionUI)
@@ -1524,7 +1530,7 @@ local function initialize()
 		local prevBlock = wm:GetBlock(data.x, data.y, data.z)
 		local wasWaterBlock = prevBlock == Constants.BlockType.WATER_SOURCE
 			or prevBlock == Constants.BlockType.FLOWING_WATER
-		
+
 		-- Play sound and track tutorial for non-water blocks
 		if data.blockId and data.blockId ~= 0 and not isWaterBlock then
 			local SoundManager = Client.managers and Client.managers.SoundManager
@@ -1537,7 +1543,7 @@ local function initialize()
 				Client.managers.TutorialManager:OnBlockPlaced(data.blockId)
 			end
 		end
-		
+
 		-- Tutorial tracking for WATER_SOURCE only (not flowing water spam)
 		-- This allows tracking irrigation step when player places water from bucket
 		if isWaterSource and Client.managers.TutorialManager then

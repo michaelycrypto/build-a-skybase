@@ -25,7 +25,8 @@ local RecipeConfig = {}
 -- Recipe categories for UI organization
 RecipeConfig.Categories = {
 	MATERIALS = "Materials",
-	SMELTING = "Smelting",
+	SMELTING = "Smelting",      -- Simple furnace smelting (auto)
+	SMITHING = "Smithing",      -- Anvil smithing (mini-game)
 	TOOLS = "Tools",
 	ARMOR = "Armor",
 	BUILDING = "Building Blocks"
@@ -61,51 +62,39 @@ RecipeConfig.Recipes = {
 	},
 
 	-- ═══════════════════════════════════════════════════════════════════════════
-	-- SMELTING RECIPES (Furnace: Ore → Ingot, Coal is fuel not ingredient)
-	-- Note: Coal cost is determined by SmeltingConfig based on ore tier
-	--       Skilled play reduces coal consumption (up to 30% savings!)
+	-- SMELTING RECIPES (Simple Furnace: Ore → Ingot, auto-smelts with fuel)
+	-- Note: These are processed by the Minecraft-style auto-smelting Furnace.
+	--       Put ore in input, coal in fuel, output appears automatically.
 	-- ═══════════════════════════════════════════════════════════════════════════
 
-	smelt_copper = {
-		id = "smelt_copper",
-		name = "Copper Ingot",
-		category = RecipeConfig.Categories.SMELTING,
-		requiresFurnace = true,
-		inputs = {
-			{itemId = 98, count = 1}   -- 1x Copper Ore
-		},
-		outputs = { {itemId = 105, count = 1} }  -- 1x Copper Ingot
-	},
+	-- Note: Basic smelting recipes (copper ore → copper ingot, iron ore → iron ingot)
+	-- are now defined in FurnaceConfig.lua as simple input→output mappings.
+	-- The furnace handles them automatically without recipe definitions here.
 
-	smelt_iron = {
-		id = "smelt_iron",
-		name = "Iron Ingot",
-		category = RecipeConfig.Categories.SMELTING,
-		requiresFurnace = true,
-		inputs = {
-			{itemId = 30, count = 1}   -- 1x Iron Ore
-		},
-		outputs = { {itemId = 33, count = 1} }  -- 1x Iron Ingot
-	},
+	-- ═══════════════════════════════════════════════════════════════════════════
+	-- SMITHING RECIPES (Anvil: Advanced alloys with temperature mini-game)
+	-- Note: These require skill! Coal cost varies based on efficiency.
+	--       Better temperature control = less coal consumed (up to 30% savings!)
+	-- ═══════════════════════════════════════════════════════════════════════════
 
-	smelt_steel = {
-		id = "smelt_steel",
+	smith_steel = {
+		id = "smith_steel",
 		name = "Steel Ingot",
-		category = RecipeConfig.Categories.SMELTING,
-		requiresFurnace = true,
+		category = RecipeConfig.Categories.SMITHING,
+		requiresAnvil = true,
 		inputs = {
-			{itemId = 30, count = 1}   -- 1x Iron Ore (more coal = higher temp steel)
+			{itemId = 33, count = 1}   -- 1x Iron Ingot (refined, not raw ore)
 		},
 		outputs = { {itemId = 108, count = 1} }  -- 1x Steel Ingot
 	},
 
-	smelt_bluesteel = {
-		id = "smelt_bluesteel",
+	smith_bluesteel = {
+		id = "smith_bluesteel",
 		name = "Bluesteel Ingot",
-		category = RecipeConfig.Categories.SMELTING,
-		requiresFurnace = true,
+		category = RecipeConfig.Categories.SMITHING,
+		requiresAnvil = true,
 		inputs = {
-			{itemId = 30, count = 1},   -- 1x Iron Ore
+			{itemId = 33, count = 1},   -- 1x Iron Ingot
 			{itemId = 115, count = 1}   -- 1x Bluesteel Dust (catalyst)
 		},
 		outputs = { {itemId = 109, count = 1} }  -- 1x Bluesteel Ingot
@@ -592,6 +581,20 @@ RecipeConfig.Recipes = {
 		},
 		outputs = {
 			{itemId = 35, count = 1}  -- 1x Furnace (BlockType.FURNACE)
+		}
+	},
+
+	anvil = {
+		id = "anvil",
+		name = "Anvil",
+		category = RecipeConfig.Categories.TOOLS,
+		requiresWorkbench = true,
+		inputs = {
+			{itemId = 33, count = 4},  -- 4x Iron Ingot
+			{itemId = 14, count = 3}   -- 3x Cobblestone
+		},
+		outputs = {
+			{itemId = 341, count = 1}  -- 1x Anvil (BlockType.ANVIL)
 		}
 	},
 

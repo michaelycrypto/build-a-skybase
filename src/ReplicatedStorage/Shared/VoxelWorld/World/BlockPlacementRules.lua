@@ -85,44 +85,44 @@ function BlockPlacementRules:CanPlace(worldManager, x: number, y: number, z: num
 	local bodyPos = playerBodyPos or playerPos  -- Use body position if provided, otherwise fall back to playerPos
 	if bodyPos then
 		local bs = Constants.BLOCK_SIZE
-		
+
 		-- Block AABB (the block being placed)
 		local blockMinY = y * bs
 		local blockMaxY = (y + 1) * bs
-		
+
 		-- Player feet position
 		local playerFeetOffset = 2.5  -- distance from rootPart to feet
 		local playerFeetY = bodyPos.Y - playerFeetOffset
-		
+
 		-- If player's feet are at or above the block top, they're standing on it - allow placement
 		-- Add small tolerance (0.1 studs) to account for slight position variations
 		if playerFeetY >= blockMaxY - 0.1 then
 			-- Player is on top of or above the block, placement is fine
 			return true
 		end
-		
+
 		-- Player is not above the block, check for horizontal collision
 		local blockMinX = x * bs
 		local blockMaxX = (x + 1) * bs
 		local blockMinZ = z * bs
 		local blockMaxZ = (z + 1) * bs
-		
+
 		-- Player body AABB (approximation for R15 character)
 		local playerHalfWidth = 0.4  -- studs from center
 		local playerHeadOffset = 2.0  -- distance from rootPart to top of head
-		
+
 		local playerMinX = bodyPos.X - playerHalfWidth
 		local playerMaxX = bodyPos.X + playerHalfWidth
 		local playerMinY = playerFeetY
 		local playerMaxY = bodyPos.Y + playerHeadOffset
 		local playerMinZ = bodyPos.Z - playerHalfWidth
 		local playerMaxZ = bodyPos.Z + playerHalfWidth
-		
+
 		-- Check AABB overlap
 		local overlapX = blockMinX < playerMaxX and blockMaxX > playerMinX
 		local overlapY = blockMinY < playerMaxY and blockMaxY > playerMinY
 		local overlapZ = blockMinZ < playerMaxZ and blockMaxZ > playerMinZ
-		
+
 		if overlapX and overlapY and overlapZ then
 			return false, "would_suffocate"
 		end

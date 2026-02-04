@@ -1,11 +1,11 @@
 --[[
 	TutorialWaypoint.lua - Tutorial Waypoint Rendering System
-	
+
 	Renders visual waypoints to guide players to objectives:
 	- 3D marker above target location (floating icon/label)
 	- On-screen indicator pointing to off-screen targets
 	- Distance display
-	
+
 	Used for hub tutorial steps to guide players to NPCs.
 ]]
 
@@ -50,7 +50,7 @@ local ANIMATION = {
 ]]
 function TutorialWaypoint:Initialize()
 	if waypointGui then return end
-	
+
 	waypointGui = Instance.new("ScreenGui")
 	waypointGui.Name = "TutorialWaypointUI"
 	waypointGui.ResetOnSpawn = false
@@ -76,24 +76,39 @@ end
 --[[
 	Create the 3D world marker (BillboardGui above target)
 	@param config: table - Waypoint configuration
-	@return BillboardGui
+	@param worldPos: Vector3 - World position for the marker
+	@return BillboardGui, Part (anchor)
 ]]
-local function createWorldMarker(config)
+local function createWorldMarker(config, worldPos)
+	-- Create invisible anchor part at target position
+	-- BillboardGui requires an Adornee to position correctly
+	local anchor = Instance.new("Part")
+	anchor.Name = "WaypointAnchor"
+	anchor.Size = Vector3.new(0.1, 0.1, 0.1)
+	anchor.Position = worldPos
+	anchor.Anchored = true
+	anchor.CanCollide = false
+	anchor.CanQuery = false
+	anchor.CanTouch = false
+	anchor.Transparency = 1
+	anchor.Parent = workspace
+	
 	local billboard = Instance.new("BillboardGui")
 	billboard.Name = "WaypointMarker"
 	billboard.Size = UDim2.fromOffset(80, 100)
-	billboard.StudsOffset = Vector3.new(0, 4, 0)
+	billboard.StudsOffset = Vector3.new(0, 0, 0)
 	billboard.AlwaysOnTop = true
 	billboard.MaxDistance = 500
+	billboard.Adornee = anchor
 	billboard.Parent = workspace
-	
+
 	-- Container frame
 	local container = Instance.new("Frame")
 	container.Name = "Container"
 	container.Size = UDim2.fromScale(1, 1)
 	container.BackgroundTransparency = 1
 	container.Parent = billboard
-	
+
 	-- Marker icon (diamond shape)
 	local marker = Instance.new("ImageLabel")
 	marker.Name = "Marker"
@@ -104,14 +119,14 @@ local function createWorldMarker(config)
 	marker.Image = "rbxassetid://6031094678" -- Diamond marker icon
 	marker.ImageColor3 = config.color or COLORS.gold
 	marker.Parent = container
-	
+
 	-- Pulsing glow effect
 	local glow = Instance.new("UIStroke")
 	glow.Color = config.color or COLORS.gold
 	glow.Thickness = 2
 	glow.Transparency = 0.3
 	glow.Parent = marker
-	
+
 	-- Label background
 	local labelBg = Instance.new("Frame")
 	labelBg.Name = "LabelBg"
@@ -120,11 +135,11 @@ local function createWorldMarker(config)
 	labelBg.BackgroundColor3 = COLORS.background
 	labelBg.BackgroundTransparency = 0.3
 	labelBg.Parent = container
-	
+
 	local labelCorner = Instance.new("UICorner")
 	labelCorner.CornerRadius = UDim.new(0, 6)
 	labelCorner.Parent = labelBg
-	
+
 	-- Label text
 	local label = Instance.new("TextLabel")
 	label.Name = "Label"
@@ -135,7 +150,7 @@ local function createWorldMarker(config)
 	label.TextSize = 14
 	label.Font = Enum.Font.GothamBold
 	label.Parent = labelBg
-	
+
 	-- Distance label
 	local distanceLabel = Instance.new("TextLabel")
 	distanceLabel.Name = "Distance"
@@ -147,19 +162,19 @@ local function createWorldMarker(config)
 	distanceLabel.TextSize = 12
 	distanceLabel.Font = Enum.Font.Gotham
 	distanceLabel.Parent = container
-	
+
 	-- Animate marker bobbing
 	local startPos = marker.Position
 	TweenService:Create(marker, ANIMATION.bob, {
 		Position = UDim2.new(startPos.X.Scale, startPos.X.Offset, startPos.Y.Scale, startPos.Y.Offset - 8)
 	}):Play()
-	
+
 	-- Animate glow pulsing
 	TweenService:Create(glow, ANIMATION.pulse, {
 		Transparency = 0.7
 	}):Play()
-	
-	return billboard
+
+	return billboard, anchor
 end
 
 --[[
@@ -176,7 +191,7 @@ local function createScreenIndicator(config)
 	indicator.Visible = false
 	indicator.AnchorPoint = Vector2.new(0.5, 0.5)
 	indicator.Parent = waypointGui
-	
+
 	-- Diamond shape (rotated square)
 	local diamond = Instance.new("Frame")
 	diamond.Name = "Diamond"
@@ -188,19 +203,19 @@ local function createScreenIndicator(config)
 	diamond.BackgroundTransparency = 0.1
 	diamond.BorderSizePixel = 0
 	diamond.Parent = indicator
-	
+
 	-- Slight corner rounding for softer look
 	local corner = Instance.new("UICorner")
 	corner.CornerRadius = UDim.new(0, 2)
 	corner.Parent = diamond
-	
+
 	-- Subtle glow/border
 	local glow = Instance.new("UIStroke")
 	glow.Color = config.color or COLORS.gold
 	glow.Thickness = 1
 	glow.Transparency = 0.3
 	glow.Parent = diamond
-	
+
 	return indicator
 end
 
@@ -209,41 +224,38 @@ end
 ]]
 local function updateWaypoint()
 	if not activeWaypoint then return end
-	
+
 	local targetPos = activeWaypoint.worldPosition
 	local marker = activeWaypoint.worldMarker
 	local indicator = activeWaypoint.screenIndicator
-	
+
 	-- Get player position
 	local character = player.Character
 	if not character then return end
-	
+
 	local hrp = character:FindFirstChild("HumanoidRootPart")
 	if not hrp then return end
-	
+
 	local playerPos = hrp.Position
-	
+
 	-- Calculate distance
 	local distance = (targetPos - playerPos).Magnitude
 	local distanceText = string.format("%.0fm", distance / BLOCK_SIZE)
-	
-	-- Update world marker position and distance
+
+	-- Update world marker distance display
 	if marker then
-		marker.Adornee = nil -- Clear adornee, use position directly
-		marker.StudsOffsetWorldSpace = targetPos + Vector3.new(0, 4, 0)
-		
 		local distLabel = marker:FindFirstChild("Container") and marker.Container:FindFirstChild("Distance")
 		if distLabel then
 			distLabel.Text = distanceText
 		end
 	end
-	
+
 	-- Check if target is on screen
 	local camera = workspace.CurrentCamera
 	if not camera then return end
-	
+
 	local screenPos, onScreen = camera:WorldToViewportPoint(targetPos)
-	
+
 	if onScreen and screenPos.Z > 0 then
 		-- Target is on screen - hide edge indicator (3D marker is visible)
 		if indicator then
@@ -253,31 +265,31 @@ local function updateWaypoint()
 		-- Target is off screen - show diamond indicator at edge
 		if indicator then
 			indicator.Visible = true
-			
+
 			-- Calculate direction to target
 			local viewportSize = camera.ViewportSize
 			local centerX = viewportSize.X / 2
 			local centerY = viewportSize.Y / 2
-			
+
 			-- Get direction from center to target screen position
 			local dirX = screenPos.X - centerX
 			local dirY = screenPos.Y - centerY
-			
+
 			-- Handle behind camera (flip direction)
 			if screenPos.Z < 0 then
 				dirX = -dirX
 				dirY = -dirY
 			end
-			
+
 			-- Normalize and calculate angle
 			local angle = math.atan2(dirY, dirX)
-			
+
 			-- Position diamond at edge of screen with smaller padding
 			local padding = 20
 			local radius = math.min(centerX - padding, centerY - padding)
 			local edgeX = centerX + math.cos(angle) * radius
 			local edgeY = centerY + math.sin(angle) * radius
-			
+
 			indicator.Position = UDim2.fromOffset(edgeX, edgeY)
 			-- Diamond shape doesn't need rotation - stays tilted at 45 degrees
 		end
@@ -295,7 +307,7 @@ end
 function TutorialWaypoint:Show(config)
 	self:Initialize()
 	self:Hide()
-	
+
 	-- Calculate world position
 	local worldPos
 	if config.worldPosition then
@@ -306,23 +318,19 @@ function TutorialWaypoint:Show(config)
 		warn("TutorialWaypoint: No position provided")
 		return
 	end
-	
+
 	-- Create waypoint elements
-	local worldMarker = createWorldMarker(config)
+	local worldMarker, anchor = createWorldMarker(config, worldPos)
 	local screenIndicator = createScreenIndicator(config)
-	
+
 	activeWaypoint = {
 		worldPosition = worldPos,
 		worldMarker = worldMarker,
+		anchor = anchor,
 		screenIndicator = screenIndicator,
 		config = config,
 	}
-	
-	-- Initial position update
-	if worldMarker then
-		worldMarker.StudsOffsetWorldSpace = worldPos + Vector3.new(0, 4, 0)
-	end
-	
+
 	-- Start update loop
 	if updateConnection then
 		updateConnection:Disconnect()
@@ -342,7 +350,7 @@ function TutorialWaypoint:ShowForNPC(npcId, config)
 		warn("TutorialWaypoint: NPCs folder not found")
 		return
 	end
-	
+
 	local npcModel = npcsFolder:FindFirstChild(npcId)
 	if not npcModel then
 		-- Try to find by pattern match
@@ -353,21 +361,21 @@ function TutorialWaypoint:ShowForNPC(npcId, config)
 			end
 		end
 	end
-	
+
 	if not npcModel then
 		warn("TutorialWaypoint: NPC not found:", npcId)
 		return
 	end
-	
+
 	-- Get NPC position
 	local hrp = npcModel:FindFirstChild("HumanoidRootPart")
 	local primaryPart = npcModel.PrimaryPart or hrp
-	
+
 	if not primaryPart then
 		warn("TutorialWaypoint: NPC has no position part:", npcId)
 		return
 	end
-	
+
 	self:Show({
 		worldPosition = primaryPart.Position,
 		label = config.label or npcModel.Name,
@@ -383,10 +391,13 @@ function TutorialWaypoint:Hide()
 		updateConnection:Disconnect()
 		updateConnection = nil
 	end
-	
+
 	if activeWaypoint then
 		if activeWaypoint.worldMarker then
 			activeWaypoint.worldMarker:Destroy()
+		end
+		if activeWaypoint.anchor then
+			activeWaypoint.anchor:Destroy()
 		end
 		if activeWaypoint.screenIndicator then
 			activeWaypoint.screenIndicator:Destroy()

@@ -1,10 +1,10 @@
 --[[
 	FarmlandService
 	Manages farmland hydration state based on nearby water blocks.
-	
+
 	Farmland becomes "wet" (FARMLAND_WET) when water is within 4 blocks horizontally.
 	When water is removed, farmland becomes "dry" (FARMLAND).
-	
+
 	This service:
 	1. Tracks all farmland blocks in the world
 	2. Updates hydration state when water is placed/removed nearby
@@ -50,7 +50,7 @@ function FarmlandService:Start()
 		return
 	end
 	BaseService.Start(self)
-	
+
 	-- Start the periodic hydration check loop
 	local function ensureIter()
 		if self._iterDirty then
@@ -61,41 +61,41 @@ function FarmlandService:Start()
 			self._iterDirty = false
 		end
 	end
-	
+
 	local cursor = 1
 	local function tick()
 		ensureIter()
 		local processed = 0
-		
+
 		while processed < MAX_PER_TICK and cursor <= #self._iterKeys do
 			local key = self._iterKeys[cursor]
 			cursor += 1
 			processed += 1
-			
+
 			local x, y, z = string.match(key, "(-?%d+),(-?%d+),(-?%d+)")
 			x = tonumber(x)
 			y = tonumber(y)
 			z = tonumber(z)
-			
+
 			local vws = self.Deps and self.Deps.VoxelWorldService
 			local vm = vws and vws.worldManager
 			if not (vm and x and y and z) then
 				continue
 			end
-			
+
 			local currentBlockId = vm:GetBlock(x, y, z)
-			
+
 			-- Check if still farmland
 			if not self:_isFarmland(currentBlockId) then
 				self._farmland[key] = nil
 				self._iterDirty = true
 				continue
 			end
-			
+
 			-- Check hydration and update if needed
 			local shouldBeWet = self:_checkWaterNearby(vm, x, y, z)
 			local isCurrentlyWet = currentBlockId == BLOCK.FARMLAND_WET
-			
+
 			if shouldBeWet and not isCurrentlyWet then
 				-- Convert to wet
 				self:_setFarmlandState(vws, x, y, z, BLOCK.FARMLAND_WET, currentBlockId)
@@ -104,13 +104,13 @@ function FarmlandService:Start()
 				self:_setFarmlandState(vws, x, y, z, BLOCK.FARMLAND, currentBlockId)
 			end
 		end
-		
+
 		-- Reset cursor when we've processed all
 		if cursor > #self._iterKeys then
 			cursor = 1
 		end
 	end
-	
+
 	-- Run the tick loop
 	task.spawn(function()
 		while self._started do
@@ -165,7 +165,7 @@ function FarmlandService:_setFarmlandState(vws, x, y, z, newBlockId, oldBlockId)
 		math.floor(x / Constants.CHUNK_SIZE_X),
 		math.floor(z / Constants.CHUNK_SIZE_Z)
 	)] = true
-	
+
 	-- Broadcast the block change
 	EventManager:FireEventToAll("BlockChanged", {
 		x = x, y = y, z = z,
@@ -188,7 +188,7 @@ function FarmlandService:OnBlockChanged(x, y, z, newBlockId, _newMetadata, oldBl
 	if not vm then
 		return
 	end
-	
+
 	-- Track new farmland blocks
 	if self:_isFarmland(newBlockId) then
 		local key = keyOf(x, y, z)
@@ -197,7 +197,7 @@ function FarmlandService:OnBlockChanged(x, y, z, newBlockId, _newMetadata, oldBl
 			self._iterDirty = true
 		end
 	end
-	
+
 	-- Untrack removed farmland
 	if self:_isFarmland(oldBlockId) and not self:_isFarmland(newBlockId) then
 		local key = keyOf(x, y, z)
@@ -206,12 +206,12 @@ function FarmlandService:OnBlockChanged(x, y, z, newBlockId, _newMetadata, oldBl
 			self._iterDirty = true
 		end
 	end
-	
+
 	-- When water is placed, check nearby farmland and hydrate it
 	if WaterUtils.IsWater(newBlockId) and not WaterUtils.IsWater(oldBlockId) then
 		self:_updateNearbyFarmland(vm, vws, x, y, z, true)
 	end
-	
+
 	-- When water is removed, check nearby farmland and potentially dry it
 	if WaterUtils.IsWater(oldBlockId) and not WaterUtils.IsWater(newBlockId) then
 		self:_updateNearbyFarmland(vm, vws, x, y, z, false)
@@ -233,7 +233,7 @@ function FarmlandService:_updateNearbyFarmland(worldManager, vws, wx, wy, wz, wa
 			for dy = 0, 1 do  -- Check same level and one above
 				local fx, fy, fz = wx + dx, wy + dy, wz + dz
 				local blockId = worldManager:GetBlock(fx, fy, fz)
-				
+
 				if self:_isFarmland(blockId) then
 					if waterAdded then
 						-- Water added - farmland should become wet

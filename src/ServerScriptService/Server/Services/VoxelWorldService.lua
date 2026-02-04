@@ -839,20 +839,20 @@ function VoxelWorldService:InitializeStarterChest()
 	end
 
 	-- Starter island chest position:
-	-- Island center = (48, 48), chest offset = (2, 2), raise = 1
-	-- Final position = (50, 66, 50)
-	local starterChestX = 50
+	-- Island center = (48, 48), chest offset = (1, 2), raise = 1
+	-- Final position = (49, 66, 50)
+	local starterChestX = 49
 	local starterChestY = 66  -- topY (65) + raise (1)
 	local starterChestZ = 50
 	self.Deps.ChestStorageService:InitializeStarterChest(starterChestX, starterChestY, starterChestZ)
 	print(string.format("VoxelWorldService: Initialized starter chest at (%d, %d, %d)", starterChestX, starterChestY, starterChestZ))
 
 	-- Stone island chest position:
-	-- Stone island center = (48, 68), chest offset = (0, 0), raise = 1
-	-- Final position = (48, 66, 68)
+	-- Stone island center = (48, 64), chest offset = (0, 0), raise = 1
+	-- Final position = (48, 66, 64)
 	local stoneChestX = 48
 	local stoneChestY = 66  -- topY (65) + raise (1)
-	local stoneChestZ = 68  -- 48 + 20 (stone island offsetZ)
+	local stoneChestZ = 64  -- 48 + 16 (stone island offsetZ)
 	self.Deps.ChestStorageService:InitializeStoneIslandChest(stoneChestX, stoneChestY, stoneChestZ)
 	print(string.format("VoxelWorldService: Initialized stone island chest at (%d, %d, %d)", stoneChestX, stoneChestY, stoneChestZ))
 end

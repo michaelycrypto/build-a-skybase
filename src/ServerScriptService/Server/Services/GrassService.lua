@@ -1,7 +1,7 @@
 --[[
 	GrassService
 	Handles grass spreading to adjacent dirt blocks (Minecraft-style).
-	
+
 	Mechanics:
 	1. Grass spreads to dirt blocks within 3 blocks horizontally
 	2. Target dirt must have air or transparent block above (light required)
@@ -50,7 +50,7 @@ function GrassService:Start()
 		return
 	end
 	BaseService.Start(self)
-	
+
 	-- Start the periodic spreading check loop
 	local function ensureIter()
 		if self._iterDirty then
@@ -61,37 +61,37 @@ function GrassService:Start()
 			self._iterDirty = false
 		end
 	end
-	
+
 	local cursor = 1
 	local function tick()
 		ensureIter()
 		local processed = 0
-		
+
 		while processed < MAX_PER_TICK and cursor <= #self._iterKeys do
 			local key = self._iterKeys[cursor]
 			cursor += 1
 			processed += 1
-			
+
 			local x, y, z = string.match(key, "(-?%d+),(-?%d+),(-?%d+)")
 			x = tonumber(x)
 			y = tonumber(y)
 			z = tonumber(z)
-			
+
 			local vws = self.Deps and self.Deps.VoxelWorldService
 			local vm = vws and vws.worldManager
 			if not (vm and x and y and z) then
 				continue
 			end
-			
+
 			local currentBlockId = vm:GetBlock(x, y, z)
-			
+
 			-- Check if still dirt
 			if currentBlockId ~= BLOCK.DIRT then
 				self._dirtBlocks[key] = nil
 				self._iterDirty = true
 				continue
 			end
-			
+
 			-- Check if conditions are met for grass spreading
 			if math.random() < SPREAD_CHANCE then
 				local canSpread = self:_canGrassSpreadTo(vm, x, y, z)
@@ -100,19 +100,19 @@ function GrassService:Start()
 					self:_setBlockState(vws, x, y, z, BLOCK.GRASS, currentBlockId)
 					self._dirtBlocks[key] = nil
 					self._iterDirty = true
-					
+
 					-- Queue nearby dirt blocks for future spreading
 					self:_queueNearbyDirt(vm, x, y, z)
 				end
 			end
 		end
-		
+
 		-- Reset cursor when we've processed all
 		if cursor > #self._iterKeys then
 			cursor = 1
 		end
 	end
-	
+
 	-- Run the tick loop
 	task.spawn(function()
 		while self._started do
@@ -142,12 +142,12 @@ function GrassService:_hasLightAbove(worldManager, x, y, z)
 	if blockAbove == BLOCK.AIR then
 		return true
 	end
-	
+
 	local blockDef = BlockRegistry:GetBlock(blockAbove)
 	if blockDef and blockDef.transparent then
 		return true
 	end
-	
+
 	return false
 end
 
@@ -159,7 +159,7 @@ function GrassService:_hasGrassNearby(worldManager, x, y, z)
 				if dx == 0 and dy == 0 and dz == 0 then
 					continue
 				end
-				
+
 				local blockId = worldManager:GetBlock(x + dx, y + dy, z + dz)
 				if blockId == BLOCK.GRASS then
 					return true
@@ -176,12 +176,12 @@ function GrassService:_canGrassSpreadTo(worldManager, x, y, z)
 	if not self:_hasLightAbove(worldManager, x, y, z) then
 		return false
 	end
-	
+
 	-- Must have grass nearby
 	if not self:_hasGrassNearby(worldManager, x, y, z) then
 		return false
 	end
-	
+
 	return true
 end
 
@@ -193,10 +193,10 @@ function GrassService:_queueNearbyDirt(worldManager, x, y, z)
 				if dx == 0 and dy == 0 and dz == 0 then
 					continue
 				end
-				
+
 				local nx, ny, nz = x + dx, y + dy, z + dz
 				local blockId = worldManager:GetBlock(nx, ny, nz)
-				
+
 				if blockId == BLOCK.DIRT then
 					local key = keyOf(nx, ny, nz)
 					if not self._dirtBlocks[key] then
@@ -216,7 +216,7 @@ function GrassService:_setBlockState(vws, x, y, z, newBlockId, oldBlockId)
 		math.floor(x / Constants.CHUNK_SIZE_X),
 		math.floor(z / Constants.CHUNK_SIZE_Z)
 	)] = true
-	
+
 	-- Broadcast the block change
 	EventManager:FireEventToAll("BlockChanged", {
 		x = x, y = y, z = z,
@@ -238,12 +238,12 @@ function GrassService:OnBlockChanged(x, y, z, newBlockId, _newMetadata, oldBlock
 	if not vm then
 		return
 	end
-	
+
 	-- When grass is placed, queue nearby dirt for potential spreading
 	if newBlockId == BLOCK.GRASS and oldBlockId ~= BLOCK.GRASS then
 		self:_queueNearbyDirt(vm, x, y, z)
 	end
-	
+
 	-- When dirt is placed, check if it should be tracked (grass nearby)
 	if newBlockId == BLOCK.DIRT then
 		if self:_hasGrassNearby(vm, x, y, z) then
@@ -254,7 +254,7 @@ function GrassService:OnBlockChanged(x, y, z, newBlockId, _newMetadata, oldBlock
 			end
 		end
 	end
-	
+
 	-- When dirt is removed or converted, untrack it
 	if oldBlockId == BLOCK.DIRT and newBlockId ~= BLOCK.DIRT then
 		local key = keyOf(x, y, z)
@@ -263,7 +263,7 @@ function GrassService:OnBlockChanged(x, y, z, newBlockId, _newMetadata, oldBlock
 			self._iterDirty = true
 		end
 	end
-	
+
 	-- When a solid block is placed above grass, convert grass to dirt
 	if oldBlockId == BLOCK.AIR and newBlockId ~= BLOCK.AIR then
 		local blockDef = BlockRegistry:GetBlock(newBlockId)
@@ -280,10 +280,10 @@ function GrassService:OnBlockChanged(x, y, z, newBlockId, _newMetadata, oldBlock
 			end
 		end
 	end
-	
+
 	-- When a solid block is removed from above grass, the grass is now valid
 	-- (no action needed - grass stays grass)
-	
+
 	-- When a solid block is removed, check if there's dirt below that could now spread
 	if newBlockId == BLOCK.AIR and oldBlockId ~= BLOCK.AIR then
 		local blockDef = BlockRegistry:GetBlock(oldBlockId)

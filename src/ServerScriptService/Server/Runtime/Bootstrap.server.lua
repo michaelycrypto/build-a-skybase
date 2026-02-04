@@ -250,7 +250,11 @@ elseif IS_WORLD then
 		dependencies = {"VoxelWorldService", "PlayerInventoryService"},
 		mixins = {}
 	})
-	Injector:Bind("SmeltingService", script.Parent.Parent.Services.SmeltingService, {
+	Injector:Bind("FurnaceService", script.Parent.Parent.Services.FurnaceService, {
+		dependencies = {"VoxelWorldService", "PlayerInventoryService"},
+		mixins = {}
+	})
+	Injector:Bind("SmithingService", script.Parent.Parent.Services.SmithingService, {
 		dependencies = {"VoxelWorldService", "PlayerInventoryService"},
 		mixins = {}
 	})
@@ -296,7 +300,8 @@ local farmlandService = IS_WORLD and Injector:Resolve("FarmlandService") or nil
 local grassService = IS_WORLD and Injector:Resolve("GrassService") or nil
 local worldOwnershipService = IS_WORLD and Injector:Resolve("WorldOwnershipService") or nil
 local chestStorageService = IS_WORLD and Injector:Resolve("ChestStorageService") or nil
-local smeltingService = IS_WORLD and Injector:Resolve("SmeltingService") or nil
+local furnaceService = IS_WORLD and Injector:Resolve("FurnaceService") or nil
+local smithingService = IS_WORLD and Injector:Resolve("SmithingService") or nil
 local droppedItemService = Injector:Resolve("DroppedItemService")
 local mobEntityService = IS_WORLD and Injector:Resolve("MobEntityService") or nil
 local activeWorldRegistryService = IS_WORLD and Injector:Resolve("ActiveWorldRegistryService") or nil
@@ -341,7 +346,8 @@ local servicesTable = {
 	VoxelWorldService = voxelWorldService,
 	WorldOwnershipService = worldOwnershipService,
 	ChestStorageService = chestStorageService,
-	SmeltingService = smeltingService,
+	FurnaceService = furnaceService,
+	SmithingService = smithingService,
 	DroppedItemService = droppedItemService,
 	MobEntityService = mobEntityService,
 	ActiveWorldRegistryService = activeWorldRegistryService,

@@ -4,11 +4,11 @@
 	Craft-First Tutorial:
 	Players learn core Minecraft mechanics: gather → craft → build → mine → farm → automate
 
-	Progression Loop (16 steps):
+	Progression Loop (15 steps):
 	Open Chest → Chop Tree → Craft Planks → Craft Workbench → Craft Pickaxe →
 	Build Bridge → Open Stone Chest → Mine Cobblestone → Setup Furnace →
 	Smelt Copper → Craft Shovel → Till Soil → Irrigate → Plant Seeds →
-	Harvest Wheat → Place Golem → Complete!
+	Harvest Wheat → Complete!
 
 	Tutorial Philosophy:
 	- Non-intrusive guidance (tooltips, not forced cutscenes)
@@ -32,35 +32,40 @@ TutorialConfig.Categories = {
 }
 
 -- Waypoint configuration for guiding players
+-- NOTE: offsetFromSpawn is in BLOCK coordinates matching SkyblockGenerator
+-- X and Z are block offsets from island center (originX=48, originZ=48)
+-- Y is offset from island surface (topY=65), e.g., Y=1 means surface+1
 TutorialConfig.Waypoints = {
 	-- Island waypoints (player world)
 	starter_tree = {
 		type = "block_area",
-		offsetFromSpawn = Vector3.new(6, 0, -6), -- Tree at offset (2, -2) from center
+		-- Tree: offsetX=1, offsetZ=-1, baseOffset=1 (trunk base at surface+1)
+		offsetFromSpawn = Vector3.new(1, 1, -1),
 		radius = 3,
 		color = Color3.fromRGB(139, 90, 43), -- Brown for tree
 		label = "Starter Tree",
 	},
 	stone_island = {
 		type = "block_area",
-		-- Stone island center is 20 blocks south, radius 4.5 blocks
-		-- Near edge (where bridge lands) is at 20 - 4.5 = 15.5 blocks south
-		-- In studs: 15.5 * 3 = 46.5 studs
-		offsetFromSpawn = Vector3.new(0, 0, 47), -- Near edge of stone island
+		-- Stone island: offsetZ=16, topY=65 (same height as starter)
+		-- Point to near edge for bridge building
+		offsetFromSpawn = Vector3.new(0, 0, 14),
 		radius = 3,
 		color = Color3.fromRGB(128, 128, 128), -- Gray for stone
 		label = "Stone Island",
 	},
 	starter_chest = {
 		type = "block_area",
-		offsetFromSpawn = Vector3.new(6, 3, 6), -- Chest at offset (2, 2) from center
+		-- Chest: offsetX=1, offsetZ=2, raise=1 (placed at surface+1)
+		offsetFromSpawn = Vector3.new(1, 1, 2),
 		radius = 2,
 		color = Color3.fromRGB(139, 90, 43), -- Brown for chest
 		label = "Starter Chest",
 	},
 	portal = {
 		type = "block_area",
-		offsetFromSpawn = Vector3.new(-9, 0, 0), -- Portal at offset (-3, 0)
+		-- Portal base at surface+1
+		offsetFromSpawn = Vector3.new(-3, 1, 0),
 		radius = 2,
 		color = Color3.fromRGB(128, 0, 128), -- Purple for portal
 		label = "Hub Portal",
@@ -514,39 +519,12 @@ Break it to get:
 			items = {{itemId = 384, count = 1, metadata = {level = 1, minionType = "COPPER"}}}, -- Copper Golem!
 			message = "First harvest complete! You've earned a Copper Golem for your hard work!",
 		},
-		nextStep = "place_golem",
+		nextStep = "tutorial_complete",
 		uiType = "objective",
 		-- Tutorial accelerated growth
 		tutorialBoost = {
 			cropGrowthMultiplier = 10, -- Crops grow 10x faster during this step
 		},
-		canSkip = true,
-	},
-
-	-- ═══════════════════════════════════════════════════════════════════════════
-	-- PHASE 8: AUTOMATION - Place the copper golem
-	-- ═══════════════════════════════════════════════════════════════════════════
-	{
-		id = "place_golem",
-		category = "automation",
-		title = "Place the Copper Golem",
-		description = "Place your Copper Golem on a flat surface to start automation!",
-		hint = "Select the Copper Golem from your inventory and right-click on a flat block.",
-		trigger = {
-			type = "step_complete",
-			step = "harvest_wheat",
-		},
-		objective = {
-			type = "place_block",
-			blockId = 384, -- COPPER_MINION
-			count = 1,
-		},
-		reward = {
-			coins = 50,
-			message = "Golem placed! It will automatically mine cobblestone and copper ore!",
-		},
-		nextStep = "tutorial_complete",
-		uiType = "objective",
 		canSkip = true,
 	},
 
@@ -567,7 +545,7 @@ Next goals:
 		]],
 		trigger = {
 			type = "step_complete",
-			step = "place_golem",
+			step = "harvest_wheat",
 		},
 		objective = nil,
 		reward = {

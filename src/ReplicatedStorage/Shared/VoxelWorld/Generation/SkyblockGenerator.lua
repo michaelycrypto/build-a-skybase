@@ -30,16 +30,15 @@ end
 local DEFAULT_PROFILES = {
 	micro_starter = {
 		domes = {
-			{ radius = 4.2, height = 0.9, power = 1.8 },
-			{ radius = 3.2, height = -0.2, offsetX = 0.6, offsetZ = -0.4, power = 1.6 },
+			{ radius = 3.0, height = 0.6, power = 1.2 },
+			{ radius = 2.3, height = -0.1, offsetX = 0.3, offsetZ = -0.2, power = 1.1 },
 		},
 		maskEllipses = {
-			{ radiusX = 4.6, radiusZ = 4.4, strength = 1.0, power = 2.1 },
-			{ radiusX = 4.2, radiusZ = 4.8, offsetX = -0.2, offsetZ = 0.3, strength = 0.9, power = 2.0 },
+			{ radiusX = 3.3, radiusZ = 3.3, strength = 1.0, power = 1.0 },
 		},
-		maskFalloff = { depth = 1.4, power = 2.4 },
-		rimNoise = { amplitude = 0.35, scale = 0.32, startRadius = 3.6 },
-		rimFracture = { amplitude = 0.25, scale = 0.27, startRadius = 3.4, bias = -0.15 },
+		maskFalloff = { depth = 1.0, power = 1.6 },
+		rimNoise = { amplitude = 0.2, scale = 0.35, startRadius = 2.5 },
+		rimFracture = { amplitude = 0.15, scale = 0.3, startRadius = 2.3, bias = -0.1 },
 		stoneExposureThreshold = 4,
 		mantleStoneDepth = 2,
 		verticalLayers = {
@@ -119,6 +118,24 @@ local DEFAULT_PROFILES = {
 		},
 		strataStart = 3,
 	},
+	-- Tiny stone island profile - very small 2-3 block radius platform
+	tiny_stone = {
+		domes = {
+			{ radius = 2.5, height = 0.3, power = 1.6 },
+		},
+		maskEllipses = {
+			{ radiusX = 3, radiusZ = 3, strength = 1.0, power = 1.8 },
+		},
+		maskFalloff = { depth = 1.2, power = 2.2 },
+		rimNoise = { amplitude = 0.2, scale = 0.3, startRadius = 2 },
+		rimFracture = { amplitude = 0.15, scale = 0.25, startRadius = 2, bias = 0 },
+		stoneExposureThreshold = 1,
+		forceStoneSupport = true,
+		verticalLayers = {
+			{ thickness = 1, blockId = BlockType.COBBLESTONE },
+			{ thickness = 2, blockId = BlockType.STONE },
+		},
+	},
 }
 
 local DEFAULT_TEMPLATES = {
@@ -127,16 +144,16 @@ local DEFAULT_TEMPLATES = {
 		profile = "micro_starter",
 		offsetX = 0,
 		offsetZ = 0,
-		topRadius = 5.5,
+		topRadius = 3.5,
 		topY = 65,
 		baseTopY = 62,
-		depth = 6,
+		depth = 5,
 		taper = 0.32,
 		decorations = {
 			{
 				kind = "tree",
-				offsetX = 2,
-				offsetZ = -2,
+				offsetX = 1,
+				offsetZ = -1,
 				trunkHeight = 4,
 				canopyRadius = 1,
 				baseOffset = 1,
@@ -144,38 +161,25 @@ local DEFAULT_TEMPLATES = {
 			},
 			{
 				kind = "chest",
-				offsetX = 2,
+				offsetX = 1,
 				offsetZ = 2,
 				raise = 1,
 			},
-			{
-				-- Minecraft-style Nether portal to hub (unlocked after tutorial)
-				kind = "portal",
-				offsetX = -3,
-				offsetZ = 0,
-				baseOffset = 1,
-				orientation = "z",
-				innerHalfWidth = 1,
-				innerHeight = 3,
-				frameBlockId = BlockType.OBSIDIAN,
-				innerBlockId = BlockType.PURPLE_STAINED_GLASS,
-			},
-			-- Farmland removed - player builds it themselves in tutorial
 		},
 	},
 	{
-		-- Stone island 10 blocks south - player builds bridge to reach it
-		-- Starter island edge: ~5.5 blocks, gap: 10 blocks, stone radius: 4.5
-		-- Total offset: 5.5 + 10 + 4.5 = 20 blocks south
+		-- Tiny stone island south - player builds bridge to reach it
+		-- Starter island edge: ~3.5 blocks, gap: 10 blocks, stone radius: 2.5
+		-- Total offset: 3.5 + 10 + 2.5 = 16 blocks south
 		id = "stone_island",
-		profile = "portal", -- Rocky cobblestone/stone profile
+		profile = "tiny_stone", -- Tiny cobblestone/stone profile
 		offsetX = 0,
-		offsetZ = 20, -- 10 blocks gap from starter island edge
-		topRadius = 4.5,
+		offsetZ = 16, -- 10 blocks gap from starter island edge
+		topRadius = 2.5,
 		topY = 65, -- Same height as starter island for easy bridging
-		baseTopY = 62,
-		depth = 8,
-		taper = 0.35,
+		baseTopY = 63,
+		depth = 4,
+		taper = 0.3,
 		decorations = {
 			-- Chest with copper ingots for crafting first pickaxe
 			{
@@ -183,15 +187,6 @@ local DEFAULT_TEMPLATES = {
 				offsetX = 0,
 				offsetZ = 0,
 				raise = 1,
-			},
-			-- Small copper ore vein embedded in the island (decorative hint)
-			{
-				kind = "ore_vein",
-				offsetX = 1,
-				offsetZ = 1,
-				raise = -1, -- Below surface
-				blockId = BlockType.COPPER_ORE,
-				count = 3,
 			},
 		},
 	},
@@ -520,19 +515,19 @@ function SkyblockGenerator:_placeOreVeins(chunk, chunkWorldX, chunkWorldZ)
 			{dx = -1, dy = 0, dz = 0},
 			{dx = 0, dy = 0, dz = -1},
 		}
-		
+
 		local placed = 0
 		for _, pos in ipairs(positions) do
 			if placed >= vein.count then
 				break
 			end
-			
+
 			local wx = vein.centerX + pos.dx
 			local wz = vein.centerZ + pos.dz
 			local wy = vein.y + pos.dy
 			local lx = wx - chunkWorldX
 			local lz = wz - chunkWorldZ
-			
+
 			if lx >= 0 and lx < Constants.CHUNK_SIZE_X and lz >= 0 and lz < Constants.CHUNK_SIZE_Z then
 				self:_setChunkBlockAndHeight(chunk, chunkWorldX, chunkWorldZ, wx, wy, wz, vein.blockId)
 				placed = placed + 1

@@ -1282,36 +1282,69 @@ function EventManager:CreateServerEventConfig(services)
 				end
 			end
 		},
-		-- Furnace/Smelting events
+		-- Furnace events (Minecraft-style auto-smelting)
 		{
 			name = "RequestOpenFurnace",
 			handler = function(player, data)
-				if services.SmeltingService and services.SmeltingService.HandleOpenFurnace then
-					services.SmeltingService:HandleOpenFurnace(player, data)
+				if services.FurnaceService and services.FurnaceService.HandleOpenFurnace then
+					services.FurnaceService:HandleOpenFurnace(player, data)
 				end
 			end
 		},
 		{
-			name = "RequestStartSmelt",
+			name = "FurnaceSlotClick",
 			handler = function(player, data)
-				if services.SmeltingService and services.SmeltingService.HandleStartSmelt then
-					services.SmeltingService:HandleStartSmelt(player, data)
+				if services.FurnaceService and services.FurnaceService.HandleFurnaceSlotClick then
+					services.FurnaceService:HandleFurnaceSlotClick(player, data)
 				end
 			end
 		},
 		{
-			name = "RequestCompleteSmelt",
+			name = "FurnaceQuickTransfer",
 			handler = function(player, data)
-				if services.SmeltingService and services.SmeltingService.HandleCompleteSmelt then
-					services.SmeltingService:HandleCompleteSmelt(player, data)
+				if services.FurnaceService and services.FurnaceService.HandleFurnaceQuickTransfer then
+					services.FurnaceService:HandleFurnaceQuickTransfer(player, data)
 				end
 			end
 		},
 		{
-			name = "RequestCancelSmelt",
+			name = "RequestCloseFurnace",
 			handler = function(player, data)
-				if services.SmeltingService and services.SmeltingService.HandleCancelSmelt then
-					services.SmeltingService:HandleCancelSmelt(player, data)
+				if services.FurnaceService and services.FurnaceService.HandleCloseFurnace then
+					services.FurnaceService:HandleCloseFurnace(player, data)
+				end
+			end
+		},
+		-- Anvil/Smithing events (temperature mini-game)
+		{
+			name = "RequestOpenAnvil",
+			handler = function(player, data)
+				if services.SmithingService and services.SmithingService.HandleOpenAnvil then
+					services.SmithingService:HandleOpenAnvil(player, data)
+				end
+			end
+		},
+		{
+			name = "RequestStartSmith",
+			handler = function(player, data)
+				if services.SmithingService and services.SmithingService.HandleStartSmith then
+					services.SmithingService:HandleStartSmith(player, data)
+				end
+			end
+		},
+		{
+			name = "RequestCompleteSmith",
+			handler = function(player, data)
+				if services.SmithingService and services.SmithingService.HandleCompleteSmith then
+					services.SmithingService:HandleCompleteSmith(player, data)
+				end
+			end
+		},
+		{
+			name = "RequestCancelSmith",
+			handler = function(player, data)
+				if services.SmithingService and services.SmithingService.HandleCancelSmith then
+					services.SmithingService:HandleCancelSmith(player, data)
 				end
 			end
 		},

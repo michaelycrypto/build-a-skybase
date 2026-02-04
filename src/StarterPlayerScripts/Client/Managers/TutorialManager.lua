@@ -466,29 +466,35 @@ function TutorialManager:_showWaypoint(waypointName)
 		})
 	elseif waypointConfig.type == "block_area" then
 		-- Show waypoint at a block position relative to spawn
-		-- For portal waypoint, calculate position from spawn offset
-		local character = player.Character
-		if character then
-			local hrp = character:FindFirstChild("HumanoidRootPart")
-			if hrp then
-				-- For island portal, use the offset from spawn
-				-- Note: In a real implementation, we'd get the actual portal position
-				local targetPos = waypointConfig.offsetFromSpawn
-				if targetPos then
-					-- Convert block offset to world coordinates
-					local Constants = require(ReplicatedStorage.Shared.VoxelWorld.Core.Constants)
-					local worldPos = Vector3.new(
-						targetPos.X * Constants.BLOCK_SIZE,
-						hrp.Position.Y,  -- Keep at player height
-						targetPos.Z * Constants.BLOCK_SIZE
-					)
-					TutorialWaypoint:Show({
-						worldPosition = worldPos,
-						label = waypointConfig.label,
-						color = waypointConfig.color,
-					})
-				end
-			end
+		-- offsetFromSpawn is in BLOCK coordinates matching SkyblockGenerator decoration offsets
+		local targetOffset = waypointConfig.offsetFromSpawn
+		if targetOffset then
+			local Constants = require(ReplicatedStorage.Shared.VoxelWorld.Core.Constants)
+			local BLOCK_SIZE = Constants.BLOCK_SIZE
+			
+			-- SkyblockGenerator config values (from DEFAULT_CONFIG and DEFAULT_TEMPLATES)
+			local ISLAND_ORIGIN_X = 48 -- blocks (originX)
+			local ISLAND_ORIGIN_Z = 48 -- blocks (originZ)
+			local ISLAND_SURFACE_Y = 65 -- blocks (topY from starter_island template)
+			
+			-- Calculate block coordinates
+			local blockX = ISLAND_ORIGIN_X + targetOffset.X
+			local blockZ = ISLAND_ORIGIN_Z + targetOffset.Z
+			-- Y offset is relative to surface (e.g., 1 = one block above surface like chest with raise=1)
+			local blockY = ISLAND_SURFACE_Y + targetOffset.Y
+			
+			-- Convert block coords to world coords (center of block)
+			local worldX = blockX * BLOCK_SIZE + BLOCK_SIZE / 2
+			local worldY = blockY * BLOCK_SIZE + BLOCK_SIZE / 2
+			local worldZ = blockZ * BLOCK_SIZE + BLOCK_SIZE / 2
+			
+			local worldPos = Vector3.new(worldX, worldY, worldZ)
+			
+			TutorialWaypoint:Show({
+				worldPosition = worldPos,
+				label = waypointConfig.label,
+				color = waypointConfig.color,
+			})
 		end
 	elseif waypointConfig.type == "position" then
 		-- Direct world position

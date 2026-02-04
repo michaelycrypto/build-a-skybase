@@ -97,7 +97,7 @@ function PlayerService:OnPlayerAdded(player)
 	local playerData
 	if self.Deps.PlayerDataStoreService then
 		playerData = self.Deps.PlayerDataStoreService:LoadPlayerData(player)
-		
+
 		-- If nil, session is locked by another server (player will be kicked)
 		if not playerData then
 			self._logger.Warn("Failed to load player data (session locked)", {player = player.Name})
@@ -437,7 +437,7 @@ function PlayerService:SavePlayerData(player)
 		self.Deps.PlayerDataStoreService:UpdatePlayerData(player, {"dungeonData"}, data.dungeonData)
 		self.Deps.PlayerDataStoreService:UpdatePlayerData(player, {"dailyRewards"}, data.dailyRewards)
 		self.Deps.PlayerDataStoreService:UpdatePlayerData(player, {"settings"}, data.settings)
-		
+
 		-- Save tutorial progress
 		if data.tutorial then
 			self.Deps.PlayerDataStoreService:UpdatePlayerData(player, {"tutorial"}, data.tutorial)

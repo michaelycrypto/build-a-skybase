@@ -85,11 +85,17 @@ local Manifest = {
 		RequestMinionPickup = {"any"}, -- {x, y, z}
 		RequestCloseMinion = {"any"}, -- {x, y, z} optional; server unsubscribes regardless
 
-		-- Furnace interaction (smelting mini-game)
+		-- Furnace interaction (Minecraft-style auto-smelting)
 		RequestOpenFurnace = {"any"}, -- {x, y, z} - Request to open furnace at position
-		RequestStartSmelt = {"any"}, -- {recipeId, furnacePos} - Start smelting a recipe
-		RequestCompleteSmelt = {"any"}, -- {furnacePos, efficiencyPercent} - Complete smelt with efficiency
-		RequestCancelSmelt = {"any"}, -- {furnacePos} - Cancel current smelt
+		FurnaceSlotClick = {"any"}, -- {furnacePos, slotType, slotIndex?, clickType} - Click furnace/inventory slot
+		FurnaceQuickTransfer = {"any"}, -- {furnacePos, slotType, slotIndex?} - Shift-click transfer
+		RequestCloseFurnace = {"any"}, -- {x, y, z} - Close furnace
+
+		-- Anvil interaction (smithing mini-game)
+		RequestOpenAnvil = {"any"}, -- {x, y, z} - Request to open anvil at position
+		RequestStartSmith = {"any"}, -- {recipeId, anvilPos} - Start smithing a recipe
+		RequestCompleteSmith = {"any"}, -- {anvilPos, efficiencyPercent} - Complete smith with efficiency
+		RequestCancelSmith = {"any"}, -- {anvilPos} - Cancel current smith
 
 		-- Dropped item interactions
 		RequestItemPickup = {"any"}, -- {id} - Request to pick up item by ID
@@ -219,11 +225,16 @@ local Manifest = {
 		ArmorSync = {"any"}, -- {equippedArmor: {helmet?, chestplate?, leggings?, boots?}} - Full armor state sync
 		ArmorSlotResult = {"any"}, -- {equippedArmor, inventory, cursorItem} - Result of armor slot interaction
 
-		-- Furnace events (smelting mini-game)
-		FurnaceOpened = {"any"}, -- {x, y, z, recipes} - Furnace opened with available smelting recipes
-		SmeltStarted = {"any"}, -- {smeltConfig} or {error} - Smelting started with config
-		SmeltCompleted = {"any"}, -- {success, output, coalUsed, stats} - Smelting completed
-		SmeltCancelled = {"any"}, -- {refunded} - Smelting cancelled, materials refunded
+		-- Furnace events (Minecraft-style auto-smelting)
+		FurnaceOpened = {"any"}, -- {x, y, z, inputSlot, fuelSlot, outputSlot, ...} - Furnace opened with state
+		FurnaceUpdated = {"any"}, -- {furnacePos, inputSlot, fuelSlot, outputSlot, progress, fuelRemaining}
+		FurnaceActionResult = {"any"}, -- {furnacePos, slots, inventory, hotbar, cursor} - Action result
+
+		-- Anvil events (smithing mini-game)
+		AnvilOpened = {"any"}, -- {x, y, z, recipes} - Anvil opened with available smithing recipes
+		SmithStarted = {"any"}, -- {smithConfig} or {error} - Smithing started with config
+		SmithCompleted = {"any"}, -- {success, output, coalUsed, stats} - Smithing completed
+		SmithCancelled = {"any"}, -- {refunded} - Smithing cancelled, materials refunded
 
 		-- Food/Eating events
 		EatingStarted = {"any"}, -- {foodId: number, duration: number} or {error: string} - Eating started

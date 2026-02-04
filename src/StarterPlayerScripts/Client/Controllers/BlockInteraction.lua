@@ -931,6 +931,14 @@ local function interactOrPlace()
 					z = blockPos.Z
 				})
 				return true
+			elseif blockId == Constants.BlockType.ANVIL then
+				print("Opening anvil at", blockPos.X, blockPos.Y, blockPos.Z)
+				EventManager:SendToServer("RequestOpenAnvil", {
+					x = blockPos.X,
+					y = blockPos.Y,
+					z = blockPos.Z
+				})
+				return true
 			elseif _isMinionBlock(blockId) then
 				local now = os.clock()
 				if (now - lastMinionOpenRequestAt) < MINION_OPEN_DEBOUNCE then
