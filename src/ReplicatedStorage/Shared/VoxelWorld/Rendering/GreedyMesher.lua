@@ -103,11 +103,14 @@ function GreedyMesher:CanMergeBlocks(chunk, x1: number, y1: number, z1: number, 
 	if not blockData1 or not blockData2 then
 		return false
 	end
-	-- Do not merge cross-shaped or transparent blocks
+	-- Do not merge special blocks (cross-shaped, transparent, or entity blocks)
 	if blockData1.crossShape or blockData2.crossShape then
 		return false
 	end
 	if blockData1.transparent or blockData2.transparent then
+		return false
+	end
+	if blockData1.entityName or blockData2.entityName then
 		return false
 	end
 
@@ -122,8 +125,8 @@ function GreedyMesher:ShouldRenderFace(chunk, x: number, y: number, z: number, f
 	end
 
 	local block = Blocks[blockId] or BlockRegistry:GetBlock(blockId)
-	-- Skip face-based rendering for cross-shaped blocks (rendered separately)
-	if block and block.crossShape then
+	-- Skip face-based rendering for special blocks (rendered separately)
+	if block and (block.crossShape or block.entityName) then
 		return false
 	end
 
@@ -147,8 +150,8 @@ function GreedyMesher:ShouldRenderFace(chunk, x: number, y: number, z: number, f
 	if block and block.liquid and neighbor.liquid then
 		return false
 	end
-	-- Transparent, non-solid, or cross-shaped neighbors should not occlude
-	if neighbor.transparent or (neighbor.solid == false) or neighbor.crossShape then
+	-- Transparent, non-solid, cross-shaped, or entity neighbors should not occlude
+	if neighbor.transparent or (neighbor.solid == false) or neighbor.crossShape or neighbor.entityName then
 		return true
 	end
 	return false
@@ -345,7 +348,7 @@ function GreedyMesher:GenerateMesh(chunk, worldManager, options)
             	return false
             end
             local def = Blocks[id] or BlockRegistry:GetBlock(id)
-            return def and def.solid ~= false and not def.crossShape
+            return def and def.solid ~= false and not def.crossShape and not def.entityName
         end
         -- Optional: only emit boxes that touch air somewhere (exposed), to avoid hidden volume
         local function touchesAir(x0, y0, z0, dx, dy, dz)
@@ -734,13 +737,14 @@ function GreedyMesher:GenerateMesh(chunk, worldManager, options)
 	end
 
 	-- Second pass: cross-shaped plants (e.g., tall grass/flowers)
+	-- Note: blocks with entityName are NOT rendered here (they need an entity pass)
 	for x = 0, Constants.CHUNK_SIZE_X - 1 do
 		for y = 0, yLimit - 1 do
 			for z = 0, Constants.CHUNK_SIZE_Z - 1 do
 				local id = chunk:GetBlock(x, y, z)
 				if id ~= Constants.BlockType.AIR then
 				local def = Blocks[id] or BlockRegistry:GetBlock(id)
-					if def and def.crossShape then
+					if def and def.crossShape and not def.entityName then
 						if partsBudget >= MAX_PARTS then
 							return meshParts
 						end
@@ -752,7 +756,7 @@ function GreedyMesher:GenerateMesh(chunk, worldManager, options)
 						)
 
 						local bladeSize = Vector3.new(snap(Constants.BLOCK_SIZE), snap(Constants.BLOCK_SIZE), snap(FACE_THICKNESS))
-                        local p1 = PartPool.AcquireFacePart()
+						local p1 = PartPool.AcquireFacePart()
                         p1.Material = getMaterialForBlock(id)
                         p1.Color = def.color
                         p1.Transparency = 1 -- Fully transparent, only texture shows
@@ -798,6 +802,8 @@ function GreedyMesher:GenerateMesh(chunk, worldManager, options)
 								t1f.Texture = textureId
 								t1f.StudsPerTileU = bs
 								t1f.StudsPerTileV = bs
+								t1f.OffsetStudsU = 0
+								t1f.OffsetStudsV = 0
 								t1f.Parent = p1
 
 								local t1b = PartPool.AcquireTexture()
@@ -805,6 +811,8 @@ function GreedyMesher:GenerateMesh(chunk, worldManager, options)
 								t1b.Texture = textureId
 								t1b.StudsPerTileU = bs
 								t1b.StudsPerTileV = bs
+								t1b.OffsetStudsU = 0
+								t1b.OffsetStudsV = 0
 								t1b.Parent = p1
 
 								-- Second plane - both sides
@@ -813,6 +821,8 @@ function GreedyMesher:GenerateMesh(chunk, worldManager, options)
 								t2f.Texture = textureId
 								t2f.StudsPerTileU = bs
 								t2f.StudsPerTileV = bs
+								t2f.OffsetStudsU = 0
+								t2f.OffsetStudsV = 0
 								t2f.Parent = p2
 
 								local t2b = PartPool.AcquireTexture()
@@ -820,6 +830,8 @@ function GreedyMesher:GenerateMesh(chunk, worldManager, options)
 								t2b.Texture = textureId
 								t2b.StudsPerTileU = bs
 								t2b.StudsPerTileV = bs
+								t2b.OffsetStudsU = 0
+								t2b.OffsetStudsV = 0
 								t2b.Parent = p2
 							end
 						end

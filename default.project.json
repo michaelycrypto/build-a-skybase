@@ -24,7 +24,16 @@
         "$path": "src/ReplicatedStorage/Configs"
       },
       "Assets": {
-        "$path": "src/ReplicatedStorage/Assets"
+        "$className": "Folder",
+        "$ignoreUnknownInstances": true,
+        "Tools": {
+          "$className": "Folder",
+          "$ignoreUnknownInstances": true
+        },
+        "BlockEntities": {
+          "$className": "Folder",
+          "$ignoreUnknownInstances": true
+        }
       },
       "RemoteEvents": {
         "$className": "Folder",

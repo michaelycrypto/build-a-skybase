@@ -54,6 +54,15 @@ TutorialConfig.Waypoints = {
 		color = Color3.fromRGB(128, 128, 128), -- Gray for stone
 		label = "Stone Island",
 	},
+	stone_chest = {
+		type = "block_area",
+		-- Chest on stone island: island offsetZ=16, chest at center (0,0), raise=1
+		offsetFromSpawn = Vector3.new(0, 1, 16),
+		radius = 2,
+		color = Color3.fromRGB(139, 90, 43), -- Brown for chest
+		label = "Stone Chest",
+		blockId = 9, -- CHEST block ID for waypoint icon (shows chest_front texture)
+	},
 	starter_chest = {
 		type = "block_area",
 		-- Chest: offsetX=1, offsetZ=2, raise=1 (placed at surface+1)
@@ -61,6 +70,7 @@ TutorialConfig.Waypoints = {
 		radius = 2,
 		color = Color3.fromRGB(139, 90, 43), -- Brown for chest
 		label = "Starter Chest",
+		blockId = 9, -- CHEST block ID for waypoint icon (shows chest_front texture)
 	},
 	portal = {
 		type = "block_area",
@@ -282,6 +292,7 @@ TutorialConfig.Steps = {
 		},
 		nextStep = "mine_cobblestone",
 		uiType = "objective",
+		waypoint = "stone_chest",
 		canSkip = true,
 	},
 
@@ -306,6 +317,7 @@ TutorialConfig.Steps = {
 		},
 		nextStep = "setup_furnace",
 		uiType = "objective",
+		waypoint = "stone_island",
 		highlightBlockTypes = {14, 3}, -- COBBLESTONE, STONE
 		canSkip = true,
 	},

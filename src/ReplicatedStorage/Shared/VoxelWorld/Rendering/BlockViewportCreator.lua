@@ -13,6 +13,7 @@ local TextureApplicator = require(script.Parent.TextureApplicator)
 local TextureManager = require(script.Parent.TextureManager)
 local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
 local ArmorConfig = require(ReplicatedStorage.Configs.ArmorConfig)
+local BlockEntityLoader = require(ReplicatedStorage.Shared.BlockEntityLoader)
 
 local BlockViewportCreator = {}
 
@@ -338,15 +339,73 @@ local function createBlockPart(blockId)
 end
 
 --[[
+	Creates a block entity model for viewport
+	@param blockId: number - Block type ID
+	@return Model | BasePart | nil - The entity model
+]]
+local function createBlockEntityModel(blockId)
+	local def = BlockRegistry.Blocks[blockId]
+	if not def or not def.entityName then
+		return nil
+	end
+
+	local entity = BlockEntityLoader.CloneEntity(def.entityName)
+	if not entity then
+		return nil
+	end
+
+	-- Scale entity to fit viewport (approximately 1 stud)
+	if entity:IsA("Model") then
+		-- Get the bounding box size
+		local _, size = entity:GetBoundingBox()
+		local maxDim = math.max(size.X, size.Y, size.Z)
+		if maxDim > 0 then
+			local scale = 1 / maxDim
+			entity:ScaleTo(scale)
+		end
+		-- Anchor all parts
+		for _, part in ipairs(entity:GetDescendants()) do
+			if part:IsA("BasePart") then
+				part.Anchored = true
+			end
+		end
+	elseif entity:IsA("BasePart") then
+		-- Scale single part to 1 stud max dimension
+		local maxDim = math.max(entity.Size.X, entity.Size.Y, entity.Size.Z)
+		if maxDim > 0 then
+			local scale = 1 / maxDim
+			entity.Size = entity.Size * scale
+		end
+		entity.Anchored = true
+	end
+
+	return entity
+end
+
+--[[
+	Check if a block has a 3D entity model
+	@param blockId: number - Block type ID
+	@return boolean - True if entity exists
+]]
+local function hasBlockEntity(blockId)
+	local def = BlockRegistry.Blocks[blockId]
+	if not def or not def.entityName then
+		return false
+	end
+	return BlockEntityLoader.HasEntity(def.entityName)
+end
+
+--[[
 	Creates a ViewportFrame with a 3D block model OR an ImageLabel for items/tools
 	@param parent: GuiObject - Parent GUI element
 	@param blockId: number - Block/Item type ID
 	@param size: UDim2 - Size of the ViewportFrame/ImageLabel (optional, defaults to full parent size)
 	@param position: UDim2 - Position of the ViewportFrame/ImageLabel (optional)
 	@param anchorPoint: Vector2 - Anchor point (optional)
+	@param rotationY: number - Optional Y-axis rotation in degrees (for adjusting model facing direction)
 	@return Frame|ImageLabel - The created viewport container or image label
 ]]
-function BlockViewportCreator.CreateBlockViewport(parent, blockId, size, position, anchorPoint)
+function BlockViewportCreator.CreateBlockViewport(parent, blockId, size, position, anchorPoint, rotationY)
 	-- Check if this is a tool or item with an image asset
 	local toolInfo = ToolConfig.GetToolInfo(blockId)
 	if toolInfo and toolInfo.image then
@@ -467,7 +526,14 @@ function BlockViewportCreator.CreateBlockViewport(parent, blockId, size, positio
 	if viewportModelCache[blockId] then
 		blockModel = viewportModelCache[blockId]:Clone()
 	else
-		blockModel = createBlockPart(blockId)
+		-- Check for block entity first (chests, lanterns, etc.)
+		if hasBlockEntity(blockId) then
+			blockModel = createBlockEntityModel(blockId)
+		end
+		-- Fall back to regular block part if no entity
+		if not blockModel then
+			blockModel = createBlockPart(blockId)
+		end
 		if blockModel then
 			-- Cache the original
 			local cacheModel = blockModel:Clone()
@@ -486,6 +552,15 @@ function BlockViewportCreator.CreateBlockViewport(parent, blockId, size, positio
 	-- Parent and center by bounding box so visuals are consistent for all shapes
 	blockModel.Parent = viewport
 	centerViewportInstance(blockModel)
+	
+	-- Apply Y-axis rotation if specified (for adjusting model facing direction)
+	if rotationY and rotationY ~= 0 then
+		if blockModel:IsA("Model") then
+			blockModel:PivotTo(CFrame.Angles(0, math.rad(rotationY), 0))
+		elseif blockModel:IsA("BasePart") then
+			blockModel.CFrame = CFrame.Angles(0, math.rad(rotationY), 0)
+		end
+	end
 
 	-- Position camera for nice isometric view (Minecraft-style)
 	-- View from top-right-front angle

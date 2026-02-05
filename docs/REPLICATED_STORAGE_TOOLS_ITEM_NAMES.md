@@ -1,12 +1,12 @@
-# Complete List of Item Names for ReplicatedStorage.Tools
+# Complete List of Item Names for ReplicatedStorage.Assets.Tools
 
-This document lists **ALL** item names that should exist as 3D models in `game.ReplicatedStorage.Tools`.
+This document lists **ALL** item names that should exist as 3D models in `game.ReplicatedStorage.Assets.Tools`.
 
 Models can be named using either:
 - **Item name** (e.g., "Apple", "Stick")
 - **Item ID** (e.g., "37" for Apple)
 
-The system will look in: `ReplicatedStorage.Tools[modelName]` or `ReplicatedStorage.Assets.Tools[modelName]`
+The system will look in: `ReplicatedStorage.Assets.Tools[modelName]` (primary) or `ReplicatedStorage.Tools[modelName]` (legacy fallback)
 
 ---
 
@@ -284,7 +284,7 @@ The system will look in: `ReplicatedStorage.Tools[modelName]` or `ReplicatedStor
 
 ## Summary
 
-**Total: 206 item names** that should exist in `ReplicatedStorage.Tools`
+**Total: 206 item names** that should exist in `ReplicatedStorage.Assets.Tools`
 
 ### Breakdown:
 - **Tools**: 5-7 items (required)

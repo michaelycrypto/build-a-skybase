@@ -587,6 +587,8 @@ local function applyTextures(part, textureId, bs, faces)
 		tex.Texture = textureId
 		tex.StudsPerTileU = bs
 		tex.StudsPerTileV = bs
+		tex.OffsetStudsU = 0
+		tex.OffsetStudsV = 0
 		tex.Transparency = 0
 		tex.Parent = part
 	end
@@ -647,6 +649,8 @@ local function createMergedPart(worldX, worldZ, worldY, widthX, widthZ, height, 
 			tex.Texture = textureId
 			tex.StudsPerTileU = bs
 			tex.StudsPerTileV = bs
+			tex.OffsetStudsU = 0
+			tex.OffsetStudsV = 0
 			tex.Transparency = 0
 			tex.Parent = part
 		end

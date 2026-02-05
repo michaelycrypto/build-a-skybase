@@ -161,6 +161,8 @@ function TextureApplicator:ApplyBoxTextures(
 				texture.Texture = textureId
 				texture.StudsPerTileU = bs
 				texture.StudsPerTileV = bs
+				texture.OffsetStudsU = 0
+				texture.OffsetStudsV = 0
 
 				-- Apply tint if needed
 				if tintColor then

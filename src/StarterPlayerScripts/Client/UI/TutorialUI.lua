@@ -329,7 +329,7 @@ function TutorialUI:HidePopup()
 		return
 	end
 
-	if activePopup then
+	if activePopup and activePopup.popup then
 		TweenService:Create(activePopup.popup, ANIMATION.fadeOut, {BackgroundTransparency = 1}):Play()
 
 		local popup = activePopup
@@ -443,7 +443,9 @@ function TutorialUI:HideTooltip()
 			activeTooltip.pulseConnection:Disconnect()
 		end
 
-		TweenService:Create(activeTooltip.frame, ANIMATION.fadeOut, {BackgroundTransparency = 1}):Play()
+		if activeTooltip.frame then
+			TweenService:Create(activeTooltip.frame, ANIMATION.fadeOut, {BackgroundTransparency = 1}):Play()
+		end
 
 		local tooltip = activeTooltip
 		task.delay(0.2, function()
@@ -625,7 +627,7 @@ end
 	Hide the objective tracker
 ]]
 function TutorialUI:HideObjective()
-	if activeObjective then
+	if activeObjective and activeObjective.frame then
 		TweenService:Create(activeObjective.frame, ANIMATION.fadeOut, {
 			Position = UDim2.new(1, 50, 0.3, 0),
 			BackgroundTransparency = 1

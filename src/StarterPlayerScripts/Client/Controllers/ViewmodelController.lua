@@ -19,6 +19,7 @@ local TextureManager = require(ReplicatedStorage.Shared.VoxelWorld.Rendering.Tex
 local BlockProperties = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockProperties)
 local GameConfig = require(ReplicatedStorage.Configs.GameConfig)
 local ItemModelLoader = require(ReplicatedStorage.Shared.ItemModelLoader)
+local BlockEntityLoader = require(ReplicatedStorage.Shared.BlockEntityLoader)
 local ItemRegistry = require(ReplicatedStorage.Configs.ItemRegistry)
 local ItemPixelSizes = require(ReplicatedStorage.Shared.ItemPixelSizes)
 
@@ -110,9 +111,35 @@ local function buildBlockModel(itemId)
 		return nil
 	end
 
+	-- Try to use BlockEntity model first (for chests, lanterns, etc.)
+	if def.entityName and BlockEntityLoader.HasEntity(def.entityName) then
+		local entity = BlockEntityLoader.CreateHeldEntity(def.entityName, 0.7)
+		if entity then
+			if entity:IsA("Model") then
+				-- Anchor all parts for viewmodel
+				for _, part in ipairs(entity:GetDescendants()) do
+					if part:IsA("BasePart") then
+						part.Anchored = true
+						part.CanCollide = false
+						part.Massless = true
+						part.CastShadow = false
+					end
+				end
+				return entity
+			elseif entity:IsA("BasePart") then
+				entity.Anchored = true
+				entity.CanCollide = false
+				entity.Massless = true
+				entity.CastShadow = false
+				return entity
+			end
+		end
+	end
+
 	-- Try to use 3D model from Tools folder (unified lookup)
+	-- SKIP for cross-shape blocks (wheat, saplings, flowers, etc.) - they use textured cubes below
 	local itemName = ItemRegistry.GetItemName(itemId)
-	if itemName and itemName ~= "Unknown" then
+	if itemName and itemName ~= "Unknown" and not def.crossShape then
 		local modelTemplate = ItemModelLoader.GetModelTemplate(itemName, itemId)
 		if modelTemplate then
 			local part = modelTemplate:Clone()
@@ -436,8 +463,9 @@ local function buildFlatBlockItem(itemId)
     end
 
     -- Try to use 3D model from Tools folder (unified lookup)
+    -- SKIP for cross-shape blocks (wheat, saplings, flowers, etc.) - they use flat sprites below
     local itemName = ItemRegistry.GetItemName(itemId)
-    if itemName and itemName ~= "Unknown" then
+    if itemName and itemName ~= "Unknown" and not def.crossShape then
         local modelTemplate = ItemModelLoader.GetModelTemplate(itemName, itemId)
         if modelTemplate then
             local part = modelTemplate:Clone()

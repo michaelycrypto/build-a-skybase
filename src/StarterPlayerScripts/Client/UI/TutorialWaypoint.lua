@@ -18,6 +18,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 -- Constants
 local Constants = require(ReplicatedStorage.Shared.VoxelWorld.Core.Constants)
+local BlockRegistry = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockRegistry)
+local TextureManager = require(ReplicatedStorage.Shared.VoxelWorld.Rendering.TextureManager)
 local BLOCK_SIZE = Constants.BLOCK_SIZE
 
 -- Player
@@ -109,23 +111,88 @@ local function createWorldMarker(config, worldPos)
 	container.BackgroundTransparency = 1
 	container.Parent = billboard
 
-	-- Marker icon (diamond shape)
-	local marker = Instance.new("ImageLabel")
-	marker.Name = "Marker"
-	marker.Size = UDim2.fromOffset(40, 40)
-	marker.Position = UDim2.fromScale(0.5, 0)
-	marker.AnchorPoint = Vector2.new(0.5, 0)
-	marker.BackgroundTransparency = 1
-	marker.Image = "rbxassetid://6031094678" -- Diamond marker icon
-	marker.ImageColor3 = config.color or COLORS.gold
-	marker.Parent = container
+	-- Marker icon - use block texture if blockId provided, otherwise diamond
+	-- Note: ViewportFrame doesn't work in BillboardGui, so we use texture images
+	local marker
+	local glow
+	
+	if config.blockId then
+		-- Get block definition and its front texture
+		local blockDef = BlockRegistry.Blocks[config.blockId]
+		local textureName = blockDef and blockDef.textures and (blockDef.textures.front or blockDef.textures.all)
+		local textureId = textureName and TextureManager:GetTextureId(textureName)
+		
+		if textureId then
+			-- Use block texture as image (works in BillboardGui)
+			local markerFrame = Instance.new("Frame")
+			markerFrame.Name = "Marker"
+			markerFrame.Size = UDim2.fromOffset(48, 48)
+			markerFrame.Position = UDim2.fromScale(0.5, 0)
+			markerFrame.AnchorPoint = Vector2.new(0.5, 0)
+			markerFrame.BackgroundColor3 = Color3.fromRGB(31, 31, 31)
+			markerFrame.BackgroundTransparency = 0.3
+			markerFrame.Parent = container
+			
+			local corner = Instance.new("UICorner")
+			corner.CornerRadius = UDim.new(0, 6)
+			corner.Parent = markerFrame
+			
+			-- Block texture image
+			local blockImage = Instance.new("ImageLabel")
+			blockImage.Name = "BlockImage"
+			blockImage.Size = UDim2.new(1, -8, 1, -8) -- Small padding
+			blockImage.Position = UDim2.fromScale(0.5, 0.5)
+			blockImage.AnchorPoint = Vector2.new(0.5, 0.5)
+			blockImage.BackgroundTransparency = 1
+			blockImage.Image = textureId
+			blockImage.ScaleType = Enum.ScaleType.Fit
+			blockImage.Parent = markerFrame
+			
+			marker = markerFrame
+			
+			-- Pulsing glow effect on frame
+			glow = Instance.new("UIStroke")
+			glow.Color = config.color or COLORS.gold
+			glow.Thickness = 3
+			glow.Transparency = 0.2
+			glow.Parent = markerFrame
+		else
+			-- Fallback to diamond if no texture found
+			marker = Instance.new("ImageLabel")
+			marker.Name = "Marker"
+			marker.Size = UDim2.fromOffset(40, 40)
+			marker.Position = UDim2.fromScale(0.5, 0)
+			marker.AnchorPoint = Vector2.new(0.5, 0)
+			marker.BackgroundTransparency = 1
+			marker.Image = "rbxassetid://6031094678" -- Diamond marker icon
+			marker.ImageColor3 = config.color or COLORS.gold
+			marker.Parent = container
 
-	-- Pulsing glow effect
-	local glow = Instance.new("UIStroke")
-	glow.Color = config.color or COLORS.gold
-	glow.Thickness = 2
-	glow.Transparency = 0.3
-	glow.Parent = marker
+			glow = Instance.new("UIStroke")
+			glow.Color = config.color or COLORS.gold
+			glow.Thickness = 2
+			glow.Transparency = 0.3
+			glow.Parent = marker
+		end
+	else
+		-- Fallback: diamond icon
+		marker = Instance.new("ImageLabel")
+		marker.Name = "Marker"
+		marker.Size = UDim2.fromOffset(40, 40)
+		marker.Position = UDim2.fromScale(0.5, 0)
+		marker.AnchorPoint = Vector2.new(0.5, 0)
+		marker.BackgroundTransparency = 1
+		marker.Image = "rbxassetid://6031094678" -- Diamond marker icon
+		marker.ImageColor3 = config.color or COLORS.gold
+		marker.Parent = container
+
+		-- Pulsing glow effect
+		glow = Instance.new("UIStroke")
+		glow.Color = config.color or COLORS.gold
+		glow.Thickness = 2
+		glow.Transparency = 0.3
+		glow.Parent = marker
+	end
 
 	-- Label background
 	local labelBg = Instance.new("Frame")
@@ -163,16 +230,20 @@ local function createWorldMarker(config, worldPos)
 	distanceLabel.Font = Enum.Font.Gotham
 	distanceLabel.Parent = container
 
-	-- Animate marker bobbing
-	local startPos = marker.Position
-	TweenService:Create(marker, ANIMATION.bob, {
-		Position = UDim2.new(startPos.X.Scale, startPos.X.Offset, startPos.Y.Scale, startPos.Y.Offset - 8)
-	}):Play()
+	-- Animate marker bobbing (with safety check)
+	if marker then
+		local startPos = marker.Position
+		TweenService:Create(marker, ANIMATION.bob, {
+			Position = UDim2.new(startPos.X.Scale, startPos.X.Offset, startPos.Y.Scale, startPos.Y.Offset - 8)
+		}):Play()
+	end
 
-	-- Animate glow pulsing
-	TweenService:Create(glow, ANIMATION.pulse, {
-		Transparency = 0.7
-	}):Play()
+	-- Animate glow pulsing (with safety check)
+	if glow then
+		TweenService:Create(glow, ANIMATION.pulse, {
+			Transparency = 0.7
+		}):Play()
+	end
 
 	return billboard, anchor
 end

@@ -86,11 +86,10 @@ Update the `textures` field in BlockRegistry.lua with the actual texture ID:
 
 ---
 
-### Step 6: Add 3D Model to ReplicatedStorage.Tools (Optional)
+### Step 6: Add 3D Model to ReplicatedStorage.Assets.Tools (Optional)
 
 Add a 3D model named after the food item (e.g., "Bread") to:
-- `game.ReplicatedStorage.Tools["Bread"]` OR
-- `game.ReplicatedStorage.Assets.Tools["Bread"]`
+- `game.ReplicatedStorage.Assets.Tools["Bread"]` (primary location)
 
 The model should be:
 - A `MeshPart` directly, OR
@@ -206,7 +205,7 @@ BREAD = 228,
 Update the `textures` field with the actual texture ID.
 
 ### 6. Add 3D model (Optional)
-Create `ReplicatedStorage.Tools["Bread"]` with a 3D model.
+Create `ReplicatedStorage.Assets.Tools["Bread"]` with a 3D model.
 
 ---
 

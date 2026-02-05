@@ -47,7 +47,7 @@
 - **Current Texture**: `rbxassetid://94889741310645`
 - **Status**: ⚠️ **Not found in 3D model log**
 - **Possible Reasons**:
-  1. 3D model doesn't exist in `ReplicatedStorage.Tools`
+  1. 3D model doesn't exist in `ReplicatedStorage.Assets.Tools`
   2. 3D model exists but has empty TextureID
   3. 3D model is named differently (e.g., "BakedPotato" without space)
 - **Action**: Keep current texture as fallback. If 3D model exists, system will use it and apply BlockRegistry texture.
@@ -65,7 +65,7 @@ These are handled correctly - system will apply textures from ToolConfig/BlockRe
 ## Texture Application Logic
 
 The system now **always applies BlockRegistry textures** to 3D models to ensure consistency:
-1. Load 3D model from `ReplicatedStorage.Tools`
+1. Load 3D model from `ReplicatedStorage.Assets.Tools`
 2. Always apply BlockRegistry texture (overrides model's texture if present)
 3. BlockRegistry is the source of truth for all textures
 

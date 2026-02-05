@@ -17,6 +17,7 @@ local GameConfig = require(ReplicatedStorage.Configs.GameConfig)
 local ItemRegistry = require(ReplicatedStorage.Configs.ItemRegistry)
 local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
 local ItemModelLoader = require(ReplicatedStorage.Shared.ItemModelLoader)
+local BlockEntityLoader = require(ReplicatedStorage.Shared.BlockEntityLoader)
 local ItemPixelSizes = require(ReplicatedStorage.Shared.ItemPixelSizes)
 local SoundManager = require(script.Parent.Parent.Managers.SoundManager)
 
@@ -663,9 +664,115 @@ function DroppedItemController:CreateModel(itemId, count)
 		{x = 0, y = LAYER_OFFSET_Y * 3, z = LAYER_OFFSET_XZ},
 	}
 
+	-- Try to use BlockEntity model first (for special blocks like chests, lanterns, etc.)
+	local entityName = blockInfo and blockInfo.entityName
+	if entityName and BlockEntityLoader.HasEntity(entityName) then
+		local hitbox = Instance.new("Part")
+		hitbox.Name = "Hitbox"
+		hitbox.Size = hitboxSize
+		hitbox.Transparency = 1
+		hitbox.Anchored = false
+		hitbox.CanCollide = true
+		hitbox.CanQuery = true
+		hitbox.CanTouch = true
+		pcall(function() hitbox.CollisionGroup = "DroppedItem" end)
+		hitbox.CustomPhysicalProperties = PhysicalProperties.new(0.5, 0.5, 0.3, 1, 1)
+		hitbox.Parent = model
+
+		local visualFolder = Instance.new("Folder")
+		visualFolder.Name = "Visual"
+		visualFolder.Parent = model
+
+		local visualParts = {}
+		local entity = BlockEntityLoader.CreateDroppedEntity(entityName, DROPPED_ITEM_SCALE)
+		if entity then
+			entity.Name = "VisualBlockEntity"
+			entity.Parent = visualFolder
+
+			-- Handle both Model and BasePart entities
+			if entity:IsA("Model") then
+				-- Disable collisions on all parts
+				for _, part in ipairs(entity:GetDescendants()) do
+					if part:IsA("BasePart") then
+						part.Anchored = false
+						part.CanCollide = false
+						part.CanQuery = false
+						part.CanTouch = false
+						part.Massless = true
+						part.CastShadow = true
+					end
+				end
+				-- Position the model
+				entity:PivotTo(hitbox.CFrame * CFrame.new(0, hitbox.Size.Y * 0.5, 0))
+				-- Weld all parts to hitbox
+				for _, part in ipairs(entity:GetDescendants()) do
+					if part:IsA("BasePart") then
+						local weld = Instance.new("WeldConstraint")
+						weld.Part0 = hitbox
+						weld.Part1 = part
+						weld.Parent = part
+						table.insert(visualParts, part)
+					end
+				end
+			elseif entity:IsA("BasePart") then
+				entity.Anchored = false
+				entity.CanCollide = false
+				entity.CanQuery = false
+				entity.CanTouch = false
+				entity.Massless = true
+				entity.CastShadow = true
+				entity.CFrame = hitbox.CFrame * CFrame.new(0, hitbox.Size.Y * 0.5, 0)
+				local weld = Instance.new("WeldConstraint")
+				weld.Part0 = hitbox
+				weld.Part1 = entity
+				weld.Parent = entity
+				table.insert(visualParts, entity)
+			end
+
+			-- Add additional layers for stack sizes
+			if layerCount > 1 then
+				for i = 2, layerCount do
+					local off = layerOffsets[i]
+					local clone = entity:Clone()
+					clone.Parent = visualFolder
+					if clone:IsA("Model") then
+						clone:PivotTo(hitbox.CFrame * CFrame.new(off.x, hitbox.Size.Y * 0.5 + off.y, off.z))
+						for _, part in ipairs(clone:GetDescendants()) do
+							if part:IsA("BasePart") then
+								local weld = Instance.new("WeldConstraint")
+								weld.Part0 = hitbox
+								weld.Part1 = part
+								weld.Parent = part
+								table.insert(visualParts, part)
+							end
+						end
+					elseif clone:IsA("BasePart") then
+						clone.CFrame = hitbox.CFrame * CFrame.new(off.x, hitbox.Size.Y * 0.5 + off.y, off.z)
+						local weld = Instance.new("WeldConstraint")
+						weld.Part0 = hitbox
+						weld.Part1 = clone
+						weld.Parent = clone
+						table.insert(visualParts, clone)
+					end
+				end
+			end
+
+			-- Add highlight for late-despawn flashing
+			local highlight = Instance.new("Highlight")
+			highlight.Enabled = false
+			highlight.Parent = hitbox
+
+			model.PrimaryPart = hitbox
+			model:SetAttribute("FlatVisualOnly", true)
+			model.Parent = workspace
+			return model
+		end
+	end
+
 	-- Try to use 3D model from Tools folder (unified lookup via ItemRegistry)
+	-- SKIP for cross-shape blocks (wheat, saplings, flowers, etc.) - they render as flat sprites below
 	local blockItemName = ItemRegistry.GetItemName(itemId)
-	if blockItemName and blockItemName ~= "Unknown" then
+	if blockItemName and blockItemName ~= "Unknown" and not isCrossShape then
 		local modelTemplate = ItemModelLoader.GetModelTemplate(blockItemName, itemId)
 		if modelTemplate then
 			-- Use 3D model for block item

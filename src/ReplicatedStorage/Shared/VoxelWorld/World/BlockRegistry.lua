@@ -1,13 +1,32 @@
 --[[
 	BlockRegistry.lua
 	Defines block types and their properties
+
+	BLOCK RENDERING TYPES:
+	======================
+	1. REGULAR TEXTURED BLOCKS (default)
+	   - Rendered as cubes with textures applied to faces
+	   - Uses: textures.all, textures.top/bottom/side, etc.
+	   - Examples: Stone, Dirt, Planks, Bricks
+
+	2. BLOCK ENTITIES (entityName property)
+	   - Rendered as 3D models from ReplicatedStorage.Assets.BlockEntities
+	   - Set: entityName = "ModelName" (must match model name in folder)
+	   - Examples: Chest, Anvil, Brewing Stand, Enchanting Table
+	   - Used in: World rendering, dropped items, held items, inventory previews
+
+	Special shape flags (crossShape, stairShape, slabShape, fenceShape) are
+	handled separately with custom geometry generation.
 ]]
 
 local Constants = require(script.Parent.Parent.Core.Constants)
 
 local BlockRegistry = {}
 
--- Default block properties
+--[[
+	Default block properties
+	- entityName: nil = regular textured block, string = 3D model from BlockEntities folder
+]]
 local DEFAULT_BLOCK = {
 	name = "Unknown",
 	solid = true,
@@ -16,7 +35,8 @@ local DEFAULT_BLOCK = {
 	textures = {
 		all = "unknown"
 	},
-	crossShape = false
+	crossShape = false,
+	entityName = nil  -- Set to model name (e.g., "Chest") for 3D entity rendering
 }
 
 -- Block type definitions
@@ -157,7 +177,8 @@ BlockRegistry.Blocks = {
 		crossShape = false,
 		hasRotation = true, -- NEW: Block can be rotated
 		interactable = true, -- Special property for chests
-		storage = true -- Has inventory storage
+		storage = true, -- Has inventory storage
+		entityName = "Chest" -- 3D entity model from Assets.BlockEntities
 	},
 
 	[Constants.BlockType.SAND] = {
@@ -240,7 +261,8 @@ BlockRegistry.Blocks = {
 		textures = {
 			all = "oak_sapling"
 		},
-		crossShape = true
+		crossShape = true,
+		groundAligned = true
 	},
 
 	-- Staircase blocks
@@ -1732,7 +1754,8 @@ BlockRegistry.Blocks = {
 		textures = {
 			all = "spruce_sapling"
 		},
-		crossShape = true
+		crossShape = true,
+		groundAligned = true
 	},
 
 	[Constants.BlockType.SPRUCE_STAIRS] = {
@@ -1791,7 +1814,8 @@ BlockRegistry.Blocks = {
 		textures = {
 			all = "jungle_sapling"
 		},
-		crossShape = true
+		crossShape = true,
+		groundAligned = true
 	},
 
 	[Constants.BlockType.JUNGLE_STAIRS] = {
@@ -1850,7 +1874,8 @@ BlockRegistry.Blocks = {
 		textures = {
 			all = "dark_oak_sapling"
 		},
-		crossShape = true
+		crossShape = true,
+		groundAligned = true
 	},
 
 	[Constants.BlockType.DARK_OAK_STAIRS] = {
@@ -1909,7 +1934,8 @@ BlockRegistry.Blocks = {
 		textures = {
 			all = "birch_sapling"
 		},
-		crossShape = true
+		crossShape = true,
+		groundAligned = true
 	},
 
 	[Constants.BlockType.BIRCH_STAIRS] = {
@@ -1968,7 +1994,8 @@ BlockRegistry.Blocks = {
 		textures = {
 			all = "acacia_sapling"
 		},
-		crossShape = true
+		crossShape = true,
+		groundAligned = true
 	},
 
 	[Constants.BlockType.ACACIA_STAIRS] = {
@@ -2144,33 +2171,33 @@ BlockRegistry.Blocks = {
 		isFood = true
 	},
 
-	-- Wheat crop stages (cross-shaped)
-	[Constants.BlockType.WHEAT_CROP_0] = { name = "Wheat (Stage 0)", solid = false, transparent = true, color = Color3.fromRGB(180, 200, 120), textures = { all = "rbxassetid://114356013890110" }, crossShape = true },
-	[Constants.BlockType.WHEAT_CROP_1] = { name = "Wheat (Stage 1)", solid = false, transparent = true, color = Color3.fromRGB(180, 200, 120), textures = { all = "rbxassetid://101949350772745" }, crossShape = true },
-	[Constants.BlockType.WHEAT_CROP_2] = { name = "Wheat (Stage 2)", solid = false, transparent = true, color = Color3.fromRGB(180, 200, 120), textures = { all = "rbxassetid://133533519991116" }, crossShape = true },
-	[Constants.BlockType.WHEAT_CROP_3] = { name = "Wheat (Stage 3)", solid = false, transparent = true, color = Color3.fromRGB(190, 200, 120), textures = { all = "rbxassetid://102996391913529" }, crossShape = true },
-	[Constants.BlockType.WHEAT_CROP_4] = { name = "Wheat (Stage 4)", solid = false, transparent = true, color = Color3.fromRGB(200, 200, 120), textures = { all = "rbxassetid://77729218147670" }, crossShape = true },
-	[Constants.BlockType.WHEAT_CROP_5] = { name = "Wheat (Stage 5)", solid = false, transparent = true, color = Color3.fromRGB(210, 200, 120), textures = { all = "rbxassetid://105328080071552" }, crossShape = true },
-	[Constants.BlockType.WHEAT_CROP_6] = { name = "Wheat (Stage 6)", solid = false, transparent = true, color = Color3.fromRGB(220, 200, 120), textures = { all = "rbxassetid://83753723300014" }, crossShape = true },
-	[Constants.BlockType.WHEAT_CROP_7] = { name = "Wheat (Stage 7)", solid = false, transparent = true, color = Color3.fromRGB(230, 200, 120), textures = { all = "rbxassetid://136030730993000" }, crossShape = true },
+	-- Wheat crop stages (cross-shaped) - MUST NOT have entityName
+	[Constants.BlockType.WHEAT_CROP_0] = { name = "Wheat (Stage 0)", solid = false, transparent = true, color = Color3.fromRGB(180, 200, 120), textures = { all = "rbxassetid://114356013890110" }, crossShape = true, entityName = nil },
+	[Constants.BlockType.WHEAT_CROP_1] = { name = "Wheat (Stage 1)", solid = false, transparent = true, color = Color3.fromRGB(180, 200, 120), textures = { all = "rbxassetid://101949350772745" }, crossShape = true, entityName = nil },
+	[Constants.BlockType.WHEAT_CROP_2] = { name = "Wheat (Stage 2)", solid = false, transparent = true, color = Color3.fromRGB(180, 200, 120), textures = { all = "rbxassetid://133533519991116" }, crossShape = true, entityName = nil },
+	[Constants.BlockType.WHEAT_CROP_3] = { name = "Wheat (Stage 3)", solid = false, transparent = true, color = Color3.fromRGB(190, 200, 120), textures = { all = "rbxassetid://102996391913529" }, crossShape = true, entityName = nil },
+	[Constants.BlockType.WHEAT_CROP_4] = { name = "Wheat (Stage 4)", solid = false, transparent = true, color = Color3.fromRGB(200, 200, 120), textures = { all = "rbxassetid://77729218147670" }, crossShape = true, entityName = nil },
+	[Constants.BlockType.WHEAT_CROP_5] = { name = "Wheat (Stage 5)", solid = false, transparent = true, color = Color3.fromRGB(210, 200, 120), textures = { all = "rbxassetid://105328080071552" }, crossShape = true, entityName = nil },
+	[Constants.BlockType.WHEAT_CROP_6] = { name = "Wheat (Stage 6)", solid = false, transparent = true, color = Color3.fromRGB(220, 200, 120), textures = { all = "rbxassetid://83753723300014" }, crossShape = true, entityName = nil },
+	[Constants.BlockType.WHEAT_CROP_7] = { name = "Wheat (Stage 7)", solid = false, transparent = true, color = Color3.fromRGB(230, 200, 120), textures = { all = "rbxassetid://136030730993000" }, crossShape = true, entityName = nil },
 
-	-- Potato crop stages
-	[Constants.BlockType.POTATO_CROP_0] = { name = "Potatoes (Stage 0)", solid = false, transparent = true, color = Color3.fromRGB(180, 200, 120), textures = { all = "rbxassetid://128460303336429" }, crossShape = true },
-	[Constants.BlockType.POTATO_CROP_1] = { name = "Potatoes (Stage 1)", solid = false, transparent = true, color = Color3.fromRGB(180, 200, 120), textures = { all = "rbxassetid://92682259576493" }, crossShape = true },
-	[Constants.BlockType.POTATO_CROP_2] = { name = "Potatoes (Stage 2)", solid = false, transparent = true, color = Color3.fromRGB(180, 200, 120), textures = { all = "rbxassetid://103623438750445" }, crossShape = true },
-	[Constants.BlockType.POTATO_CROP_3] = { name = "Potatoes (Stage 3)", solid = false, transparent = true, color = Color3.fromRGB(180, 200, 120), textures = { all = "rbxassetid://104276053911593" }, crossShape = true },
+	-- Potato crop stages - MUST NOT have entityName
+	[Constants.BlockType.POTATO_CROP_0] = { name = "Potatoes (Stage 0)", solid = false, transparent = true, color = Color3.fromRGB(180, 200, 120), textures = { all = "rbxassetid://128460303336429" }, crossShape = true, entityName = nil },
+	[Constants.BlockType.POTATO_CROP_1] = { name = "Potatoes (Stage 1)", solid = false, transparent = true, color = Color3.fromRGB(180, 200, 120), textures = { all = "rbxassetid://92682259576493" }, crossShape = true, entityName = nil },
+	[Constants.BlockType.POTATO_CROP_2] = { name = "Potatoes (Stage 2)", solid = false, transparent = true, color = Color3.fromRGB(180, 200, 120), textures = { all = "rbxassetid://103623438750445" }, crossShape = true, entityName = nil },
+	[Constants.BlockType.POTATO_CROP_3] = { name = "Potatoes (Stage 3)", solid = false, transparent = true, color = Color3.fromRGB(180, 200, 120), textures = { all = "rbxassetid://104276053911593" }, crossShape = true, entityName = nil },
 
-	-- Carrot crop stages
-	[Constants.BlockType.CARROT_CROP_0] = { name = "Carrots (Stage 0)", solid = false, transparent = true, color = Color3.fromRGB(180, 200, 120), textures = { all = "rbxassetid://128380408094802" }, crossShape = true },
-	[Constants.BlockType.CARROT_CROP_1] = { name = "Carrots (Stage 1)", solid = false, transparent = true, color = Color3.fromRGB(180, 200, 120), textures = { all = "rbxassetid://107854444375662" }, crossShape = true },
-	[Constants.BlockType.CARROT_CROP_2] = { name = "Carrots (Stage 2)", solid = false, transparent = true, color = Color3.fromRGB(180, 200, 120), textures = { all = "rbxassetid://71473488230615" }, crossShape = true },
-	[Constants.BlockType.CARROT_CROP_3] = { name = "Carrots (Stage 3)", solid = false, transparent = true, color = Color3.fromRGB(180, 200, 120), textures = { all = "rbxassetid://81683662013698" }, crossShape = true },
+	-- Carrot crop stages - MUST NOT have entityName
+	[Constants.BlockType.CARROT_CROP_0] = { name = "Carrots (Stage 0)", solid = false, transparent = true, color = Color3.fromRGB(180, 200, 120), textures = { all = "rbxassetid://128380408094802" }, crossShape = true, entityName = nil },
+	[Constants.BlockType.CARROT_CROP_1] = { name = "Carrots (Stage 1)", solid = false, transparent = true, color = Color3.fromRGB(180, 200, 120), textures = { all = "rbxassetid://107854444375662" }, crossShape = true, entityName = nil },
+	[Constants.BlockType.CARROT_CROP_2] = { name = "Carrots (Stage 2)", solid = false, transparent = true, color = Color3.fromRGB(180, 200, 120), textures = { all = "rbxassetid://71473488230615" }, crossShape = true, entityName = nil },
+	[Constants.BlockType.CARROT_CROP_3] = { name = "Carrots (Stage 3)", solid = false, transparent = true, color = Color3.fromRGB(180, 200, 120), textures = { all = "rbxassetid://81683662013698" }, crossShape = true, entityName = nil },
 
-	-- Beetroot crop stages
-	[Constants.BlockType.BEETROOT_CROP_0] = { name = "Beetroots (Stage 0)", solid = false, transparent = true, color = Color3.fromRGB(180, 200, 120), textures = { all = "rbxassetid://79781523080066" }, crossShape = true },
-	[Constants.BlockType.BEETROOT_CROP_1] = { name = "Beetroots (Stage 1)", solid = false, transparent = true, color = Color3.fromRGB(180, 200, 120), textures = { all = "rbxassetid://81286687752129" }, crossShape = true },
-	[Constants.BlockType.BEETROOT_CROP_2] = { name = "Beetroots (Stage 2)", solid = false, transparent = true, color = Color3.fromRGB(180, 200, 120), textures = { all = "rbxassetid://119272458748743" }, crossShape = true },
-	[Constants.BlockType.BEETROOT_CROP_3] = { name = "Beetroots (Stage 3)", solid = false, transparent = true, color = Color3.fromRGB(180, 200, 120), textures = { all = "rbxassetid://105511567346427" }, crossShape = true },
+	-- Beetroot crop stages - MUST NOT have entityName
+	[Constants.BlockType.BEETROOT_CROP_0] = { name = "Beetroots (Stage 0)", solid = false, transparent = true, color = Color3.fromRGB(180, 200, 120), textures = { all = "rbxassetid://79781523080066" }, crossShape = true, entityName = nil },
+	[Constants.BlockType.BEETROOT_CROP_1] = { name = "Beetroots (Stage 1)", solid = false, transparent = true, color = Color3.fromRGB(180, 200, 120), textures = { all = "rbxassetid://81286687752129" }, crossShape = true, entityName = nil },
+	[Constants.BlockType.BEETROOT_CROP_2] = { name = "Beetroots (Stage 2)", solid = false, transparent = true, color = Color3.fromRGB(180, 200, 120), textures = { all = "rbxassetid://119272458748743" }, crossShape = true, entityName = nil },
+	[Constants.BlockType.BEETROOT_CROP_3] = { name = "Beetroots (Stage 3)", solid = false, transparent = true, color = Color3.fromRGB(180, 200, 120), textures = { all = "rbxassetid://105511567346427" }, crossShape = true, entityName = nil },
 
 	-- ═══════════════════════════════════════════════════════════════════════════
 	-- ORES (4-tier progression: Copper → Iron → Steel → Bluesteel)
@@ -3482,7 +3509,8 @@ BlockRegistry.Blocks = {
 			side = "rbxassetid://75129759837324",
 			all = "rbxassetid://75129759837324"
 		},
-		crossShape = false
+		crossShape = false,
+		entityName = "Cauldron"
 	},
 	[Constants.BlockType.ANVIL] = {
 		name = "Anvil",
@@ -3496,7 +3524,8 @@ BlockRegistry.Blocks = {
 			all = "rbxassetid://113323068322069"
 		},
 		crossShape = false,
-		hasRotation = true
+		hasRotation = true,
+		entityName = "Anvil"
 	},
 	[Constants.BlockType.BREWING_STAND] = {
 		name = "Brewing Stand",
@@ -3509,8 +3538,9 @@ BlockRegistry.Blocks = {
 			side = "rbxassetid://85702259653816",
 			all = "rbxassetid://85702259653816"
 		},
-		crossShape = true,
-		interactable = true
+		crossShape = false, -- Rendered as 3D entity, not cross-shape
+		interactable = true,
+		entityName = "Brewing Stand"
 	},
 	[Constants.BlockType.ENCHANTING_TABLE] = {
 		name = "Enchanting Table",
@@ -3524,7 +3554,8 @@ BlockRegistry.Blocks = {
 			all = "rbxassetid://140224980615436"
 		},
 		crossShape = false,
-		interactable = true
+		interactable = true,
+		entityName = "Enchanting Table"
 	},
 	[Constants.BlockType.BEACON] = {
 		name = "Beacon",
@@ -3548,7 +3579,8 @@ BlockRegistry.Blocks = {
 		transparent = true,
 		color = Color3.fromRGB(198, 137, 68),
 		textures = { all = "rbxassetid://91918732182012" },
-		crossShape = true
+		crossShape = false, -- Rendered as 3D entity, not cross-shape
+		entityName = "Torch" -- 3D entity model from Assets.BlockEntities (uses Torch model for lanterns)
 	},
 	[Constants.BlockType.SOUL_LANTERN] = {
 		name = "Soul Lantern",
@@ -3556,7 +3588,8 @@ BlockRegistry.Blocks = {
 		transparent = true,
 		color = Color3.fromRGB(70, 185, 186),
 		textures = { all = "rbxassetid://91918732182012" },
-		crossShape = true
+		crossShape = false, -- Rendered as 3D entity, not cross-shape
+		entityName = "Torch" -- 3D entity model from Assets.BlockEntities (uses Torch model)
 	},
 
 	-- ═══════════════════════════════════════════════════════════════════════
@@ -4076,6 +4109,20 @@ function BlockRegistry:RequiresBucketToTarget(blockId: number): boolean
     -- Water and lava source blocks can only be targeted when holding a bucket
     return blockId == Constants.BlockType.WATER_SOURCE
     -- Add LAVA_SOURCE here when implemented
+end
+
+-- Check if a block has a 3D entity model
+function BlockRegistry:HasEntity(blockId: number): boolean
+    if not blockId then return false end
+    local block = self:GetBlock(blockId)
+    return block.entityName ~= nil
+end
+
+-- Get the entity name for a block (for use with BlockEntityLoader)
+function BlockRegistry:GetEntityName(blockId: number): string?
+    if not blockId then return nil end
+    local block = self:GetBlock(blockId)
+    return block.entityName
 end
 
 return BlockRegistry

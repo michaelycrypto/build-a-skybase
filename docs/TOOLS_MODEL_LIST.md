@@ -1,12 +1,12 @@
-# Complete List of 3D Models Required in ReplicatedStorage.Tools
+# Complete List of 3D Models Required in ReplicatedStorage.Assets.Tools
 
-This document lists ALL items that need 3D models in `game.ReplicatedStorage.Tools` for wielding in hand and rendering dropped items.
+This document lists ALL items that need 3D models in `game.ReplicatedStorage.Assets.Tools` for wielding in hand and rendering dropped items.
 
 ## Model Naming Convention
 
 Models should be named using the **item name** (e.g., "Apple", "Stick") or **item ID** (e.g., "37" for Apple). The system will look for models in this order:
-1. `ReplicatedStorage.Tools[modelName]`
-2. `ReplicatedStorage.Assets.Tools[modelName]`
+1. `ReplicatedStorage.Assets.Tools[modelName]` (primary)
+2. `ReplicatedStorage.Tools[modelName]` (legacy fallback)
 
 Each model should be:
 - A `MeshPart` directly, OR

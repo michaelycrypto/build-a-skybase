@@ -2,8 +2,9 @@
 	HeldItemRenderer.lua
 	Renders held items on characters.
 
+	- Block entity → 3D model from ReplicatedStorage.Assets.BlockEntities
 	- Placeable solid block → textured cube
-	- Everything else → 3D model from ReplicatedStorage.Tools
+	- Everything else → 3D model from ReplicatedStorage.Assets.Tools
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -12,6 +13,7 @@ local ItemRegistry = require(ReplicatedStorage.Configs.ItemRegistry)
 local BlockRegistry = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockRegistry)
 local TextureManager = require(ReplicatedStorage.Shared.VoxelWorld.Rendering.TextureManager)
 local ItemModelLoader = require(ReplicatedStorage.Shared.ItemModelLoader)
+local BlockEntityLoader = require(ReplicatedStorage.Shared.BlockEntityLoader)
 local ItemPixelSizes = require(ReplicatedStorage.Shared.ItemPixelSizes)
 
 local HeldItemRenderer = {}
@@ -55,6 +57,71 @@ local function isPlaceableBlock(itemId)
 		return false
 	end
 	return def.textures ~= nil
+end
+
+local function hasBlockEntity(itemId)
+	local def = BlockRegistry.Blocks[itemId]
+	if not def or not def.entityName then
+		return false
+	end
+	return BlockEntityLoader.HasEntity(def.entityName)
+end
+
+local function createBlockEntityPart(itemId)
+	local def = BlockRegistry.Blocks[itemId]
+	local entityName = def and def.entityName
+	if not entityName then return nil end
+
+	local entity = BlockEntityLoader.CreateHeldEntity(entityName, 0.5)
+	if not entity then return nil end
+
+	-- Handle both Model and BasePart entities
+	if entity:IsA("Model") then
+		-- For Models, we need to create a wrapper or use the primary part
+		local primaryPart = entity.PrimaryPart or entity:FindFirstChildWhichIsA("BasePart", true)
+		if primaryPart then
+			-- Create a wrapper to attach to hand
+			local wrapper = Instance.new("Part")
+			wrapper.Name = "HeldItemHandle"
+			wrapper.Size = Vector3.new(0.1, 0.1, 0.1)
+			wrapper.Transparency = 1
+			wrapper.Massless = true
+			wrapper.CanCollide = false
+			wrapper.Anchored = false
+			wrapper.CastShadow = false
+
+			-- Parent the entity to the wrapper
+			entity.Parent = wrapper
+
+			-- Position entity relative to wrapper center
+			entity:PivotTo(CFrame.new(0, 0, 0))
+
+			-- Weld all parts in the entity to the wrapper
+			for _, part in ipairs(entity:GetDescendants()) do
+				if part:IsA("BasePart") then
+					part.Anchored = false
+					part.CanCollide = false
+					part.Massless = true
+					local weld = Instance.new("WeldConstraint")
+					weld.Part0 = wrapper
+					weld.Part1 = part
+					weld.Parent = part
+				end
+			end
+
+			return wrapper
+		end
+		return nil
+	elseif entity:IsA("BasePart") then
+		entity.Name = "HeldItemHandle"
+		entity.Massless = true
+		entity.CanCollide = false
+		entity.Anchored = false
+		entity.CastShadow = true
+		return entity
+	end
+
+	return nil
 end
 
 local function createBlockPart(itemId)
@@ -127,10 +194,21 @@ function HeldItemRenderer.AttachItem(character, itemId)
 	HeldItemRenderer.ClearItem(character)
 
 	local part, grip
+	local blockDef = BlockRegistry.Blocks[itemId]
+	local isCrossShape = blockDef and blockDef.crossShape == true
 
-	if isPlaceableBlock(itemId) then
+	-- Check for block entity first (chests, lanterns, etc.)
+	if hasBlockEntity(itemId) then
+		part = createBlockEntityPart(itemId)
+		grip = BLOCK_GRIP
+	elseif isPlaceableBlock(itemId) then
 		part = createBlockPart(itemId)
 		grip = BLOCK_GRIP
+	elseif isCrossShape then
+		-- Cross-shape items (wheat, saplings, flowers) rendered as simple textured block
+		-- Don't use ItemModelLoader to prevent accidental MeshPart matches
+		part = createBlockPart(itemId)
+		grip = ITEM_GRIP
 	else
 		local itemName = ItemRegistry.GetItemName(itemId)
 		if not itemName or itemName == "Unknown" then return nil end

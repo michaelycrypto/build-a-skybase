@@ -138,7 +138,7 @@ These items from the log are NOT food items (they are containers/materials):
 
 3. **All implemented food items have correct texture IDs** ✅
 4. **All implemented food items have FoodConfig entries** ✅
-5. **3D model support is now implemented** - system will use models from `ReplicatedStorage.Tools` when available
+5. **3D model support is now implemented** - system will use models from `ReplicatedStorage.Assets.Tools` when available
 
 ---
 

@@ -98,7 +98,12 @@ local Config = {
 		DISABLE_FRUSTUM_CULLING = false,
 		MAX_PARTS_PER_CHUNK = nil,
 		-- Enable to log cross-shaped block texture selection (tall grass, flowers)
-		LOG_CROSSSHAPE_TEXTURES = false
+		LOG_CROSSSHAPE_TEXTURES = false,
+		-- Enable to log texture pool acquisition (detect contaminated textures)
+		LOG_TEXTURE_POOL = false,
+		-- DIAGNOSTIC: Skip texture pool for cross-shapes (creates fresh textures each time)
+		-- Enable this to test if the UV issue is caused by texture pooling
+		CROSSSHAPE_BYPASS_POOL = false
 	}
 }
 

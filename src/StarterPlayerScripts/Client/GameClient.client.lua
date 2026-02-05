@@ -107,7 +107,6 @@ end)
 -- Background mesh generation system (avoids blocking RenderStepped)
 local meshReadyQueue = {}  -- {key, model} pairs ready to be parented
 local waterfallTextures = {}
-local waterfallScrollSpeed = 0.6
 local meshBuildingSet = {} -- Keys currently being built (prevent duplicates)
 local meshWorkerRunning = false
 
@@ -416,27 +415,7 @@ local function startMeshWorker()
 end
 
 -- Lightweight RenderStepped handler - only parents ready meshes and updates fog
-local function registerWaterfallTextures(model)
-	for _, inst in ipairs(model:GetDescendants()) do
-		if inst:IsA("Texture") and inst.Name == "WaterfallScroll" then
-			table.insert(waterfallTextures, inst)
-		end
-	end
-end
-
-local function updateWaterfallTextures()
-	if #waterfallTextures == 0 then
-		return
-	end
-	local now = os.clock()
-	for i = #waterfallTextures, 1, -1 do
-		local tex = waterfallTextures[i]
-		if not tex.Parent then
-			table.remove(waterfallTextures, i)
-		else
-			tex.OffsetStudsV = -(now * waterfallScrollSpeed)
-		end
-	end
+local function registerWaterfallTextures(_model)
 end
 
 local function updateVoxelWorld()
@@ -591,7 +570,6 @@ local function updateVoxelWorld()
 		end
 	end
 
-	updateWaterfallTextures()
 end
 
 -- Connect voxel world update to RenderStepped

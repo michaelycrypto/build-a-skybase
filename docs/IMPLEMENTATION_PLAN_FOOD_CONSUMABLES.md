@@ -11,7 +11,7 @@ This document outlines the implementation plan for the Food & Consumables system
 3. **Food Values**: Match Minecraft food values exactly
 4. **Health Integration**: Hunger >= 18 enables health regen; Hunger < 6 causes starvation damage
 5. **Visual Feedback**: Hunger bar UI, eating animation, sound effects
-6. **3D Item Models**: Use items from `game.ReplicatedStorage.Tools` for wielding and rendering
+6. **3D Item Models**: Use items from `game.ReplicatedStorage.Assets.Tools` for wielding and rendering
 
 ---
 
@@ -228,10 +228,10 @@ end
 **Usage**:
 - Food items will automatically render in hand via existing system
 - Food items are blocks (not tools), so they use `createBlockHandle()`
-- 3D models from `ReplicatedStorage.Tools` will be used if available
+- 3D models from `ReplicatedStorage.Assets.Tools` will be used if available
 - If no 3D model exists, fall back to block rendering (cross-shaped)
 
-**Note**: The user mentioned 3D models exist in `game.ReplicatedStorage.Tools` in Studio. These should be referenced by item ID or name matching.
+**Note**: 3D models exist in `game.ReplicatedStorage.Assets.Tools` in Studio. These should be referenced by item ID or name matching.
 
 ---
 
@@ -535,7 +535,7 @@ src/
 ### HeldItemRenderer Integration
 
 - Food items are blocks (not tools), so they render via `HeldItemRenderer.AttachItem()`
-- 3D models from `ReplicatedStorage.Tools` should be referenced by item ID
+- 3D models from `ReplicatedStorage.Assets.Tools` should be referenced by item ID
 - If model doesn't exist, fall back to block rendering (cross-shaped)
 - Food items will appear in hand when selected in hotbar
 
@@ -600,7 +600,7 @@ src/
 
 ## Notes
 
-- **3D Models**: The user mentioned 3D models exist in `game.ReplicatedStorage.Tools` in Studio. These should be referenced by matching item ID or name. If a model doesn't exist for a food item, the system should fall back to block rendering.
+- **3D Models**: 3D models exist in `game.ReplicatedStorage.Assets.Tools` in Studio. These should be referenced by matching item ID or name. If a model doesn't exist for a food item, the system should fall back to block rendering.
 
 - **Minecraft Parity**: All food values and mechanics should match Minecraft exactly as specified in the PRD.
 

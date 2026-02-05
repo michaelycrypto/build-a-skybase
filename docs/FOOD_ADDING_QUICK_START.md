@@ -62,7 +62,7 @@ textures = { all = "rbxassetid://1234567890" }  -- Your texture ID
 
 ### Step 6: Add 3D Model (Optional)
 
-Create `ReplicatedStorage.Tools["Bread"]` with a 3D MeshPart.
+Create `ReplicatedStorage.Assets.Tools["Bread"]` with a 3D MeshPart.
 
 ---
 

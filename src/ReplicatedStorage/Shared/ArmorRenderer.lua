@@ -19,7 +19,21 @@ local ArmorRenderer = {}
 -- CONFIGURATION
 -- ═══════════════════════════════════════════════════════════════════════════
 
-local ARMOR_MESHES_FOLDER = ReplicatedStorage:FindFirstChild("Tools")
+-- Get Tools folder (prefer Assets.Tools, fallback to legacy Tools location)
+local function getToolsFolder()
+	-- Primary: ReplicatedStorage.Assets.Tools
+	local assets = ReplicatedStorage:FindFirstChild("Assets")
+	if assets then
+		local toolsFolder = assets:FindFirstChild("Tools")
+		if toolsFolder then
+			return toolsFolder
+		end
+	end
+	-- Fallback: ReplicatedStorage.Tools (legacy)
+	return ReplicatedStorage:FindFirstChild("Tools")
+end
+
+local ARMOR_MESHES_FOLDER = getToolsFolder()
 
 -- Physical armor dimensions (refined proportions)
 ArmorRenderer.ARMOR = {

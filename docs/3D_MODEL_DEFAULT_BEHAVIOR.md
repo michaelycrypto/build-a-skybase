@@ -2,7 +2,7 @@
 
 ## Overview
 
-The system now uses **3D models from `ReplicatedStorage.Tools` as the default** for all item rendering. This applies to:
+The system now uses **3D models from `ReplicatedStorage.Assets.Tools` as the default** for all item rendering. This applies to:
 - **DroppedItem** (items on the ground)
 - **HeldItem** (items held in hand - 3rd person)
 - **Viewmodel** (items held in hand - 1st person)
@@ -12,8 +12,9 @@ The system now uses **3D models from `ReplicatedStorage.Tools` as the default** 
 For **all items**, the system follows this priority order:
 
 1. **3D Model from Tools Folder** (highest priority)
-   - Checks `ReplicatedStorage.Tools[itemName]` or `ReplicatedStorage.Assets.Tools[itemName]`
-   - Also checks by item ID: `ReplicatedStorage.Tools[tostring(itemId)]`
+   - Checks `ReplicatedStorage.Assets.Tools[itemName]` (primary)
+   - Falls back to `ReplicatedStorage.Tools[itemName]` (legacy)
+   - Also checks by item ID: `ReplicatedStorage.Assets.Tools[tostring(itemId)]`
    - If found, uses the 3D model
 
 2. **Apply BlockRegistry Texture** (if model exists but has no texture)
@@ -49,13 +50,13 @@ For **all items**, the system follows this priority order:
 
 ## Model Naming Convention
 
-Models in `ReplicatedStorage.Tools` should be named using:
+Models in `ReplicatedStorage.Assets.Tools` should be named using:
 - **Item name** (e.g., "Apple", "Bread", "Cooked Beef")
 - **Item ID** (e.g., "37" for Apple, "348" for Bread)
 
 The system checks both:
-1. `ReplicatedStorage.Tools[itemName]`
-2. `ReplicatedStorage.Tools[tostring(itemId)]`
+1. `ReplicatedStorage.Assets.Tools[itemName]`
+2. `ReplicatedStorage.Assets.Tools[tostring(itemId)]`
 
 ## Texture Application Logic
 
@@ -78,7 +79,7 @@ When a 3D model is found:
 }
 
 -- System checks:
-1. ReplicatedStorage.Tools["Bread"] → Found! Uses 3D model
+1. ReplicatedStorage.Assets.Tools["Bread"] → Found! Uses 3D model
 2. Model has TextureID? → Yes, uses model's texture
 3. If model had no texture → Would apply BlockRegistry texture
 ```
@@ -93,7 +94,7 @@ When a 3D model is found:
 ## Adding New 3D Models
 
 To add a 3D model for an item:
-1. Create MeshPart or Model in `ReplicatedStorage.Tools`
+1. Create MeshPart or Model in `ReplicatedStorage.Assets.Tools`
 2. Name it using the item name (e.g., "Bread", "Apple")
 3. Optionally set TextureID on the MeshPart
 4. System will automatically use it!

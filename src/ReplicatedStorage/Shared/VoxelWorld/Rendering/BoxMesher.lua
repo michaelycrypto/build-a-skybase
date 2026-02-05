@@ -16,7 +16,6 @@
 ]]
 
 local Constants = require(script.Parent.Parent.Core.Constants)
-local Config = require(script.Parent.Parent.Core.Config)
 local BlockRegistry = require(script.Parent.Parent.World.BlockRegistry)
 local _WaterUtils = require(script.Parent.Parent.World.WaterUtils)
 local PartPool = require(script.Parent.PartPool)
@@ -26,6 +25,9 @@ local TextureApplicator = require(script.Parent.TextureApplicator)
 local TextureManager = require(script.Parent.TextureManager)
 -- Water rendering with Part + WedgePart system
 local WaterMesher = require(script.Parent.WaterMesher)
+-- Block entity rendering (3D models for chests, etc.)
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local BlockEntityLoader = require(ReplicatedStorage.Shared.BlockEntityLoader)
 
 local BoxMesher = {}
 BoxMesher.__index = BoxMesher
@@ -193,7 +195,7 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 	end
 
 	-- Check if block is solid at position (for box merging)
-	-- Excludes crossShape and stairShape blocks - they're rendered in separate passes
+	-- Excludes special shapes - they're rendered in separate passes
 	local function isSolid(x, y, z)
 		if y < 0 or y >= sy then
 			return false
@@ -208,7 +210,14 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 			return false
 		end
 		local def = getBlockDef(id)
-		return def and def.solid ~= false and not def.crossShape and not def.stairShape and not def.slabShape and not def.fenceShape
+		-- Exclude special shapes and entity blocks from cube merging
+		-- Entity blocks (entityName) are rendered as 3D models, not merged cubes
+		return def and def.solid ~= false 
+			and not def.crossShape 
+			and not def.stairShape 
+			and not def.slabShape 
+			and not def.fenceShape 
+			and not def.entityName
 	end
 
 	-- Check if a neighbor FULLY occludes visibility (opaque full cube)
@@ -226,9 +235,13 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 			return false
 		end
 		local def = getBlockDef(id)
-		-- Occluding only when it is a full, opaque cube (not slabs/stairs/fences/cross-shapes)
+		-- Occluding only when it is a full, opaque cube (not special shapes or entities)
 		return def and def.solid ~= false and def.transparent ~= true
-			and not def.crossShape and not def.stairShape and not def.slabShape and not def.fenceShape
+			and not def.crossShape 
+			and not def.stairShape 
+			and not def.slabShape 
+			and not def.fenceShape 
+			and not def.entityName
 	end
 
 	-- Check if box touches exposure (not fully occluded by opaque full cubes)
@@ -621,6 +634,8 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 									-- Vertical faces use full block height so texture cuts off naturally at half
 									texture.StudsPerTileU = Constants.BLOCK_SIZE
 									texture.StudsPerTileV = Constants.BLOCK_SIZE
+									texture.OffsetStudsU = 0
+									texture.OffsetStudsV = 0
 									texture.Parent = bottomPart
 								end
 							end
@@ -801,6 +816,8 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 									-- Vertical faces use full block height so texture cuts off naturally at half
 									texture.StudsPerTileU = Constants.BLOCK_SIZE
 									texture.StudsPerTileV = Constants.BLOCK_SIZE
+									texture.OffsetStudsU = 0
+									texture.OffsetStudsV = 0
 
 									texture.Parent = topPart
 								end
@@ -855,14 +872,16 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 							if def.textures and def.textures.all then
 								local textureId = TextureManager:GetTextureId(def.textures.all)
 								if textureId then
-									for _, face in ipairs({Enum.NormalId.Top, Enum.NormalId.Bottom, Enum.NormalId.Front, Enum.NormalId.Back, Enum.NormalId.Left, Enum.NormalId.Right}) do
-										local texture = PartPool.AcquireTexture()
-										texture.Face = face
-										texture.Texture = textureId
-										texture.StudsPerTileU = Constants.BLOCK_SIZE
-										texture.StudsPerTileV = Constants.BLOCK_SIZE
-										texture.Parent = topPart2
-									end
+								for _, face in ipairs({Enum.NormalId.Top, Enum.NormalId.Bottom, Enum.NormalId.Front, Enum.NormalId.Back, Enum.NormalId.Left, Enum.NormalId.Right}) do
+									local texture = PartPool.AcquireTexture()
+									texture.Face = face
+									texture.Texture = textureId
+									texture.StudsPerTileU = Constants.BLOCK_SIZE
+									texture.StudsPerTileV = Constants.BLOCK_SIZE
+									texture.OffsetStudsU = 0
+									texture.OffsetStudsV = 0
+									texture.Parent = topPart2
+								end
 								end
 							end
 
@@ -993,6 +1012,8 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 									-- Vertical faces use full block height so texture cuts off naturally at half
 									texture.StudsPerTileU = Constants.BLOCK_SIZE
 									texture.StudsPerTileV = Constants.BLOCK_SIZE
+									texture.OffsetStudsU = 0
+									texture.OffsetStudsV = 0
 									texture.Parent = slabPart
 								end
 							end
@@ -1142,6 +1163,8 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 										tex.Texture = textureId
 										tex.StudsPerTileU = bs
 										tex.StudsPerTileV = bs
+										tex.OffsetStudsU = 0
+										tex.OffsetStudsV = 0
 										tex.Parent = post
 								end
 							end
@@ -1171,6 +1194,8 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 										tex.Texture = textureId
 										tex.StudsPerTileU = bs
 										tex.StudsPerTileV = bs
+										tex.OffsetStudsU = 0
+										tex.OffsetStudsV = 0
 										tex.Parent = rail
 								end
 								end
@@ -1260,17 +1285,20 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 				local id = chunk:GetBlock(x, y, z)
 				if id ~= Constants.BlockType.AIR then
 					local def = Blocks[id] or BlockRegistry:GetBlock(id)
-					if def and def.crossShape then
+					-- Cross-shape blocks only (no entityName - those are rendered in entity pass)
+					if def and def.crossShape and not def.entityName then
 						local bs = Constants.BLOCK_SIZE
+						-- Treat all cross-shapes as full block size
+						local bladeSize = Vector3.new(snap(bs), snap(bs), snap(FACE_THICKNESS))
+						local centerY = (y + 0.5) * bs
+
 						local center = Vector3.new(
 							(chunk.x * Constants.CHUNK_SIZE_X + x + 0.5) * bs,
-							(y + 0.5) * bs,
+							centerY,
 							(chunk.z * Constants.CHUNK_SIZE_Z + z + 0.5) * bs
 						)
 
-						local bladeSize = Vector3.new(snap(bs), snap(bs), snap(FACE_THICKNESS))
-
-						-- Create two perpendicular planes at 45Â° angles
+						-- Create two perpendicular planes at 45° angles
 						local p1 = PartPool.AcquireFacePart()
 						p1.Material = getMaterialForBlock(id)
 						p1.Color = def.color
@@ -1287,28 +1315,19 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 						p2.CFrame = CFrame.new(Vector3.new(snap(center.X), snap(center.Y), snap(center.Z))) *
 									CFrame.Angles(0, math.rad(-45), 0)
 
-						-- Apply textures to both planes if available
-						-- Handle two-block tall plants (tall grass, flowers) with half=lower/upper variants
+						-- Apply textures to both planes
 						local textureName = nil
 						if def.textures then
-							-- Support metadata-based texture selection for any cross-shaped block with supportsVariants
+							-- Support metadata-based texture selection for two-block tall plants
 							if def.supportsVariants then
-								-- Check metadata for half property (upper vs lower)
 								local metadata = chunk:GetMetadata(x, y, z)
 								local verticalOrientation = Constants.GetVerticalOrientation(metadata)
 								local isUpperHalf = (verticalOrientation == Constants.BlockMetadata.VERTICAL_TOP)
-
 								-- Minecraft convention: lower block = "lower" texture, upper block = "upper" texture
 								if isUpperHalf then
 									textureName = def.textures.upper or def.textures.all
 								else
 									textureName = def.textures.lower or def.textures.all
-								end
-
-								-- Debug logging (enable in Config.DEBUG.LOG_CROSSSHAPE_TEXTURES)
-								if Config.DEBUG.LOG_CROSSSHAPE_TEXTURES then
-									print(string.format("[CrossShape] id=%d, name=%s, meta=%d, isUpper=%s -> tex=%s",
-										id, def.name or "?", metadata, tostring(isUpperHalf), tostring(textureName)))
 								end
 							else
 								textureName = def.textures.all
@@ -1317,19 +1336,17 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 
 						if textureName then
 							local textureId = TextureManager:GetTextureId(textureName)
-
-							-- Extended debug logging with texture ID
-							if Config.DEBUG.LOG_CROSSSHAPE_TEXTURES and textureId then
-								print(string.format("[CrossShape] Applying textureId=%s for textureName=%s", tostring(textureId), tostring(textureName)))
-							end
-
 							if textureId then
+								local bs = Constants.BLOCK_SIZE
+								
 								-- First plane - both sides
 								local t1f = PartPool.AcquireTexture()
 								t1f.Face = Enum.NormalId.Front
 								t1f.Texture = textureId
 								t1f.StudsPerTileU = bs
 								t1f.StudsPerTileV = bs
+								t1f.OffsetStudsU = 0
+								t1f.OffsetStudsV = 0
 								t1f.Parent = p1
 
 								local t1b = PartPool.AcquireTexture()
@@ -1337,6 +1354,8 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 								t1b.Texture = textureId
 								t1b.StudsPerTileU = bs
 								t1b.StudsPerTileV = bs
+								t1b.OffsetStudsU = 0
+								t1b.OffsetStudsV = 0
 								t1b.Parent = p1
 
 								-- Second plane - both sides
@@ -1345,6 +1364,8 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 								t2f.Texture = textureId
 								t2f.StudsPerTileU = bs
 								t2f.StudsPerTileV = bs
+								t2f.OffsetStudsU = 0
+								t2f.OffsetStudsV = 0
 								t2f.Parent = p2
 
 								local t2b = PartPool.AcquireTexture()
@@ -1352,6 +1373,8 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 								t2b.Texture = textureId
 								t2b.StudsPerTileU = bs
 								t2b.StudsPerTileV = bs
+								t2b.OffsetStudsU = 0
+								t2b.OffsetStudsV = 0
 								t2b.Parent = p2
 							end
 						end
@@ -1359,6 +1382,85 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 						table.insert(meshParts, p1)
 						table.insert(meshParts, p2)
 						partsBudget += 2
+					end
+				end
+			end
+		end
+	end
+
+	-- Entity blocks pass: render blocks with entityName as 3D models (chests, lanterns, etc.)
+	for x = 0, Constants.CHUNK_SIZE_X - 1 do
+		for y = 0, yLimit - 1 do
+			for z = 0, Constants.CHUNK_SIZE_Z - 1 do
+				if partsBudget >= MAX_PARTS then
+					break
+				end
+
+				local id = chunk:GetBlock(x, y, z)
+				if id ~= Constants.BlockType.AIR then
+					local def = Blocks[id] or BlockRegistry:GetBlock(id)
+					if def and def.entityName and BlockEntityLoader.HasEntity(def.entityName) then
+						local bs = Constants.BLOCK_SIZE
+						local worldPos = Vector3.new(
+							(chunk.x * Constants.CHUNK_SIZE_X + x + 0.5) * bs,
+							(y + 0.5) * bs,
+							(chunk.z * Constants.CHUNK_SIZE_Z + z + 0.5) * bs
+						)
+
+						-- Get rotation from metadata if block supports rotation
+						local rotation = 0
+						if def.hasRotation then
+							local metadata = chunk:GetMetadata(x, y, z)
+							local rotationMeta = Constants.GetRotation(metadata)
+							-- Convert rotation metadata to degrees
+							local rotationDegrees = {
+								[Constants.BlockMetadata.ROTATION_NORTH] = 0,
+								[Constants.BlockMetadata.ROTATION_EAST] = 90,
+								[Constants.BlockMetadata.ROTATION_SOUTH] = 180,
+								[Constants.BlockMetadata.ROTATION_WEST] = 270,
+							}
+							rotation = rotationDegrees[rotationMeta] or 0
+						end
+
+						-- Clone and position the entity
+						local entity = BlockEntityLoader.CloneEntity(def.entityName)
+						if entity then
+							local rotationCFrame = CFrame.Angles(0, math.rad(rotation), 0)
+							local positionCFrame = CFrame.new(worldPos)
+
+							if entity:IsA("Model") then
+								-- Scale model to fit block size
+								local _, size = entity:GetBoundingBox()
+								local maxDim = math.max(size.X, size.Y, size.Z)
+								if maxDim > 0 then
+									local scale = bs / maxDim
+									entity:ScaleTo(scale)
+								end
+								-- Position the model
+								entity:PivotTo(positionCFrame * rotationCFrame)
+								-- Anchor all parts
+								for _, part in ipairs(entity:GetDescendants()) do
+									if part:IsA("BasePart") then
+										part.Anchored = true
+										part.CanCollide = false
+									end
+								end
+								table.insert(meshParts, entity)
+								partsBudget = partsBudget + 1
+							elseif entity:IsA("BasePart") then
+								-- Scale part to block size
+								local maxDim = math.max(entity.Size.X, entity.Size.Y, entity.Size.Z)
+								if maxDim > 0 then
+									local scale = bs / maxDim
+									entity.Size = entity.Size * scale
+								end
+								entity.CFrame = positionCFrame * rotationCFrame
+								entity.Anchored = true
+								entity.CanCollide = false
+								table.insert(meshParts, entity)
+								partsBudget = partsBudget + 1
+							end
+						end
 					end
 				end
 			end

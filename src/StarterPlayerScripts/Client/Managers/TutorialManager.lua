@@ -494,6 +494,7 @@ function TutorialManager:_showWaypoint(waypointName)
 				worldPosition = worldPos,
 				label = waypointConfig.label,
 				color = waypointConfig.color,
+				blockId = waypointConfig.blockId,
 			})
 		end
 	elseif waypointConfig.type == "position" then

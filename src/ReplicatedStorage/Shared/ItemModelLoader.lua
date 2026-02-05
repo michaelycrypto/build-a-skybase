@@ -17,6 +17,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local ItemModelLoader = {}
 
+-- Debug: Enable to trace model lookups
+local DEBUG_MODEL_LOADER = false
+
 -- Cache for Tools folder reference
 local toolsFolderCache = nil
 
@@ -29,21 +32,21 @@ local function getToolsFolder()
 		return toolsFolderCache
 	end
 
-	-- Prefer direct ReplicatedStorage.Tools
+	-- Primary: ReplicatedStorage.Assets.Tools
+	local assets = ReplicatedStorage:FindFirstChild("Assets")
+	if assets then
+		local toolsFolder = assets:FindFirstChild("Tools")
+		if toolsFolder then
+			toolsFolderCache = toolsFolder
+			return toolsFolder
+		end
+	end
+
+	-- Fallback: ReplicatedStorage.Tools (legacy)
 	local folder = ReplicatedStorage:FindFirstChild("Tools")
 	if folder then
 		toolsFolderCache = folder
 		return folder
-	end
-
-	-- Fallback: ReplicatedStorage.Assets.Tools
-	local assets = ReplicatedStorage:FindFirstChild("Assets")
-	if assets then
-		local direct = assets:FindFirstChild("Tools")
-		if direct then
-			toolsFolderCache = direct
-			return direct
-		end
 	end
 
 	return nil
@@ -79,6 +82,10 @@ function ItemModelLoader.GetModelTemplate(itemName, itemId)
 	if itemName then
 		local model = folder:FindFirstChild(itemName)
 		if model then
+			if DEBUG_MODEL_LOADER then
+				print(string.format("[ItemModelLoader] FOUND model for name='%s' (id=%s)", 
+					tostring(itemName), tostring(itemId)))
+			end
 			return findMeshPartInInstance(model)
 		end
 	end
@@ -87,8 +94,19 @@ function ItemModelLoader.GetModelTemplate(itemName, itemId)
 	if itemId then
 		local modelById = folder:FindFirstChild(tostring(itemId))
 		if modelById then
+			if DEBUG_MODEL_LOADER then
+				-- WARN for numeric matches - these could be accidental!
+				warn(string.format("[ItemModelLoader] FOUND model by ID='%s' for name='%s' - CHECK IF INTENTIONAL", 
+					tostring(itemId), tostring(itemName)))
+			end
 			return findMeshPartInInstance(modelById)
 		end
+	end
+
+	-- Debug: Log wheat crop lookups specifically
+	if DEBUG_MODEL_LOADER and itemId and type(itemId) == "number" and itemId >= 76 and itemId <= 83 then
+		print(string.format("[ItemModelLoader] Wheat crop lookup (id=%d name='%s') - NO MODEL FOUND (correct behavior)", 
+			itemId, tostring(itemName)))
 	end
 
 	return nil

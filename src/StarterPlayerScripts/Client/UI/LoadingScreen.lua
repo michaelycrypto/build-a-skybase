@@ -109,12 +109,12 @@ local function collectToolMeshAssets()
 	local meshAssets = {}
 	local seen = {}
 
-	-- Check ReplicatedStorage.Tools directly
-	local toolsFolder = ReplicatedStorage:FindFirstChild("Tools")
+	-- Primary: ReplicatedStorage.Assets.Tools
+	local assetsFolder = ReplicatedStorage:FindFirstChild("Assets")
+	local toolsFolder = assetsFolder and assetsFolder:FindFirstChild("Tools")
 	if not toolsFolder then
-		-- Fallback: ReplicatedStorage.Assets.Tools
-		local assetsFolder = ReplicatedStorage:FindFirstChild("Assets")
-		toolsFolder = assetsFolder and assetsFolder:FindFirstChild("Tools")
+		-- Fallback: ReplicatedStorage.Tools (legacy)
+		toolsFolder = ReplicatedStorage:FindFirstChild("Tools")
 	end
 
 	if not toolsFolder then
