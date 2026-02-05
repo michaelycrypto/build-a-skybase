@@ -907,6 +907,12 @@ local function completeInitialization(_preloadedEmoteManager)
 	if Client.actionBar and Client.voxelInventory then
 		Client.actionBar.voxelInventory = Client.voxelInventory
 	end
+	
+	-- Set GameState reference in ActionBar for currency updates
+	if Client.actionBar then
+		local GameState = require(script.Parent.Managers.GameState)
+		Client.actionBar:SetGameState(GameState)
+	end
 
 	-- Initialize Block Break Overlay (crack stages)
 	BlockBreakOverlayController:Initialize()

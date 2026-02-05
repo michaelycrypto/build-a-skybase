@@ -351,7 +351,8 @@ function MainHUD:Create()
 	CollectionService:AddTag(uiScale, "scale_component")
 
 	-- Create components
-	self:CreateBottomLeftCurrency()
+	-- NOTE: Currency display moved to ActionBar for better UX
+	-- self:CreateBottomLeftCurrency()
 
 	-- Center crosshair (Minecraft-style)
 	Crosshair:Create(hudGui)

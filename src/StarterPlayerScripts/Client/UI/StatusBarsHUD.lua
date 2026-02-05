@@ -28,7 +28,7 @@ StatusBarsHUD.__index = StatusBarsHUD
 --------------------------------------------------------------------------------
 
 local HOTBAR = {
-	SLOT_SIZE = 56,
+	SLOT_SIZE = 62,
 	SLOT_SPACING = 5,
 	SLOT_COUNT = 9,
 	BOTTOM_OFFSET = 4,
@@ -38,9 +38,9 @@ local HOTBAR = {
 }
 
 -- Derived hotbar dimensions
-local VISUAL_SLOT_SIZE = HOTBAR.SLOT_SIZE + (HOTBAR.BORDER * 2) -- 60px per slot
+local VISUAL_SLOT_SIZE = HOTBAR.SLOT_SIZE + (HOTBAR.BORDER * 2) -- 66px per slot
 local HOTBAR_WIDTH = (VISUAL_SLOT_SIZE * HOTBAR.SLOT_COUNT) +
-                     (HOTBAR.SLOT_SPACING * (HOTBAR.SLOT_COUNT - 1)) -- 580px total
+                     (HOTBAR.SLOT_SPACING * (HOTBAR.SLOT_COUNT - 1))
 
 -- Status bar configuration
 local CONFIG = {
@@ -48,7 +48,7 @@ local CONFIG = {
 	ICON_SIZE = 22,
 	ICON_SPACING = 2,
 	BAR_SPACING = 5,
-	GAP_ABOVE_HOTBAR = 4,
+	GAP_ABOVE_HOTBAR = 1,  -- Minimal consistent gap
 
 	-- Counts (Minecraft standard: 10 of each)
 	MAX_HEARTS = 10,

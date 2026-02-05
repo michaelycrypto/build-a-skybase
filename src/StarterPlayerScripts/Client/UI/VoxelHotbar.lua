@@ -39,7 +39,7 @@ end
 	-- Hotbar configuration
 local HOTBAR_CONFIG = {
 	SLOT_COUNT = 9,
-	SLOT_SIZE = 56,  -- Frame size (visual size is 60px with 2px border on each side)
+	SLOT_SIZE = 62,  -- Frame size (visual size is 66px with 2px border on each side)
 	SLOT_SPACING = 5,  -- Gap between slots (between borders)
 	INVENTORY_BUTTON_GAP = 8,  -- Gap between hotbar and inventory button
 	BOTTOM_OFFSET = 4,
@@ -165,9 +165,9 @@ function VoxelHotbar:SetupStarterBlocks()
 end
 
 function VoxelHotbar:CreateHotbar()
-	-- Account for borders: visual size = frame size + 2 borders = 56 + 4 = 60px
+	-- Account for borders: visual size = frame size + 2 borders = 62 + 4 = 66px
 	local borderThickness = 2
-	local visualSlotSize = HOTBAR_CONFIG.SLOT_SIZE + borderThickness * 2  -- 60px
+	local visualSlotSize = HOTBAR_CONFIG.SLOT_SIZE + borderThickness * 2  -- 66px
 	local totalWidth = (visualSlotSize * HOTBAR_CONFIG.SLOT_COUNT) +
 	                   (HOTBAR_CONFIG.SLOT_SPACING * (HOTBAR_CONFIG.SLOT_COUNT - 1))
 
@@ -196,14 +196,14 @@ end
 
 function VoxelHotbar:CreateSlotUI(index)
 	local borderThickness = 2  -- 2px border on each side
-	-- Visual size = frame size + 2 borders = 56 + 4 = 60px
+	-- Visual size = frame size + 2 borders
 	-- Position calculation: frame position = (index - 1) * (visual size + gap between borders)
 	local xPos = 8 + ((index - 1) * (HOTBAR_CONFIG.SLOT_SIZE + borderThickness * 2 + HOTBAR_CONFIG.SLOT_SPACING))
 
 	-- Slot frame
 	local slot = Instance.new("TextButton")
 	slot.Name = "Slot" .. index
-	slot.Size = UDim2.fromOffset(56, 56)  -- Frame size (visual is 60px with 2px border)
+	slot.Size = UDim2.fromOffset(HOTBAR_CONFIG.SLOT_SIZE, HOTBAR_CONFIG.SLOT_SIZE)  -- Frame size (visual includes 2px border each side)
 	slot.Position = UDim2.fromOffset(xPos, 8)
 	slot.BackgroundColor3 = Color3.fromRGB(31, 31, 31)  -- Matching inventory
 	slot.BackgroundTransparency = 0.5  -- Default state: 50% transparent
