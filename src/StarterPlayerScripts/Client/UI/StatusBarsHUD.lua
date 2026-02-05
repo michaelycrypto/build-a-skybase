@@ -31,7 +31,7 @@ local HOTBAR = {
 	SLOT_SIZE = 56,
 	SLOT_SPACING = 5,
 	SLOT_COUNT = 9,
-	BOTTOM_OFFSET = 20,
+	BOTTOM_OFFSET = 4,
 	SCALE = 0.85,
 	BORDER = 2,
 	INTERNAL_OFFSET = 8,
@@ -48,7 +48,7 @@ local CONFIG = {
 	ICON_SIZE = 22,
 	ICON_SPACING = 2,
 	BAR_SPACING = 5,
-	GAP_ABOVE_HOTBAR = 8,
+	GAP_ABOVE_HOTBAR = 4,
 
 	-- Counts (Minecraft standard: 10 of each)
 	MAX_HEARTS = 10,

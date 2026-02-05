@@ -20,17 +20,13 @@ local MobileControls = script.Parent.Parent.Modules.MobileControls
 local InputDetector = require(MobileControls.InputDetector)
 local VirtualThumbstick = require(MobileControls.VirtualThumbstick)
 local MobileCameraController = require(MobileControls.CameraController)
-local MobileActionBar = require(MobileControls.MobileActionBar)
 local DeviceDetector = require(MobileControls.DeviceDetector)
 local FeedbackSystem = require(MobileControls.FeedbackSystem)
 local ControlSchemes = require(MobileControls.ControlSchemes)
+-- NOTE: MobileActionBar has been replaced by unified ActionBar in UI folder
 
 -- Import config
 local MobileControlConfig = require(ReplicatedStorage.Shared.MobileControls.MobileControlConfig)
-
--- Controllers (lazy-loaded to avoid circular dependencies)
-local SprintController = nil
-local CameraController = nil
 
 local MobileControlController = {}
 MobileControlController.__index = MobileControlController
@@ -43,11 +39,11 @@ function MobileControlController.new(inputProvider)
 	self.inputDetector = InputDetector.new(inputProvider)
 	self.thumbstick = VirtualThumbstick.new()
 	self.mobileCameraController = MobileCameraController.new(inputProvider)
-	self.actionBar = MobileActionBar.new()
 	self.deviceDetector = DeviceDetector.new(inputProvider)
 	self.feedbackSystem = FeedbackSystem.new()
 	self.controlSchemes = ControlSchemes.new()
 	self.inputCallbacks = nil
+	-- NOTE: Action bar is now managed by unified ActionBar in UI folder
 
 	-- State
 	self.enabled = false
@@ -154,9 +150,7 @@ function MobileControlController:InitializeUI()
 	-- Initialize thumbstick
 	self.thumbstick:Initialize(nil, nil, self.inputProvider)
 
-	-- Initialize action bar with callbacks
-	self.actionBar:Initialize()
-	self:SetupActionBarCallbacks()
+	-- NOTE: Action bar is now initialized separately as unified ActionBar
 
 	-- Setup input connections (thumbstick direction changes)
 	self:SetupInputHandling()
@@ -170,99 +164,6 @@ function MobileControlController:InitializeUI()
 	print("Mobile Controls: UI initialized")
 	print("   Scheme:", initialScheme)
 	print("   UI Scale:", (self._recommendedSettings and self._recommendedSettings.UIScale) or 1.0)
-end
-
---[[
-	Setup action bar button callbacks
-]]
-function MobileControlController:SetupActionBarCallbacks()
-	-- Lazy load controllers to avoid circular dependencies
-	if not SprintController then
-		SprintController = require(script.Parent.SprintController)
-	end
-	if not CameraController then
-		CameraController = require(script.Parent.CameraController)
-	end
-
-	-- Helper to get Client controllers (accessed at callback time, not setup time)
-	local function getClient()
-		local success, result = pcall(function()
-			return require(script.Parent.Parent.GameClient)
-		end)
-		return success and result or nil
-	end
-
-	-- Sprint toggle callback
-	self.actionBar.onSprintToggle = function(isActive)
-		if SprintController and SprintController.SetSprinting then
-			SprintController:SetSprinting(isActive)
-		end
-	end
-
-	-- Attack callbacks - triggers both combat (PvP) and block breaking
-	self.actionBar.onAttackStart = function()
-		local Client = getClient()
-		if not Client then
-			return
-		end
-
-		-- Combat system (PvP sword swings)
-		if Client.combatController and Client.combatController.SetHolding then
-			Client.combatController:SetHolding(true)
-		end
-		-- Block breaking system
-		if Client.blockInteraction and Client.blockInteraction.StartBreaking then
-			Client.blockInteraction:StartBreaking()
-		end
-	end
-
-	self.actionBar.onAttackEnd = function()
-		local Client = getClient()
-		if not Client then
-			return
-		end
-
-		-- Combat system
-		if Client.combatController and Client.combatController.SetHolding then
-			Client.combatController:SetHolding(false)
-		end
-		-- Block breaking system
-		if Client.blockInteraction and Client.blockInteraction.StopBreaking then
-			Client.blockInteraction:StopBreaking()
-		end
-	end
-
-	-- Camera mode cycle callback
-	self.actionBar.onCameraMode = function()
-		if CameraController and CameraController.CycleMode then
-			CameraController:CycleMode()
-			-- Update button icon to reflect new mode
-			local currentMode = CameraController:GetCurrentState()
-			if currentMode then
-				self.actionBar:SetCameraMode(currentMode)
-			end
-		end
-	end
-
-	-- Listen for camera state changes to update button icon
-	if CameraController and CameraController.StateChanged then
-		CameraController.StateChanged:Connect(function(newState)
-			self.actionBar:SetCameraMode(newState)
-		end)
-	end
-
-	-- Sync initial sprint state
-	if SprintController and SprintController.IsSprinting then
-		self.actionBar:SetSprintActive(SprintController:IsSprinting())
-	end
-
-	-- Sync initial camera mode
-	if CameraController and CameraController.GetCurrentState then
-		local currentMode = CameraController:GetCurrentState()
-		if currentMode then
-			self.actionBar:SetCameraMode(currentMode)
-		end
-	end
 end
 
 --[[
@@ -365,21 +266,11 @@ function MobileControlController:ApplyMovement(direction, magnitude)
 	end
 end
 
---[[
-	Get action bar reference (for external access)
-]]
-function MobileControlController:GetActionBar()
-	return self.actionBar
-end
-
 function MobileControlController:SetHighContrast(enabled)
 	if self.thumbstick and self.thumbstick.SetHighContrast then
 		self.thumbstick:SetHighContrast(enabled)
 	end
-
-	if self.actionBar and self.actionBar.SetHighContrast then
-		self.actionBar:SetHighContrast(enabled)
-	end
+	-- NOTE: ActionBar high contrast is handled separately in unified ActionBar
 end
 
 --[[
@@ -389,7 +280,7 @@ function MobileControlController:SetControlScheme(scheme)
 	local controllers = {
 		thumbstick = self.thumbstick,
 		camera = self.mobileCameraController,
-		actionBar = self.actionBar,
+		-- NOTE: ActionBar is now managed separately
 	}
 
 	return self.controlSchemes:ApplyScheme(scheme, controllers)
@@ -449,10 +340,7 @@ function MobileControlController:SetEnabled(enabled)
 		if self.thumbstick then
 			self.thumbstick:SetVisibility(enabled)
 		end
-
-		if self.actionBar then
-			self.actionBar:SetEnabled(enabled)
-		end
+		-- NOTE: ActionBar visibility is managed by UIVisibilityManager
 	end
 end
 
@@ -504,9 +392,7 @@ function MobileControlController:Destroy()
 	if self.mobileCameraController then
 		self.mobileCameraController:Destroy()
 	end
-	if self.actionBar then
-		self.actionBar:Destroy()
-	end
+	-- NOTE: ActionBar is destroyed separately
 
 	print("MobileControlController: Destroyed")
 end

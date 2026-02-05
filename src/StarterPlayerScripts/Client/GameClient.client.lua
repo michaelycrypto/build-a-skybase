@@ -807,8 +807,7 @@ local function completeInitialization(_preloadedEmoteManager)
 	inventory:Initialize()
 	Client.voxelInventory = inventory
 
-	-- Set inventory reference in hotbar for inventory button
-	hotbar:SetInventoryReference(inventory)
+	-- NOTE: ActionBar inventory reference is set after ActionBar initialization
 
 	-- Initialize TutorialManager (after InventoryManager so we can count items)
 	local TutorialManager = require(script.Parent.Managers.TutorialManager)
@@ -891,6 +890,22 @@ local function completeInitialization(_preloadedEmoteManager)
 	end)
 	if not statusBarsSuccess then
 		warn("⚠️ Status Bars HUD failed to initialize:", statusBarsError)
+	end
+
+	-- Initialize ActionBar (unified action buttons above status bars)
+	local actionBarSuccess, actionBarError = pcall(function()
+		local ActionBar = require(script.Parent.UI.ActionBar)
+		local actionBar = ActionBar.new()
+		actionBar:Initialize()
+		Client.actionBar = actionBar
+	end)
+	if not actionBarSuccess then
+		warn("⚠️ ActionBar failed to initialize:", actionBarError)
+	end
+
+	-- Set inventory reference in ActionBar (must be after ActionBar init)
+	if Client.actionBar and Client.voxelInventory then
+		Client.actionBar.voxelInventory = Client.voxelInventory
 	end
 
 	-- Initialize Block Break Overlay (crack stages)
@@ -978,11 +993,58 @@ local function completeInitialization(_preloadedEmoteManager)
 	CloudController:Initialize()
 	Client.cloudController = CloudController
 
-	-- Initialize Mobile UI (action bar, thumbstick) after loading screen
+	-- Initialize Mobile UI (thumbstick) after loading screen
 	-- This follows the same pattern as other UI components
 	local mobileController = InputService._mobileController
 	if mobileController and mobileController.InitializeUI then
 		mobileController:InitializeUI()
+	end
+
+	-- Setup ActionBar mobile callbacks (sprint, attack, camera)
+	if Client.actionBar then
+		local SprintController = require(script.Parent.Controllers.SprintController)
+		local CameraController = require(script.Parent.Controllers.CameraController)
+
+		-- Sprint toggle callback
+		Client.actionBar.onSprintToggle = function(isActive)
+			if SprintController and SprintController.SetSprinting then
+				SprintController:SetSprinting(isActive)
+			end
+		end
+
+		-- Camera mode cycle callback
+		Client.actionBar.onCameraMode = function()
+			if CameraController and CameraController.CycleMode then
+				CameraController:CycleMode()
+				-- Update button icon to reflect new mode
+				local currentMode = CameraController:GetCurrentState()
+				if currentMode and Client.actionBar.SetCameraMode then
+					Client.actionBar:SetCameraMode(currentMode)
+				end
+			end
+		end
+
+		-- Listen for camera state changes to update button icon
+		if CameraController and CameraController.StateChanged then
+			CameraController.StateChanged:Connect(function(newState)
+				if Client.actionBar and Client.actionBar.SetCameraMode then
+					Client.actionBar:SetCameraMode(newState)
+				end
+			end)
+		end
+
+		-- Sync initial sprint state
+		if SprintController and SprintController.IsSprinting then
+			Client.actionBar:SetSprintActive(SprintController:IsSprinting())
+		end
+
+		-- Sync initial camera mode
+		if CameraController and CameraController.GetCurrentState then
+			local currentMode = CameraController:GetCurrentState()
+			if currentMode and Client.actionBar.SetCameraMode then
+				Client.actionBar:SetCameraMode(currentMode)
+			end
+		end
 	end
 
 	local worldsPanel = nil
@@ -1184,8 +1246,9 @@ local function completeInitialization(_preloadedEmoteManager)
 	worldsPanelInstance:Initialize()
 	Client.managers.WorldsPanel = worldsPanelInstance
 	worldsPanel = worldsPanelInstance
-	if hotbar then
-		hotbar:SetWorldsPanel(worldsPanelInstance)
+	-- Set worlds panel reference in ActionBar
+	if Client.actionBar then
+		Client.actionBar.worldsPanel = worldsPanelInstance
 	end
 	if Client.npcController then
 		Client.npcController:SetWorldsPanel(worldsPanelInstance)

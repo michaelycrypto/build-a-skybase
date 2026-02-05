@@ -42,7 +42,7 @@ local HOTBAR_CONFIG = {
 	SLOT_SIZE = 56,  -- Frame size (visual size is 60px with 2px border on each side)
 	SLOT_SPACING = 5,  -- Gap between slots (between borders)
 	INVENTORY_BUTTON_GAP = 8,  -- Gap between hotbar and inventory button
-	BOTTOM_OFFSET = 20,
+	BOTTOM_OFFSET = 4,
 	BORDER_WIDTH = 3,
 	SCALE = 0.85,
 
@@ -106,13 +106,7 @@ function VoxelHotbar.new()
 	self.slotFrames = {} -- UI frames for each slot
 	self.gui = nil
 	self.container = nil
-	self.inventoryButton = nil
-	self.worldButton = nil
-	self.voxelInventory = nil -- Reference to inventory panel
-	self.worldsPanel = nil -- Reference to worlds panel
 	self.connections = {}
-	self.uiToggleDebounce = 0.3
-	self.lastUiToggleTime = 0
 
 	-- Initialize empty slots
 	for i = 1, HOTBAR_CONFIG.SLOT_COUNT do
@@ -158,15 +152,6 @@ function VoxelHotbar:Initialize()
 	return self
 end
 
-function VoxelHotbar:CanToggleUI()
-	local now = tick()
-	if now - self.lastUiToggleTime < self.uiToggleDebounce then
-		return false
-	end
-	self.lastUiToggleTime = now
-	return true
-end
-
 function VoxelHotbar:SetupStarterBlocks()
 	-- Give player some starter blocks (like creative mode)
 	self:SetSlot(1, ItemStack.new(1, 64)) -- Grass
@@ -203,17 +188,10 @@ function VoxelHotbar:CreateHotbar()
 	localScale.Scale = HOTBAR_CONFIG.SCALE
 	localScale.Parent = self.container
 
-
-	-- Create world button to the left of hotbar
-	self:CreateWorldButton()
-
 	-- Create slots
 	for i = 1, HOTBAR_CONFIG.SLOT_COUNT do
 		self:CreateSlotUI(i)
 	end
-
-	-- Create inventory button to the right of hotbar
-	self:CreateInventoryButton()
 end
 
 function VoxelHotbar:CreateSlotUI(index)
@@ -338,254 +316,6 @@ function VoxelHotbar:CreateSlotUI(index)
 
 	-- Update display
 	self:UpdateSlotDisplay(index)
-end
-
-function VoxelHotbar:CreateWorldButton()
-	local borderThickness = 2  -- 2px border on each side
-	local visualSlotSize = HOTBAR_CONFIG.SLOT_SIZE + borderThickness * 2  -- 60px
-
-	-- Button size: 25% smaller than hotbar slots (56px * 0.75 = 42px)
-	local buttonSize = math.floor(HOTBAR_CONFIG.SLOT_SIZE * 0.75)  -- 42px
-
-	-- Calculate position: left of hotbar with gap
-	-- First slot starts at xPos = 8, so button should be positioned before that with gap
-	-- Button X position = 8 - gap - buttonSize
-	local xPos = 8 - HOTBAR_CONFIG.INVENTORY_BUTTON_GAP - buttonSize
-
-	-- Vertical centering: hotbar slots are at Y = 8, visual height is 60px
-	-- Center of hotbar is at 8 + 30 = 38px
-	-- Button center should be at 38px, so button Y = 38 - (buttonSize / 2) = 38 - 21 = 17px
-	local hotbarCenterY = 8 + (visualSlotSize / 2)  -- 8 + 30 = 38px
-	local buttonY = hotbarCenterY - (buttonSize / 2)  -- 38 - 21 = 17px
-
-	-- World button frame (matching hotbar slot styling)
-	local button = Instance.new("TextButton")
-	button.Name = "WorldButton"
-	button.Size = UDim2.fromOffset(buttonSize, buttonSize)  -- 42x42px (25% smaller)
-	button.Position = UDim2.fromOffset(xPos, buttonY)
-	button.BackgroundColor3 = Color3.fromRGB(31, 31, 31)  -- Matching inventory
-	button.BackgroundTransparency = 0.5  -- Default state: 50% transparent
-	button.BorderSizePixel = 0
-	button.Text = ""
-	button.AutoButtonColor = false
-	button.Parent = self.container
-
-	-- Button corner
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 2)
-	corner.Parent = button
-
-	-- Background image (matching hotbar slots)
-	local bgImage = Instance.new("ImageLabel")
-	bgImage.Name = "BackgroundImage"
-	bgImage.Size = UDim2.fromScale(1, 1)
-	bgImage.Position = UDim2.fromScale(0, 0)
-	bgImage.BackgroundTransparency = 1
-	bgImage.Image = "rbxassetid://82824299358542"
-	bgImage.ImageTransparency = 0.6  -- Matching inventory
-	bgImage.ScaleType = Enum.ScaleType.Fit
-	bgImage.ZIndex = 1
-	bgImage.Parent = button
-
-	-- Border (matching inventory styling)
-	local border = Instance.new("UIStroke")
-	border.Name = "Border"
-	border.Color = Color3.fromRGB(35, 35, 35)  -- Matching inventory
-	border.Thickness = 2
-	border.Transparency = 0.25  -- Default state: 25% transparent
-	border.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	border.Parent = button
-
-	-- Icon container for home/world icon
-	local iconContainer = Instance.new("Frame")
-	iconContainer.Name = "IconContainer"
-	iconContainer.Size = UDim2.new(1, -8, 1, -8)
-	iconContainer.Position = UDim2.fromScale(0.5, 0.5)
-	iconContainer.AnchorPoint = Vector2.new(0.5, 0.5)
-	iconContainer.BackgroundTransparency = 1
-	iconContainer.ZIndex = 3  -- Above background image
-	iconContainer.Parent = button
-
-	-- Create planet icon using IconManager
-	local globeIcon = IconManager:CreateIcon(iconContainer, "Nature", "Globe", {
-		size = UDim2.fromScale(1, 1),
-		position = UDim2.fromScale(0.5, 0.5),
-		anchorPoint = Vector2.new(0.5, 0.5),
-	})
-
-	-- B text label at top left (matching hotbar number indicator style)
-	local bLabel = Instance.new("TextLabel")
-	bLabel.Name = "BLabel"
-	bLabel.Size = UDim2.fromOffset(20, 20)
-	bLabel.Position = UDim2.fromOffset(4, 4)
-	bLabel.BackgroundTransparency = 1
-	bLabel.Font = BOLD_FONT
-	bLabel.TextSize = 14
-	bLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-	bLabel.TextStrokeTransparency = 0.5
-	bLabel.Text = "B"
-	bLabel.TextXAlignment = Enum.TextXAlignment.Left
-	bLabel.TextYAlignment = Enum.TextYAlignment.Top
-	bLabel.ZIndex = 4  -- Above viewport
-	bLabel.Parent = button
-
-	-- Store button reference
-	self.worldButton = {
-		frame = button,
-		border = border,
-		iconContainer = iconContainer,
-		globeIcon = globeIcon,
-		bLabel = bLabel
-	}
-
-	-- Add click handler to toggle worlds panel
-	button.Activated:Connect(function()
-		if not self:CanToggleUI() then
-			return
-		end
-		if self.voxelInventory and self.voxelInventory.isOpen then
-			self.voxelInventory:Close("worlds")
-		elseif self.voxelInventory and self.voxelInventory.IsClosing and self.voxelInventory:IsClosing() then
-			self.voxelInventory:SetPendingCloseMode("worlds")
-		end
-		if self.worldsPanel then
-			self.worldsPanel:Toggle()
-		end
-		-- Silently skip if worldsPanel not yet set (during initialization)
-	end)
-
-	-- Hover effects (matching hotbar slot behavior)
-	button.MouseEnter:Connect(function()
-		border.Transparency = 0  -- Fully opaque on hover
-		button.BackgroundTransparency = 0.25  -- Less transparent on hover
-	end)
-
-	button.MouseLeave:Connect(function()
-		border.Transparency = 0.25  -- Back to default
-		button.BackgroundTransparency = 0.5  -- Back to default
-	end)
-end
-
-function VoxelHotbar:CreateInventoryButton()
-	local borderThickness = 2  -- 2px border on each side
-	local visualSlotSize = HOTBAR_CONFIG.SLOT_SIZE + borderThickness * 2  -- 60px
-	local totalHotbarWidth = (visualSlotSize * HOTBAR_CONFIG.SLOT_COUNT) +
-	                        (HOTBAR_CONFIG.SLOT_SPACING * (HOTBAR_CONFIG.SLOT_COUNT - 1))
-
-	-- Calculate position: right of hotbar with gap
-	-- Slots start at xPos = 8, so last slot ends at 8 + totalHotbarWidth
-	-- Button should be positioned after that with gap
-	local lastSlotEnd = 8 + totalHotbarWidth
-	local xPos = lastSlotEnd + HOTBAR_CONFIG.INVENTORY_BUTTON_GAP
-
-	-- Button size: 25% smaller than hotbar slots (56px * 0.75 = 42px)
-	local buttonSize = math.floor(HOTBAR_CONFIG.SLOT_SIZE * 0.75)  -- 42px
-
-	-- Vertical centering: hotbar slots are at Y = 8, visual height is 60px
-	-- Center of hotbar is at 8 + 30 = 38px
-	-- Button center should be at 38px, so button Y = 38 - (buttonSize / 2) = 38 - 21 = 17px
-	local hotbarCenterY = 8 + (visualSlotSize / 2)  -- 8 + 30 = 38px
-	local buttonY = hotbarCenterY - (buttonSize / 2)  -- 38 - 21 = 17px
-
-	-- Inventory button frame (matching hotbar slot styling)
-	local button = Instance.new("TextButton")
-	button.Name = "InventoryButton"
-	button.Size = UDim2.fromOffset(buttonSize, buttonSize)  -- 42x42px (25% smaller)
-	button.Position = UDim2.fromOffset(xPos, buttonY)
-	button.BackgroundColor3 = Color3.fromRGB(31, 31, 31)  -- Matching inventory
-	button.BackgroundTransparency = 0.5  -- Default state: 50% transparent
-	button.BorderSizePixel = 0
-	button.Text = ""
-	button.AutoButtonColor = false
-	button.Parent = self.container
-
-	-- Button corner
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 2)
-	corner.Parent = button
-
-	-- Background image (matching hotbar slots)
-	local bgImage = Instance.new("ImageLabel")
-	bgImage.Name = "BackgroundImage"
-	bgImage.Size = UDim2.fromScale(1, 1)
-	bgImage.Position = UDim2.fromScale(0, 0)
-	bgImage.BackgroundTransparency = 1
-	bgImage.Image = "rbxassetid://82824299358542"
-	bgImage.ImageTransparency = 0.6  -- Matching inventory
-	bgImage.ScaleType = Enum.ScaleType.Fit
-	bgImage.ZIndex = 1
-	bgImage.Parent = button
-
-	-- Border (matching inventory styling)
-	local border = Instance.new("UIStroke")
-	border.Name = "Border"
-	border.Color = Color3.fromRGB(35, 35, 35)  -- Matching inventory
-	border.Thickness = 2
-	border.Transparency = 0.25  -- Default state: 25% transparent
-	border.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	border.Parent = button
-
-	-- Icon container for backpack icon
-	local iconContainer = Instance.new("Frame")
-	iconContainer.Name = "IconContainer"
-	iconContainer.Size = UDim2.new(1, -8, 1, -8)
-	iconContainer.Position = UDim2.fromScale(0.5, 0.5)
-	iconContainer.AnchorPoint = Vector2.new(0.5, 0.5)
-	iconContainer.BackgroundTransparency = 1
-	iconContainer.ZIndex = 3  -- Above background image
-	iconContainer.Parent = button
-
-	-- Create backpack icon using IconManager
-	local backpackIcon = IconManager:CreateIcon(iconContainer, "Clothing", "Backpack", {
-		size = UDim2.fromScale(1, 1),
-		position = UDim2.fromScale(0.5, 0.5),
-		anchorPoint = Vector2.new(0.5, 0.5),
-	})
-
-	-- E text label at top left (matching hotbar number indicator style)
-	local eLabel = Instance.new("TextLabel")
-	eLabel.Name = "ELabel"
-	eLabel.Size = UDim2.fromOffset(20, 20)
-	eLabel.Position = UDim2.fromOffset(4, 4)
-	eLabel.BackgroundTransparency = 1
-	eLabel.Font = BOLD_FONT
-	eLabel.TextSize = 14
-	eLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-	eLabel.TextStrokeTransparency = 0.5
-	eLabel.Text = "E"
-	eLabel.TextXAlignment = Enum.TextXAlignment.Left
-	eLabel.TextYAlignment = Enum.TextYAlignment.Top
-	eLabel.ZIndex = 4  -- Above viewport
-	eLabel.Parent = button
-
-	-- Store button reference
-	self.inventoryButton = {
-		frame = button,
-		border = border,
-		iconContainer = iconContainer,
-		backpackIcon = backpackIcon,
-		eLabel = eLabel
-	}
-
-	-- Add click handler to toggle inventory
-	button.Activated:Connect(function()
-		if self.voxelInventory then
-			self.voxelInventory:Toggle()
-		else
-			warn("VoxelHotbar: Inventory reference not set - inventory may not be initialized yet")
-		end
-	end)
-
-	-- Hover effects (matching hotbar slot behavior)
-	button.MouseEnter:Connect(function()
-		border.Transparency = 0  -- Fully opaque on hover
-		button.BackgroundTransparency = 0.25  -- Less transparent on hover
-	end)
-
-	button.MouseLeave:Connect(function()
-		border.Transparency = 0.25  -- Back to default
-		button.BackgroundTransparency = 0.5  -- Back to default
-	end)
 end
 
 function VoxelHotbar:UpdateSlotDisplay(index)
@@ -931,15 +661,6 @@ function VoxelHotbar:Hide()
 	if self.gui then
 		self.gui.Enabled = false
 	end
-end
-
-function VoxelHotbar:SetInventoryReference(inventory)
-	-- Set reference to inventory panel (called after inventory is created)
-	self.voxelInventory = inventory
-end
-
-function VoxelHotbar:SetWorldsPanel(worldsPanel)
-	self.worldsPanel = worldsPanel
 end
 
 function VoxelHotbar:Cleanup()
