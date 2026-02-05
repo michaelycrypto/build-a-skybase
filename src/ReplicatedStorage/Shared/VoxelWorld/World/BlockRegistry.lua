@@ -474,7 +474,8 @@ BlockRegistry.Blocks = {
 		},
 		crossShape = false,
 		hasRotation = true,
-		interactable = true
+		interactable = true,
+		blockOnly = true -- Skip 3D model lookup in viewmodel, use textured cube
 	},
 
 	[Constants.BlockType.GLASS] = {

@@ -795,7 +795,7 @@ function FurnaceService:NotifyViewers(key, furnace)
 end
 
 --[[
-	Save furnace state for persistence
+	Save furnace state for persistence (single furnace)
 ]]
 function FurnaceService:GetFurnaceStateForSave(x, y, z)
 	local key = self:GetFurnaceKey(x, y, z)
@@ -813,7 +813,7 @@ function FurnaceService:GetFurnaceStateForSave(x, y, z)
 end
 
 --[[
-	Load furnace state from persistence
+	Load furnace state from persistence (single furnace)
 ]]
 function FurnaceService:LoadFurnaceState(x, y, z, savedState)
 	if not savedState then return end
@@ -831,6 +831,74 @@ function FurnaceService:LoadFurnaceState(x, y, z, savedState)
 	end
 	furnace.fuelBurnTimeRemaining = savedState.fuelBurnTimeRemaining or 0
 	furnace.currentSmeltProgress = savedState.currentSmeltProgress or 0
+end
+
+--[[
+	Save all furnace data (called by world save)
+	@return: table - Array of furnace data to save
+]]
+function FurnaceService:SaveFurnaceData()
+	local furnaceData = {}
+	
+	self._logger.Debug("Starting furnace save...")
+	
+	for key, furnace in pairs(self.furnaces) do
+		-- Only save furnaces that have items or active smelting
+		local hasItems = not furnace.inputSlot:IsEmpty() 
+			or not furnace.fuelSlot:IsEmpty() 
+			or not furnace.outputSlot:IsEmpty()
+		local hasProgress = furnace.fuelBurnTimeRemaining > 0 or furnace.currentSmeltProgress > 0
+		
+		if hasItems or hasProgress then
+			local furnaceToSave = {
+				x = furnace.x,
+				y = furnace.y,
+				z = furnace.z,
+				inputSlot = furnace.inputSlot:Serialize(),
+				fuelSlot = furnace.fuelSlot:Serialize(),
+				outputSlot = furnace.outputSlot:Serialize(),
+				fuelBurnTimeRemaining = furnace.fuelBurnTimeRemaining,
+				currentSmeltProgress = furnace.currentSmeltProgress
+			}
+			table.insert(furnaceData, furnaceToSave)
+			self._logger.Debug(string.format("Saving furnace at (%d,%d,%d)", furnace.x, furnace.y, furnace.z))
+		end
+	end
+	
+	self._logger.Debug(string.format("Furnace save complete: %d furnaces", #furnaceData))
+	return furnaceData
+end
+
+--[[
+	Load all furnace data (called on world load)
+	@param furnaceData: table - Array of saved furnace data
+]]
+function FurnaceService:LoadFurnaceData(furnaceData)
+	if not furnaceData then return end
+	
+	self._logger.Debug(string.format("Loading %d furnaces...", #furnaceData))
+	
+	for _, data in ipairs(furnaceData) do
+		if data.x and data.y and data.z then
+			local furnace = self:GetFurnace(data.x, data.y, data.z)
+			
+			if data.inputSlot then
+				furnace.inputSlot = ItemStack.Deserialize(data.inputSlot) or ItemStack.new(0, 0)
+			end
+			if data.fuelSlot then
+				furnace.fuelSlot = ItemStack.Deserialize(data.fuelSlot) or ItemStack.new(0, 0)
+			end
+			if data.outputSlot then
+				furnace.outputSlot = ItemStack.Deserialize(data.outputSlot) or ItemStack.new(0, 0)
+			end
+			furnace.fuelBurnTimeRemaining = data.fuelBurnTimeRemaining or 0
+			furnace.currentSmeltProgress = data.currentSmeltProgress or 0
+			
+			self._logger.Debug(string.format("Loaded furnace at (%d,%d,%d)", data.x, data.y, data.z))
+		end
+	end
+	
+	self._logger.Debug("Furnace load complete")
 end
 
 --[[

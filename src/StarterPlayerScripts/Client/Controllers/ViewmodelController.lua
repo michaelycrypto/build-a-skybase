@@ -138,8 +138,9 @@ local function buildBlockModel(itemId)
 
 	-- Try to use 3D model from Tools folder (unified lookup)
 	-- SKIP for cross-shape blocks (wheat, saplings, flowers, etc.) - they use textured cubes below
+	-- SKIP for blockOnly blocks (Furnace, etc.) - they use textured cubes
 	local itemName = ItemRegistry.GetItemName(itemId)
-	if itemName and itemName ~= "Unknown" and not def.crossShape then
+	if itemName and itemName ~= "Unknown" and not def.crossShape and not def.blockOnly then
 		local modelTemplate = ItemModelLoader.GetModelTemplate(itemName, itemId)
 		if modelTemplate then
 			local part = modelTemplate:Clone()
@@ -464,8 +465,9 @@ local function buildFlatBlockItem(itemId)
 
     -- Try to use 3D model from Tools folder (unified lookup)
     -- SKIP for cross-shape blocks (wheat, saplings, flowers, etc.) - they use flat sprites below
+    -- SKIP for blockOnly blocks (Furnace, etc.) - they use textured cubes
     local itemName = ItemRegistry.GetItemName(itemId)
-    if itemName and itemName ~= "Unknown" and not def.crossShape then
+    if itemName and itemName ~= "Unknown" and not def.crossShape and not def.blockOnly then
         local modelTemplate = ItemModelLoader.GetModelTemplate(itemName, itemId)
         if modelTemplate then
             local part = modelTemplate:Clone()

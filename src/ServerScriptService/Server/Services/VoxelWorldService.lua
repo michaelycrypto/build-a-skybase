@@ -3010,6 +3010,12 @@ function VoxelWorldService:SaveWorldData()
 		print(string.format("Saved %d chests", worldData.chests and #worldData.chests or 0))
 	end
 
+	-- Save furnace data (if FurnaceService is available)
+	if self.Deps.FurnaceService then
+		worldData.furnaces = self.Deps.FurnaceService:SaveFurnaceData()
+		print(string.format("Saved %d furnaces", worldData.furnaces and #worldData.furnaces or 0))
+	end
+
 		-- Save minion states
 	if self.minionStateByBlockKey then
 		worldData.minions = {}
@@ -3121,6 +3127,12 @@ function VoxelWorldService:LoadWorldData()
 	if self.Deps.ChestStorageService and worldData.chests then
 		print(string.format("Loading %d chests...", #worldData.chests))
 		self.Deps.ChestStorageService:LoadChestData(worldData.chests)
+	end
+
+	-- Load furnace data (if FurnaceService is available)
+	if self.Deps.FurnaceService and worldData.furnaces then
+		print(string.format("Loading %d furnaces...", #worldData.furnaces))
+		self.Deps.FurnaceService:LoadFurnaceData(worldData.furnaces)
 	end
 
 	-- Load minion states

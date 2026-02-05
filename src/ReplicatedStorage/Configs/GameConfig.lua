@@ -93,16 +93,16 @@ local SOUND_LIBRARY = {
 			}
 		},
 		destroyStages = {
-			"rbxassetid://125479763188196", -- Stage 0
-			"rbxassetid://122437960590463", -- Stage 1
-			"rbxassetid://87494235425051", -- Stage 2
-			"rbxassetid://86331071302668", -- Stage 3
-			"rbxassetid://139320505726774", -- Stage 4
-			"rbxassetid://124395945436399", -- Stage 5
-			"rbxassetid://129303387455522", -- Stage 6
-			"rbxassetid://140150860430907", -- Stage 7
-			"rbxassetid://86006077340395",  -- Stage 8
-			"rbxassetid://71974612582615"   -- Stage 9
+			"rbxassetid://103751117138010", -- Stage 0
+			"rbxassetid://98091228210468",  -- Stage 1
+			"rbxassetid://107069080741255", -- Stage 2
+			"rbxassetid://123263282506381", -- Stage 3
+			"rbxassetid://121519506565629", -- Stage 4
+			"rbxassetid://132573388194112", -- Stage 5
+			"rbxassetid://120244414346795", -- Stage 6
+			"rbxassetid://102655529662330", -- Stage 7
+			"rbxassetid://70492416653788",  -- Stage 8
+			"rbxassetid://79555641329711"   -- Stage 9
 		}
 	}
 }
@@ -138,7 +138,7 @@ local GameConfig = {
 	-- Data Store settings
 	DataStore = {
 		PlayerData = {
-			DataStoreVersion = "PlayerData_v96", -- Keep in sync with PlayerDataStoreService (updated for 4-tier system)
+			DataStoreVersion = "PlayerData_v97", -- Keep in sync with PlayerDataStoreService (updated for 4-tier system)
 			SchemaVersion = 6, -- Increment to force migrations/default resets
 			AutoSaveInterval = 300 -- 5 minutes in seconds
 		},
@@ -598,7 +598,7 @@ local GameConfig = {
 	-- World system configuration
 	Worlds = {
 		MaxWorldsPerPlayer = 10, -- Maximum worlds a player can create
-		DataStoreVersion = "PlayerOwnedWorlds_v85" -- Updated for multi-world support
+		DataStoreVersion = "PlayerOwnedWorlds_v86" -- Updated for multi-world support
 	},
 
 	-- Single-Place Architecture Configuration

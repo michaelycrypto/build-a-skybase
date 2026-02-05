@@ -318,6 +318,9 @@ local hubPoolService = IS_HUB and Injector:Resolve("HubPoolService") or nil
 if voxelWorldService and chestStorageService then
 	voxelWorldService.Deps.ChestStorageService = chestStorageService
 end
+if voxelWorldService and furnaceService then
+	voxelWorldService.Deps.FurnaceService = furnaceService
+end
 if voxelWorldService then
 	voxelWorldService.Deps.DroppedItemService = droppedItemService
 	voxelWorldService.Deps.MobEntityService = mobEntityService
