@@ -1438,12 +1438,25 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 								end
 								-- Position the model
 								entity:PivotTo(positionCFrame * rotationCFrame)
-								-- Anchor all parts
+								-- Anchor all visual parts (no collision on visual mesh)
 								for _, part in ipairs(entity:GetDescendants()) do
 									if part:IsA("BasePart") then
 										part.Anchored = true
 										part.CanCollide = false
 									end
+								end
+								-- Create collision box based on model bounds if block is solid
+								if def.solid ~= false then
+									local boundsCF, boundsSize = entity:GetBoundingBox()
+									local collisionPart = Instance.new("Part")
+									collisionPart.Name = "EntityCollision"
+									collisionPart.Size = boundsSize
+									collisionPart.CFrame = boundsCF
+									collisionPart.Anchored = true
+									collisionPart.CanCollide = true
+									collisionPart.Transparency = 1
+									collisionPart.CanQuery = false -- Don't interfere with raycasts
+									collisionPart.Parent = entity
 								end
 								table.insert(meshParts, entity)
 								partsBudget = partsBudget + 1
@@ -1456,7 +1469,8 @@ function BoxMesher:GenerateMesh(chunk, worldManager, options)
 								end
 								entity.CFrame = positionCFrame * rotationCFrame
 								entity.Anchored = true
-								entity.CanCollide = false
+								-- For single BasePart entities, enable collision directly if solid
+								entity.CanCollide = (def.solid ~= false)
 								table.insert(meshParts, entity)
 								partsBudget = partsBudget + 1
 							end
