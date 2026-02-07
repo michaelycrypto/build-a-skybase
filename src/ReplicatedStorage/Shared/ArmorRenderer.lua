@@ -2,6 +2,9 @@
 	ArmorRenderer.lua
 	Shared armor rendering logic for applying armor visuals to any character model.
 
+	All equipped armor is rendered as procedural Parts welded to body parts.
+	(3D meshes in Assets.Tools are for held/dropped/viewmodel item display only.)
+
 	Used by:
 	- ArmorVisualController (player's in-game character)
 	- VoxelInventoryPanel (viewport preview character)
@@ -19,24 +22,13 @@ local ArmorRenderer = {}
 -- CONFIGURATION
 -- ═══════════════════════════════════════════════════════════════════════════
 
--- Get Tools folder (prefer Assets.Tools, fallback to legacy Tools location)
-local function getToolsFolder()
-	-- Primary: ReplicatedStorage.Assets.Tools
-	local assets = ReplicatedStorage:FindFirstChild("Assets")
-	if assets then
-		local toolsFolder = assets:FindFirstChild("Tools")
-		if toolsFolder then
-			return toolsFolder
-		end
-	end
-	-- Fallback: ReplicatedStorage.Tools (legacy)
-	return ReplicatedStorage:FindFirstChild("Tools")
-end
-
-local ARMOR_MESHES_FOLDER = getToolsFolder()
-
 -- Physical armor dimensions (refined proportions)
 ArmorRenderer.ARMOR = {
+	-- Helmet
+	HELMET_PAD = 0.06,
+	HELMET_BRIM_HEIGHT = 0.08,
+	HELMET_VISOR_HEIGHT = 0.06,
+	HELMET_VISOR_DEPTH = 0.02,
 	-- Boots
 	BOOT_PAD = 0.015,
 	BOOT_TOE = 0.2,
@@ -68,6 +60,7 @@ ArmorRenderer.SHADE = {
 	RAISED = 0.85,
 	SHOULDER = 0.70,
 	BOOTS = 0.70,
+	DARK = 0.45,
 }
 
 -- Body parts affected by each armor slot
@@ -86,11 +79,6 @@ ArmorRenderer.BOOT_PARTS = {
 	R6 = {},
 	R15 = { "LeftFoot", "RightFoot" }
 }
-
--- Helmet configuration
-ArmorRenderer.HELMET_MESH = "ChainmailHelmet"
-ArmorRenderer.HELMET_SCALE_VALUE = 0.84
-ArmorRenderer.HELMET_Y_OFFSET_VALUE = 0
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- HELPERS
@@ -189,6 +177,33 @@ end
 -- PHYSICAL ARMOR CREATORS
 -- ═══════════════════════════════════════════════════════════════════════════
 
+function ArmorRenderer.CreateHelmetParts(bodyPart, color, character, anchored)
+	local parts = {}
+	local s = bodyPart.Size
+	local A = ArmorRenderer.ARMOR
+	local pad = A.HELMET_PAD
+
+	-- Main helmet cap - sits on top/around the head
+	local capSize = Vector3.new(s.X + pad * 2, s.Y * 0.75, s.Z + pad * 2)
+	local capOffset = CFrame.new(0, s.Y * 0.2, 0)
+	local capColor = ArmorRenderer.ShadeColor(color, ArmorRenderer.SHADE.RAISED)
+	table.insert(parts, ArmorRenderer.WeldPart("Armor_HelmetCap", capSize, capColor, bodyPart, character, capOffset, anchored))
+
+	-- Brim/rim around the bottom of the helmet
+	local brimSize = Vector3.new(s.X + pad * 3, A.HELMET_BRIM_HEIGHT, s.Z + pad * 3)
+	local brimOffset = CFrame.new(0, s.Y * 0.2 - capSize.Y / 2 + A.HELMET_BRIM_HEIGHT / 2, 0)
+	local brimColor = ArmorRenderer.ShadeColor(color, ArmorRenderer.SHADE.SHOULDER)
+	table.insert(parts, ArmorRenderer.WeldPart("Armor_HelmetBrim", brimSize, brimColor, bodyPart, character, brimOffset, anchored))
+
+	-- Visor slit across the front (dark strip)
+	local visorSize = Vector3.new(s.X * 0.7, A.HELMET_VISOR_HEIGHT, A.HELMET_VISOR_DEPTH)
+	local visorOffset = CFrame.new(0, s.Y * 0.15, -(s.Z / 2 + pad + A.HELMET_VISOR_DEPTH / 2))
+	local visorColor = ArmorRenderer.ShadeColor(color, ArmorRenderer.SHADE.DARK)
+	table.insert(parts, ArmorRenderer.WeldPart("Armor_HelmetVisor", visorSize, visorColor, bodyPart, character, visorOffset, anchored))
+
+	return parts
+end
+
 function ArmorRenderer.CreateBoot(bodyPart, color, character, anchored)
 	local parts = {}
 	local s = bodyPart.Size
@@ -200,13 +215,13 @@ function ArmorRenderer.CreateBoot(bodyPart, color, character, anchored)
 	local bootToe = A.BOOT_TOE
 	local bootSize = Vector3.new(s.X + pad, s.Y + pad, s.Z + pad + bootToe)
 	local bootOffset = CFrame.new(0, 0, -bootToe / 2)
-	table.insert(parts, ArmorRenderer.WeldPart("Boot", bootSize, bootColor, bodyPart, character, bootOffset, anchored))
+	table.insert(parts, ArmorRenderer.WeldPart("Armor_Boot", bootSize, bootColor, bodyPart, character, bootOffset, anchored))
 
 	-- Ankle cuff
 	local cuffToe = bootToe * A.BOOT_CUFF_TOE
 	local cuffSize = Vector3.new(s.X + pad, A.BOOT_CUFF_HEIGHT, s.Z + pad + cuffToe)
 	local cuffOffset = CFrame.new(0, s.Y / 2 + A.BOOT_CUFF_HEIGHT / 2, -cuffToe / 2)
-	table.insert(parts, ArmorRenderer.WeldPart("Boot_Cuff", cuffSize, bootColor, bodyPart, character, cuffOffset, anchored))
+	table.insert(parts, ArmorRenderer.WeldPart("Armor_BootCuff", cuffSize, bootColor, bodyPart, character, cuffOffset, anchored))
 
 	return parts
 end
@@ -222,7 +237,7 @@ function ArmorRenderer.CreateBelt(bodyPart, color, character, anchored)
 
 	-- Belt wrap
 	local beltSize = Vector3.new(s.X + beltPad, beltHeight, s.Z + beltPad)
-	table.insert(parts, ArmorRenderer.WeldPart("Belt", beltSize, beltColor, bodyPart, character, CFrame.new(), anchored))
+	table.insert(parts, ArmorRenderer.WeldPart("Armor_Belt", beltSize, beltColor, bodyPart, character, CFrame.new(), anchored))
 
 	-- Belt buckle
 	local buckleWidth = s.X * A.BUCKLE_WIDTH
@@ -230,7 +245,7 @@ function ArmorRenderer.CreateBelt(bodyPart, color, character, anchored)
 	local buckleColor = ArmorRenderer.ShadeColor(color, ArmorRenderer.SHADE.BOOTS)
 	local buckleSize = Vector3.new(buckleWidth, buckleHeight, A.BUCKLE_DEPTH)
 	local buckleOffset = CFrame.new(0, 0, -(s.Z / 2 + beltPad / 2 + A.BUCKLE_DEPTH / 2))
-	table.insert(parts, ArmorRenderer.WeldPart("Belt_Buckle", buckleSize, buckleColor, bodyPart, character, buckleOffset, anchored))
+	table.insert(parts, ArmorRenderer.WeldPart("Armor_BeltBuckle", buckleSize, buckleColor, bodyPart, character, buckleOffset, anchored))
 
 	return parts
 end
@@ -245,7 +260,7 @@ function ArmorRenderer.CreateChestPlate(bodyPart, color, character, anchored)
 	local plateSize = Vector3.new(s.X + platePad, plateHeight, s.Z + platePad)
 	local plateOffset = CFrame.new(0, (s.Y - plateHeight) / 2 + platePad * 0.4, 0)
 	local plateColor = ArmorRenderer.ShadeColor(color, ArmorRenderer.SHADE.RAISED)
-	table.insert(parts, ArmorRenderer.WeldPart("ChestPlate", plateSize, plateColor, bodyPart, character, plateOffset, anchored))
+	table.insert(parts, ArmorRenderer.WeldPart("Armor_ChestPlate", plateSize, plateColor, bodyPart, character, plateOffset, anchored))
 
 	return parts
 end
@@ -260,7 +275,7 @@ function ArmorRenderer.CreateSleeve(bodyPart, color, character, anchored)
 	local sleeveSize = Vector3.new(s.X + sleevePad, sleeveHeight, s.Z + sleevePad)
 	local sleeveOffset = CFrame.new(0, (s.Y - sleeveHeight) / 2, 0)
 	local sleeveColor = ArmorRenderer.ShadeColor(color, ArmorRenderer.SHADE.RAISED)
-	table.insert(parts, ArmorRenderer.WeldPart("Sleeve", sleeveSize, sleeveColor, bodyPart, character, sleeveOffset, anchored))
+	table.insert(parts, ArmorRenderer.WeldPart("Armor_Sleeve", sleeveSize, sleeveColor, bodyPart, character, sleeveOffset, anchored))
 
 	return parts
 end
@@ -276,7 +291,7 @@ function ArmorRenderer.CreateShoulderPlate(bodyPart, color, character, isLeft, a
 	local tiltAngle = math.rad(A.SHOULDER_TILT) * (isLeft and -1 or 1)
 	local plateOffset = CFrame.new(0, (s.Y - plateHeight) / 2 + platePad, 0) * CFrame.Angles(0, 0, tiltAngle)
 	local plateColor = ArmorRenderer.ShadeColor(color, ArmorRenderer.SHADE.SHOULDER)
-	table.insert(parts, ArmorRenderer.WeldPart("ShoulderPlate", plateSize, plateColor, bodyPart, character, plateOffset, anchored))
+	table.insert(parts, ArmorRenderer.WeldPart("Armor_ShoulderPlate", plateSize, plateColor, bodyPart, character, plateOffset, anchored))
 
 	return parts
 end
@@ -284,6 +299,21 @@ end
 -- ═══════════════════════════════════════════════════════════════════════════
 -- SLOT-SPECIFIC CREATORS
 -- ═══════════════════════════════════════════════════════════════════════════
+
+function ArmorRenderer.CreateHelmet(character, itemId, anchored)
+	local parts = {}
+	local color = ArmorRenderer.GetArmorColor(itemId)
+
+	local headPart = character:FindFirstChild("Head")
+	if not headPart then return parts end
+
+	local helmetParts = ArmorRenderer.CreateHelmetParts(headPart, color, character, anchored)
+	for _, part in ipairs(helmetParts) do
+		table.insert(parts, part)
+	end
+
+	return parts
+end
 
 function ArmorRenderer.CreateBoots(character, itemId, anchored)
 	local parts = {}
@@ -356,82 +386,18 @@ function ArmorRenderer.CreateLeggingsArmor(character, itemId, anchored)
 	return parts
 end
 
-function ArmorRenderer.CreateHelmet(character, itemId, anchored)
-	local parts = {}
-	local armorInfo = ArmorConfig.GetArmorInfo(itemId)
-	if not armorInfo then return parts end
-
-	if not ARMOR_MESHES_FOLDER then
-		warn("[ArmorRenderer] Tools folder not found")
-		return parts
-	end
-
-	local meshTemplate = ARMOR_MESHES_FOLDER:FindFirstChild(ArmorRenderer.HELMET_MESH)
-	if not meshTemplate then
-		warn("[ArmorRenderer] Helmet mesh not found:", ArmorRenderer.HELMET_MESH)
-		return parts
-	end
-
-	local headPart = character:FindFirstChild("Head")
-	if not headPart then return parts end
-
-	local helmet = meshTemplate:Clone()
-	helmet.Name = "Armor_Helmet"
-	helmet.CanCollide = false
-	helmet.Massless = true
-	helmet.CastShadow = true
-	helmet.Anchored = anchored or false
-
-	-- Apply tier color
-	local color = ArmorRenderer.GetArmorColor(itemId)
-	helmet.Color = ArmorRenderer.ShadeColor(color, ArmorRenderer.SHADE.RAISED)
-
-	-- Scale to fit head
-	local headSize = headPart.Size
-	local originalSize = helmet.Size
-	local scaleFactor = math.max(
-		headSize.X * ArmorRenderer.HELMET_SCALE_VALUE / originalSize.X,
-		headSize.Y * ArmorRenderer.HELMET_SCALE_VALUE / originalSize.Y,
-		headSize.Z * ArmorRenderer.HELMET_SCALE_VALUE / originalSize.Z
-	)
-	helmet.Size = originalSize * scaleFactor
-	helmet.Parent = character
-
-	local helmetOffset = CFrame.new(0, headSize.Y * 0.25 + ArmorRenderer.HELMET_Y_OFFSET_VALUE, 0) * CFrame.Angles(0, math.rad(180), 0)
-
-	if anchored then
-		-- For anchored models, position directly
-		helmet.CFrame = headPart.CFrame * helmetOffset
-	else
-		-- For physics models, use welds
-		local weld = Instance.new("Weld")
-		weld.Part0 = headPart
-		weld.Part1 = helmet
-		weld.C0 = helmetOffset
-		weld.Parent = helmet
-	end
-
-	table.insert(parts, helmet)
-	return parts
-end
-
 -- ═══════════════════════════════════════════════════════════════════════════
 -- HIGH-LEVEL API
 -- ═══════════════════════════════════════════════════════════════════════════
 
--- Clear all armor parts from a character (by name pattern)
+-- Clear all armor parts from a character (by Armor_ prefix)
 function ArmorRenderer.ClearArmorParts(character)
 	if not character then return end
 
 	local partsToDestroy = {}
 	for _, child in ipairs(character:GetChildren()) do
-		if child:IsA("BasePart") then
-			local name = child.Name
-			if name == "Boot" or name == "Boot_Cuff" or name == "Belt" or name == "Belt_Buckle"
-				or name == "ChestPlate" or name == "Sleeve" or name == "ShoulderPlate"
-				or name == "Armor_Helmet" then
-				table.insert(partsToDestroy, child)
-			end
+		if child:IsA("BasePart") and child.Name:sub(1, 6) == "Armor_" then
+			table.insert(partsToDestroy, child)
 		end
 	end
 
@@ -489,4 +455,3 @@ function ArmorRenderer.ApplyAllArmor(character, equippedArmor, anchored, origina
 end
 
 return ArmorRenderer
-

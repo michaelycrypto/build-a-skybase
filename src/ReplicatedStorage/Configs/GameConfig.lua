@@ -138,7 +138,7 @@ local GameConfig = {
 	-- Data Store settings
 	DataStore = {
 		PlayerData = {
-			DataStoreVersion = "PlayerData_v97", -- Keep in sync with PlayerDataStoreService (updated for 4-tier system)
+			DataStoreVersion = "PlayerData_v102", -- Keep in sync with PlayerDataStoreService (updated for 4-tier system)
 			SchemaVersion = 6, -- Increment to force migrations/default resets
 			AutoSaveInterval = 300 -- 5 minutes in seconds
 		},
@@ -598,7 +598,7 @@ local GameConfig = {
 	-- World system configuration
 	Worlds = {
 		MaxWorldsPerPlayer = 10, -- Maximum worlds a player can create
-		DataStoreVersion = "PlayerOwnedWorlds_v86" -- Updated for multi-world support
+		DataStoreVersion = "PlayerOwnedWorlds_v92" -- Updated for multi-world support
 	},
 
 	-- Single-Place Architecture Configuration

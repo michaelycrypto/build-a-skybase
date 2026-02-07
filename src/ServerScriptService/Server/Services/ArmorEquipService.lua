@@ -59,6 +59,11 @@ function ArmorEquipService:Start()
 end
 
 function ArmorEquipService:OnPlayerAdded(player: Player)
+	-- Guard: don't re-initialize if already set (prevents wiping loaded armor data)
+	if self.equippedArmor[player] then
+		return
+	end
+
 	-- Initialize empty armor slots (will be populated by LoadArmor if data exists)
 	self.equippedArmor[player] = {
 		helmet = nil,
@@ -73,22 +78,36 @@ end
 
 function ArmorEquipService:OnPlayerRemoving(player: Player)
 	-- Note: Armor is saved by PlayerService before this is called
-	-- Just clean up player data
+	local equipped = self.equippedArmor[player]
+	warn("[ArmorEquipService] OnPlayerRemoving:", player.Name,
+		"- clearing armor. Current state:",
+		"helmet=", equipped and tostring(equipped.helmet) or "N/A",
+		"chest=", equipped and tostring(equipped.chestplate) or "N/A",
+		"legs=", equipped and tostring(equipped.leggings) or "N/A",
+		"boots=", equipped and tostring(equipped.boots) or "N/A")
 	self.equippedArmor[player] = nil
 end
 
 -- Load armor data from saved state (called by PlayerService after data is loaded)
 function ArmorEquipService:LoadArmor(player: Player, armorData: {helmet: number?, chestplate: number?, leggings: number?, boots: number?})
+	warn("[ArmorEquipService] LoadArmor called for", player.Name, "armorData=", armorData and "exists" or "nil")
+
 	if not armorData then
-		self._logger.Debug("No armor data to load", {player = player.Name})
+		warn("[ArmorEquipService] LoadArmor: armorData is nil, nothing to load for", player.Name)
 		return
 	end
+
+	-- Log raw data from DataStore
+	warn("[ArmorEquipService] LoadArmor raw data:",
+		"helmet=", tostring(armorData.helmet), "(type:", type(armorData.helmet), ")",
+		"chest=", tostring(armorData.chestplate), "(type:", type(armorData.chestplate), ")",
+		"legs=", tostring(armorData.leggings), "(type:", type(armorData.leggings), ")",
+		"boots=", tostring(armorData.boots), "(type:", type(armorData.boots), ")")
 
 	-- Check if armorData has any actual values (not just an empty table)
 	local hasAnyArmor = armorData.helmet or armorData.chestplate or armorData.leggings or armorData.boots
 	if not hasAnyArmor then
-		self._logger.Debug("Armor data exists but is empty", {player = player.Name})
-		-- Still initialize the structure even if empty
+		warn("[ArmorEquipService] LoadArmor: armor data table is empty (no equipped pieces) for", player.Name)
 	end
 
 	-- Initialize if needed
@@ -102,22 +121,23 @@ function ArmorEquipService:LoadArmor(player: Player, armorData: {helmet: number?
 	self.equippedArmor[player].leggings = type(armorData.leggings) == "number" and armorData.leggings or nil
 	self.equippedArmor[player].boots = type(armorData.boots) == "number" and armorData.boots or nil
 
-	self._logger.Debug("Loaded armor data", {
-		player = player.Name,
-		helmet = self.equippedArmor[player].helmet,
-		chestplate = self.equippedArmor[player].chestplate,
-		leggings = self.equippedArmor[player].leggings,
-		boots = self.equippedArmor[player].boots
-	})
+	warn("[ArmorEquipService] LoadArmor final state for", player.Name, ":",
+		"helmet=", tostring(self.equippedArmor[player].helmet),
+		"chest=", tostring(self.equippedArmor[player].chestplate),
+		"legs=", tostring(self.equippedArmor[player].leggings),
+		"boots=", tostring(self.equippedArmor[player].boots))
 
 	-- Sync to client with delay to ensure client UI is ready
 	-- Client initializes many systems on join; a short delay ensures VoxelInventoryPanel
 	-- has registered its event listeners before we send the sync
 	task.delay(1.5, function()
 		if player and player:IsDescendantOf(game.Players) then
+			warn("[ArmorEquipService] Delayed ArmorSync firing for", player.Name)
 			self:SyncArmorToClient(player)
 			-- Also sync armor stats for StatusBarsHUD
 			self:_syncArmorStats(player)
+		else
+			warn("[ArmorEquipService] Delayed ArmorSync SKIPPED - player left:", player.Name)
 		end
 	end)
 end
@@ -126,15 +146,24 @@ end
 function ArmorEquipService:SerializeArmor(player: Player)
 	local equipped = self.equippedArmor[player]
 	if not equipped then
+		warn("[ArmorEquipService] SerializeArmor: NO equipped table for", player.Name, "- returning nil (armor will NOT be saved)")
 		return nil
 	end
 
-	return {
+	local result = {
 		helmet = equipped.helmet,
 		chestplate = equipped.chestplate,
 		leggings = equipped.leggings,
 		boots = equipped.boots
 	}
+
+	warn("[ArmorEquipService] SerializeArmor:", player.Name,
+		"helmet=", tostring(result.helmet),
+		"chest=", tostring(result.chestplate),
+		"legs=", tostring(result.leggings),
+		"boots=", tostring(result.boots))
+
+	return result
 end
 
 -- Get the canonical slot name
@@ -241,6 +270,9 @@ function ArmorEquipService:HandleArmorSlotClick(player: Player, data)
 	local cursorItemId = data.cursorItemId
 	local _cursorCount = data.cursorCount or 1
 
+	warn("[ArmorEquipService] HandleArmorSlotClick:", player.Name,
+		"slot=", tostring(slot), "cursorItemId=", tostring(cursorItemId))
+
 	local normalizedSlot = self:_normalizeSlot(slot)
 	if not normalizedSlot then
 		self._logger.Warn("Invalid armor slot in click", {player = player.Name, slot = slot})
@@ -342,6 +374,11 @@ end
 -- Sync full armor state to client
 function ArmorEquipService:SyncArmorToClient(player: Player)
 	local armorState = self.equippedArmor[player] or {}
+	warn("[ArmorEquipService] SyncArmorToClient:", player.Name,
+		"helmet=", tostring(armorState.helmet),
+		"chest=", tostring(armorState.chestplate),
+		"legs=", tostring(armorState.leggings),
+		"boots=", tostring(armorState.boots))
 	EventManager:FireEvent("ArmorSync", player, {
 		equippedArmor = armorState
 	})

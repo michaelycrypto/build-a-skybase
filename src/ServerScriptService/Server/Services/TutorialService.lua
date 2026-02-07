@@ -128,7 +128,9 @@ function TutorialService:_canTrackObjective(objectiveType)
 end
 
 --[[
-	Ensure tutorial data structure exists for the player
+	Ensure tutorial data structure exists for the player.
+	Waits briefly for PlayerService data to load (prevents race condition
+	where RequestTutorialData arrives before DataStore load finishes).
 ]]
 function TutorialService:_ensurePlayerData(player)
 	local userId = player.UserId
@@ -137,6 +139,24 @@ function TutorialService:_ensurePlayerData(player)
 		local savedData = nil
 		if self.Deps.PlayerService and self.Deps.PlayerService.GetPlayerData then
 			local playerData = self.Deps.PlayerService:GetPlayerData(player)
+
+			-- If player data isn't loaded yet (DataStore still yielding), wait briefly
+			if not playerData then
+				local waited = 0
+				local MAX_WAIT = 10 -- seconds
+				while not playerData and waited < MAX_WAIT do
+					task.wait(0.5)
+					waited = waited + 0.5
+					playerData = self.Deps.PlayerService:GetPlayerData(player)
+				end
+				if not playerData then
+					self._logger.Warn("Player data not available after waiting, using defaults", {
+						player = player.Name,
+						waited = waited
+					})
+				end
+			end
+
 			savedData = playerData and playerData.tutorial
 		end
 
@@ -290,6 +310,11 @@ function TutorialService:CompleteStep(player, stepId)
 	data.placeProgressCount = 0
 	data.buyProgressCount = 0
 	data.sellProgressCount = 0
+	data.collectProgressCount = 0
+	data.breakProgressCount = 0
+	data.progressCount = 0
+	data.multiObjectiveProgress = nil
+	data.craftItemsProgress = nil
 	
 	self._logger.Info("Tutorial step completed", {
 		player = player.Name,
@@ -879,19 +904,33 @@ function TutorialService:TrackProgress(player, progressType, progressData)
 	if isComplete then
 		self:CompleteStep(player, data.currentStep)
 	else
+		-- Update local cache so progress survives disconnects (PlayerService auto-saves on leave).
+		-- Avoids DataStore writes on every progress tick; full save happens on step completion or player leave.
+		if self.Deps.PlayerService then
+			local playerData = self.Deps.PlayerService:GetPlayerData(player)
+			if playerData then
+				playerData.tutorial = data
+			end
+		end
+
 		-- Send progress update to client
 		if self._eventManager then
+			local eventPayload = {
+				stepId = data.currentStep,
+				progressType = progressType,
+				progressData = progressData,
+			}
+			-- Include multi_objective progress so client can show per-sub-objective counts
+			if data.multiObjectiveProgress then
+				eventPayload.multiObjectiveProgress = data.multiObjectiveProgress
+			end
 			self._logger.Info("Sending TutorialProgressUpdated to client", {
 				player = player.Name,
 				stepId = data.currentStep,
 				progressType = progressType,
 				count = progressData.count
 			})
-			self._eventManager:FireEvent("TutorialProgressUpdated", player, {
-				stepId = data.currentStep,
-				progressType = progressType,
-				progressData = progressData,
-			})
+			self._eventManager:FireEvent("TutorialProgressUpdated", player, eventPayload)
 		end
 	end
 end

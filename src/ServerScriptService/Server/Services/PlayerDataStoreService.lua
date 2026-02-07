@@ -272,6 +272,16 @@ function PlayerDataStoreService:LoadPlayerData(player: Player)
 					sessionLockId = SERVER_ID
 				}
 
+				-- Log armor data from DataStore
+				local dsArmor = result.equippedArmor
+				warn("[PlayerDataStoreService] LoadPlayerData: loaded for", player.Name,
+					"equippedArmor from DataStore:",
+					dsArmor and ("helmet=" .. tostring(dsArmor.helmet)
+						.. " chest=" .. tostring(dsArmor.chestplate)
+						.. " legs=" .. tostring(dsArmor.leggings)
+						.. " boots=" .. tostring(dsArmor.boots))
+					or "NIL (no equippedArmor key)")
+
 				self._logger.Debug("Loaded player data", {
 					player = player.Name,
 					level = result.profile and result.profile.level or 1,
@@ -345,11 +355,9 @@ function PlayerDataStoreService:SavePlayerData(player: Player)
 					local lock = oldData.sessionLock
 					if lock.serverId ~= SERVER_ID then
 						-- Another server took the lock - don't save (prevents dupe)
-						self._logger.Warn("Session lock lost to another server, aborting save", {
-							player = player.Name,
-							ourServer = SERVER_ID,
-							lockServer = lock.serverId
-						})
+						warn("[PlayerDataStoreService] SavePlayerData: SESSION LOCK LOST - aborting save for", player.Name,
+							"our=", SERVER_ID, "theirs=", lock.serverId,
+							"ARMOR DATA MAY BE LOST")
 						return nil -- Abort save
 					end
 				end
@@ -373,20 +381,19 @@ function PlayerDataStoreService:SavePlayerData(player: Player)
 				session.dirty = false
 				saveSucceeded = true
 
-				self._logger.Info("✅ Player data saved to DataStore", {
-					player = player.Name
-				})
+				-- Verify armor was included in the save
+				local savedArmor = session.data.equippedArmor
+				warn("[PlayerDataStoreService] SavePlayerData: SUCCESS for", player.Name,
+					"armor in saved data:",
+					"helmet=", savedArmor and tostring(savedArmor.helmet) or "NO_ARMOR_KEY",
+					"chest=", savedArmor and tostring(savedArmor.chestplate) or "N/A")
 			else
 				-- Lock was taken by another server
-				self._logger.Warn("Save aborted - session lock lost", {player = player.Name})
+				warn("[PlayerDataStoreService] SavePlayerData: ABORTED (lock lost) for", player.Name, "- DATA NOT SAVED")
 				break -- Don't retry, lock is gone
 			end
 		else
-			self._logger.Warn("Failed to save player data", {
-				player = player.Name,
-				attempt = attempts,
-				error = tostring(result)
-			})
+			warn("[PlayerDataStoreService] SavePlayerData: FAILED attempt", attempts, "for", player.Name, "error:", tostring(result))
 			if attempts < MAX_RETRIES then
 				task.wait(RETRY_DELAY)
 			end
@@ -394,7 +401,7 @@ function PlayerDataStoreService:SavePlayerData(player: Player)
 	end
 
 	if not saveSucceeded then
-		self._logger.Error("Failed to save player data", {player = player.Name})
+		warn("[PlayerDataStoreService] SavePlayerData: ALL ATTEMPTS FAILED for", player.Name, "- DATA LOST!")
 	end
 
 	return saveSucceeded
@@ -487,11 +494,19 @@ end
 function PlayerDataStoreService:SaveArmorData(player: Player, armorData: {helmet: number?, chestplate: number?, leggings: number?, boots: number?})
 	local session = self._playerSessions[player.UserId]
 	if not session then
+		warn("[PlayerDataStoreService] SaveArmorData: NO SESSION for", player.Name, "- armor data LOST!")
 		return false
 	end
 
 	session.data.equippedArmor = armorData
 	session.dirty = true
+
+	warn("[PlayerDataStoreService] SaveArmorData: stored in session.data for", player.Name,
+		"helmet=", tostring(armorData.helmet),
+		"chest=", tostring(armorData.chestplate),
+		"legs=", tostring(armorData.leggings),
+		"boots=", tostring(armorData.boots),
+		"dirty=true")
 
 	return true
 end

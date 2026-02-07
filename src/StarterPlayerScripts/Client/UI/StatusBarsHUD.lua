@@ -1,11 +1,12 @@
 --[[
 	StatusBarsHUD.lua
-	Minecraft-style health, armor, and hunger bars
+	Minecraft-style health, armor, and hunger bars in a single horizontal row
 
-	Layout (Minecraft-accurate):
-	- Left half: Health bar (armor above when equipped)
-	- Right half: Hunger bar
-	- Positioned directly above hotbar, symmetric around center
+	Layout:
+	- Left: Health bar (10 hearts)
+	- Center: Armor bar (10 icons, visible when armor > 0)
+	- Right: Hunger bar (10 icons)
+	- All three fit in one compact row above the hotbar
 
 	Integration:
 	- Registers with UIVisibilityManager for mode-based visibility
@@ -28,29 +29,28 @@ StatusBarsHUD.__index = StatusBarsHUD
 --------------------------------------------------------------------------------
 
 local HOTBAR = {
-	SLOT_SIZE = 62,
-	SLOT_SPACING = 5,
+	SLOT_SIZE = 74,
+	SLOT_SPACING = 6,
 	SLOT_COUNT = 9,
 	BOTTOM_OFFSET = 4,
 	SCALE = 0.85,
 	BORDER = 2,
-	INTERNAL_OFFSET = 8,
+	INTERNAL_OFFSET = 10,
 }
 
 -- Derived hotbar dimensions
-local VISUAL_SLOT_SIZE = HOTBAR.SLOT_SIZE + (HOTBAR.BORDER * 2) -- 66px per slot
+local VISUAL_SLOT_SIZE = HOTBAR.SLOT_SIZE + (HOTBAR.BORDER * 2)
 local HOTBAR_WIDTH = (VISUAL_SLOT_SIZE * HOTBAR.SLOT_COUNT) +
                      (HOTBAR.SLOT_SPACING * (HOTBAR.SLOT_COUNT - 1))
 
--- Status bar configuration
+-- Status bar configuration (compact: smaller icons so 3 bars fit in one row)
 local CONFIG = {
-	-- Icon sizing (larger for better visibility)
-	ICON_SIZE = 22,
+	ICON_SIZE = 20,
 	ICON_SPACING = 2,
-	BAR_SPACING = 5,
-	GAP_ABOVE_HOTBAR = 1,  -- Minimal consistent gap
+	GAP_ABOVE_HOTBAR = 1,
+	BAR_GAP = 12,  -- Gap between the 3 bars
 
-	-- Counts (Minecraft standard: 10 of each)
+	-- Counts
 	MAX_HEARTS = 10,
 	HP_PER_HEART = 10,
 	MAX_ARMOR_ICONS = 10,
@@ -58,7 +58,7 @@ local CONFIG = {
 	MAX_HUNGER_ICONS = 10,
 	HUNGER_PER_ICON = 2,
 
-	-- Colors (Minecraft-accurate)
+	-- Colors
 	HEART_FULL = Color3.fromRGB(211, 33, 45),
 	HEART_EMPTY = Color3.fromRGB(85, 0, 0),
 	HEART_OUTLINE = Color3.fromRGB(0, 0, 0),
@@ -80,7 +80,7 @@ local CONFIG = {
 
 -- Calculate bar dimensions
 local ICON_STEP = CONFIG.ICON_SIZE + CONFIG.ICON_SPACING
-local BAR_WIDTH = CONFIG.MAX_HEARTS * ICON_STEP - CONFIG.ICON_SPACING -- 10 icons × 18px - 2px = 178px
+local BAR_WIDTH = CONFIG.MAX_HEARTS * ICON_STEP - CONFIG.ICON_SPACING
 
 local player = Players.LocalPlayer
 
@@ -93,8 +93,9 @@ function StatusBarsHUD.new()
 
 	self.gui = nil
 	self.container = nil
-	self.leftContainer = nil  -- Health + Armor
-	self.rightContainer = nil -- Hunger
+	self.leftContainer = nil   -- Health
+	self.centerContainer = nil -- Armor
+	self.rightContainer = nil  -- Hunger
 
 	self.heartIcons = {}
 	self.armorIcons = {}
@@ -128,7 +129,6 @@ function StatusBarsHUD:Initialize()
 	-- Initial sync
 	task.spawn(function()
 		self:_syncFromHumanoid()
-		-- Initialize hunger bar with default value
 		self:_updateHunger()
 	end)
 
@@ -138,7 +138,6 @@ function StatusBarsHUD:Initialize()
 		EventManager:SendToServer("RequestHungerSync")
 	end)
 
-	-- Retry sync after a longer delay in case first attempt fails
 	task.delay(3, function()
 		EventManager:SendToServer("RequestHungerSync")
 	end)
@@ -164,18 +163,21 @@ function StatusBarsHUD:_createGui()
 end
 
 function StatusBarsHUD:_createContainers()
-	-- Calculate positioning to align exactly with hotbar (580px width)
+	-- Calculate positioning to align exactly with hotbar
 	local hotbarScaledHeight = VISUAL_SLOT_SIZE * HOTBAR.SCALE
 	local bottomOffset = HOTBAR.BOTTOM_OFFSET + hotbarScaledHeight + CONFIG.GAP_ABOVE_HOTBAR
-	local containerHeight = CONFIG.ICON_SIZE * 2 + CONFIG.BAR_SPACING
+	local containerHeight = CONFIG.ICON_SIZE -- Single row
 
-	-- Main container (exact same width as hotbar: 580px)
+	-- Total width of all 3 bars + 2 gaps
+	local totalBarsWidth = (BAR_WIDTH * 3) + (CONFIG.BAR_GAP * 2)
+
+	-- Main container (centered, sized to fit all 3 bars)
 	self.container = Instance.new("Frame")
 	self.container.Name = "StatusContainer"
 	self.container.BackgroundTransparency = 1
 	self.container.AnchorPoint = Vector2.new(0.5, 1)
 	self.container.Position = UDim2.new(0.5, 0, 1, -bottomOffset)
-	self.container.Size = UDim2.fromOffset(HOTBAR_WIDTH, containerHeight) -- 580px to match hotbar
+	self.container.Size = UDim2.fromOffset(totalBarsWidth, containerHeight)
 	self.container.Active = false
 	self.container.Parent = self.gui
 
@@ -185,23 +187,29 @@ function StatusBarsHUD:_createContainers()
 	localScale.Scale = HOTBAR.SCALE
 	localScale.Parent = self.container
 
-	-- Left container (health + armor) - aligns with slot 1 frame left edge
-	-- Hotbar: slot 1 frame starts at x=8
+	-- Left container (health)
 	self.leftContainer = Instance.new("Frame")
 	self.leftContainer.Name = "LeftContainer"
 	self.leftContainer.BackgroundTransparency = 1
-	self.leftContainer.Position = UDim2.fromOffset(HOTBAR.INTERNAL_OFFSET, 0) -- x=8 to match slot 1 frame
+	self.leftContainer.Position = UDim2.fromOffset(0, 0)
 	self.leftContainer.Size = UDim2.new(0, BAR_WIDTH, 1, 0)
 	self.leftContainer.Parent = self.container
 
-	-- Right container (hunger) - aligns with slot 9 frame right edge
-	-- Hotbar: slot 9 frame ends at x=528+56=584
-	-- Container: 580px, so offset = 584-580 = +4px
+	-- Center container (armor)
+	self.centerContainer = Instance.new("Frame")
+	self.centerContainer.Name = "CenterContainer"
+	self.centerContainer.BackgroundTransparency = 1
+	self.centerContainer.AnchorPoint = Vector2.new(0.5, 0)
+	self.centerContainer.Position = UDim2.new(0.5, 0, 0, 0)
+	self.centerContainer.Size = UDim2.new(0, BAR_WIDTH, 1, 0)
+	self.centerContainer.Parent = self.container
+
+	-- Right container (hunger)
 	self.rightContainer = Instance.new("Frame")
 	self.rightContainer.Name = "RightContainer"
 	self.rightContainer.BackgroundTransparency = 1
 	self.rightContainer.AnchorPoint = Vector2.new(1, 0)
-	self.rightContainer.Position = UDim2.new(1, 4, 0, 0) -- +4px to match slot 9 frame right edge
+	self.rightContainer.Position = UDim2.new(1, 0, 0, 0)
 	self.rightContainer.Size = UDim2.new(0, BAR_WIDTH, 1, 0)
 	self.rightContainer.Parent = self.container
 end
@@ -236,7 +244,7 @@ function StatusBarsHUD:_createIcon(iconType, parent)
 		fullColor = CONFIG.ARMOR_FULL
 		emptyColor = CONFIG.ARMOR_EMPTY
 		outlineColor = CONFIG.ARMOR_OUTLINE
-	else
+	else -- Hunger
 		fullColor = CONFIG.HUNGER_FULL
 		emptyColor = CONFIG.HUNGER_EMPTY
 		outlineColor = CONFIG.HUNGER_OUTLINE
@@ -284,7 +292,7 @@ function StatusBarsHUD:_createIcon(iconType, parent)
 	highlight.BackgroundTransparency = 0.55
 	highlight.BorderSizePixel = 0
 	highlight.Position = UDim2.fromOffset(1, 1)
-	highlight.Size = UDim2.fromOffset(3, 3)
+	highlight.Size = UDim2.fromOffset(2, 2)
 	highlight.ZIndex = 4
 	highlight.Parent = fill
 
@@ -306,12 +314,11 @@ function StatusBarsHUD:_createHealthBar()
 	self.healthBar = Instance.new("Frame")
 	self.healthBar.Name = "HealthBar"
 	self.healthBar.BackgroundTransparency = 1
-	self.healthBar.AnchorPoint = Vector2.new(0, 1)
-	self.healthBar.Position = UDim2.fromScale(0, 1)
+	self.healthBar.Position = UDim2.fromScale(0, 0)
 	self.healthBar.Size = UDim2.new(1, 0, 0, CONFIG.ICON_SIZE)
 	self.healthBar.Parent = self.leftContainer
 
-	-- Hearts: left-to-right (icon 1 at far left)
+	-- Hearts: left-to-right
 	for i = 1, CONFIG.MAX_HEARTS do
 		local icon = self:_createIcon("Heart", self.healthBar)
 		icon.Position = UDim2.fromOffset((i - 1) * ICON_STEP, 0)
@@ -327,9 +334,9 @@ function StatusBarsHUD:_createArmorBar()
 	self.armorBar.Position = UDim2.fromScale(0, 0)
 	self.armorBar.Size = UDim2.new(1, 0, 0, CONFIG.ICON_SIZE)
 	self.armorBar.Visible = false
-	self.armorBar.Parent = self.leftContainer
+	self.armorBar.Parent = self.centerContainer
 
-	-- Armor: left-to-right (same direction as hearts)
+	-- Armor: left-to-right
 	for i = 1, CONFIG.MAX_ARMOR_ICONS do
 		local icon = self:_createIcon("Armor", self.armorBar)
 		icon.Position = UDim2.fromOffset((i - 1) * ICON_STEP, 0)
@@ -342,22 +349,20 @@ function StatusBarsHUD:_createHungerBar()
 	self.hungerBar = Instance.new("Frame")
 	self.hungerBar.Name = "HungerBar"
 	self.hungerBar.BackgroundTransparency = 1
-	self.hungerBar.AnchorPoint = Vector2.new(1, 1)
-	self.hungerBar.Position = UDim2.fromScale(1, 1)
+	self.hungerBar.AnchorPoint = Vector2.new(1, 0)
+	self.hungerBar.Position = UDim2.fromScale(1, 0)
 	self.hungerBar.Size = UDim2.new(1, 0, 0, CONFIG.ICON_SIZE)
 	self.hungerBar.Parent = self.rightContainer
 
 	-- Hunger: right-to-left (icon 1 at far right, mirrored like Minecraft)
 	for i = 1, CONFIG.MAX_HUNGER_ICONS do
 		local icon = self:_createIcon("Hunger", self.hungerBar)
-		-- Position from right: rightmost icon (i=1) at far right
 		icon.AnchorPoint = Vector2.new(1, 0)
 		icon.Position = UDim2.new(1, -(i - 1) * ICON_STEP, 0, 0)
 		icon.Name = "Hunger_" .. i
 		self.hungerIcons[i] = icon
 	end
 
-	-- Initialize hunger bar with default value
 	self:_updateHunger()
 end
 
@@ -414,26 +419,18 @@ function StatusBarsHUD:_updateArmor()
 end
 
 function StatusBarsHUD:_updateHunger()
-	-- Ensure hunger icons exist
 	if not self.hungerIcons or #self.hungerIcons == 0 then
 		return
 	end
 
-	-- Clamp hunger to valid range (0-20) for safety
 	local clampedHunger = math.clamp(self.currentHunger or 20, 0, 20)
 	local hungerPoints = clampedHunger / CONFIG.HUNGER_PER_ICON
 
-	-- Update each hunger icon (10 icons, each represents 2 hunger points)
 	for i = 1, CONFIG.MAX_HUNGER_ICONS do
 		if not self.hungerIcons[i] then
 			continue
 		end
 
-		-- Each icon represents 2 hunger points
-		-- Icon 1 = hunger 0-2, Icon 2 = hunger 2-4, etc.
-		-- Full icon: hungerPoints >= i (e.g., icon 1 full when hunger >= 2)
-		-- Half icon: hungerPoints >= i - 0.5 (e.g., icon 1 half when hunger >= 1)
-		-- Empty icon: hungerPoints < i - 0.5
 		if hungerPoints >= i then
 			self:_setIconState(self.hungerIcons[i], "full")
 		elseif hungerPoints >= i - 0.5 then
@@ -545,33 +542,22 @@ function StatusBarsHUD:_connectEvents()
 
 	local hungerConn = EventManager:ConnectToServer("PlayerHungerChanged", function(data)
 		if not data then
-			warn("StatusBarsHUD: PlayerHungerChanged event received with no data")
 			return
 		end
 
-		-- Clamp hunger to valid range (0-20) for safety
 		local hunger = data.hunger
-		local _saturation = data.saturation
-
 		if hunger ~= nil then
 			local oldHunger = self.currentHunger
 			hunger = math.clamp(hunger, 0, 20)
 			self.currentHunger = hunger
 
-			-- Only update if hunger actually changed (avoid unnecessary redraws)
 			if oldHunger ~= hunger then
 				self:_updateHunger()
 			end
-		else
-			warn("StatusBarsHUD: PlayerHungerChanged event received with nil hunger value")
 		end
-
-		-- Note: saturation is not displayed in the UI, but we receive it for potential future use
 	end)
 	if hungerConn then
 		table.insert(self.connections, hungerConn)
-	else
-		warn("StatusBarsHUD: Failed to connect to PlayerHungerChanged event")
 	end
 
 	local damageConn = EventManager:ConnectToServer("PlayerDamageTaken", function(data)

@@ -7,17 +7,26 @@
 	2. Set attribute: uiScale:SetAttribute("base_resolution", Vector2.new(1920, 1080))
 	3. Tag it: CollectionService:AddTag(uiScale, "scale_component")
 	4. UIScaler will automatically rescale on viewport changes (orientation, resolution)
+
+	Mobile scaling:
+	- On touch devices, all scale_component tagged UIScale objects are additionally
+	  multiplied by MOBILE_SCALE_MULTIPLIER (default 0.72) for a smaller HUD.
+	- Per-component override: set attribute "mobile_scale_multiplier" (number) on the
+	  UIScale instance to use a custom multiplier instead of the global default.
+	  e.g. uiScale:SetAttribute("mobile_scale_multiplier", 1.0) to keep full size on mobile.
 ]]
 
 local UIScaler = {}
 
 local CollectionService = game:GetService("CollectionService")
 local GuiService = game:GetService("GuiService")
+local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
 -- Configuration
 local MIN_SCALE = 0.85 -- Minimum scale (85%) to prevent UI from being too small on tiny screens
 local MAX_SCALE = 1.5  -- Maximum scale (150%) to prevent UI from being too large on very small resolutions
+local MOBILE_SCALE_MULTIPLIER = 0.72 -- Scale down HUD on mobile for more gameplay visibility
 
 -- State
 local scale_component_to_base_resolution = {}
@@ -27,6 +36,7 @@ local next_scale_listener_id = 0
 local camera = nil
 local actual_viewport_size = nil
 local has_initialized = false
+local is_mobile = false
 
 --[[
 	Rescale a single UIScale component with min/max clamping
@@ -52,6 +62,15 @@ local function rescale(scale_component, base_resolution)
 
 	-- Clamp scale to prevent UI from being too small or too large
 	local finalScale = math.clamp(rawScale, minScale, maxScale)
+
+	-- Apply mobile scale multiplier for smaller HUD on touch devices
+	if is_mobile then
+		local mobileMultiplier = scale_component:GetAttribute("mobile_scale_multiplier")
+		if typeof(mobileMultiplier) ~= "number" then
+			mobileMultiplier = MOBILE_SCALE_MULTIPLIER
+		end
+		finalScale = finalScale * mobileMultiplier
+	end
 
 	scale_component.Scale = finalScale
 end
@@ -145,6 +164,9 @@ function UIScaler:Initialize()
 	-- Get camera reference
 	camera = Workspace:FindFirstChild("Camera") or Workspace.CurrentCamera
 
+	-- Detect mobile (touch-enabled device)
+	is_mobile = UserInputService.TouchEnabled
+
 	-- Listen for new scale components
 	CollectionService:GetInstanceAddedSignal("scale_component"):Connect(function(object)
 		if object:IsA("UIScale") then
@@ -218,6 +240,7 @@ function UIScaler:Cleanup()
 	layout_component_to_rescaling_connection = {}
 	scale_component_to_base_resolution = {}
 	has_initialized = false
+	is_mobile = false
 	scale_listeners = {}
 	next_scale_listener_id = 0
 end

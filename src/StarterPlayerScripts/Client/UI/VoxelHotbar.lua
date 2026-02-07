@@ -39,9 +39,9 @@ end
 	-- Hotbar configuration
 local HOTBAR_CONFIG = {
 	SLOT_COUNT = 9,
-	SLOT_SIZE = 62,  -- Frame size (visual size is 66px with 2px border on each side)
-	SLOT_SPACING = 5,  -- Gap between slots (between borders)
-	INVENTORY_BUTTON_GAP = 8,  -- Gap between hotbar and inventory button
+	SLOT_SIZE = 74,  -- Frame size (visual size is 78px with 2px border on each side)
+	SLOT_SPACING = 6,  -- Gap between slots (between borders)
+	INVENTORY_BUTTON_GAP = 10, -- Gap between hotbar and inventory button
 	BOTTOM_OFFSET = 4,
 	BORDER_WIDTH = 3,
 	SCALE = 0.85,

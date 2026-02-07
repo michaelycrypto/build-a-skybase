@@ -862,10 +862,8 @@ local function completeInitialization(_preloadedEmoteManager)
 		end
 	end)
 
-	-- Initialize World Ownership Display
-	local WorldOwnershipDisplay = require(script.Parent.UI.WorldOwnershipDisplay)
-	WorldOwnershipDisplay:Initialize()
-	Client.worldOwnershipDisplay = WorldOwnershipDisplay
+	-- World Ownership Display: standalone top-left label removed.
+	-- World info is now shown by RightSideInfoPanel (initialized below).
 
 	-- Initialize Block Interaction (breaking/placing blocks)
 	local BlockInteraction = require(script.Parent.Controllers.BlockInteraction)
@@ -906,12 +904,6 @@ local function completeInitialization(_preloadedEmoteManager)
 	-- Set inventory reference in ActionBar (must be after ActionBar init)
 	if Client.actionBar and Client.voxelInventory then
 		Client.actionBar.voxelInventory = Client.voxelInventory
-	end
-	
-	-- Set GameState reference in ActionBar for currency updates
-	if Client.actionBar then
-		local GameState = require(script.Parent.Managers.GameState)
-		Client.actionBar:SetGameState(GameState)
 	end
 
 	-- Initialize Block Break Overlay (crack stages)
@@ -1006,10 +998,9 @@ local function completeInitialization(_preloadedEmoteManager)
 		mobileController:InitializeUI()
 	end
 
-	-- Setup ActionBar mobile callbacks (sprint, attack, camera)
+	-- Setup ActionBar callbacks (sprint)
 	if Client.actionBar then
 		local SprintController = require(script.Parent.Controllers.SprintController)
-		local CameraController = require(script.Parent.Controllers.CameraController)
 
 		-- Sprint toggle callback
 		Client.actionBar.onSprintToggle = function(isActive)
@@ -1018,14 +1009,29 @@ local function completeInitialization(_preloadedEmoteManager)
 			end
 		end
 
+		-- Sync initial sprint state
+		if SprintController and SprintController.IsSprinting then
+			Client.actionBar:SetSprintActive(SprintController:IsSprinting())
+		end
+	end
+
+	-- Initialize CameraToggleButton (top-left, CoreGui-style)
+	local cameraToggleSuccess, cameraToggleError = pcall(function()
+		local CameraToggleButton = require(script.Parent.UI.CameraToggleButton)
+		local cameraToggleBtn = CameraToggleButton.new()
+		cameraToggleBtn:Initialize()
+		Client.cameraToggleButton = cameraToggleBtn
+
+		local CameraController = require(script.Parent.Controllers.CameraController)
+
 		-- Camera mode cycle callback
-		Client.actionBar.onCameraMode = function()
+		cameraToggleBtn.onCameraMode = function()
 			if CameraController and CameraController.CycleMode then
 				CameraController:CycleMode()
 				-- Update button icon to reflect new mode
 				local currentMode = CameraController:GetCurrentState()
-				if currentMode and Client.actionBar.SetCameraMode then
-					Client.actionBar:SetCameraMode(currentMode)
+				if currentMode then
+					cameraToggleBtn:SetCameraMode(currentMode)
 				end
 			end
 		end
@@ -1033,24 +1039,22 @@ local function completeInitialization(_preloadedEmoteManager)
 		-- Listen for camera state changes to update button icon
 		if CameraController and CameraController.StateChanged then
 			CameraController.StateChanged:Connect(function(newState)
-				if Client.actionBar and Client.actionBar.SetCameraMode then
-					Client.actionBar:SetCameraMode(newState)
+				if Client.cameraToggleButton then
+					Client.cameraToggleButton:SetCameraMode(newState)
 				end
 			end)
-		end
-
-		-- Sync initial sprint state
-		if SprintController and SprintController.IsSprinting then
-			Client.actionBar:SetSprintActive(SprintController:IsSprinting())
 		end
 
 		-- Sync initial camera mode
 		if CameraController and CameraController.GetCurrentState then
 			local currentMode = CameraController:GetCurrentState()
-			if currentMode and Client.actionBar.SetCameraMode then
-				Client.actionBar:SetCameraMode(currentMode)
+			if currentMode then
+				cameraToggleBtn:SetCameraMode(currentMode)
 			end
 		end
+	end)
+	if not cameraToggleSuccess then
+		warn("⚠️ CameraToggleButton failed to initialize:", cameraToggleError)
 	end
 
 	local worldsPanel = nil
@@ -1265,6 +1269,11 @@ local function completeInitialization(_preloadedEmoteManager)
 	if MainHUD.Create then
 		MainHUD:Create()
 	end
+
+	-- Right-side info panel (currencies, world owner, tutorial step)
+	local RightSideInfoPanel = require(script.Parent.UI.RightSideInfoPanel)
+	RightSideInfoPanel:Initialize(Client.managers)
+	Client.rightSideInfoPanel = RightSideInfoPanel
 
 	-- Create F3 Debug Overlay (Minecraft-style debug info)
 	local F3DebugOverlay = require(script.Parent.UI.F3DebugOverlay)
@@ -1835,21 +1844,8 @@ local function initialize()
 		IconManager:Initialize()
 		UIComponents:Initialize()
 
-		-- Register icons that MainHUD will use
-		IconManager:RegisterIcon("Currency", "Cash", {context = "MainHUD_CoinsDisplay"})
-		IconManager:RegisterIcon("Items", "Ticket", {context = "MainHUD_GemsDisplay"})
-		IconManager:RegisterIcon("General", "Upgrade", {context = "MainHUD_LevelDisplay"})
-		IconManager:RegisterIcon("UI", "Calendar", {context = "MainHUD_DailyRewardsButton"})
-		IconManager:RegisterIcon("General", "Shop", {context = "MainHUD_ShopButton"})
-		IconManager:RegisterIcon("Clothing", "Backpack", {context = "MainHUD_InventoryButton"})
-		IconManager:RegisterIcon("General", "Settings", {context = "MainHUD_SettingsButton"})
-		IconManager:RegisterIcon("General", "Stats", {context = "MainHUD_StatsButton"})
-		IconManager:RegisterIcon("General", "Trophy", {context = "MainHUD_AchievementsButton"})
+		-- Register shared icons
 		IconManager:RegisterIcon("UI", "X", {context = "Panel_CloseButton"})
-
-		-- Register icons for bottom bar
-		IconManager:RegisterIcon("General", "GiftBox", {context = "MainHUD_FreeCoinsButton"})
-		IconManager:RegisterIcon("General", "Heart", {context = "MainHUD_EmoteButton"})
 
 		-- Register icons for daily rewards panel
 		IconManager:RegisterIcon("Chest", "Chest1", {context = "DailyRewards_ChestIcon"})

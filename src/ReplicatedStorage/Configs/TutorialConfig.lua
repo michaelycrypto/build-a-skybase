@@ -31,7 +31,7 @@ TutorialConfig.Categories = {
 	AUTOMATION = "automation",   -- Golems, passive income
 }
 
--- Waypoint configuration for guiding players
+-- Waypoint configuration for guiding players to objectives
 -- NOTE: offsetFromSpawn is in BLOCK coordinates matching SkyblockGenerator
 -- X and Z are block offsets from island center (originX=48, originZ=48)
 -- Y is offset from island surface (topY=65), e.g., Y=1 means surface+1
@@ -109,7 +109,6 @@ TutorialConfig.Steps = {
 		},
 		reward = nil,
 		nextStep = "open_chest",
-		uiType = "popup",
 		canSkip = false,
 	},
 
@@ -133,7 +132,6 @@ TutorialConfig.Steps = {
 			message = "Supplies acquired! Now chop the tree for wood.",
 		},
 		nextStep = "chop_tree",
-		uiType = "objective",
 		waypoint = "starter_chest",
 		canSkip = true,
 	},
@@ -161,9 +159,7 @@ TutorialConfig.Steps = {
 			message = "Great! Now craft those logs into planks.",
 		},
 		nextStep = "craft_planks",
-		uiType = "objective",
 		waypoint = "starter_tree",
-		highlightBlockTypes = {5}, -- WOOD
 		canSkip = true,
 	},
 
@@ -190,8 +186,6 @@ TutorialConfig.Steps = {
 			message = "Now craft a Workbench for advanced recipes!",
 		},
 		nextStep = "craft_workbench",
-		uiType = "objective",
-		highlightKey = "E",
 		canSkip = true,
 	},
 
@@ -215,7 +209,6 @@ TutorialConfig.Steps = {
 			message = "Workbench crafted! Now craft a Copper Pickaxe with your supplies.",
 		},
 		nextStep = "craft_pickaxe",
-		uiType = "objective",
 		canSkip = true,
 	},
 
@@ -223,23 +216,24 @@ TutorialConfig.Steps = {
 		id = "craft_pickaxe",
 		category = "crafting",
 		title = "Craft a Copper Pickaxe",
-		description = "Use your Copper Ingots and Sticks from the chest to craft a pickaxe!",
+		description = "Place your Crafting Table and use it to craft a Copper Pickaxe!",
 		hint = "Place the Crafting Table → Right-click it → 3 Copper Ingots on top + 2 Sticks below.",
 		trigger = {
 			type = "step_complete",
 			step = "craft_workbench",
 		},
 		objective = {
-			type = "craft_item",
-			itemId = 1001, -- COPPER_PICKAXE
-			count = 1,
+			type = "multi_objective",
+			objectives = {
+				{ type = "place_block", blockId = 13, count = 1, name = "Place Workbench" }, -- CRAFTING_TABLE
+				{ type = "craft_item", itemId = 1001, count = 1, name = "Craft Pickaxe" }, -- COPPER_PICKAXE
+			},
 		},
 		reward = {
 			coins = 25,
 			message = "Pickaxe crafted! Now build a bridge to the Stone Island.",
 		},
 		nextStep = "build_bridge",
-		uiType = "objective",
 		canSkip = true,
 	},
 
@@ -266,7 +260,6 @@ TutorialConfig.Steps = {
 			message = "Bridge built! Cross over and check out the chest.",
 		},
 		nextStep = "open_stone_chest",
-		uiType = "objective",
 		waypoint = "stone_island",
 		canSkip = true,
 	},
@@ -291,7 +284,6 @@ TutorialConfig.Steps = {
 			message = "Copper ore acquired! Now mine some cobblestone.",
 		},
 		nextStep = "mine_cobblestone",
-		uiType = "objective",
 		waypoint = "stone_chest",
 		canSkip = true,
 	},
@@ -316,9 +308,7 @@ TutorialConfig.Steps = {
 			message = "Cobblestone collected! Now craft a furnace to smelt your copper.",
 		},
 		nextStep = "setup_furnace",
-		uiType = "objective",
 		waypoint = "stone_island",
-		highlightBlockTypes = {14, 3}, -- COBBLESTONE, STONE
 		canSkip = true,
 	},
 
@@ -328,7 +318,7 @@ TutorialConfig.Steps = {
 	{
 		id = "setup_furnace",
 		category = "crafting",
-		title = "Set Up Your Furnace",
+		title = "Use Workbench to craft a Furnace",
 		description = "Craft a Furnace and place it to start smelting!",
 		hint = [[
 Requirements:
@@ -353,7 +343,6 @@ Complete in any order!
 			message = "Furnace ready! Now smelt your copper ore.",
 		},
 		nextStep = "smelt_copper",
-		uiType = "objective",
 		canSkip = true,
 	},
 
@@ -377,7 +366,6 @@ Complete in any order!
 			message = "Copper smelted! Now craft a Copper Shovel.",
 		},
 		nextStep = "craft_copper_shovel",
-		uiType = "objective",
 		canSkip = true,
 	},
 
@@ -403,105 +391,42 @@ Complete in any order!
 			coins = 30,
 			message = "Shovel crafted! Now let's set up a farm.",
 		},
-		nextStep = "till_soil",
-		uiType = "objective",
+		nextStep = "setup_farm",
 		canSkip = true,
 	},
 
 	-- ═══════════════════════════════════════════════════════════════════════════
-	-- PHASE 7: FARMING - Step by step farm setup
+	-- PHASE 7: FARMING - Till, irrigate, and plant in one step
 	-- ═══════════════════════════════════════════════════════════════════════════
 	{
-		id = "till_soil",
+		id = "setup_farm",
 		category = "farming",
-		title = "Till the Soil",
-		description = "Use your Copper Shovel to turn dirt into farmland!",
+		title = "Set Up Your Farm",
+		description = "Till dirt into farmland, irrigate with water, and plant seeds!",
 		hint = [[
-How to till:
-1. Place Dirt blocks from your starter chest
-2. Equip your Copper Shovel
-3. Right-click on dirt to turn it into farmland
+1. Place Dirt blocks, then right-click with Shovel to till
+2. Place Water Bucket next to farmland to irrigate
+3. Select Wheat Seeds and right-click on farmland to plant
 
-Farmland is required for planting crops!
+Complete in any order! Water bucket is in the stone chest.
 		]],
 		trigger = {
 			type = "step_complete",
 			step = "craft_copper_shovel",
 		},
 		objective = {
-			type = "place_block",
-			anyOf = {69, 385}, -- FARMLAND or FARMLAND_WET
-			count = 4,
+			type = "multi_objective",
+			objectives = {
+				{ type = "place_block", anyOf = {69, 385}, count = 4, name = "Till soil" }, -- FARMLAND or FARMLAND_WET
+				{ type = "place_block", blockId = 380, count = 1, name = "Irrigate" }, -- WATER_SOURCE
+				{ type = "place_block", blockId = 76, count = 4, name = "Plant seeds" }, -- WHEAT_CROP_0
+			},
 		},
 		reward = {
-			coins = 10,
-			message = "Farmland ready! Now irrigate it for faster crop growth.",
-		},
-		nextStep = "irrigate_farm",
-		uiType = "objective",
-		canSkip = true,
-	},
-
-	{
-		id = "irrigate_farm",
-		category = "farming",
-		title = "Irrigate Your Farm",
-		description = "Place water near your farmland to make crops grow faster!",
-		hint = [[
-The Stone Island chest contains a Water Bucket!
-
-How to irrigate:
-1. Get the Water Bucket from the stone island chest
-2. Place water next to your farmland (right-click)
-3. Farmland within 4 blocks of water turns darker (wet)
-
-Wet farmland = 2x faster crop growth!
-		]],
-		trigger = {
-			type = "step_complete",
-			step = "till_soil",
-		},
-		objective = {
-			type = "place_block",
-			blockId = 380, -- WATER_SOURCE - track placing water, not the resulting wet farmland
-			count = 1,
-		},
-		reward = {
-			coins = 10,
-			message = "Farm irrigated! Wet farmland grows crops twice as fast.",
-		},
-		nextStep = "plant_seeds",
-		uiType = "objective",
-		canSkip = true,
-	},
-
-	{
-		id = "plant_seeds",
-		category = "farming",
-		title = "Plant Seeds",
-		description = "Plant Wheat Seeds on your farmland!",
-		hint = [[
-How to plant:
-1. Select Wheat Seeds from your hotbar
-2. Right-click on farmland to plant
-
-Seeds are in your starter chest. Plant on wet farmland for faster growth!
-		]],
-		trigger = {
-			type = "step_complete",
-			step = "irrigate_farm",
-		},
-		objective = {
-			type = "place_block",
-			blockId = 76, -- WHEAT_CROP_0
-			count = 4,
-		},
-		reward = {
-			coins = 10,
-			message = "Seeds planted! Wait for them to grow tall and golden.",
+			coins = 30,
+			message = "Farm set up! Wait for wheat to grow tall and golden.",
 		},
 		nextStep = "harvest_wheat",
-		uiType = "objective",
 		canSkip = true,
 	},
 
@@ -519,7 +444,7 @@ Break it to get:
 		]],
 		trigger = {
 			type = "step_complete",
-			step = "plant_seeds",
+			step = "setup_farm",
 		},
 		objective = {
 			type = "collect_item",
@@ -532,7 +457,6 @@ Break it to get:
 			message = "First harvest complete! You've earned a Copper Golem for your hard work!",
 		},
 		nextStep = "tutorial_complete",
-		uiType = "objective",
 		-- Tutorial accelerated growth
 		tutorialBoost = {
 			cropGrowthMultiplier = 10, -- Crops grow 10x faster during this step
@@ -565,7 +489,6 @@ Next goals:
 			message = "Tutorial Complete! Here's a bonus to grow your island empire!",
 		},
 		nextStep = nil,
-		uiType = "popup",
 		canSkip = false,
 	},
 }
@@ -632,26 +555,8 @@ end
 
 -- Settings for tutorial behavior
 TutorialConfig.Settings = {
-	-- Timing
-	tooltipDelay = 0.5,
-	tooltipDuration = 10,
-	popupDuration = 0, -- 0 = manual dismiss
-
-	-- Appearance
-	tooltipMaxWidth = 300,
-	highlightColor = Color3.fromRGB(255, 215, 0), -- Gold
-	highlightTransparency = 0.3,
-	highlightPulseSpeed = 2,
-
-	-- Waypoint settings
-	waypointBeamWidth = 0.5,
-	waypointBeamColor = Color3.fromRGB(255, 215, 0),
-	waypointMarkerSize = UDim2.fromOffset(40, 40),
-	waypointUpdateInterval = 0.1,
-
 	-- Behavior
 	autoAdvance = true,
-	showProgressBar = true,
 	enableSkip = true,
 	persistProgress = true,
 

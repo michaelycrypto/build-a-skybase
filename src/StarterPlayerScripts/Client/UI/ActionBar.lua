@@ -3,16 +3,15 @@
 	Unified horizontal action bar positioned above status bars
 	
 	Features:
-	- Action buttons (Inventory, Worlds, Sprint, Camera) on the left — square, rounded, icon-over-label
-	- Currency display (gems + coins) on the right
+	- Action buttons (Inventory, Worlds, Sprint) — square, rounded, icon-over-label
 	- Buttons: vertical layout (icon on top, label + keybind below), larger icons
 	- Uses IconManager for icons; hover tooltips for descriptions
 	- Centered horizontally, positioned above StatusBarsHUD
+	- Camera toggle moved to standalone CameraToggleButton (top-left, CoreGui-style)
 ]]
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
-local RunService = game:GetService("RunService")
 local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -29,21 +28,20 @@ local BOLD_FONT = Config.UI_SETTINGS.typography.fonts.bold
 -- Configuration (matching VoxelHotbar styling)
 local UI_CONFIG = {
 	-- Square buttons (icon above label)
-	BUTTON_SIZE = 72,    -- Slightly bigger square
-	BUTTON_SPACING = 8,  -- Comfortable gap between buttons
+	BUTTON_SIZE = 86,    -- ~20% larger
+	BUTTON_SPACING = 10, -- Comfortable gap between buttons
 	SCALE = 0.85,        -- Match hotbar scale
 	
 	-- Positioning relative to StatusBarsHUD
 	GAP_ABOVE_STATUS = 1,  -- Minimal consistent gap
 	
 	-- Hotbar constants (must match VoxelHotbar and StatusBarsHUD)
-	HOTBAR_SLOT_SIZE = 62,
+	HOTBAR_SLOT_SIZE = 74,
 	HOTBAR_BOTTOM_OFFSET = 4,
 	HOTBAR_BORDER = 2,
 	
-	-- Status bar constants (must match StatusBarsHUD)
-	STATUS_ICON_SIZE = 22,
-	STATUS_BAR_SPACING = 5,
+	-- Status bar constants (must match StatusBarsHUD - single row, compact icons)
+	STATUS_ICON_SIZE = 20,
 	STATUS_GAP_ABOVE_HOTBAR = 1,  -- Minimal consistent gap
 	
 	-- Visuals (match VoxelHotbar slots: same bg image, border, corners)
@@ -65,44 +63,29 @@ local UI_CONFIG = {
 	ACTIVE_TEXT_COLOR = Color3.fromRGB(115, 235, 115),
 	
 	-- Button content: vertical stack (icon on top, label+keybind below); fits in BUTTON_SIZE
-	ICON_SIZE = 44,           -- Fits with text row in 72px height
-	CONTENT_PADDING_V = 4,    -- Vertical padding (top/bottom)
-	CONTENT_PADDING_H = 6,    -- Horizontal padding
+	ICON_SIZE = 52,           -- Fits with text row in 86px height
+	CONTENT_PADDING_V = 5,    -- Vertical padding (top/bottom)
+	CONTENT_PADDING_H = 7,    -- Horizontal padding
 	ICON_TO_TEXT_GAP = 2,     -- Gap between icon and text row
-	TEXT_ROW_HEIGHT = 18,     -- Single line for label + keybind
-	LABEL_TEXT_SIZE = 16,     -- Larger label
-	KEYBIND_TEXT_SIZE = 13,   -- Larger keybind
+	TEXT_ROW_HEIGHT = 22,     -- Single line for label + keybind
+	LABEL_TEXT_SIZE = 19,     -- Larger label
+	KEYBIND_TEXT_SIZE = 15,   -- Larger keybind
 	KEYBIND_COLOR = Color3.fromRGB(145, 145, 155),
-}
-
--- Currency configuration (vertical stack - bigger & readable)
-local CURRENCY_CONFIG = {
-	CONTAINER_WIDTH = 100,  -- Wider for larger text
-	ITEM_HEIGHT = 24,       -- Taller rows
-	ITEM_SPACING = 2,       -- Small gap between rows
-	ICON_SIZE = 22,         -- Larger icons
-	TEXT_SIZE = 22,         -- Larger text
-	GAP_TO_BUTTONS = 10,    -- Gap between currency and buttons
-	
-	-- Colors (vibrant for visibility)
-	GEMS_COLOR = Config.UI_SETTINGS.colors.semantic.game.gems or Color3.fromRGB(180, 100, 255),
-	COINS_COLOR = Color3.fromRGB(50, 210, 100),
 }
 
 -- Cached TweenInfo objects for performance
 local TWEEN_INFO = {
 	VISUAL_UPDATE = TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-	CURRENCY_UPDATE = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
 }
 
 -- Tooltip configuration
 local TOOLTIP_CONFIG = {
-	OFFSET_Y = -4,  -- Small gap above the button
-	PADDING_H = 10,
-	PADDING_V = 6,
+	OFFSET_Y = -5,  -- Small gap above the button
+	PADDING_H = 12,
+	PADDING_V = 7,
 	BG_COLOR = Color3.fromRGB(15, 15, 15),
 	BG_TRANSPARENCY = 0.1,
-	TEXT_SIZE = 14,
+	TEXT_SIZE = 16,
 	TEXT_COLOR = Color3.fromRGB(255, 255, 255),
 	CORNER_RADIUS = 6,
 }
@@ -136,14 +119,6 @@ local BUTTON_DEFINITIONS = {
 		label = "Run",
 		behavior = "toggle",
 	},
-	{
-		id = "Camera",
-		iconText = "📷",
-		keybind = "F5",
-		tooltip = "Toggle Camera",
-		label = "Cam",
-		behavior = "tap",
-	},
 }
 
 function ActionBar.new()
@@ -154,23 +129,12 @@ function ActionBar.new()
 	self.buttons = {}  -- { [id] = { frame, border, icon, active, pressed, def, tooltip } }
 	self.connections = {}
 	
-	-- Currency UI references
-	self.currencyContainer = nil
-	self.gemsLabel = nil
-	self.coinsLabel = nil
-	self.currentGems = 0
-	self.currentCoins = 0
-	
 	-- Panel references (set by GameClient)
 	self.voxelInventory = nil
 	self.worldsPanel = nil
 	
-	-- GameState reference (set by GameClient)
-	self.gameState = nil
-	
 	-- Callbacks for controls
 	self.onSprintToggle = nil  -- function(isActive: boolean)
-	self.onCameraMode = nil    -- function()
 	
 	-- UI toggle debounce
 	self.uiToggleDebounce = 0.3
@@ -209,8 +173,6 @@ function ActionBar:Initialize()
 	
 	-- Create UI
 	self:CreateContainer()
-	self:CreateCurrencySection()
-	self:CreateSpacer()
 	self:CreateButtons()
 	
 	-- Register with visibility manager
@@ -230,10 +192,10 @@ function ActionBar:CreateContainer()
 	local totalWidth = hotbarWidth
 	local containerHeight = UI_CONFIG.BUTTON_SIZE
 	
-	-- Calculate vertical position (above StatusBarsHUD)
+	-- Calculate vertical position (above StatusBarsHUD - single row)
 	local visualSlotSize = UI_CONFIG.HOTBAR_SLOT_SIZE + (UI_CONFIG.HOTBAR_BORDER * 2)
 	local hotbarScaledHeight = visualSlotSize * UI_CONFIG.SCALE
-	local statusBarHeight = (UI_CONFIG.STATUS_ICON_SIZE * 2) + UI_CONFIG.STATUS_BAR_SPACING
+	local statusBarHeight = UI_CONFIG.STATUS_ICON_SIZE  -- Single row (no armor stacked above)
 	local statusBarScaledHeight = statusBarHeight * UI_CONFIG.SCALE
 	
 	-- Bottom offset calculation
@@ -266,104 +228,6 @@ function ActionBar:CreateContainer()
 	layout.Parent = self.container
 end
 
-function ActionBar:CreateCurrencySection()
-	-- Currency container (vertical stack)
-	self.currencyContainer = Instance.new("Frame")
-	self.currencyContainer.Name = "CurrencyContainer"
-	self.currencyContainer.Size = UDim2.fromOffset(
-		CURRENCY_CONFIG.CONTAINER_WIDTH,
-		UI_CONFIG.BUTTON_SIZE
-	)
-	self.currencyContainer.BackgroundTransparency = 1
-	self.currencyContainer.LayoutOrder = 3  -- Right side (after buttons and spacer)
-	self.currencyContainer.Parent = self.container
-	
-	-- Vertical layout for currency items (gems above coins), right-aligned
-	local currencyLayout = Instance.new("UIListLayout")
-	currencyLayout.FillDirection = Enum.FillDirection.Vertical
-	currencyLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
-	currencyLayout.VerticalAlignment = Enum.VerticalAlignment.Center
-	currencyLayout.Padding = UDim.new(0, CURRENCY_CONFIG.ITEM_SPACING)
-	currencyLayout.SortOrder = Enum.SortOrder.LayoutOrder
-	currencyLayout.Parent = self.currencyContainer
-	
-	-- Create gems display (top)
-	self:CreateCurrencyItem("Gems", "Currency", "Gem", CURRENCY_CONFIG.GEMS_COLOR, 1)
-	
-	-- Create coins display (bottom)
-	self:CreateCurrencyItem("Coins", "Currency", "Cash", CURRENCY_CONFIG.COINS_COLOR, 2)
-end
-
-function ActionBar:CreateCurrencyItem(name, iconCategory, iconName, textColor, layoutOrder)
-	local itemFrame = Instance.new("Frame")
-	itemFrame.Name = name .. "Item"
-	itemFrame.Size = UDim2.fromOffset(CURRENCY_CONFIG.CONTAINER_WIDTH, CURRENCY_CONFIG.ITEM_HEIGHT)
-	itemFrame.BackgroundTransparency = 1
-	itemFrame.LayoutOrder = layoutOrder
-	itemFrame.Parent = self.currencyContainer
-	
-	-- Horizontal layout for icon + text within each row
-	local itemLayout = Instance.new("UIListLayout")
-	itemLayout.FillDirection = Enum.FillDirection.Horizontal
-	itemLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
-	itemLayout.VerticalAlignment = Enum.VerticalAlignment.Center
-	itemLayout.Padding = UDim.new(0, 3)
-	itemLayout.SortOrder = Enum.SortOrder.LayoutOrder
-	itemLayout.Parent = itemFrame
-	
-	-- Icon
-	local iconContainer = Instance.new("Frame")
-	iconContainer.Name = "IconContainer"
-	iconContainer.Size = UDim2.fromOffset(CURRENCY_CONFIG.ICON_SIZE, CURRENCY_CONFIG.ICON_SIZE)
-	iconContainer.BackgroundTransparency = 1
-	iconContainer.LayoutOrder = 1
-	iconContainer.Parent = itemFrame
-	
-	local icon = IconManager:CreateIcon(iconContainer, iconCategory, iconName, {
-		size = UDim2.fromScale(1, 1),
-		position = UDim2.fromScale(0.5, 0.5),
-		anchorPoint = Vector2.new(0.5, 0.5),
-	})
-	
-	-- Value label - bold and readable
-	local label = Instance.new("TextLabel")
-	label.Name = name .. "Label"
-	label.Size = UDim2.fromOffset(CURRENCY_CONFIG.CONTAINER_WIDTH - CURRENCY_CONFIG.ICON_SIZE - 6, CURRENCY_CONFIG.ITEM_HEIGHT)
-	label.BackgroundTransparency = 1
-	label.Text = "0"
-	label.TextColor3 = textColor
-	label.TextSize = CURRENCY_CONFIG.TEXT_SIZE
-	label.Font = BOLD_FONT
-	label.TextXAlignment = Enum.TextXAlignment.Right
-	label.TextYAlignment = Enum.TextYAlignment.Center
-	label.LayoutOrder = 2
-	label.Parent = itemFrame
-	
-	-- Add text stroke for better readability on any background
-	local stroke = Instance.new("UIStroke")
-	stroke.Color = Color3.fromRGB(0, 0, 0)
-	stroke.Thickness = 1.2
-	stroke.Transparency = 0.2
-	stroke.Parent = label
-	
-	-- Store reference
-	if name == "Gems" then
-		self.gemsLabel = label
-	else
-		self.coinsLabel = label
-	end
-end
-
-function ActionBar:CreateSpacer()
-	-- Simple spacer between buttons and currency (no visual separator)
-	local spacer = Instance.new("Frame")
-	spacer.Name = "Spacer"
-	spacer.Size = UDim2.fromOffset(CURRENCY_CONFIG.GAP_TO_BUTTONS, UI_CONFIG.BUTTON_SIZE)
-	spacer.BackgroundTransparency = 1
-	spacer.LayoutOrder = 2
-	spacer.Parent = self.container
-end
-
 function ActionBar:CreateButtons()
 	-- Buttons container (square buttons in a row)
 	local buttonsContainer = Instance.new("Frame")
@@ -372,7 +236,7 @@ function ActionBar:CreateButtons()
 	local buttonsWidth = (buttonCount * UI_CONFIG.BUTTON_SIZE) + ((buttonCount - 1) * UI_CONFIG.BUTTON_SPACING)
 	buttonsContainer.Size = UDim2.fromOffset(buttonsWidth, UI_CONFIG.BUTTON_SIZE)
 	buttonsContainer.BackgroundTransparency = 1
-	buttonsContainer.LayoutOrder = 1  -- Left side (before spacer and currency)
+	buttonsContainer.LayoutOrder = 1
 	buttonsContainer.Parent = self.container
 	
 	-- Horizontal layout for buttons
@@ -722,11 +586,6 @@ function ActionBar:HandleButtonAction(buttonId, state)
 		if self.onSprintToggle then
 			self.onSprintToggle(state)
 		end
-		
-	elseif buttonId == "Camera" then
-		if self.onCameraMode then
-			self.onCameraMode()
-		end
 	end
 end
 
@@ -792,96 +651,6 @@ function ActionBar:UpdateButtonVisual(buttonData)
 end
 
 --[[
-	Currency Update Methods
-]]
-
-function ActionBar:SetGameState(gameState)
-	self.gameState = gameState
-	
-	-- Connect to game state changes
-	if self.gameState then
-		self.gameState:OnPropertyChanged("playerData", function(newData)
-			if newData then
-				self:UpdateCurrency(newData)
-			end
-		end)
-		
-		-- Initial sync
-		local coins = self.gameState:GetCoins()
-		local gems = self.gameState:GetGems()
-		self:SetCurrencyValues(gems, coins)
-	end
-end
-
-function ActionBar:UpdateCurrency(playerData)
-	if not playerData then return end
-	
-	local newGems = playerData.gems or 0
-	local newCoins = playerData.coins or 0
-	
-	-- Animate gems if changed
-	if newGems ~= self.currentGems then
-		self:AnimateCurrencyChange(self.gemsLabel, self.currentGems, newGems)
-		self.currentGems = newGems
-	end
-	
-	-- Animate coins if changed
-	if newCoins ~= self.currentCoins then
-		self:AnimateCurrencyChange(self.coinsLabel, self.currentCoins, newCoins)
-		self.currentCoins = newCoins
-	end
-end
-
-function ActionBar:SetCurrencyValues(gems, coins)
-	self.currentGems = gems or 0
-	self.currentCoins = coins or 0
-	
-	if self.gemsLabel then
-		self.gemsLabel.Text = self:FormatNumber(self.currentGems)
-	end
-	if self.coinsLabel then
-		self.coinsLabel.Text = self:FormatNumber(self.currentCoins)
-	end
-end
-
-function ActionBar:AnimateCurrencyChange(label, oldValue, newValue)
-	if not label then return end
-	
-	local duration = 0.5
-	local startTime = tick()
-	local connection
-	
-	connection = RunService.Heartbeat:Connect(function()
-		local elapsed = tick() - startTime
-		local progress = math.min(elapsed / duration, 1)
-		
-		-- Ease out animation
-		local easedProgress = 1 - math.pow(1 - progress, 3)
-		local currentValue = math.floor(oldValue + (newValue - oldValue) * easedProgress)
-		
-		label.Text = self:FormatNumber(currentValue)
-		
-		if progress >= 1 then
-			connection:Disconnect()
-		end
-	end)
-	
-	table.insert(self.connections, connection)
-end
-
-function ActionBar:FormatNumber(number)
-	if number >= 1000000000 then
-		return string.format("%.1fB", number / 1000000000)
-	elseif number >= 1000000 then
-		return string.format("%.1fM", number / 1000000)
-	elseif number >= 1000 then
-		return string.format("%.1fK", number / 1000)
-	else
-		return tostring(number)
-	end
-end
-
---[[
 	External API for setting state from other systems
 ]]
 
@@ -890,24 +659,6 @@ function ActionBar:SetSprintActive(isActive)
 	if buttonData and buttonData.active ~= isActive then
 		buttonData.active = isActive
 		self:UpdateButtonVisual(buttonData)
-	end
-end
-
-function ActionBar:SetCameraMode(modeName)
-	local buttonData = self.buttons["Camera"]
-	if not buttonData or not buttonData.icon then
-		return
-	end
-	
-	-- Update icon based on mode
-	local icons = {
-		FIRST_PERSON = "👁",
-		THIRD_PERSON_LOCK = "🎯",
-		THIRD_PERSON_FREE = "📷",
-	}
-	
-	if buttonData.icon:IsA("TextLabel") then
-		buttonData.icon.Text = icons[modeName] or "📷"
 	end
 end
 
@@ -951,7 +702,6 @@ function ActionBar:Destroy()
 	self.buttons = {}
 	self.voxelInventory = nil
 	self.worldsPanel = nil
-	self.gameState = nil
 end
 
 return ActionBar

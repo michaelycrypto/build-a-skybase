@@ -189,23 +189,26 @@ function PlayerService:OnPlayerAdded(player)
 
 	-- Load equipped armor data
 	if self.Deps and self.Deps.ArmorEquipService then
-		self._logger.Debug("Initializing armor for", player.Name)
 		-- Initialize empty armor slots first
 		self.Deps.ArmorEquipService:OnPlayerAdded(player)
 
 		-- Load saved armor data if exists
 		if playerData.equippedArmor then
-			self._logger.Debug("Loading saved armor data for", player.Name)
+			warn("[PlayerService] equippedArmor key EXISTS in DataStore for", player.Name,
+				"helmet=", tostring(playerData.equippedArmor.helmet),
+				"chest=", tostring(playerData.equippedArmor.chestplate),
+				"legs=", tostring(playerData.equippedArmor.leggings),
+				"boots=", tostring(playerData.equippedArmor.boots))
 			self.Deps.ArmorEquipService:LoadArmor(player, playerData.equippedArmor)
 		else
-			self._logger.Info("No saved armor found for", player.Name)
+			warn("[PlayerService] equippedArmor key is NIL in DataStore for", player.Name, "- no armor to load")
 			-- Sync empty state to client
 			task.defer(function()
 				self.Deps.ArmorEquipService:SyncArmorToClient(player)
 			end)
 		end
 	else
-		self._logger.Warn("ArmorEquipService not available, cannot load armor")
+		warn("[PlayerService] ArmorEquipService not available, cannot load armor")
 	end
 
 	-- Wait a moment for everything to load, then notify other services
@@ -418,14 +421,16 @@ function PlayerService:SavePlayerData(player)
 			local armorData = self.Deps.ArmorEquipService:SerializeArmor(player)
 			if armorData then
 				self.Deps.PlayerDataStoreService:SaveArmorData(player, armorData)
-				self._logger.Debug("Saved armor data", {
-					playerName = player.Name,
-					helmet = armorData.helmet,
-					chestplate = armorData.chestplate,
-					leggings = armorData.leggings,
-					boots = armorData.boots
-				})
+				warn("[PlayerService] SavePlayerData: armor stored in session -",
+					"helmet=", tostring(armorData.helmet),
+					"chest=", tostring(armorData.chestplate),
+					"legs=", tostring(armorData.leggings),
+					"boots=", tostring(armorData.boots))
+			else
+				warn("[PlayerService] SavePlayerData: SerializeArmor returned nil for", player.Name, "- armor NOT saved!")
 			end
+		else
+			warn("[PlayerService] SavePlayerData: ArmorEquipService not available!")
 		end
 
 		-- Update profile data in DataStore

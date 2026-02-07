@@ -664,15 +664,13 @@ if IS_HUB then
 			hrp.Anchored = true
 		end
 
-		-- Load player data from DataStore
+		-- Load player data from DataStore (includes inventory + armor)
 		if playerService then
 			playerService:OnPlayerAdded(player)
 		end
 
-		-- Initialize armor slots
-		if armorEquipService and armorEquipService.OnPlayerAdded then
-			armorEquipService:OnPlayerAdded(player)
-		end
+		-- Note: ArmorEquipService:OnPlayerAdded is called inside PlayerService:OnPlayerAdded
+		-- (followed by LoadArmor). Do NOT call it again here or it will wipe loaded armor.
 
 		-- Register player with VoxelWorldService (starts chunk streaming)
 		voxelWorldService:OnPlayerAdded(player)
@@ -1039,6 +1037,19 @@ end)
 EventManager:RegisterEventHandler("ClientReady", function(eventPlayer)
 	logger.Debug("ClientReady received in WORLD, dispatching world state", {player = eventPlayer.Name})
 	dispatchWorldState("ready", "world_client_ready", eventPlayer)
+
+	-- Send world ownership info (SetOwnerById doesn't broadcast, so we send on ClientReady)
+	if worldOwnershipService and worldOwnershipService:GetOwnerId() then
+		local worldData = worldOwnershipService:GetWorldData()
+		EventManager:FireEvent("WorldOwnershipInfo", eventPlayer, {
+			ownerId = worldOwnershipService:GetOwnerId(),
+			ownerName = worldOwnershipService:GetOwnerName(),
+			worldName = worldData and worldData.metadata and worldData.metadata.name
+				or (worldOwnershipService:GetOwnerName() .. "'s World"),
+			created = worldData and worldData.created or os.time(),
+			seed = worldData and worldData.seed or 0,
+		})
+	end
 end)
 
 -- Anchor character to prevent falling through unloaded world
@@ -1158,15 +1169,13 @@ local function handlePlayerJoin(player, isExisting)
 	-- NOTE: WorldStateChanged is sent when ClientReady is received (not here)
 	-- This prevents race condition where server fires event before client is listening
 
-	-- Load player data from DataStore (includes inventory)
+	-- Load player data from DataStore (includes inventory + armor)
 	if playerService then
 		playerService:OnPlayerAdded(player)
 	end
 
-	-- Initialize armor slots for player
-	if armorEquipService and armorEquipService.OnPlayerAdded then
-		armorEquipService:OnPlayerAdded(player)
-	end
+	-- Note: ArmorEquipService:OnPlayerAdded is called inside PlayerService:OnPlayerAdded
+	-- (followed by LoadArmor). Do NOT call it again here or it will wipe loaded armor.
 
 	-- Register player with VoxelWorldService (starts chunk streaming)
 	voxelWorldService:OnPlayerAdded(player)

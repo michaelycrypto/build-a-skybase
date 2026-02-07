@@ -20,14 +20,14 @@ local isTransitioning = false
 -- Mode definitions
 local UI_MODES = {
 	gameplay = {
-		visibleComponents = {"mainHUD", "voxelHotbar", "statusBarsHUD", "actionBar", "crosshair"},
+		visibleComponents = {"mainHUD", "voxelHotbar", "statusBarsHUD", "actionBar", "crosshair", "rightSideInfoPanel", "cameraToggleButton"},
 		hiddenComponents = {"worldsPanel"},
 		backdrop = false,
 		cursorMode = "gameplay"
 	},
 	inventory = {
 		visibleComponents = {"voxelInventory"},
-		hiddenComponents = {"mainHUD", "voxelHotbar", "statusBarsHUD", "actionBar", "worldsPanel"},
+		hiddenComponents = {"mainHUD", "voxelHotbar", "statusBarsHUD", "actionBar", "worldsPanel", "rightSideInfoPanel", "cameraToggleButton"},
 		backdrop = true,
 		backdropConfig = {
 			overlay = true,
@@ -40,7 +40,7 @@ local UI_MODES = {
 	},
 	chest = {
 		visibleComponents = {"chestUI"},
-		hiddenComponents = {"mainHUD", "voxelHotbar", "statusBarsHUD", "actionBar", "worldsPanel"},
+		hiddenComponents = {"mainHUD", "voxelHotbar", "statusBarsHUD", "actionBar", "worldsPanel", "rightSideInfoPanel", "cameraToggleButton"},
 		backdrop = true,
 		backdropConfig = {
 			overlay = true,
@@ -53,7 +53,7 @@ local UI_MODES = {
 	},
 	menu = {
 		visibleComponents = {"settingsPanel"},
-		hiddenComponents = {"mainHUD", "voxelHotbar", "statusBarsHUD", "actionBar", "crosshair", "worldsPanel"},
+		hiddenComponents = {"mainHUD", "voxelHotbar", "statusBarsHUD", "actionBar", "crosshair", "worldsPanel", "rightSideInfoPanel", "cameraToggleButton"},
 		backdrop = true,
 		backdropConfig = {
 			overlay = true,
@@ -66,7 +66,7 @@ local UI_MODES = {
 	},
 	worlds = {
 		visibleComponents = {"worldsPanel"},
-		hiddenComponents = {"mainHUD", "voxelHotbar", "statusBarsHUD", "actionBar", "crosshair", "voxelInventory"},
+		hiddenComponents = {"mainHUD", "voxelHotbar", "statusBarsHUD", "actionBar", "crosshair", "voxelInventory", "rightSideInfoPanel", "cameraToggleButton"},
 		backdrop = true,
 		backdropConfig = {
 			overlay = true,
@@ -79,7 +79,7 @@ local UI_MODES = {
 	},
 	minion = {
 		visibleComponents = {"minionUI"},
-		hiddenComponents = {"mainHUD", "voxelHotbar", "statusBarsHUD", "actionBar", "crosshair", "voxelInventory", "worldsPanel"},
+		hiddenComponents = {"mainHUD", "voxelHotbar", "statusBarsHUD", "actionBar", "crosshair", "voxelInventory", "worldsPanel", "rightSideInfoPanel", "cameraToggleButton"},
 		backdrop = true,
 		backdropConfig = {
 			overlay = true,
@@ -92,7 +92,7 @@ local UI_MODES = {
 	},
 	furnace = {
 		visibleComponents = {"furnaceUI"},
-		hiddenComponents = {"mainHUD", "voxelHotbar", "statusBarsHUD", "actionBar", "crosshair", "voxelInventory", "worldsPanel"},
+		hiddenComponents = {"mainHUD", "voxelHotbar", "statusBarsHUD", "actionBar", "crosshair", "voxelInventory", "worldsPanel", "rightSideInfoPanel", "cameraToggleButton"},
 		backdrop = true,
 		backdropConfig = {
 			overlay = true,
@@ -106,7 +106,7 @@ local UI_MODES = {
 	-- Smelting mini-game mode (more immersive, darker)
 	smelting = {
 		visibleComponents = {"furnaceUI"},
-		hiddenComponents = {"mainHUD", "voxelHotbar", "statusBarsHUD", "actionBar", "crosshair", "voxelInventory", "worldsPanel"},
+		hiddenComponents = {"mainHUD", "voxelHotbar", "statusBarsHUD", "actionBar", "crosshair", "voxelInventory", "worldsPanel", "rightSideInfoPanel", "cameraToggleButton"},
 		backdrop = true,
 		backdropConfig = {
 			overlay = true,
@@ -120,7 +120,7 @@ local UI_MODES = {
 	-- NPC Trade mode (shop/merchant)
 	npcTrade = {
 		visibleComponents = {"npcTradeUI"},
-		hiddenComponents = {"mainHUD", "voxelHotbar", "statusBarsHUD", "actionBar", "crosshair", "voxelInventory", "worldsPanel"},
+		hiddenComponents = {"mainHUD", "voxelHotbar", "statusBarsHUD", "actionBar", "crosshair", "voxelInventory", "worldsPanel", "rightSideInfoPanel", "cameraToggleButton"},
 		backdrop = true,
 		backdropConfig = {
 			overlay = true,

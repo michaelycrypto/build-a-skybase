@@ -1,8 +1,10 @@
 --[[
 	TutorialManager.lua - Client-side Tutorial/Onboarding Manager
 
-	Displays tutorial UI (tooltips, popups, highlights) and tracks local progress.
-	Communicates with TutorialService for server-authoritative progress.
+	Tracks local tutorial progress and communicates with TutorialService
+	for server-authoritative progression. Tutorial UI is rendered by
+	RightSideInfoPanel via events. Waypoint rendering (3D markers and
+	screen-edge indicators) is handled inline.
 
 	NOTE: Tutorial only applies in player's own realm, not in the hub or other players' realms.
 ]]
@@ -12,6 +14,7 @@ local TutorialManager = {}
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 -- Dependencies (injected during Initialize)
@@ -20,22 +23,21 @@ local _GameState = nil
 local ToastManager = nil
 local SoundManager = nil
 local TutorialConfig = nil
-local TutorialUI = nil
-local TutorialWaypoint = nil  -- Waypoint rendering for hub guidance
 local InventoryManager = nil  -- For counting items across slots
 
 -- State
 local isInitialized = false
 local tutorialData = nil
 local currentStep = nil
-local settings = nil
 local _localProgress = {} -- Track local progress for responsive UI
+local liveMultiObjectiveProgress = {} -- Real-time multi_objective progress from server events
 local isDisabled = false -- True when not in own realm (hub or friend's realm)
 local isOwnRealm = false -- True when in player's own realm
 local lastReportedCounts = {} -- Track last reported count per objective to avoid duplicate reports
 
 -- Player reference
 local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
 
 -- Tracking state for objectives
 local moveStartPosition = nil
@@ -43,6 +45,26 @@ local totalMoveDistance = 0
 local cameraStartRotation = nil
 local totalCameraRotation = 0
 local visitedCameraModes = {} -- Track which camera modes have been visited
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Waypoint rendering state
+-- ═══════════════════════════════════════════════════════════════════════════
+local waypointGui = nil          -- ScreenGui for screen-edge indicator
+local activeWaypoint = nil       -- {worldPosition, worldMarker, anchor, screenIndicator}
+local waypointUpdateConnection = nil
+
+-- Lazy-loaded modules for waypoint block textures
+local BlockRegistry = nil
+local TextureManager = nil
+
+local WAYPOINT_COLORS = {
+	gold = Color3.fromRGB(255, 215, 0),
+	white = Color3.fromRGB(255, 255, 255),
+	background = Color3.fromRGB(15, 23, 42),
+}
+
+local WAYPOINT_BOB = TweenInfo.new(1.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true)
+local WAYPOINT_PULSE = TweenInfo.new(0.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true)
 
 --[[
 	Initialize the TutorialManager
@@ -66,24 +88,6 @@ function TutorialManager:Initialize(deps)
 		warn("TutorialManager: Failed to load TutorialConfig:", result)
 		return
 	end
-	settings = TutorialConfig.Settings
-
-	-- Load TutorialUI
-	local uiSuccess, uiResult = pcall(function()
-		TutorialUI = require(script.Parent.Parent.UI.TutorialUI)
-	end)
-	if not uiSuccess then
-		warn("TutorialManager: Failed to load TutorialUI:", uiResult)
-	end
-
-	-- Load TutorialWaypoint
-	local wpSuccess, wpResult = pcall(function()
-		TutorialWaypoint = require(script.Parent.Parent.UI.TutorialWaypoint)
-	end)
-	if not wpSuccess then
-		warn("TutorialManager: Failed to load TutorialWaypoint:", wpResult)
-	end
-
 	-- Register event handlers
 	self:_registerEventHandlers()
 
@@ -108,18 +112,11 @@ function TutorialManager:_registerEventHandlers()
 	-- Tutorial data update (full sync)
 	EventManager:RegisterEvent("TutorialDataUpdated", function(data)
 		tutorialData = data.tutorial
-		settings = data.config and data.config.settings or settings
-
 		-- Check if tutorial is complete
 		if tutorialData and tutorialData.completed then
 			isDisabled = true
 			currentStep = nil
-			if TutorialUI then
-				TutorialUI:HideAll()
-			end
-			if TutorialWaypoint then
-				TutorialWaypoint:Hide()
-			end
+			self:_hideWaypoint()
 			return
 		end
 
@@ -128,12 +125,7 @@ function TutorialManager:_registerEventHandlers()
 			isDisabled = true
 			isOwnRealm = false
 			currentStep = nil
-			if TutorialUI then
-				TutorialUI:HideAll()
-			end
-			if TutorialWaypoint then
-				TutorialWaypoint:Hide()
-			end
+			self:_hideWaypoint()
 			return
 		end
 
@@ -145,13 +137,6 @@ function TutorialManager:_registerEventHandlers()
 		if tutorialData and not tutorialData.completed then
 			currentStep = data.config and data.config.currentStep
 			self:_showCurrentStep()
-		else
-			if TutorialUI then
-				TutorialUI:HideAll()
-			end
-			if TutorialWaypoint then
-				TutorialWaypoint:Hide()
-			end
 		end
 	end)
 
@@ -169,12 +154,7 @@ function TutorialManager:_registerEventHandlers()
 	EventManager:RegisterEvent("TutorialSkipped", function(data)
 		tutorialData = data.tutorial
 		currentStep = nil
-		if TutorialUI then
-			TutorialUI:HideAll()
-		end
-		if TutorialWaypoint then
-			TutorialWaypoint:Hide()
-		end
+		self:_hideWaypoint()
 		if ToastManager then
 			ToastManager:Info("Tutorial skipped. Good luck on your adventure!", 3)
 		end
@@ -361,17 +341,422 @@ function TutorialManager:_reportProgress(progressType, progressData)
 	})
 end
 
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Waypoint rendering (inline – no separate module)
+-- ═══════════════════════════════════════════════════════════════════════════
+
 --[[
-	Show the current tutorial step UI
+	Ensure the waypoint ScreenGui exists (created once, reused)
+]]
+local function ensureWaypointGui()
+	if waypointGui then return end
+	waypointGui = Instance.new("ScreenGui")
+	waypointGui.Name = "TutorialWaypointUI"
+	waypointGui.ResetOnSpawn = false
+	waypointGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+	waypointGui.DisplayOrder = 100
+	waypointGui.IgnoreGuiInset = false
+	waypointGui.Parent = playerGui
+end
+
+--[[
+	Create the 3D world marker (BillboardGui above target)
+	@param config: table - {label, color, blockId}
+	@param worldPos: Vector3
+	@return BillboardGui, Part (anchor)
+]]
+local function createWorldMarker(config, worldPos)
+	-- Invisible anchor part
+	local anchor = Instance.new("Part")
+	anchor.Name = "WaypointAnchor"
+	anchor.Size = Vector3.new(0.1, 0.1, 0.1)
+	anchor.Position = worldPos
+	anchor.Anchored = true
+	anchor.CanCollide = false
+	anchor.CanQuery = false
+	anchor.CanTouch = false
+	anchor.Transparency = 1
+	anchor.Parent = workspace
+
+	local billboard = Instance.new("BillboardGui")
+	billboard.Name = "WaypointMarker"
+	billboard.Size = UDim2.fromOffset(80, 100)
+	billboard.StudsOffset = Vector3.new(0, 0, 0)
+	billboard.AlwaysOnTop = true
+	billboard.MaxDistance = 500
+	billboard.Adornee = anchor
+	billboard.Parent = workspace
+
+	local container = Instance.new("Frame")
+	container.Name = "Container"
+	container.Size = UDim2.fromScale(1, 1)
+	container.BackgroundTransparency = 1
+	container.Parent = billboard
+
+	-- Marker icon – use block texture if blockId provided, otherwise diamond
+	local marker, glow
+
+	if config.blockId then
+		-- Lazy-load block texture modules
+		if not BlockRegistry then
+			BlockRegistry = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockRegistry)
+		end
+		if not TextureManager then
+			TextureManager = require(ReplicatedStorage.Shared.VoxelWorld.Rendering.TextureManager)
+		end
+
+		local blockDef = BlockRegistry.Blocks[config.blockId]
+		local textureName = blockDef and blockDef.textures and (blockDef.textures.front or blockDef.textures.all)
+		local textureId = textureName and TextureManager:GetTextureId(textureName)
+
+		if textureId then
+			local markerFrame = Instance.new("Frame")
+			markerFrame.Name = "Marker"
+			markerFrame.Size = UDim2.fromOffset(48, 48)
+			markerFrame.Position = UDim2.fromScale(0.5, 0)
+			markerFrame.AnchorPoint = Vector2.new(0.5, 0)
+			markerFrame.BackgroundColor3 = Color3.fromRGB(31, 31, 31)
+			markerFrame.BackgroundTransparency = 0.3
+			markerFrame.Parent = container
+
+			local corner = Instance.new("UICorner")
+			corner.CornerRadius = UDim.new(0, 6)
+			corner.Parent = markerFrame
+
+			local blockImage = Instance.new("ImageLabel")
+			blockImage.Name = "BlockImage"
+			blockImage.Size = UDim2.new(1, -8, 1, -8)
+			blockImage.Position = UDim2.fromScale(0.5, 0.5)
+			blockImage.AnchorPoint = Vector2.new(0.5, 0.5)
+			blockImage.BackgroundTransparency = 1
+			blockImage.Image = textureId
+			blockImage.ScaleType = Enum.ScaleType.Fit
+			blockImage.Parent = markerFrame
+
+			marker = markerFrame
+
+			glow = Instance.new("UIStroke")
+			glow.Color = config.color or WAYPOINT_COLORS.gold
+			glow.Thickness = 3
+			glow.Transparency = 0.2
+			glow.Parent = markerFrame
+		end
+	end
+
+	-- Fallback: diamond icon
+	if not marker then
+		marker = Instance.new("ImageLabel")
+		marker.Name = "Marker"
+		marker.Size = UDim2.fromOffset(40, 40)
+		marker.Position = UDim2.fromScale(0.5, 0)
+		marker.AnchorPoint = Vector2.new(0.5, 0)
+		marker.BackgroundTransparency = 1
+		marker.Image = "rbxassetid://6031094678"
+		marker.ImageColor3 = config.color or WAYPOINT_COLORS.gold
+		marker.Parent = container
+
+		glow = Instance.new("UIStroke")
+		glow.Color = config.color or WAYPOINT_COLORS.gold
+		glow.Thickness = 2
+		glow.Transparency = 0.3
+		glow.Parent = marker
+	end
+
+	-- Label background
+	local labelBg = Instance.new("Frame")
+	labelBg.Name = "LabelBg"
+	labelBg.Size = UDim2.new(1, 0, 0, 24)
+	labelBg.Position = UDim2.fromOffset(0, 45)
+	labelBg.BackgroundColor3 = WAYPOINT_COLORS.background
+	labelBg.BackgroundTransparency = 0.3
+	labelBg.Parent = container
+
+	local labelCorner = Instance.new("UICorner")
+	labelCorner.CornerRadius = UDim.new(0, 6)
+	labelCorner.Parent = labelBg
+
+	local label = Instance.new("TextLabel")
+	label.Name = "Label"
+	label.Size = UDim2.fromScale(1, 1)
+	label.BackgroundTransparency = 1
+	label.Text = config.label or "Objective"
+	label.TextColor3 = WAYPOINT_COLORS.white
+	label.TextSize = 14
+	label.Font = Enum.Font.GothamBold
+	label.Parent = labelBg
+
+	-- Distance label
+	local distanceLabel = Instance.new("TextLabel")
+	distanceLabel.Name = "Distance"
+	distanceLabel.Size = UDim2.new(1, 0, 0, 18)
+	distanceLabel.Position = UDim2.fromOffset(0, 72)
+	distanceLabel.BackgroundTransparency = 1
+	distanceLabel.Text = "0m"
+	distanceLabel.TextColor3 = config.color or WAYPOINT_COLORS.gold
+	distanceLabel.TextSize = 12
+	distanceLabel.Font = Enum.Font.Gotham
+	distanceLabel.Parent = container
+
+	-- Bobbing animation
+	if marker then
+		local startPos = marker.Position
+		TweenService:Create(marker, WAYPOINT_BOB, {
+			Position = UDim2.new(startPos.X.Scale, startPos.X.Offset, startPos.Y.Scale, startPos.Y.Offset - 8)
+		}):Play()
+	end
+
+	-- Pulsing glow
+	if glow then
+		TweenService:Create(glow, WAYPOINT_PULSE, { Transparency = 0.7 }):Play()
+	end
+
+	return billboard, anchor
+end
+
+--[[
+	Create the screen-space diamond indicator (for off-screen targets)
+]]
+local function createScreenIndicator(config)
+	ensureWaypointGui()
+
+	local indicator = Instance.new("Frame")
+	indicator.Name = "ScreenIndicator"
+	indicator.Size = UDim2.fromOffset(24, 24)
+	indicator.BackgroundTransparency = 1
+	indicator.Visible = false
+	indicator.AnchorPoint = Vector2.new(0.5, 0.5)
+	indicator.Parent = waypointGui
+
+	local diamond = Instance.new("Frame")
+	diamond.Name = "Diamond"
+	diamond.Size = UDim2.fromOffset(12, 12)
+	diamond.Position = UDim2.fromScale(0.5, 0.5)
+	diamond.AnchorPoint = Vector2.new(0.5, 0.5)
+	diamond.Rotation = 45
+	diamond.BackgroundColor3 = config.color or WAYPOINT_COLORS.gold
+	diamond.BackgroundTransparency = 0.1
+	diamond.BorderSizePixel = 0
+	diamond.Parent = indicator
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 2)
+	corner.Parent = diamond
+
+	local diamondGlow = Instance.new("UIStroke")
+	diamondGlow.Color = config.color or WAYPOINT_COLORS.gold
+	diamondGlow.Thickness = 1
+	diamondGlow.Transparency = 0.3
+	diamondGlow.Parent = diamond
+
+	return indicator
+end
+
+--[[
+	Heartbeat callback – update distance text and screen-edge indicator
+]]
+local function updateWaypoint()
+	if not activeWaypoint then return end
+
+	local targetPos = activeWaypoint.worldPosition
+	local billboard = activeWaypoint.worldMarker
+	local indicator = activeWaypoint.screenIndicator
+
+	local character = player.Character
+	if not character then return end
+	local hrp = character:FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
+
+	-- Distance (in blocks)
+	local Constants = require(ReplicatedStorage.Shared.VoxelWorld.Core.Constants)
+	local BLOCK_SIZE = Constants.BLOCK_SIZE
+	local distance = (targetPos - hrp.Position).Magnitude
+	local distText = string.format("%.0fm", distance / BLOCK_SIZE)
+
+	if billboard then
+		local cont = billboard:FindFirstChild("Container")
+		local distLabel = cont and cont:FindFirstChild("Distance")
+		if distLabel then
+			distLabel.Text = distText
+		end
+	end
+
+	-- Screen-space indicator for off-screen targets
+	local camera = workspace.CurrentCamera
+	if not camera then return end
+
+	local screenPos, onScreen = camera:WorldToViewportPoint(targetPos)
+
+	if onScreen and screenPos.Z > 0 then
+		if indicator then
+			indicator.Visible = false
+		end
+	else
+		if indicator then
+			indicator.Visible = true
+
+			local viewportSize = camera.ViewportSize
+			local centerX = viewportSize.X / 2
+			local centerY = viewportSize.Y / 2
+
+			local dirX = screenPos.X - centerX
+			local dirY = screenPos.Y - centerY
+
+			if screenPos.Z < 0 then
+				dirX = -dirX
+				dirY = -dirY
+			end
+
+			local angle = math.atan2(dirY, dirX)
+			local padding = 20
+			local radius = math.min(centerX - padding, centerY - padding)
+			local edgeX = centerX + math.cos(angle) * radius
+			local edgeY = centerY + math.sin(angle) * radius
+
+			indicator.Position = UDim2.fromOffset(edgeX, edgeY)
+		end
+	end
+end
+
+--[[
+	Show a waypoint at a world position
+	@param config: table - {worldPosition, label, color, blockId}
+]]
+function TutorialManager:_showWaypointAt(config)
+	self:_hideWaypoint()
+
+	local worldPos = config.worldPosition
+	if not worldPos then
+		warn("TutorialManager: No world position for waypoint")
+		return
+	end
+
+	local worldMarker, anchor = createWorldMarker(config, worldPos)
+	local screenIndicator = createScreenIndicator(config)
+
+	activeWaypoint = {
+		worldPosition = worldPos,
+		worldMarker = worldMarker,
+		anchor = anchor,
+		screenIndicator = screenIndicator,
+	}
+
+	if waypointUpdateConnection then
+		waypointUpdateConnection:Disconnect()
+	end
+	waypointUpdateConnection = RunService.Heartbeat:Connect(updateWaypoint)
+end
+
+--[[
+	Resolve a waypoint name from TutorialConfig and show it
+	@param waypointName: string - Key in TutorialConfig.Waypoints
+]]
+function TutorialManager:_showWaypoint(waypointName)
+	if not TutorialConfig then return end
+
+	local waypointConfig = TutorialConfig.GetWaypoint(waypointName)
+	if not waypointConfig then
+		warn("TutorialManager: Unknown waypoint:", waypointName)
+		return
+	end
+
+	if waypointConfig.type == "npc" then
+		-- Find NPC in workspace
+		local npcsFolder = workspace:FindFirstChild("NPCs")
+		if not npcsFolder then return end
+
+		local npcModel = npcsFolder:FindFirstChild(waypointConfig.npcId)
+		if not npcModel then
+			for _, child in ipairs(npcsFolder:GetChildren()) do
+				if child.Name:find(waypointConfig.npcId) then
+					npcModel = child
+					break
+				end
+			end
+		end
+
+		if not npcModel then
+			warn("TutorialManager: NPC not found:", waypointConfig.npcId)
+			return
+		end
+
+		local primaryPart = npcModel.PrimaryPart or npcModel:FindFirstChild("HumanoidRootPart")
+		if not primaryPart then return end
+
+		self:_showWaypointAt({
+			worldPosition = primaryPart.Position,
+			label = waypointConfig.label or npcModel.Name,
+			color = waypointConfig.color,
+		})
+
+	elseif waypointConfig.type == "block_area" then
+		local targetOffset = waypointConfig.offsetFromSpawn
+		if not targetOffset then return end
+
+		local Constants = require(ReplicatedStorage.Shared.VoxelWorld.Core.Constants)
+		local BLOCK_SIZE = Constants.BLOCK_SIZE
+
+		-- SkyblockGenerator config values
+		local ISLAND_ORIGIN_X = 48
+		local ISLAND_ORIGIN_Z = 48
+		local ISLAND_SURFACE_Y = 65
+
+		local blockX = ISLAND_ORIGIN_X + targetOffset.X
+		local blockZ = ISLAND_ORIGIN_Z + targetOffset.Z
+		local blockY = ISLAND_SURFACE_Y + targetOffset.Y
+
+		local worldX = blockX * BLOCK_SIZE + BLOCK_SIZE / 2
+		local worldY = blockY * BLOCK_SIZE + BLOCK_SIZE / 2
+		local worldZ = blockZ * BLOCK_SIZE + BLOCK_SIZE / 2
+
+		self:_showWaypointAt({
+			worldPosition = Vector3.new(worldX, worldY, worldZ),
+			label = waypointConfig.label,
+			color = waypointConfig.color,
+			blockId = waypointConfig.blockId,
+		})
+
+	elseif waypointConfig.type == "position" then
+		self:_showWaypointAt({
+			worldPosition = waypointConfig.position,
+			label = waypointConfig.label,
+			color = waypointConfig.color,
+		})
+	end
+end
+
+--[[
+	Hide and destroy the active waypoint
+]]
+function TutorialManager:_hideWaypoint()
+	if waypointUpdateConnection then
+		waypointUpdateConnection:Disconnect()
+		waypointUpdateConnection = nil
+	end
+
+	if activeWaypoint then
+		if activeWaypoint.worldMarker then
+			activeWaypoint.worldMarker:Destroy()
+		end
+		if activeWaypoint.anchor then
+			activeWaypoint.anchor:Destroy()
+		end
+		if activeWaypoint.screenIndicator then
+			activeWaypoint.screenIndicator:Destroy()
+		end
+		activeWaypoint = nil
+	end
+end
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Step lifecycle
+-- ═══════════════════════════════════════════════════════════════════════════
+
+--[[
+	Set up the current tutorial step (reset trackers, show waypoint, play sound)
+	Tutorial UI is handled by RightSideInfoPanel via events.
 ]]
 function TutorialManager:_showCurrentStep()
 	if not currentStep then
-		if TutorialUI then
-			TutorialUI:HideAll()
-		end
-		if TutorialWaypoint then
-			TutorialWaypoint:Hide()
-		end
 		return
 	end
 
@@ -412,31 +797,11 @@ function TutorialManager:_showCurrentStep()
 		end)
 	end
 
-	-- Show appropriate UI based on step type
-	if TutorialUI then
-		if currentStep.uiType == "popup" then
-			TutorialUI:ShowPopup(currentStep)
-		elseif currentStep.uiType == "tooltip" then
-			TutorialUI:ShowTooltip(currentStep)
-		elseif currentStep.uiType == "objective" then
-			TutorialUI:ShowObjective(currentStep)
-		end
-
-		-- Apply highlights if configured
-		if currentStep.highlightBlockTypes then
-			TutorialUI:HighlightBlockTypes(currentStep.highlightBlockTypes)
-		end
-		if currentStep.highlightKey then
-			TutorialUI:HighlightKey(currentStep.highlightKey)
-		end
-		if currentStep.highlightUI then
-			TutorialUI:HighlightUIElement(currentStep.highlightUI)
-		end
-	end
-
 	-- Show waypoint if step has one configured
-	if TutorialWaypoint and currentStep.waypoint then
+	if currentStep.waypoint then
 		self:_showWaypoint(currentStep.waypoint)
+	else
+		self:_hideWaypoint()
 	end
 
 	-- Play notification sound
@@ -446,78 +811,11 @@ function TutorialManager:_showCurrentStep()
 end
 
 --[[
-	Show a waypoint for the current tutorial step
-	@param waypointName: string - Name of the waypoint from TutorialConfig.Waypoints
-]]
-function TutorialManager:_showWaypoint(waypointName)
-	if not TutorialWaypoint or not TutorialConfig then return end
-
-	local waypointConfig = TutorialConfig.GetWaypoint(waypointName)
-	if not waypointConfig then
-		warn("TutorialManager: Unknown waypoint:", waypointName)
-		return
-	end
-
-	if waypointConfig.type == "npc" then
-		-- Show waypoint for an NPC
-		TutorialWaypoint:ShowForNPC(waypointConfig.npcId, {
-			label = waypointConfig.label,
-			color = waypointConfig.color,
-		})
-	elseif waypointConfig.type == "block_area" then
-		-- Show waypoint at a block position relative to spawn
-		-- offsetFromSpawn is in BLOCK coordinates matching SkyblockGenerator decoration offsets
-		local targetOffset = waypointConfig.offsetFromSpawn
-		if targetOffset then
-			local Constants = require(ReplicatedStorage.Shared.VoxelWorld.Core.Constants)
-			local BLOCK_SIZE = Constants.BLOCK_SIZE
-			
-			-- SkyblockGenerator config values (from DEFAULT_CONFIG and DEFAULT_TEMPLATES)
-			local ISLAND_ORIGIN_X = 48 -- blocks (originX)
-			local ISLAND_ORIGIN_Z = 48 -- blocks (originZ)
-			local ISLAND_SURFACE_Y = 65 -- blocks (topY from starter_island template)
-			
-			-- Calculate block coordinates
-			local blockX = ISLAND_ORIGIN_X + targetOffset.X
-			local blockZ = ISLAND_ORIGIN_Z + targetOffset.Z
-			-- Y offset is relative to surface (e.g., 1 = one block above surface like chest with raise=1)
-			local blockY = ISLAND_SURFACE_Y + targetOffset.Y
-			
-			-- Convert block coords to world coords (center of block)
-			local worldX = blockX * BLOCK_SIZE + BLOCK_SIZE / 2
-			local worldY = blockY * BLOCK_SIZE + BLOCK_SIZE / 2
-			local worldZ = blockZ * BLOCK_SIZE + BLOCK_SIZE / 2
-			
-			local worldPos = Vector3.new(worldX, worldY, worldZ)
-			
-			TutorialWaypoint:Show({
-				worldPosition = worldPos,
-				label = waypointConfig.label,
-				color = waypointConfig.color,
-				blockId = waypointConfig.blockId,
-			})
-		end
-	elseif waypointConfig.type == "position" then
-		-- Direct world position
-		TutorialWaypoint:Show({
-			worldPosition = waypointConfig.position,
-			label = waypointConfig.label,
-			color = waypointConfig.color,
-		})
-	end
-end
-
---[[
 	Handle step completed event
 ]]
 function TutorialManager:_onStepCompleted(data)
-	-- Hide current step UI and waypoint
-	if TutorialUI then
-		TutorialUI:HideAll()
-	end
-	if TutorialWaypoint then
-		TutorialWaypoint:Hide()
-	end
+	-- Hide waypoint from completed step
+	self:_hideWaypoint()
 
 	-- Show reward notification
 	if data.reward then
@@ -546,10 +844,13 @@ function TutorialManager:_onStepCompleted(data)
 		end
 	end
 
+	-- Reset multi_objective progress for next step
+	liveMultiObjectiveProgress = {}
+
 	-- Show next step after delay
 	if data.nextStep then
 		currentStep = data.nextStep
-		task.delay(settings and settings.tooltipDelay or 0.5, function()
+		task.delay(0.5, function()
 			self:_showCurrentStep()
 		end)
 	elseif data.tutorialComplete then
@@ -565,16 +866,13 @@ end
 	Handle step skipped event
 ]]
 function TutorialManager:_onStepSkipped(data)
-	if TutorialUI then
-		TutorialUI:HideAll()
-	end
-	if TutorialWaypoint then
-		TutorialWaypoint:Hide()
-	end
+	self:_hideWaypoint()
 
 	if ToastManager then
 		ToastManager:Info("Step skipped", 2)
 	end
+
+	liveMultiObjectiveProgress = {}
 
 	if data.nextStep then
 		currentStep = data.nextStep
@@ -590,11 +888,11 @@ end
 	Handle progress update (for UI updates)
 ]]
 function TutorialManager:_onProgressUpdated(data)
-	if TutorialUI and currentStep then
-		-- Extract progressData from the event data structure
-		local progressData = data.progressData or data
-		TutorialUI:UpdateProgress(currentStep, progressData)
+	-- Store multi_objective progress for panel access
+	if data and data.multiObjectiveProgress then
+		liveMultiObjectiveProgress = data.multiObjectiveProgress
 	end
+	-- Tutorial UI updates are handled by RightSideInfoPanel via events
 end
 
 --[[
@@ -878,18 +1176,32 @@ function TutorialManager:GetCurrentStep()
 end
 
 --[[
+	Get raw tutorial data (progress counts, multiObjectiveProgress, etc.)
+]]
+function TutorialManager:GetTutorialData()
+	return tutorialData
+end
+
+--[[
+	Get real-time multi_objective progress (updated on each TutorialProgressUpdated event)
+]]
+function TutorialManager:GetMultiObjectiveProgress()
+	return liveMultiObjectiveProgress
+end
+
+--[[
 	Cleanup
 ]]
 function TutorialManager:Cleanup()
-	if TutorialUI then
-		TutorialUI:HideAll()
-	end
-	if TutorialWaypoint then
-		TutorialWaypoint:Cleanup()
+	self:_hideWaypoint()
+	if waypointGui then
+		waypointGui:Destroy()
+		waypointGui = nil
 	end
 	isInitialized = false
 	tutorialData = nil
 	currentStep = nil
+	liveMultiObjectiveProgress = {}
 	isDisabled = false
 	isOwnRealm = false
 end
