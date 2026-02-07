@@ -3,19 +3,18 @@
 	Configuration for food items, hunger mechanics, and eating behavior.
 	Matches Minecraft food values exactly.
 
-	NOTE: Only foods defined in Constants.BlockType are active.
-	As new food items are added to Constants, they become available automatically.
+	All food items are defined in ItemDefinitions.Food.
 ]]
 
-local Constants = require(script.Parent.VoxelWorld.Core.Constants)
+local ItemDefinitions = require(script.Parent.Parent.Configs.ItemDefinitions)
 
 local FoodConfig = {}
 
--- Helper function to safely add food if the BlockType exists
-local function addFood(foods, blockTypeName, config)
-	local blockId = Constants.BlockType[blockTypeName]
-	if blockId then
-		foods[blockId] = config
+-- Helper function to add food by ItemDefinitions key name
+local function addFood(foods, itemKey, config)
+	local id = ItemDefinitions.Id[itemKey]
+	if id then
+		foods[id] = config
 	end
 end
 

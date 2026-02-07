@@ -93,29 +93,11 @@ local CONFIG = {
 	TEXT_INSUFFICIENT = Color3.fromRGB(255, 100, 100),
 }
 
--- Helper function to get display name for any item type
+local ItemRegistry = require(ReplicatedStorage.Configs.ItemRegistry)
+
 local function GetItemDisplayName(itemId)
-	if not itemId or itemId == 0 then
-		return nil
-	end
-
-	if ToolConfig.IsTool(itemId) then
-		local toolInfo = ToolConfig.GetToolInfo(itemId)
-		return toolInfo and toolInfo.name or "Tool"
-	end
-
-	if ArmorConfig.IsArmor(itemId) then
-		local armorInfo = ArmorConfig.GetArmorInfo(itemId)
-		return armorInfo and armorInfo.name or "Armor"
-	end
-
-	if SpawnEggConfig.IsSpawnEgg(itemId) then
-		local eggInfo = SpawnEggConfig.GetEggInfo(itemId)
-		return eggInfo and eggInfo.name or "Spawn Egg"
-	end
-
-	local blockDef = BlockRegistry.Blocks[itemId]
-	return blockDef and blockDef.name or "Item"
+	if not itemId or itemId == 0 then return nil end
+	return ItemRegistry.GetItemName(itemId)
 end
 
 function NPCTradeUI.new(inventoryManager)
@@ -823,63 +805,7 @@ function NPCTradeUI:CreateItemFrame(item, index, tradeType)
 end
 
 function NPCTradeUI:CreateItemIcon(container, itemId)
-	if ToolConfig.IsTool(itemId) then
-		local toolInfo = ToolConfig.GetToolInfo(itemId)
-		if toolInfo and toolInfo.image then
-			local image = Instance.new("ImageLabel")
-			image.Name = "ToolImage"
-			image.Size = UDim2.new(1, -6, 1, -6)
-			image.Position = UDim2.fromScale(0.5, 0.5)
-			image.AnchorPoint = Vector2.new(0.5, 0.5)
-			image.BackgroundTransparency = 1
-			image.Image = toolInfo.image
-			image.ScaleType = Enum.ScaleType.Fit
-			image.ZIndex = 4
-			image.Parent = container
-		end
-		return
-	end
-
-	if ArmorConfig.IsArmor(itemId) then
-		local armorInfo = ArmorConfig.GetArmorInfo(itemId)
-		if armorInfo and armorInfo.image then
-			local image = Instance.new("ImageLabel")
-			image.Name = "ArmorImage"
-			image.Size = UDim2.new(1, -6, 1, -6)
-			image.Position = UDim2.fromScale(0.5, 0.5)
-			image.AnchorPoint = Vector2.new(0.5, 0.5)
-			image.BackgroundTransparency = 1
-			image.Image = armorInfo.image
-			image.ScaleType = Enum.ScaleType.Fit
-			image.ZIndex = 4
-			image.Parent = container
-		end
-		return
-	end
-
-	if SpawnEggConfig.IsSpawnEgg(itemId) then
-		local icon = SpawnEggIcon.Create(itemId, UDim2.new(1, -6, 1, -6))
-		icon.Position = UDim2.fromScale(0.5, 0.5)
-		icon.AnchorPoint = Vector2.new(0.5, 0.5)
-		icon.ZIndex = 4
-		icon.Parent = container
-		return
-	end
-
-	local viewport = BlockViewportCreator.CreateBlockViewport(
-		container,
-		itemId,
-		UDim2.fromScale(1, 1)
-	)
-	if viewport then
-		viewport.ZIndex = 4
-		-- Recursively set ZIndex on all children for proper visibility
-		for _, child in ipairs(viewport:GetDescendants()) do
-			if child:IsA("GuiObject") or child:IsA("ViewportFrame") then
-				child.ZIndex = 4
-			end
-		end
-	end
+	BlockViewportCreator.RenderItemSlot(container, itemId, SpawnEggConfig, SpawnEggIcon)
 end
 
 function NPCTradeUI:OnBuyItem(item)

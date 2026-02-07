@@ -19,13 +19,9 @@ local ItemStack = require(ReplicatedStorage.Shared.VoxelWorld.Inventory.ItemStac
 local BlockViewportCreator = require(ReplicatedStorage.Shared.VoxelWorld.Rendering.BlockViewportCreator)
 local EventManager = require(ReplicatedStorage.Shared.EventManager)
 local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
-local ArmorConfig = require(ReplicatedStorage.Configs.ArmorConfig)
 local SpawnEggConfig = require(ReplicatedStorage.Configs.SpawnEggConfig)
-local ItemRegistry = require(ReplicatedStorage.Configs.ItemRegistry)
 local SpawnEggIcon = require(script.Parent.SpawnEggIcon)
 local Config = require(ReplicatedStorage.Shared.Config)
-local BlockRegistry = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockRegistry)
-
 local VoxelHotbar = {}
 local BOLD_FONT = Config.UI_SETTINGS.typography.fonts.bold
 VoxelHotbar.__index = VoxelHotbar
@@ -329,7 +325,6 @@ function VoxelHotbar:UpdateSlotDisplay(index)
 
 	if stack and not stack:IsEmpty() then
 		local itemId = stack:GetItemId()
-		local isTool = ToolConfig.IsTool(itemId)
 
 		-- Only recreate viewport/image if item type changed (huge performance win)
 		if currentItemId ~= itemId then
@@ -340,69 +335,17 @@ function VoxelHotbar:UpdateSlotDisplay(index)
 				end
 			end
 
-			if isTool then
-				-- Render tool image (unified via ItemRegistry)
-				local itemDef = ItemRegistry.GetItem(itemId)
-				local image = Instance.new("ImageLabel")
-				image.Name = "ToolImage"
-				image.Size = UDim2.new(1, -8, 1, -8)
-				image.Position = UDim2.fromScale(0.5, 0.5)
-				image.AnchorPoint = Vector2.new(0.5, 0.5)
-				image.BackgroundTransparency = 1
-				image.Image = itemDef and itemDef.image or ""
-				image.ScaleType = Enum.ScaleType.Fit
-				image.Parent = slotFrame.iconContainer
-			elseif ArmorConfig.IsArmor(itemId) then
-				-- Render armor image
-				local info = ArmorConfig.GetArmorInfo(itemId)
-				local image = Instance.new("ImageLabel")
-				image.Name = "ArmorImage"
-				image.Size = UDim2.new(1, -8, 1, -8)
-				image.Position = UDim2.fromScale(0.5, 0.5)
-				image.AnchorPoint = Vector2.new(0.5, 0.5)
-				image.BackgroundTransparency = 1
-				image.Image = info and info.image or ""
-				image.ScaleType = Enum.ScaleType.Fit
-				-- Tint base image for leather armor
-				if info and info.imageOverlay then
-					image.ImageColor3 = ArmorConfig.GetTierColor(info.tier)
-				end
-				image.Parent = slotFrame.iconContainer
-				-- Add overlay for leather armor (untinted details)
-				if info and info.imageOverlay then
-					local overlay = Instance.new("ImageLabel")
-					overlay.Name = "ArmorOverlay"
-					overlay.Size = UDim2.new(1, -8, 1, -8)
-					overlay.Position = UDim2.fromScale(0.5, 0.5)
-					overlay.AnchorPoint = Vector2.new(0.5, 0.5)
-					overlay.BackgroundTransparency = 1
-					overlay.Image = info.imageOverlay
-					overlay.ScaleType = Enum.ScaleType.Fit
-					overlay.ZIndex = 4
-					overlay.Parent = slotFrame.iconContainer
-				end
-			elseif SpawnEggConfig.IsSpawnEgg(itemId) then
-				-- Render spawn egg (two-layer)
+			if SpawnEggConfig.IsSpawnEgg(itemId) then
+				-- Spawn egg (two-layer icon)
 				local icon = SpawnEggIcon.Create(itemId, UDim2.new(1, -8, 1, -8))
 				icon.Position = UDim2.fromScale(0.5, 0.5)
 				icon.AnchorPoint = Vector2.new(0.5, 0.5)
 				icon.Parent = slotFrame.iconContainer
-			elseif BlockRegistry:IsBucket(itemId) or BlockRegistry:IsPlaceable(itemId) == false then
-				-- Render non-placeable items (buckets, etc.) as 2D images
-				local blockDef = BlockRegistry:GetBlock(itemId)
-				local textureId = blockDef and blockDef.textures and blockDef.textures.all or ""
-
-				local image = Instance.new("ImageLabel")
-				image.Name = "ItemImage"
-				image.Size = UDim2.new(1, -8, 1, -8)
-				image.Position = UDim2.fromScale(0.5, 0.5)
-				image.AnchorPoint = Vector2.new(0.5, 0.5)
-				image.BackgroundTransparency = 1
-				image.Image = textureId
-				image.ScaleType = Enum.ScaleType.Fit
-				image.Parent = slotFrame.iconContainer
 			else
-				-- Render block viewport
+				-- All items and blocks → BlockViewportCreator handles everything:
+				-- ItemDefinitions items (tools, armor, food) → 2D image from rbxassetid
+				-- Solid blocks → 3D viewport
+				-- Non-solid blocks (saplings, etc.) → 3D viewport with texture resolution
 				BlockViewportCreator.CreateBlockViewport(
 					slotFrame.iconContainer,
 					itemId,

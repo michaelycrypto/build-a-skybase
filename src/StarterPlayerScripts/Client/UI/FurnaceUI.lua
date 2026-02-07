@@ -85,22 +85,11 @@ local FURNACE_CONFIG = {
 	BACKGROUND_IMAGE_TRANSPARENCY = 0.6,
 }
 
--- Helper function to get display name
+local ItemRegistry = require(ReplicatedStorage.Configs.ItemRegistry)
+
 local function GetItemDisplayName(itemId)
 	if not itemId or itemId == 0 then return nil end
-	
-	if ToolConfig.IsTool(itemId) then
-		local toolInfo = ToolConfig.GetToolInfo(itemId)
-		return toolInfo and toolInfo.name or "Tool"
-	end
-	
-	if ArmorConfig.IsArmor(itemId) then
-		local armorInfo = ArmorConfig.GetArmorInfo(itemId)
-		return armorInfo and armorInfo.name or "Armor"
-	end
-	
-	local blockDef = BlockRegistry.Blocks[itemId]
-	return blockDef and blockDef.name or "Item"
+	return ItemRegistry.GetItemName(itemId)
 end
 
 function FurnaceUI.new(inventoryManager)

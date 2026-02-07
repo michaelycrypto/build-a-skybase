@@ -47,34 +47,13 @@ local CONFIG = {
 	LOCKED_COLOR = Color3.fromRGB(30, 30, 30),
 }
 
--- Helper function to get display name for any item type
+local ItemRegistry = require(ReplicatedStorage.Configs.ItemRegistry)
+
 local function GetItemDisplayName(itemId)
-	if not itemId or itemId == 0 then
-		return nil
-	end
-
-	-- Check if it's a tool
-	if ToolConfig.IsTool(itemId) then
-		local toolInfo = ToolConfig.GetToolInfo(itemId)
-		return toolInfo and toolInfo.name or "Tool"
-	end
-
-	-- Check if it's armor
-	if ArmorConfig.IsArmor(itemId) then
-		local armorInfo = ArmorConfig.GetArmorInfo(itemId)
-		return armorInfo and armorInfo.name or "Armor"
-	end
-
-	-- Check if it's a spawn egg
-	if SpawnEggConfig.IsSpawnEgg(itemId) then
-		local eggInfo = SpawnEggConfig.GetEggInfo(itemId)
-		return eggInfo and eggInfo.name or "Spawn Egg"
-	end
-
-	-- Otherwise, it's a block - use BlockRegistry
-	local blockDef = BlockRegistry.Blocks[itemId]
-	return blockDef and blockDef.name or "Item"
+	if not itemId or itemId == 0 then return nil end
+	return ItemRegistry.GetItemName(itemId)
 end
+
 
 function MinionUI.new(inventoryManager, inventoryPanel, chestUI)
 	local self = setmetatable({}, MinionUI)
@@ -759,68 +738,8 @@ function MinionUI:UpdateSlotDisplay(index)
 
 	if stack and not stack:IsEmpty() then
 		local itemId = stack:GetItemId()
-		local isTool = ToolConfig.IsTool(itemId)
-
 		if currentItemId ~= itemId then
-			-- Clear old visuals
-			for _, child in ipairs(slotFrame.iconContainer:GetChildren()) do
-				if not child:IsA("UILayout") and not child:IsA("UIPadding") then
-					child:Destroy()
-				end
-			end
-
-			if isTool then
-				local info = ToolConfig.GetToolInfo(itemId)
-				local image = Instance.new("ImageLabel")
-				image.Name = "ToolImage"
-				image.Size = UDim2.new(1, -8, 1, -8)
-				image.Position = UDim2.fromScale(0.5, 0.5)
-				image.AnchorPoint = Vector2.new(0.5, 0.5)
-				image.BackgroundTransparency = 1
-				image.Image = info and info.image or ""
-				image.ScaleType = Enum.ScaleType.Fit
-				image.Parent = slotFrame.iconContainer
-			elseif ArmorConfig.IsArmor(itemId) then
-				local info = ArmorConfig.GetArmorInfo(itemId)
-				local image = Instance.new("ImageLabel")
-				image.Name = "ArmorImage"
-				image.Size = UDim2.new(1, -8, 1, -8)
-				image.Position = UDim2.fromScale(0.5, 0.5)
-				image.AnchorPoint = Vector2.new(0.5, 0.5)
-				image.BackgroundTransparency = 1
-				image.Image = info and info.image or ""
-				image.ScaleType = Enum.ScaleType.Fit
-				-- Tint base image for leather armor
-				if info and info.imageOverlay then
-					image.ImageColor3 = ArmorConfig.GetTierColor(info.tier)
-				end
-				image.Parent = slotFrame.iconContainer
-				-- Add overlay for leather armor (untinted details)
-				if info and info.imageOverlay then
-					local overlay = Instance.new("ImageLabel")
-					overlay.Name = "ArmorOverlay"
-					overlay.Size = UDim2.new(1, -8, 1, -8)
-					overlay.Position = UDim2.fromScale(0.5, 0.5)
-					overlay.AnchorPoint = Vector2.new(0.5, 0.5)
-					overlay.BackgroundTransparency = 1
-					overlay.Image = info.imageOverlay
-					overlay.ScaleType = Enum.ScaleType.Fit
-					overlay.ZIndex = 4
-					overlay.Parent = slotFrame.iconContainer
-				end
-			elseif SpawnEggConfig.IsSpawnEgg(itemId) then
-				local icon = SpawnEggIcon.Create(itemId, UDim2.new(1, -8, 1, -8))
-				icon.Position = UDim2.fromScale(0.5, 0.5)
-				icon.AnchorPoint = Vector2.new(0.5, 0.5)
-				icon.Parent = slotFrame.iconContainer
-			else
-				BlockViewportCreator.CreateBlockViewport(
-					slotFrame.iconContainer,
-					itemId,
-					UDim2.fromScale(1, 1)
-				)
-			end
-
+			BlockViewportCreator.RenderItemSlot(slotFrame.iconContainer, itemId, SpawnEggConfig, SpawnEggIcon)
 			slotFrame.currentItemId = itemId
 		end
 

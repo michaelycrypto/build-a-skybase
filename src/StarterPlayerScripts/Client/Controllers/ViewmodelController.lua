@@ -33,7 +33,7 @@ local currentItemId -- number | nil
 local isFirstPerson = false
 local holdingTool = false
 local holdingItem = false
-local isFlatItem = false
+local isItemModel = false -- true when holding a non-block item (uses item positioning instead of block positioning)
 local rsConn -- RenderStepped
 local camChangedConns = {}
 local inputConns = {}
@@ -137,10 +137,9 @@ local function buildBlockModel(itemId)
 	end
 
 	-- Try to use 3D model from Tools folder (unified lookup)
-	-- SKIP for cross-shape blocks (wheat, saplings, flowers, etc.) - they use textured cubes below
 	-- SKIP for blockOnly blocks (Furnace, etc.) - they use textured cubes
 	local itemName = ItemRegistry.GetItemName(itemId)
-	if itemName and itemName ~= "Unknown" and not def.crossShape and not def.blockOnly then
+	if itemName and itemName ~= "Unknown" and not def.blockOnly then
 		local modelTemplate = ItemModelLoader.GetModelTemplate(itemName, itemId)
 		if modelTemplate then
 			local part = modelTemplate:Clone()
@@ -457,51 +456,14 @@ local function buildToolMesh(itemId)
 	return p
 end
 
+-- Fallback viewmodel for block items without 3D models: flat sprite from block texture
 local function buildFlatBlockItem(itemId)
     local def = BlockRegistry.Blocks[itemId]
     if not def then
     	return nil
     end
 
-    -- Try to use 3D model from Tools folder (unified lookup)
-    -- SKIP for cross-shape blocks (wheat, saplings, flowers, etc.) - they use flat sprites below
-    -- SKIP for blockOnly blocks (Furnace, etc.) - they use textured cubes
-    local itemName = ItemRegistry.GetItemName(itemId)
-    if itemName and itemName ~= "Unknown" and not def.crossShape and not def.blockOnly then
-        local modelTemplate = ItemModelLoader.GetModelTemplate(itemName, itemId)
-        if modelTemplate then
-            local part = modelTemplate:Clone()
-            part.Name = "Item3DModel"
-            part.Anchored = true
-            part.CanCollide = false
-            part.Massless = true
-            part.CastShadow = false
-
-            -- Apply texture from ItemRegistry if model has none
-            if part:IsA("MeshPart") then
-                local hasTexture = false
-                pcall(function()
-                    hasTexture = part.TextureID ~= nil and tostring(part.TextureID) ~= ""
-                end)
-                if not hasTexture then
-                    local itemDef = ItemRegistry.GetItem(itemId)
-                    local textureId = itemDef and itemDef.image
-                    if textureId then
-                        pcall(function()
-                            part.TextureID = textureId
-                        end)
-                    end
-                end
-            end
-
-            -- Scale using ItemPixelSizes (consistent with tools)
-            scaleMeshToPixels(part, itemName)
-
-            return part
-        end
-    end
-
-    -- Fallback: use flat sprite with texture
+    -- Use flat sprite with block texture
     if not def.textures then
     	return nil
     end
@@ -613,13 +575,11 @@ local function rebuild()
 			newInst = buildToolMesh(currentItemId)
 		end
     elseif holdingItem then
-        if isFlatItem then
-            newInst = buildFlatBlockItem(currentItemId)
-        else
-            newInst = buildBlockModel(currentItemId)
-            if not newInst then
-                newInst = buildFlatBlockItem(currentItemId) or buildFlatItem(currentItemId)
-            end
+        -- Always try 3D model first (covers tools, armor, food, materials, saplings, etc.)
+        newInst = buildBlockModel(currentItemId)
+        if not newInst then
+            -- Fallback for items without 3D models (flat sprite)
+            newInst = buildFlatBlockItem(currentItemId) or buildFlatItem(currentItemId)
         end
     else
         -- Empty hand -> show arm
@@ -643,12 +603,13 @@ local function onStateChanged()
 
 	local nextItemId = isTool and toolId or blockId
 
-    local nextIsFlat = false
-    if isItem and blockId then
-        local def = BlockRegistry.Blocks[blockId]
-        -- Non-solid items (bucket, etc.), cross-shaped, or crafting materials use flat/tool positioning
-        nextIsFlat = def and (def.crossShape or def.craftingMaterial or not def.solid) and true or false
-    end
+	-- Determine if item uses item positioning (non-solid items like food, materials, saplings)
+	-- vs block positioning (solid cube blocks like Grass, Stone)
+	local nextIsItemModel = false
+	if isItem and blockId then
+		local def = BlockRegistry.Blocks[blockId]
+		nextIsItemModel = not def or not def.solid
+	end
 
 	-- Check if only the bow stage changed (not a full state change)
 	local bowStageChanged = GameState:Get("voxelWorld.bowPullStage") ~= GameState:Get("voxelWorld._vm_lastBowStage")
@@ -656,13 +617,13 @@ local function onStateChanged()
 		or (isTool ~= holdingTool)
 		or (isItem ~= holdingItem)
 		or (nextItemId ~= currentItemId)
-		or (nextIsFlat ~= isFlatItem)
+		or (nextIsItemModel ~= isItemModel)
 
 	isFirstPerson = fp
 	holdingTool = isTool
 	holdingItem = isItem
 	currentItemId = nextItemId
-    isFlatItem = nextIsFlat
+	isItemModel = nextIsItemModel
 	GameState:Set("voxelWorld._vm_lastBowStage", GameState:Get("voxelWorld.bowPullStage"), true)
 
 	if structuralChanged then
@@ -756,8 +717,8 @@ local function update(dt)
             math.rad(-135 + (5 * d))
         )
         cf = cam.CFrame * pre * CFrame.new(pos) * rot
-    elseif holdingItem and not isFlatItem then
-        -- Block (hand_type == 1)
+    elseif holdingItem and not isItemModel then
+        -- Solid block (hand_type == 1)
         local b = math.sin(a * 2.618) * 2
         local c = math.sin(-a * 4)
         local d = math.sin((a^(1/3)) * 1.6)

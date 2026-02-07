@@ -115,7 +115,7 @@ local function isEmptyBucketEquipped()
 	if not selectedBlock or not selectedBlock.id then
 		return false
 	end
-	return selectedBlock.id == Constants.BlockType.BUCKET
+	return selectedBlock.id == 382 -- Bucket
 end
 
 -- Check if player is holding a water bucket
@@ -124,7 +124,7 @@ local function isWaterBucketEquipped()
 	if not selectedBlock or not selectedBlock.id then
 		return false
 	end
-	return selectedBlock.id == Constants.BlockType.WATER_BUCKET
+	return selectedBlock.id == 383 -- Water Bucket
 end
 
 -- Check if player is holding any bucket (empty or filled)
@@ -990,12 +990,11 @@ local function interactOrPlace()
 	end
 
 	-- Client-side guard: allow farm items (seeds/carrots/potatoes/beetroot seeds/compost) even if not normally placeable
-	local BLOCK = Constants.BlockType
 	local isFarmItem = (
-		selectedBlock.id == BLOCK.WHEAT_SEEDS or
-		selectedBlock.id == BLOCK.POTATO or
-		selectedBlock.id == BLOCK.CARROT or
-		selectedBlock.id == BLOCK.BEETROOT_SEEDS
+		selectedBlock.id == 550 or  -- Wheat Seeds
+		selectedBlock.id == 504 or  -- Potato
+		selectedBlock.id == 503 or  -- Carrot
+		selectedBlock.id == 551     -- Beetroot Seeds
 	)
 	if not BlockRegistry:IsPlaceable(selectedBlock.id) and not isFarmItem then
 		return false
@@ -1207,12 +1206,11 @@ local function startPlacing()
 
 							if canTryPlace then
 								local selectedSlot = GameState:Get("voxelWorld.selectedSlot") or 1
-								local BLOCK = Constants.BlockType
 								local isFarmItem = (
-									selectedBlock.id == BLOCK.WHEAT_SEEDS or
-									selectedBlock.id == BLOCK.POTATO or
-									selectedBlock.id == BLOCK.CARROT or
-									selectedBlock.id == BLOCK.BEETROOT_SEEDS
+									selectedBlock.id == 250 or  -- Wheat Seeds
+									selectedBlock.id == 204 or  -- Potato
+									selectedBlock.id == 203 or  -- Carrot
+									selectedBlock.id == 251     -- Beetroot Seeds
 								)
 								if BlockRegistry:IsPlaceable(selectedBlock.id) or isFarmItem then
 									EventManager:SendToServer("VoxelRequestBlockPlace", {

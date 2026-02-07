@@ -53,7 +53,7 @@ end
 
 local function isPlaceableBlock(itemId)
 	local def = BlockRegistry.Blocks[itemId]
-	if not def or not def.solid or def.crossShape or def.craftingMaterial then
+	if not def or not def.solid or def.craftingMaterial or def.isFood then
 		return false
 	end
 	return def.textures ~= nil
@@ -194,8 +194,6 @@ function HeldItemRenderer.AttachItem(character, itemId)
 	HeldItemRenderer.ClearItem(character)
 
 	local part, grip
-	local blockDef = BlockRegistry.Blocks[itemId]
-	local isCrossShape = blockDef and blockDef.crossShape == true
 
 	-- Check for block entity first (chests, lanterns, etc.)
 	if hasBlockEntity(itemId) then
@@ -204,26 +202,32 @@ function HeldItemRenderer.AttachItem(character, itemId)
 	elseif isPlaceableBlock(itemId) then
 		part = createBlockPart(itemId)
 		grip = BLOCK_GRIP
-	elseif isCrossShape then
-		-- Cross-shape items (wheat, saplings, flowers) rendered as simple textured block
-		-- Don't use ItemModelLoader to prevent accidental MeshPart matches
-		part = createBlockPart(itemId)
-		grip = ITEM_GRIP
 	else
+		-- Try 3D model from Assets.Tools (covers tools, armor, food, materials, etc.)
 		local itemName = ItemRegistry.GetItemName(itemId)
-		if not itemName or itemName == "Unknown" then return nil end
-		part = createItemPart(itemId, itemName)
+		if itemName and itemName ~= "Unknown" then
+			part = createItemPart(itemId, itemName)
+		end
+
 		-- Select grip based on item type
-		if itemName:lower():find("bow") then
-			grip = BOW_GRIP
-		elseif isTool(itemName) then
-			grip = TOOL_GRIP
-		else
-			grip = ITEM_GRIP
-			-- Scale down non-tool/weapon/bow items
-			if part then
+		if part then
+			if itemName and itemName:lower():find("bow") then
+				grip = BOW_GRIP
+			elseif itemName and isTool(itemName) then
+				grip = TOOL_GRIP
+			else
+				grip = ITEM_GRIP
 				part.Size = part.Size * ITEM_SCALE
 			end
+		else
+			-- Fallback: textured cube ONLY for actual solid blocks without 3D models
+			-- Non-solid items (food, materials, saplings) should not render as cubes
+			local blockDef = BlockRegistry.Blocks[itemId]
+			if blockDef and blockDef.solid and blockDef.textures then
+				part = createBlockPart(itemId)
+				grip = BLOCK_GRIP
+			end
+			-- Items without 3D models and without solid block rendering simply won't show
 		end
 	end
 

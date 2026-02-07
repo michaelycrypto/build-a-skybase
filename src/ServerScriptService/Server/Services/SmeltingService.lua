@@ -438,7 +438,7 @@ function SmeltingService:GetSmeltingRecipes(player)
 	-- Get player's coal count once
 	local coalOwned = 0
 	if playerInv then
-		coalOwned = self:CountItemInInventory(playerInv, Constants.BlockType.COAL)
+		coalOwned = self:CountItemInInventory(playerInv, 32)
 	end
 
 	for recipeId, recipe in pairs(RecipeConfig.Recipes) do
@@ -545,7 +545,7 @@ function SmeltingService:ValidateOreMaterials(player, recipe)
 
 	for _, input in ipairs(recipe.inputs) do
 		-- Skip coal check here (coal is validated separately)
-		if input.itemId ~= Constants.BlockType.COAL then
+		if input.itemId ~= 32 then
 			local owned = self:CountItemInInventory(playerInv, input.itemId)
 			if owned < input.count then
 				return false
@@ -568,7 +568,7 @@ function SmeltingService:ValidateCoalMaterials(player, recipeId)
 	local difficulty = SmeltingConfig:GetDifficulty(recipeId)
 	local requiredCoal = difficulty and difficulty.baseCoal or 1
 
-	local owned = self:CountItemInInventory(playerInv, Constants.BlockType.COAL)
+	local owned = self:CountItemInInventory(playerInv, 32)
 	return owned >= requiredCoal
 end
 
@@ -581,7 +581,7 @@ function SmeltingService:ConsumeOreMaterials(_player, recipe, playerInv)
 
 	for _, input in ipairs(recipe.inputs) do
 		-- Skip coal (consumed at completion based on efficiency)
-		if input.itemId ~= Constants.BlockType.COAL then
+		if input.itemId ~= 32 then
 			local removed = self:RemoveItemFromInventory(playerInv, input.itemId, input.count)
 			if not removed then
 				-- Rollback previously consumed items
@@ -601,11 +601,11 @@ end
 	Consume coal from inventory
 ]]
 function SmeltingService:ConsumeCoal(playerInv, amount)
-	local owned = self:CountItemInInventory(playerInv, Constants.BlockType.COAL)
+	local owned = self:CountItemInInventory(playerInv, 32)
 	if owned < amount then
 		return false
 	end
-	return self:RemoveItemFromInventory(playerInv, Constants.BlockType.COAL, amount)
+	return self:RemoveItemFromInventory(playerInv, 32, amount)
 end
 
 --[[

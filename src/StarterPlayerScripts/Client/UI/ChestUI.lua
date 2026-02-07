@@ -23,6 +23,7 @@ local _TextureManager = require(ReplicatedStorage.Shared.VoxelWorld.Rendering.Te
 local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
 local ArmorConfig = require(ReplicatedStorage.Configs.ArmorConfig)
 local SpawnEggConfig = require(ReplicatedStorage.Configs.SpawnEggConfig)
+local ItemRegistry = require(ReplicatedStorage.Configs.ItemRegistry)
 local EventManager = require(ReplicatedStorage.Shared.EventManager)
 local GameConfig = require(ReplicatedStorage.Configs.GameConfig)
 local SpawnEggIcon = require(script.Parent.SpawnEggIcon)
@@ -84,31 +85,8 @@ local CHEST_CONFIG = {
 
 -- Helper function to get display name for any item type
 local function GetItemDisplayName(itemId)
-	if not itemId or itemId == 0 then
-		return nil
-	end
-
-	-- Check if it's a tool
-	if ToolConfig.IsTool(itemId) then
-		local toolInfo = ToolConfig.GetToolInfo(itemId)
-		return toolInfo and toolInfo.name or "Tool"
-	end
-
-	-- Check if it's armor
-	if ArmorConfig.IsArmor(itemId) then
-		local armorInfo = ArmorConfig.GetArmorInfo(itemId)
-		return armorInfo and armorInfo.name or "Armor"
-	end
-
-	-- Check if it's a spawn egg
-	if SpawnEggConfig.IsSpawnEgg(itemId) then
-		local eggInfo = SpawnEggConfig.GetEggInfo(itemId)
-		return eggInfo and eggInfo.name or "Spawn Egg"
-	end
-
-	-- Otherwise, it's a block - use BlockRegistry
-	local blockDef = BlockRegistry.Blocks[itemId]
-	return blockDef and blockDef.name or "Item"
+	if not itemId or itemId == 0 then return nil end
+	return ItemRegistry.GetItemName(itemId)
 end
 
 function ChestUI.new(inventoryManager)
@@ -931,127 +909,20 @@ function ChestUI:UpdateChestSlotDisplay(index)
 
 	if stack and not stack:IsEmpty() then
 		local itemId = stack:GetItemId()
-		local isTool = ToolConfig.IsTool(itemId)
-
 		-- Only update visuals if item type changed
 		if currentItemId ~= itemId then
-			if isTool then
-				local info = ToolConfig.GetToolInfo(itemId)
-				local image = iconContainer:FindFirstChild("ToolImage")
-				if image and image:IsA("ImageLabel") then
-					image.Image = info and info.image or ""
-				else
-					-- Fallback: rebuild
-					for _, child in ipairs(iconContainer:GetChildren()) do
-						if not child:IsA("UILayout") and not child:IsA("UIPadding") and not child:IsA("UICorner") then
-							child:Destroy()
-						end
-					end
-					local newImage = Instance.new("ImageLabel")
-					newImage.Name = "ToolImage"
-					newImage.Size = UDim2.new(1, -6, 1, -6)
-					newImage.Position = UDim2.fromScale(0.5, 0.5)
-					newImage.AnchorPoint = Vector2.new(0.5, 0.5)
-					newImage.BackgroundTransparency = 1
-					newImage.Image = info and info.image or ""
-					newImage.ScaleType = Enum.ScaleType.Fit
-					newImage.Parent = iconContainer
+			for _, child in ipairs(iconContainer:GetChildren()) do
+				if not child:IsA("UILayout") and not child:IsA("UIPadding") and not child:IsA("UICorner") then
+					child:Destroy()
 				end
-			elseif ArmorConfig.IsArmor(itemId) then
-				local info = ArmorConfig.GetArmorInfo(itemId)
-				for _, child in ipairs(iconContainer:GetChildren()) do
-					if not child:IsA("UILayout") and not child:IsA("UIPadding") and not child:IsA("UICorner") then
-						child:Destroy()
-					end
-				end
-				local newImage = Instance.new("ImageLabel")
-				newImage.Name = "ArmorImage"
-				newImage.Size = UDim2.new(1, -6, 1, -6)
-				newImage.Position = UDim2.fromScale(0.5, 0.5)
-				newImage.AnchorPoint = Vector2.new(0.5, 0.5)
-				newImage.BackgroundTransparency = 1
-				newImage.Image = info and info.image or ""
-				newImage.ScaleType = Enum.ScaleType.Fit
-				-- Tint base image for leather armor
-				if info and info.imageOverlay then
-					newImage.ImageColor3 = ArmorConfig.GetTierColor(info.tier)
-				end
-				newImage.Parent = iconContainer
-				-- Add overlay for leather armor (untinted details)
-				if info and info.imageOverlay then
-					local overlay = Instance.new("ImageLabel")
-					overlay.Name = "ArmorOverlay"
-					overlay.Size = UDim2.new(1, -6, 1, -6)
-					overlay.Position = UDim2.fromScale(0.5, 0.5)
-					overlay.AnchorPoint = Vector2.new(0.5, 0.5)
-					overlay.BackgroundTransparency = 1
-					overlay.Image = info.imageOverlay
-					overlay.ScaleType = Enum.ScaleType.Fit
-					overlay.ZIndex = 4
-					overlay.Parent = iconContainer
-				end
-			elseif SpawnEggConfig.IsSpawnEgg(itemId) then
-				-- Render spawn eggs as 2D icons (same as inventory)
-				for _, child in ipairs(iconContainer:GetChildren()) do
-					if not child:IsA("UILayout") and not child:IsA("UIPadding") and not child:IsA("UICorner") then
-						child:Destroy()
-					end
-				end
+			end
+			if SpawnEggConfig.IsSpawnEgg(itemId) then
 				local icon = SpawnEggIcon.Create(itemId, UDim2.new(1, -6, 1, -6))
 				icon.Position = UDim2.fromScale(0.5, 0.5)
 				icon.AnchorPoint = Vector2.new(0.5, 0.5)
 				icon.Parent = iconContainer
-			elseif BlockRegistry:IsBucket(itemId) or BlockRegistry:IsPlaceable(itemId) == false then
-				-- Render non-placeable items (buckets, etc.) as 2D images
-				for _, child in ipairs(iconContainer:GetChildren()) do
-					if not child:IsA("UILayout") and not child:IsA("UIPadding") and not child:IsA("UICorner") then
-						child:Destroy()
-					end
-				end
-				local blockDef = BlockRegistry:GetBlock(itemId)
-				local textureId = blockDef and blockDef.textures and blockDef.textures.all or ""
-
-				local image = Instance.new("ImageLabel")
-				image.Name = "ItemImage"
-				image.Size = UDim2.new(1, -6, 1, -6)
-				image.Position = UDim2.fromScale(0.5, 0.5)
-				image.AnchorPoint = Vector2.new(0.5, 0.5)
-				image.BackgroundTransparency = 1
-				image.Image = textureId
-				image.ScaleType = Enum.ScaleType.Fit
-				image.Parent = iconContainer
 			else
-				-- Decide between flat image vs 3D block and rebuild on type mismatch
-				local blockDef = BlockRegistry.Blocks[itemId]
-				local shouldBeFlatImage = false
-				if blockDef and blockDef.textures and blockDef.textures.all then
-					shouldBeFlatImage = blockDef.craftingMaterial or blockDef.crossShape
-				end
-
-				if shouldBeFlatImage then
-					-- Ensure ImageLabel exists; rebuild if needed
-					for _, child in ipairs(iconContainer:GetChildren()) do
-						if not child:IsA("UILayout") and not child:IsA("UIPadding") and not child:IsA("UICorner") then
-							child:Destroy()
-						end
-					end
-					BlockViewportCreator.CreateBlockViewport(iconContainer, itemId, UDim2.fromScale(1, 1))
-				else
-					-- Try to update existing viewport instead of rebuilding
-					local container = iconContainer:FindFirstChild("ViewportContainer")
-					local viewport = iconContainer:FindFirstChild("BlockViewport")
-					local target = container or viewport
-					if target then
-						BlockViewportCreator.UpdateBlockViewport(target, itemId)
-					else
-						for _, child in ipairs(iconContainer:GetChildren()) do
-							if not child:IsA("UILayout") and not child:IsA("UIPadding") and not child:IsA("UICorner") then
-								child:Destroy()
-							end
-						end
-						BlockViewportCreator.CreateBlockViewport(iconContainer, itemId, UDim2.fromScale(1, 1))
-					end
-				end
+				BlockViewportCreator.CreateBlockViewport(iconContainer, itemId, UDim2.fromScale(1, 1))
 			end
 			iconContainer:SetAttribute("CurrentItemId", itemId)
 		end
@@ -1083,130 +954,13 @@ function ChestUI:UpdateInventorySlotDisplay(index)
 
 	if stack and not stack:IsEmpty() then
 		local itemId = stack:GetItemId()
-		local isTool = ToolConfig.IsTool(itemId)
-
 		-- Only update visuals if item type changed
 		if currentItemId ~= itemId then
-			if isTool then
-				local info = ToolConfig.GetToolInfo(itemId)
-				local image = iconContainer:FindFirstChild("ToolImage")
-				if image and image:IsA("ImageLabel") then
-					image.Image = info and info.image or ""
-				else
-					for _, child in ipairs(iconContainer:GetChildren()) do
-						if not child:IsA("UILayout") and not child:IsA("UIPadding") and not child:IsA("UICorner") then
-							child:Destroy()
-						end
-					end
-					local newImage = Instance.new("ImageLabel")
-					newImage.Name = "ToolImage"
-					newImage.Size = UDim2.new(1, -6, 1, -6)
-					newImage.Position = UDim2.fromScale(0.5, 0.5)
-					newImage.AnchorPoint = Vector2.new(0.5, 0.5)
-					newImage.BackgroundTransparency = 1
-					newImage.Image = info and info.image or ""
-					newImage.ScaleType = Enum.ScaleType.Fit
-					newImage.Parent = iconContainer
-				end
-			elseif ArmorConfig.IsArmor(itemId) then
-				local info = ArmorConfig.GetArmorInfo(itemId)
-				for _, child in ipairs(iconContainer:GetChildren()) do
-					if not child:IsA("UILayout") and not child:IsA("UIPadding") and not child:IsA("UICorner") then
-						child:Destroy()
-					end
-				end
-				local newImage = Instance.new("ImageLabel")
-				newImage.Name = "ArmorImage"
-				newImage.Size = UDim2.new(1, -6, 1, -6)
-				newImage.Position = UDim2.fromScale(0.5, 0.5)
-				newImage.AnchorPoint = Vector2.new(0.5, 0.5)
-				newImage.BackgroundTransparency = 1
-				newImage.Image = info and info.image or ""
-				newImage.ScaleType = Enum.ScaleType.Fit
-				-- Tint base image for leather armor
-				if info and info.imageOverlay then
-					newImage.ImageColor3 = ArmorConfig.GetTierColor(info.tier)
-				end
-				newImage.Parent = iconContainer
-				-- Add overlay for leather armor (untinted details)
-				if info and info.imageOverlay then
-					local overlay = Instance.new("ImageLabel")
-					overlay.Name = "ArmorOverlay"
-					overlay.Size = UDim2.new(1, -6, 1, -6)
-					overlay.Position = UDim2.fromScale(0.5, 0.5)
-					overlay.AnchorPoint = Vector2.new(0.5, 0.5)
-					overlay.BackgroundTransparency = 1
-					overlay.Image = info.imageOverlay
-					overlay.ScaleType = Enum.ScaleType.Fit
-					overlay.ZIndex = 4
-					overlay.Parent = iconContainer
-				end
-			elseif SpawnEggConfig.IsSpawnEgg(itemId) then
-				-- Render spawn eggs in hotbar inside chest UI as 2D icons
-				for _, child in ipairs(iconContainer:GetChildren()) do
-					if not child:IsA("UILayout") and not child:IsA("UIPadding") and not child:IsA("UICorner") then
-						child:Destroy()
-					end
-				end
-				local icon = SpawnEggIcon.Create(itemId, UDim2.new(1, -6, 1, -6))
-				icon.Position = UDim2.fromScale(0.5, 0.5)
-				icon.AnchorPoint = Vector2.new(0.5, 0.5)
-				icon.Parent = iconContainer
-			elseif BlockRegistry:IsBucket(itemId) or BlockRegistry:IsPlaceable(itemId) == false then
-				-- Render non-placeable items (buckets, etc.) as 2D images
-				for _, child in ipairs(iconContainer:GetChildren()) do
-					if not child:IsA("UILayout") and not child:IsA("UIPadding") and not child:IsA("UICorner") then
-						child:Destroy()
-					end
-				end
-				local blockDef = BlockRegistry:GetBlock(itemId)
-				local textureId = blockDef and blockDef.textures and blockDef.textures.all or ""
-
-				local image = Instance.new("ImageLabel")
-				image.Name = "ItemImage"
-				image.Size = UDim2.new(1, -6, 1, -6)
-				image.Position = UDim2.fromScale(0.5, 0.5)
-				image.AnchorPoint = Vector2.new(0.5, 0.5)
-				image.BackgroundTransparency = 1
-				image.Image = textureId
-				image.ScaleType = Enum.ScaleType.Fit
-				image.Parent = iconContainer
-			else
-				-- Decide between flat image vs 3D block and rebuild on type mismatch
-				local blockDef = BlockRegistry.Blocks[itemId]
-				local shouldBeFlatImage = false
-				if blockDef and blockDef.textures and blockDef.textures.all then
-					shouldBeFlatImage = blockDef.craftingMaterial or blockDef.crossShape
-				end
-
-				if shouldBeFlatImage then
-					-- Ensure ImageLabel exists; rebuild if needed
-					for _, child in ipairs(iconContainer:GetChildren()) do
-						if not child:IsA("UILayout") and not child:IsA("UIPadding") and not child:IsA("UICorner") then
-							child:Destroy()
-						end
-					end
-					BlockViewportCreator.CreateBlockViewport(iconContainer, itemId, UDim2.fromScale(1, 1))
-				else
-					local container = iconContainer:FindFirstChild("ViewportContainer")
-					local viewport = iconContainer:FindFirstChild("BlockViewport")
-					local target = container or viewport
-					if target then
-						BlockViewportCreator.UpdateBlockViewport(target, itemId)
-					else
-						for _, child in ipairs(iconContainer:GetChildren()) do
-							if not child:IsA("UILayout") and not child:IsA("UIPadding") and not child:IsA("UICorner") then
-								child:Destroy()
-							end
-						end
-						BlockViewportCreator.CreateBlockViewport(iconContainer, itemId, UDim2.fromScale(1, 1))
-					end
-				end
-			end
+			BlockViewportCreator.RenderItemSlot(iconContainer, itemId, SpawnEggConfig, SpawnEggIcon)
 			iconContainer:SetAttribute("CurrentItemId", itemId)
 		end
 
-		-- Always update count (cheap operation)
+		-- Always update count
 		countLabel.Text = stack:GetCount() > 1 and tostring(stack:GetCount()) or ""
 	else
 		-- Slot is empty - clear attribute IMMEDIATELY to prevent race conditions
@@ -1235,82 +989,13 @@ function ChestUI:UpdateHotbarSlotDisplay(index)
 
 	if stack and not stack:IsEmpty() then
 		local itemId = stack:GetItemId()
-		local isTool = ToolConfig.IsTool(itemId)
-
 		-- Only update visuals if item type changed
 		if currentItemId ~= itemId then
-			-- Clear attribute FIRST to prevent race conditions
-			iconContainer:SetAttribute("CurrentItemId", nil)
-
-			-- Clear ALL existing visuals
-			for _, child in ipairs(iconContainer:GetChildren()) do
-				if not child:IsA("UILayout") and not child:IsA("UIPadding") and not child:IsA("UICorner") then
-					child:Destroy()
-				end
-			end
-
-			if isTool then
-				local info = ToolConfig.GetToolInfo(itemId)
-				local image = Instance.new("ImageLabel")
-				image.Name = "ToolImage"
-				image.Size = UDim2.new(1, -6, 1, -6)
-				image.Position = UDim2.fromScale(0.5, 0.5)
-				image.AnchorPoint = Vector2.new(0.5, 0.5)
-				image.BackgroundTransparency = 1
-				image.Image = info and info.image or ""
-				image.ScaleType = Enum.ScaleType.Fit
-				image.Parent = iconContainer
-			elseif ArmorConfig.IsArmor(itemId) then
-				local info = ArmorConfig.GetArmorInfo(itemId)
-				local image = Instance.new("ImageLabel")
-				image.Name = "ArmorImage"
-				image.Size = UDim2.new(1, -6, 1, -6)
-				image.Position = UDim2.fromScale(0.5, 0.5)
-				image.AnchorPoint = Vector2.new(0.5, 0.5)
-				image.BackgroundTransparency = 1
-				image.Image = info and info.image or ""
-				image.ScaleType = Enum.ScaleType.Fit
-				-- Tint base image for leather armor
-				if info and info.imageOverlay then
-					image.ImageColor3 = ArmorConfig.GetTierColor(info.tier)
-				end
-				image.Parent = iconContainer
-				-- Add overlay for leather armor (untinted details)
-				if info and info.imageOverlay then
-					local overlay = Instance.new("ImageLabel")
-					overlay.Name = "ArmorOverlay"
-					overlay.Size = UDim2.new(1, -6, 1, -6)
-					overlay.Position = UDim2.fromScale(0.5, 0.5)
-					overlay.AnchorPoint = Vector2.new(0.5, 0.5)
-					overlay.BackgroundTransparency = 1
-					overlay.Image = info.imageOverlay
-					overlay.ScaleType = Enum.ScaleType.Fit
-					overlay.ZIndex = 4
-					overlay.Parent = iconContainer
-				end
-			elseif BlockRegistry:IsBucket(itemId) or BlockRegistry:IsPlaceable(itemId) == false then
-				-- Render non-placeable items (buckets, etc.) as 2D images
-				local blockDef = BlockRegistry:GetBlock(itemId)
-				local textureId = blockDef and blockDef.textures and blockDef.textures.all or ""
-
-				local image = Instance.new("ImageLabel")
-				image.Name = "ItemImage"
-				image.Size = UDim2.new(1, -6, 1, -6)
-				image.Position = UDim2.fromScale(0.5, 0.5)
-				image.AnchorPoint = Vector2.new(0.5, 0.5)
-				image.BackgroundTransparency = 1
-				image.Image = textureId
-				image.ScaleType = Enum.ScaleType.Fit
-				image.Parent = iconContainer
-			else
-				BlockViewportCreator.CreateBlockViewport(iconContainer, itemId, UDim2.fromScale(1, 1))
-			end
-
-			-- Set new item ID AFTER creating visuals
+			BlockViewportCreator.RenderItemSlot(iconContainer, itemId, SpawnEggConfig, SpawnEggIcon)
 			iconContainer:SetAttribute("CurrentItemId", itemId)
 		end
 
-		-- Always update count (cheap operation)
+		-- Always update count
 		countLabel.Text = stack:GetCount() > 1 and tostring(stack:GetCount()) or ""
 	else
 		-- Slot is empty - clear attribute IMMEDIATELY to prevent race conditions
@@ -1436,81 +1121,9 @@ function ChestUI:UpdateCursorDisplay()
 
 	if self.cursorStack and not self.cursorStack:IsEmpty() then
 		local itemId = self.cursorStack:GetItemId()
-		local isTool = ToolConfig.IsTool(itemId)
-
-		-- Only recreate viewport/image if item type changed (performance optimization)
+		-- Only recreate viewport/image if item type changed
 		if currentItemId ~= itemId then
-			-- Clear attribute FIRST to prevent race conditions
-			self.cursorFrame:SetAttribute("CurrentItemId", nil)
-
-			-- Clear ALL existing visuals
-			for _, child in ipairs(iconContainer:GetChildren()) do
-				if not child:IsA("UILayout") and not child:IsA("UIPadding") and not child:IsA("UICorner") then
-					child:Destroy()
-				end
-			end
-
-			if isTool then
-				local info = ToolConfig.GetToolInfo(itemId)
-				local image = Instance.new("ImageLabel")
-				image.Name = "ToolImage"
-				image.Size = UDim2.new(1, -6, 1, -6)
-				image.Position = UDim2.fromScale(0.5, 0.5)
-				image.AnchorPoint = Vector2.new(0.5, 0.5)
-				image.BackgroundTransparency = 1
-				image.Image = info and info.image or ""
-				image.ScaleType = Enum.ScaleType.Fit
-				image.ZIndex = 1001
-				image.Parent = iconContainer
-			elseif ArmorConfig.IsArmor(itemId) then
-				local info = ArmorConfig.GetArmorInfo(itemId)
-				local image = Instance.new("ImageLabel")
-				image.Name = "ArmorImage"
-				image.Size = UDim2.new(1, -6, 1, -6)
-				image.Position = UDim2.fromScale(0.5, 0.5)
-				image.AnchorPoint = Vector2.new(0.5, 0.5)
-				image.BackgroundTransparency = 1
-				image.Image = info and info.image or ""
-				image.ScaleType = Enum.ScaleType.Fit
-				image.ZIndex = 1001
-				-- Tint base image for leather armor
-				if info and info.imageOverlay then
-					image.ImageColor3 = ArmorConfig.GetTierColor(info.tier)
-				end
-				image.Parent = iconContainer
-				-- Add overlay for leather armor (untinted details)
-				if info and info.imageOverlay then
-					local overlay = Instance.new("ImageLabel")
-					overlay.Name = "ArmorOverlay"
-					overlay.Size = UDim2.new(1, -6, 1, -6)
-					overlay.Position = UDim2.fromScale(0.5, 0.5)
-					overlay.AnchorPoint = Vector2.new(0.5, 0.5)
-					overlay.BackgroundTransparency = 1
-					overlay.Image = info.imageOverlay
-					overlay.ScaleType = Enum.ScaleType.Fit
-					overlay.ZIndex = 1002
-					overlay.Parent = iconContainer
-				end
-			elseif BlockRegistry:IsBucket(itemId) or BlockRegistry:IsPlaceable(itemId) == false then
-				-- Render non-placeable items (buckets, etc.) as 2D images
-				local blockDef = BlockRegistry:GetBlock(itemId)
-				local textureId = blockDef and blockDef.textures and blockDef.textures.all or ""
-
-				local image = Instance.new("ImageLabel")
-				image.Name = "ItemImage"
-				image.Size = UDim2.new(1, -6, 1, -6)
-				image.Position = UDim2.fromScale(0.5, 0.5)
-				image.AnchorPoint = Vector2.new(0.5, 0.5)
-				image.BackgroundTransparency = 1
-				image.Image = textureId
-				image.ScaleType = Enum.ScaleType.Fit
-				image.ZIndex = 1001
-				image.Parent = iconContainer
-			else
-				BlockViewportCreator.CreateBlockViewport(iconContainer, itemId, UDim2.fromScale(1, 1))
-			end
-
-			-- Set new item ID AFTER creating visuals
+			BlockViewportCreator.RenderItemSlot(iconContainer, itemId, SpawnEggConfig, SpawnEggIcon)
 			self.cursorFrame:SetAttribute("CurrentItemId", itemId)
 		end
 

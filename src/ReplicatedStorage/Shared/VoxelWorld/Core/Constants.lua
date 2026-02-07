@@ -60,20 +60,13 @@ local Constants = {
 		BRICK_SLAB = 26,
 		-- Fences
 		OAK_FENCE = 27,
-		-- Crafting materials
-		STICK = 28,
 		-- Ores
 		COAL_ORE = 29,
 		IRON_ORE = 30,
 		DIAMOND_ORE = 31,
-		-- Refined materials
-		COAL = 32,
-		IRON_INGOT = 33,
-		DIAMOND = 34,
 		-- Utility blocks
 		FURNACE = 35,
 		GLASS = 36,
-		APPLE = 37,
 
 		-- New wood families
 		SPRUCE_LOG = 38,
@@ -116,14 +109,9 @@ local Constants = {
 		ACACIA_LEAVES = 68
 		,
 
-		-- Farming blocks and items
+		-- Farming blocks
 		FARMLAND = 69,
-		WHEAT_SEEDS = 70,
-		WHEAT = 71,
-		POTATO = 72,
-		CARROT = 73,
-		BEETROOT_SEEDS = 74,
-		BEETROOT = 75,
+		-- NOTE: Seeds, Wheat, Potato, Carrot, Beetroot are items now (see ItemDefinitions)
 
 		-- Crop stages (cross-shaped plants)
 		WHEAT_CROP_0 = 76,
@@ -155,17 +143,12 @@ local Constants = {
 
 		-- Utility: visual minion blocks (spawn a mini zombie)
 		COBBLESTONE_MINION = 97,
-		COAL_MINION = 123,
+		COAL_MINION = 386,  -- Moved from 123 (collided with WHITE_STAINED_GLASS)
 
 		-- Ores (4-tier progression: Copper → Iron → Steel → Bluesteel)
 		COPPER_ORE = 98,
 		BLUESTEEL_ORE = 101,   -- Tier 4 ore (drops Bluesteel Dust)
-
-		-- Ingots/materials
-		COPPER_INGOT = 105,
-		STEEL_INGOT = 108,     -- Alloy: Iron + 2 Coal
-		BLUESTEEL_INGOT = 109, -- Tier 4 ingot (Iron + 3 Coal + Bluesteel Dust)
-		BLUESTEEL_DUST = 115,  -- Drops from Bluesteel Ore
+		-- NOTE: Ingots/materials are items now (see ItemDefinitions)
 
 		-- Full Blocks (9x ingots/items)
 		COPPER_BLOCK = 116,
@@ -509,54 +492,7 @@ local Constants = {
 		LANTERN = 346,
 		SOUL_LANTERN = 347,
 
-		-- ═══════════════════════════════════════════════════════════════════════
-		-- FOOD ITEMS (Minecraft-style consumables)
-		-- ═══════════════════════════════════════════════════════════════════════
-		-- Cooked Foods
-		BREAD = 348,
-		BAKED_POTATO = 349,
-		COOKED_BEEF = 350,
-		COOKED_PORKCHOP = 351,
-		COOKED_CHICKEN = 352,
-		COOKED_MUTTON = 353,
-		COOKED_RABBIT = 354,
-		COOKED_COD = 355,
-		COOKED_SALMON = 356,
-
-		-- Raw Meats
-		BEEF = 357,
-		PORKCHOP = 358,
-		CHICKEN = 359,
-		MUTTON = 360,
-		RABBIT = 361,
-
-		-- Raw Fish
-		COD = 362,
-		SALMON = 363,
-		TROPICAL_FISH = 364,
-		PUFFERFISH = 365,
-
-		-- Special Foods
-		GOLDEN_APPLE = 366,
-		ENCHANTED_GOLDEN_APPLE = 367,
-		GOLDEN_CARROT = 368,
-
-		-- Soups & Stews
-		BEETROOT_SOUP = 369,
-		MUSHROOM_STEW = 370,
-		RABBIT_STEW = 371,
-
-		-- Other Foods
-		COOKIE = 372,
-		MELON_SLICE = 373,
-		DRIED_KELP = 374,
-		PUMPKIN_PIE = 375,
-
-		-- Hazardous Foods
-		ROTTEN_FLESH = 376,
-		SPIDER_EYE = 377,
-		POISONOUS_POTATO = 378,
-		CHORUS_FRUIT = 379,
+		-- NOTE: Food items are now in ItemDefinitions.Food (not block types)
 
 		-- Liquids
 		WATER_SOURCE = 380,

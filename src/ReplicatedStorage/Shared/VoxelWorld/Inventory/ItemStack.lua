@@ -28,8 +28,8 @@ do
 	MAX_STACK_SIZES[Constants.BlockType.COPPER_MINION] = 1
 
 	-- Bucket stack sizes (Minecraft-style)
-	MAX_STACK_SIZES[Constants.BlockType.BUCKET] = 16  -- Empty buckets stack to 16
-	MAX_STACK_SIZES[Constants.BlockType.WATER_BUCKET] = 1  -- Water buckets don't stack
+	MAX_STACK_SIZES[382] = 16  -- Bucket: empty buckets stack to 16
+	MAX_STACK_SIZES[383] = 1  -- Water Bucket: doesn't stack
 end
 
 function ItemStack.new(itemId, count, maxStack)

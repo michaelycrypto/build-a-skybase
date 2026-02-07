@@ -138,7 +138,7 @@ local GameConfig = {
 	-- Data Store settings
 	DataStore = {
 		PlayerData = {
-			DataStoreVersion = "PlayerData_v102", -- Keep in sync with PlayerDataStoreService (updated for 4-tier system)
+			DataStoreVersion = "PlayerData_v109", -- Keep in sync with PlayerDataStoreService (updated for 4-tier system)
 			SchemaVersion = 6, -- Increment to force migrations/default resets
 			AutoSaveInterval = 300 -- 5 minutes in seconds
 		},
@@ -163,7 +163,7 @@ local GameConfig = {
 	Inventory = {
 		-- Hotbar: Nearly empty - only survival food
 		StarterHotbar = {
-			{slot = 1, itemId = 348, count = 8},   -- Bread (survival food)
+			{slot = 1, itemId = 502, count = 8},   -- Bread (survival food)
 			-- Slots 2-9 empty - player fills with crafted tools
 		},
 
@@ -240,10 +240,10 @@ local GameConfig = {
 	-- Minecraft-style character proportions
 	-- Applied to all player characters (Hub, Player World, Armor UI viewmodel)
 	CharacterScale = {
-		HEIGHT = 1.2,   -- Taller (Minecraft Steve is 2 blocks = 6 studs, Roblox is ~5 studs)
-		WIDTH = 0.85,   -- Narrower limbs (Steve's arms/legs are 4 pixels wide vs 8 pixel body)
-		DEPTH = 0.85,   -- Same as width for uniform limb thinning
-		HEAD = 1.1,     -- Slightly larger head like Minecraft
+		HEIGHT = 1.15,   -- Taller (Minecraft Steve is 2 blocks = 6 studs, Roblox is ~5 studs)
+		WIDTH = 0.95,   -- Narrower limbs (Steve's arms/legs are 4 pixels wide vs 8 pixel body)
+		DEPTH = 0.95,   -- Same as width for uniform limb thinning
+		HEAD = 1,     -- Slightly larger head like Minecraft
 	},
 
 	-- Cooldown settings
@@ -251,21 +251,6 @@ local GameConfig = {
 		crate_opening = 1,          -- 1 second (prevent spam)
 		bulk_sell = 60,             -- 1 minute
 		teleport_cooldown = 5,      -- 5 seconds between teleports
-	},
-
-	-- World system settings
-	World = {
-		GridSize = {
-			width = 52, -- 13 * 4
-			height = 80  -- 20 * 4
-		},
-		BaseTileSize = 4, -- studs per grid unit
-		TileTypes = {
-			"Baseplate",
-			"LargeBaseplate"
-		},
-		RegenerateOnStart = true,
-		CleanupOnShutdown = true
 	},
 
 	-- Dropped items settings
@@ -598,7 +583,7 @@ local GameConfig = {
 	-- World system configuration
 	Worlds = {
 		MaxWorldsPerPlayer = 10, -- Maximum worlds a player can create
-		DataStoreVersion = "PlayerOwnedWorlds_v92" -- Updated for multi-world support
+		DataStoreVersion = "PlayerOwnedWorlds_v99" -- Updated for multi-world support
 	},
 
 	-- Single-Place Architecture Configuration

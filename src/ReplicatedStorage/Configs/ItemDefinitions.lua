@@ -206,31 +206,49 @@ end
 -- ═══════════════════════════════════════════════════════════════════════════
 
 ItemDefinitions.Food = {
-	-- Raw foods
-	APPLE =          { id = 201, name = "Apple",          category = "food", hunger = 4, saturation = 2.4, texture = "rbxassetid://119276065058564" },
-	BREAD =          { id = 202, name = "Bread",          category = "food", hunger = 5, saturation = 6.0, texture = "rbxassetid://134668764178448" },
-	CARROT =         { id = 203, name = "Carrot",         category = "food", hunger = 3, saturation = 3.6, texture = "rbxassetid://133207158082629" },
-	POTATO =         { id = 204, name = "Potato",         category = "food", hunger = 1, saturation = 0.6, texture = "rbxassetid://133207158082629" },
-	BAKED_POTATO =   { id = 205, name = "Baked Potato",   category = "food", hunger = 5, saturation = 6.0, texture = "rbxassetid://112458163268481" },
-	BEETROOT =       { id = 206, name = "Beetroot",       category = "food", hunger = 1, saturation = 1.2, texture = "rbxassetid://133207158082629" },
-	MELON_SLICE =    { id = 207, name = "Melon Slice",    category = "food", hunger = 2, saturation = 1.2, texture = "rbxassetid://133207158082629" },
-	GOLDEN_APPLE =   { id = 208, name = "Golden Apple",   category = "food", hunger = 4, saturation = 9.6, texture = "rbxassetid://133207158082629" },
-	COOKIE =         { id = 209, name = "Cookie",         category = "food", hunger = 2, saturation = 0.4, texture = "rbxassetid://133207158082629" },
-	PUMPKIN_PIE =    { id = 210, name = "Pumpkin Pie",    category = "food", hunger = 8, saturation = 4.8, texture = "rbxassetid://133207158082629" },
-	MUSHROOM_STEW =  { id = 211, name = "Mushroom Stew",  category = "food", hunger = 6, saturation = 7.2, texture = "rbxassetid://133207158082629", stackable = false },
-	BEETROOT_SOUP =  { id = 212, name = "Beetroot Soup",  category = "food", hunger = 6, saturation = 7.2, texture = "rbxassetid://133207158082629", stackable = false },
+	-- Raw foods (500-series: no collision with block IDs)
+	APPLE =          { id = 501, name = "Apple",          category = "food", hunger = 4, saturation = 2.4, texture = "rbxassetid://119276065058564" },
+	BREAD =          { id = 502, name = "Bread",          category = "food", hunger = 5, saturation = 6.0, texture = "rbxassetid://134668764178448" },
+	CARROT =         { id = 503, name = "Carrot",         category = "food", hunger = 3, saturation = 3.6, texture = "rbxassetid://133207158082629" },
+	POTATO =         { id = 504, name = "Potato",         category = "food", hunger = 1, saturation = 0.6, texture = "rbxassetid://133207158082629" },
+	BAKED_POTATO =   { id = 505, name = "Baked Potato",   category = "food", hunger = 5, saturation = 6.0, texture = "rbxassetid://112458163268481" },
+	BEETROOT =       { id = 506, name = "Beetroot",       category = "food", hunger = 1, saturation = 1.2, texture = "rbxassetid://133207158082629" },
+	MELON_SLICE =    { id = 507, name = "Melon Slice",    category = "food", hunger = 2, saturation = 1.2, texture = "rbxassetid://133207158082629" },
+	GOLDEN_APPLE =   { id = 508, name = "Golden Apple",   category = "food", hunger = 4, saturation = 9.6, texture = "rbxassetid://133207158082629" },
+	COOKIE =         { id = 509, name = "Cookie",         category = "food", hunger = 2, saturation = 0.4, texture = "rbxassetid://133207158082629" },
+	PUMPKIN_PIE =    { id = 510, name = "Pumpkin Pie",    category = "food", hunger = 8, saturation = 4.8, texture = "rbxassetid://133207158082629" },
+	MUSHROOM_STEW =  { id = 511, name = "Mushroom Stew",  category = "food", hunger = 6, saturation = 7.2, texture = "rbxassetid://133207158082629", stackable = false },
+	BEETROOT_SOUP =  { id = 512, name = "Beetroot Soup",  category = "food", hunger = 6, saturation = 7.2, texture = "rbxassetid://133207158082629", stackable = false },
+	ENCHANTED_GOLDEN_APPLE = { id = 513, name = "Enchanted Golden Apple", category = "food", hunger = 4, saturation = 9.6, texture = "rbxassetid://135539741184385" },
+	GOLDEN_CARROT =  { id = 514, name = "Golden Carrot",   category = "food", hunger = 6, saturation = 14.4, texture = "rbxassetid://75127823784496" },
+	RABBIT_STEW =    { id = 515, name = "Rabbit Stew",     category = "food", hunger = 10, saturation = 12.0, texture = "rbxassetid://74588806705549", stackable = false },
+	DRIED_KELP =     { id = 516, name = "Dried Kelp",      category = "food", hunger = 1, saturation = 0.6, texture = "rbxassetid://95948620428069" },
 
 	-- Raw meats
-	BEEF =           { id = 220, name = "Beef",           category = "food", hunger = 3, saturation = 1.8, texture = "rbxassetid://133207158082629" },
-	CHICKEN =        { id = 221, name = "Chicken",        category = "food", hunger = 2, saturation = 1.2, texture = "rbxassetid://133207158082629" },
-	PORKCHOP =       { id = 222, name = "Porkchop",       category = "food", hunger = 3, saturation = 1.8, texture = "rbxassetid://133207158082629" },
-	MUTTON =         { id = 223, name = "Mutton",         category = "food", hunger = 2, saturation = 1.2, texture = "rbxassetid://133207158082629" },
+	BEEF =           { id = 520, name = "Beef",           category = "food", hunger = 3, saturation = 1.8, texture = "rbxassetid://133207158082629" },
+	CHICKEN =        { id = 521, name = "Chicken",        category = "food", hunger = 2, saturation = 1.2, texture = "rbxassetid://133207158082629" },
+	PORKCHOP =       { id = 522, name = "Porkchop",       category = "food", hunger = 3, saturation = 1.8, texture = "rbxassetid://133207158082629" },
+	MUTTON =         { id = 523, name = "Mutton",         category = "food", hunger = 2, saturation = 1.2, texture = "rbxassetid://133207158082629" },
+	RABBIT =         { id = 524, name = "Raw Rabbit",     category = "food", hunger = 3, saturation = 1.8, texture = "rbxassetid://119792692352396" },
+	COD =            { id = 525, name = "Raw Cod",         category = "food", hunger = 2, saturation = 0.4, texture = "rbxassetid://107632079015450" },
+	SALMON =         { id = 526, name = "Raw Salmon",      category = "food", hunger = 2, saturation = 0.4, texture = "rbxassetid://123844273363430" },
+	TROPICAL_FISH =  { id = 527, name = "Tropical Fish",   category = "food", hunger = 1, saturation = 0.2, texture = "rbxassetid://119955336595901" },
+	PUFFERFISH =     { id = 528, name = "Pufferfish",      category = "food", hunger = 1, saturation = 0.2, texture = "rbxassetid://92689876748346" },
 
 	-- Cooked meats
-	COOKED_BEEF =    { id = 230, name = "Cooked Beef",    category = "food", hunger = 8, saturation = 12.8, texture = "rbxassetid://133207158082629" },
-	COOKED_CHICKEN = { id = 231, name = "Cooked Chicken", category = "food", hunger = 6, saturation = 7.2, texture = "rbxassetid://133207158082629" },
-	COOKED_PORKCHOP ={ id = 232, name = "Cooked Porkchop",category = "food", hunger = 8, saturation = 12.8, texture = "rbxassetid://133207158082629" },
-	COOKED_MUTTON =  { id = 233, name = "Cooked Mutton",  category = "food", hunger = 6, saturation = 9.6, texture = "rbxassetid://133207158082629" },
+	COOKED_BEEF =    { id = 530, name = "Cooked Beef",    category = "food", hunger = 8, saturation = 12.8, texture = "rbxassetid://79908571442121" },
+	COOKED_CHICKEN = { id = 531, name = "Cooked Chicken", category = "food", hunger = 6, saturation = 7.2, texture = "rbxassetid://77712459701601" },
+	COOKED_PORKCHOP ={ id = 532, name = "Cooked Porkchop",category = "food", hunger = 8, saturation = 12.8, texture = "rbxassetid://115315254549034" },
+	COOKED_MUTTON =  { id = 533, name = "Cooked Mutton",  category = "food", hunger = 6, saturation = 9.6, texture = "rbxassetid://81818298886774" },
+	COOKED_RABBIT =  { id = 534, name = "Cooked Rabbit",  category = "food", hunger = 5, saturation = 6.0, texture = "rbxassetid://79254327247389" },
+	COOKED_COD =     { id = 535, name = "Cooked Cod",     category = "food", hunger = 5, saturation = 6.0, texture = "rbxassetid://87086493517889" },
+	COOKED_SALMON =  { id = 536, name = "Cooked Salmon",  category = "food", hunger = 6, saturation = 9.6, texture = "rbxassetid://91129262883588" },
+
+	-- Hazardous foods
+	ROTTEN_FLESH =   { id = 540, name = "Rotten Flesh",    category = "food", hunger = 4, saturation = 0.8, texture = "rbxassetid://109761141356633" },
+	SPIDER_EYE =     { id = 541, name = "Spider Eye",      category = "food", hunger = 2, saturation = 3.2, texture = "rbxassetid://91726041904711" },
+	POISONOUS_POTATO = { id = 542, name = "Poisonous Potato", category = "food", hunger = 2, saturation = 1.2, texture = "rbxassetid://82437405960125" },
+	CHORUS_FRUIT =   { id = 543, name = "Chorus Fruit",    category = "food", hunger = 4, saturation = 2.4, texture = "rbxassetid://76192554744450" },
 }
 
 -- ═══════════════════════════════════════════════════════════════════════════
@@ -240,25 +258,25 @@ ItemDefinitions.Food = {
 ItemDefinitions.Materials = {
 	-- Basic resources
 	COAL =            { id = 32,  name = "Coal",            category = "material", texture = "rbxassetid://139096196695198", color = Color3.fromRGB(40, 40, 40) },
-	CHARCOAL =        { id = 41,  name = "Charcoal",        category = "material", texture = "rbxassetid://139096196695198", color = Color3.fromRGB(50, 50, 50) },
+	CHARCOAL =        { id = 407, name = "Charcoal",        category = "material", texture = "rbxassetid://139096196695198", color = Color3.fromRGB(50, 50, 50) },
 	STICK =           { id = 34,  name = "Stick",           category = "material", texture = "rbxassetid://139096196695198" },
-	STRING =          { id = 35,  name = "String",          category = "material", texture = "rbxassetid://139096196695198" },
-	FEATHER =         { id = 36,  name = "Feather",         category = "material", texture = "rbxassetid://139096196695198" },
-	LEATHER =         { id = 37,  name = "Leather",         category = "material", texture = "rbxassetid://139096196695198" },
-	PAPER =           { id = 38,  name = "Paper",           category = "material", texture = "rbxassetid://139096196695198" },
-	BONE =            { id = 39,  name = "Bone",            category = "material", texture = "rbxassetid://139096196695198" },
-	BONE_DUST =       { id = 42,  name = "Bone Dust",       category = "material", texture = "rbxassetid://139096196695198" },
-	FLINT =           { id = 40,  name = "Flint",           category = "material", texture = "rbxassetid://139096196695198" },
-	BOWL =            { id = 43,  name = "Bowl",            category = "material", texture = "rbxassetid://139096196695198" },
-	EGG =             { id = 44,  name = "Egg",             category = "material", texture = "rbxassetid://139096196695198", stackable = true, maxStack = 16 },
-	SUGAR =           { id = 45,  name = "Sugar",           category = "material", texture = "rbxassetid://139096196695198" },
-	GLASS_BOTTLE =    { id = 46,  name = "Glass Bottle",    category = "material", texture = "rbxassetid://139096196695198" },
+	STRING =          { id = 401, name = "String",          category = "material", texture = "rbxassetid://139096196695198" },
+	FEATHER =         { id = 402, name = "Feather",         category = "material", texture = "rbxassetid://139096196695198" },
+	LEATHER =         { id = 403, name = "Leather",         category = "material", texture = "rbxassetid://139096196695198" },
+	PAPER =           { id = 404, name = "Paper",           category = "material", texture = "rbxassetid://139096196695198" },
+	BONE =            { id = 405, name = "Bone",            category = "material", texture = "rbxassetid://139096196695198" },
+	BONE_DUST =       { id = 408, name = "Bone Dust",       category = "material", texture = "rbxassetid://139096196695198" },
+	FLINT =           { id = 406, name = "Flint",           category = "material", texture = "rbxassetid://139096196695198" },
+	BOWL =            { id = 409, name = "Bowl",            category = "material", texture = "rbxassetid://139096196695198" },
+	EGG =             { id = 410, name = "Egg",             category = "material", texture = "rbxassetid://139096196695198", stackable = true, maxStack = 16 },
+	SUGAR =           { id = 411, name = "Sugar",           category = "material", texture = "rbxassetid://139096196695198" },
+	GLASS_BOTTLE =    { id = 412, name = "Glass Bottle",    category = "material", texture = "rbxassetid://139096196695198" },
 
 	-- Gems & Precious
-	EMERALD =         { id = 47,  name = "Emerald",         category = "material", texture = "rbxassetid://139096196695198", color = Color3.fromRGB(80, 200, 120) },
-	RUBY =            { id = 48,  name = "Ruby",            category = "material", texture = "rbxassetid://139096196695198", color = Color3.fromRGB(224, 17, 95) },
-	QUARTZ =          { id = 49,  name = "Quartz",          category = "material", texture = "rbxassetid://139096196695198", color = Color3.fromRGB(230, 230, 230) },
-	PEARL =           { id = 50,  name = "Pearl",           category = "material", texture = "rbxassetid://139096196695198", color = Color3.fromRGB(20, 90, 90) },
+	EMERALD =         { id = 413, name = "Emerald",         category = "material", texture = "rbxassetid://139096196695198", color = Color3.fromRGB(80, 200, 120) },
+	RUBY =            { id = 414, name = "Ruby",            category = "material", texture = "rbxassetid://139096196695198", color = Color3.fromRGB(224, 17, 95) },
+	QUARTZ =          { id = 415, name = "Quartz",          category = "material", texture = "rbxassetid://139096196695198", color = Color3.fromRGB(230, 230, 230) },
+	PEARL =           { id = 416, name = "Pearl",           category = "material", texture = "rbxassetid://139096196695198", color = Color3.fromRGB(20, 90, 90) },
 
 	-- Ingots
 	IRON_INGOT =      { id = 33,  name = "Iron Ingot",      category = "material", texture = "rbxassetid://116257653070196", color = Color3.fromRGB(122, 122, 122) },
@@ -273,10 +291,14 @@ ItemDefinitions.Materials = {
 	LAVA_BUCKET =     { id = 384, name = "Lava Bucket",     category = "material", texture = "rbxassetid://93357317651884", stackable = false },
 
 	-- Seeds
-	WHEAT_SEEDS =     { id = 250, name = "Wheat Seeds",     category = "material", texture = "rbxassetid://139096196695198" },
-	BEETROOT_SEEDS =  { id = 251, name = "Beetroot Seeds",  category = "material", texture = "rbxassetid://139096196695198" },
-	MELON_SEEDS =     { id = 252, name = "Melon Seeds",     category = "material", texture = "rbxassetid://139096196695198" },
-	PUMPKIN_SEEDS =   { id = 253, name = "Pumpkin Seeds",   category = "material", texture = "rbxassetid://139096196695198" },
+	WHEAT_SEEDS =     { id = 550, name = "Wheat Seeds",     category = "material", texture = "rbxassetid://139096196695198" },
+	BEETROOT_SEEDS =  { id = 551, name = "Beetroot Seeds",  category = "material", texture = "rbxassetid://139096196695198" },
+	MELON_SEEDS =     { id = 552, name = "Melon Seeds",     category = "material", texture = "rbxassetid://139096196695198" },
+	PUMPKIN_SEEDS =   { id = 553, name = "Pumpkin Seeds",   category = "material", texture = "rbxassetid://139096196695198" },
+
+	-- Gems & Misc
+	DIAMOND =         { id = 417, name = "Diamond",         category = "material", texture = "rbxassetid://139096196695198", color = Color3.fromRGB(80, 220, 220) },
+	WHEAT =           { id = 418, name = "Wheat",           category = "material", texture = "rbxassetid://121084143590632" },
 
 	-- Special
 	FALLEN_STAR =     { id = 260, name = "Fallen Star",     category = "material", texture = "rbxassetid://139096196695198", color = Color3.fromRGB(255, 255, 100) },
@@ -345,6 +367,18 @@ ItemDefinitions.AllCategories = {
 	ItemDefinitions.Ores,
 	ItemDefinitions.FullBlocks,
 }
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- FLAT ID LOOKUP (convenience for referencing item IDs by name)
+-- Auto-built from all categories. Usage: ItemDefinitions.Id.COAL, ItemDefinitions.Id.BREAD, etc.
+-- ═══════════════════════════════════════════════════════════════════════════
+
+ItemDefinitions.Id = {}
+for _, category in ipairs(ItemDefinitions.AllCategories) do
+	for key, item in pairs(category) do
+		ItemDefinitions.Id[key] = item.id
+	end
+end
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- HELPER FUNCTIONS

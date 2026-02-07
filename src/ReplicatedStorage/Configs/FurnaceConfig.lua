@@ -10,6 +10,8 @@
 
 local Constants = require(script.Parent.Parent.Shared.VoxelWorld.Core.Constants)
 local BlockType = Constants.BlockType
+local ItemDefinitions = require(script.Parent.ItemDefinitions)
+local ItemId = ItemDefinitions.Id
 
 local FurnaceConfig = {}
 
@@ -35,7 +37,7 @@ FurnaceConfig.TICK_RATE = 0.5
 
 FurnaceConfig.FuelTypes = {
 	-- Coal family (best efficiency)
-	[BlockType.COAL] = {
+	[ItemId.COAL] = {
 		burnTime = 80,      -- Smelts 8 items
 		name = "Coal",
 	},
@@ -113,7 +115,7 @@ FurnaceConfig.FuelTypes = {
 	},
 	
 	-- Sticks (low efficiency)
-	[BlockType.STICK] = {
+	[ItemId.STICK] = {
 		burnTime = 5,       -- Smelts 0.5 items
 		name = "Stick",
 	},
@@ -128,11 +130,11 @@ FurnaceConfig.FuelTypes = {
 FurnaceConfig.Recipes = {
 	-- Ore smelting (raw ore → ingot)
 	[BlockType.COPPER_ORE] = {
-		output = BlockType.COPPER_INGOT,
+		output = ItemId.COPPER_INGOT,
 		name = "Copper Ingot",
 	},
 	[BlockType.IRON_ORE] = {
-		output = BlockType.IRON_INGOT,
+		output = ItemId.IRON_INGOT,
 		name = "Iron Ingot",
 	},
 	
@@ -152,61 +154,61 @@ FurnaceConfig.Recipes = {
 	
 	-- Wood to charcoal (logs only)
 	[BlockType.WOOD] = {
-		output = BlockType.COAL,  -- Using coal as charcoal placeholder
+		output = ItemId.COAL,
 		name = "Charcoal",
 	},
 	[BlockType.SPRUCE_LOG] = {
-		output = BlockType.COAL,
+		output = ItemId.COAL,
 		name = "Charcoal",
 	},
 	[BlockType.BIRCH_LOG] = {
-		output = BlockType.COAL,
+		output = ItemId.COAL,
 		name = "Charcoal",
 	},
 	[BlockType.JUNGLE_LOG] = {
-		output = BlockType.COAL,
+		output = ItemId.COAL,
 		name = "Charcoal",
 	},
 	[BlockType.DARK_OAK_LOG] = {
-		output = BlockType.COAL,
+		output = ItemId.COAL,
 		name = "Charcoal",
 	},
 	[BlockType.ACACIA_LOG] = {
-		output = BlockType.COAL,
+		output = ItemId.COAL,
 		name = "Charcoal",
 	},
 	
-	-- Food cooking
-	[BlockType.BEEF] = {
-		output = BlockType.COOKED_BEEF,
+	-- Food cooking (input = ItemDefinitions food ID, output = ItemDefinitions cooked food ID)
+	[ItemId.BEEF] = {
+		output = ItemId.COOKED_BEEF,
 		name = "Steak",
 	},
-	[BlockType.PORKCHOP] = {
-		output = BlockType.COOKED_PORKCHOP,
+	[ItemId.PORKCHOP] = {
+		output = ItemId.COOKED_PORKCHOP,
 		name = "Cooked Porkchop",
 	},
-	[BlockType.CHICKEN] = {
-		output = BlockType.COOKED_CHICKEN,
+	[ItemId.CHICKEN] = {
+		output = ItemId.COOKED_CHICKEN,
 		name = "Cooked Chicken",
 	},
-	[BlockType.MUTTON] = {
-		output = BlockType.COOKED_MUTTON,
+	[ItemId.MUTTON] = {
+		output = ItemId.COOKED_MUTTON,
 		name = "Cooked Mutton",
 	},
-	[BlockType.RABBIT] = {
-		output = BlockType.COOKED_RABBIT,
+	[ItemId.RABBIT] = {
+		output = ItemId.COOKED_RABBIT,
 		name = "Cooked Rabbit",
 	},
-	[BlockType.COD] = {
-		output = BlockType.COOKED_COD,
+	[ItemId.COD] = {
+		output = ItemId.COOKED_COD,
 		name = "Cooked Cod",
 	},
-	[BlockType.SALMON] = {
-		output = BlockType.COOKED_SALMON,
+	[ItemId.SALMON] = {
+		output = ItemId.COOKED_SALMON,
 		name = "Cooked Salmon",
 	},
-	[BlockType.POTATO] = {
-		output = BlockType.BAKED_POTATO,
+	[ItemId.POTATO] = {
+		output = ItemId.BAKED_POTATO,
 		name = "Baked Potato",
 	},
 }

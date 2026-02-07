@@ -57,7 +57,7 @@ RecipeConfig.Recipes = {
 			{itemId = 12, count = 2}  -- 2x Oak Planks
 		},
 		outputs = {
-			{itemId = 28, count = 4}  -- 4x Sticks (BlockType.STICK = 28)
+			{itemId = 34, count = 4}  -- 4x Sticks
 		}
 	},
 
@@ -162,7 +162,7 @@ RecipeConfig.Recipes = {
 		requiresWorkbench = true,
 		inputs = {
 			{itemId = 105, count = 3},  -- 3x Copper Ingot
-			{itemId = 28, count = 2}    -- 2x Sticks
+			{itemId = 34, count = 2}    -- 2x Sticks
 		},
 		outputs = { {itemId = 1001, count = 1} }
 	},
@@ -174,7 +174,7 @@ RecipeConfig.Recipes = {
 		requiresWorkbench = true,
 		inputs = {
 			{itemId = 105, count = 3},
-			{itemId = 28, count = 2}
+			{itemId = 34, count = 2}
 		},
 		outputs = { {itemId = 1011, count = 1} }
 	},
@@ -186,7 +186,7 @@ RecipeConfig.Recipes = {
 		requiresWorkbench = true,
 		inputs = {
 			{itemId = 105, count = 1},
-			{itemId = 28, count = 2}
+			{itemId = 34, count = 2}
 		},
 		outputs = { {itemId = 1021, count = 1} }
 	},
@@ -198,7 +198,7 @@ RecipeConfig.Recipes = {
 		requiresWorkbench = true,
 		inputs = {
 			{itemId = 105, count = 2},
-			{itemId = 28, count = 1}
+			{itemId = 34, count = 1}
 		},
 		outputs = { {itemId = 1041, count = 1} }
 	},
@@ -214,7 +214,7 @@ RecipeConfig.Recipes = {
 		requiresWorkbench = true,
 		inputs = {
 			{itemId = 33, count = 3},  -- 3x Iron Ingot
-			{itemId = 28, count = 2}
+			{itemId = 34, count = 2}
 		},
 		outputs = { {itemId = 1002, count = 1} }
 	},
@@ -226,7 +226,7 @@ RecipeConfig.Recipes = {
 		requiresWorkbench = true,
 		inputs = {
 			{itemId = 33, count = 3},
-			{itemId = 28, count = 2}
+			{itemId = 34, count = 2}
 		},
 		outputs = { {itemId = 1012, count = 1} }
 	},
@@ -238,7 +238,7 @@ RecipeConfig.Recipes = {
 		requiresWorkbench = true,
 		inputs = {
 			{itemId = 33, count = 1},
-			{itemId = 28, count = 2}
+			{itemId = 34, count = 2}
 		},
 		outputs = { {itemId = 1022, count = 1} }
 	},
@@ -250,7 +250,7 @@ RecipeConfig.Recipes = {
 		requiresWorkbench = true,
 		inputs = {
 			{itemId = 33, count = 2},
-			{itemId = 28, count = 1}
+			{itemId = 34, count = 1}
 		},
 		outputs = { {itemId = 1042, count = 1} }
 	},
@@ -266,7 +266,7 @@ RecipeConfig.Recipes = {
 		requiresWorkbench = true,
 		inputs = {
 			{itemId = 108, count = 3},  -- 3x Steel Ingot
-			{itemId = 28, count = 2}
+			{itemId = 34, count = 2}
 		},
 		outputs = { {itemId = 1003, count = 1} }
 	},
@@ -278,7 +278,7 @@ RecipeConfig.Recipes = {
 		requiresWorkbench = true,
 		inputs = {
 			{itemId = 108, count = 3},
-			{itemId = 28, count = 2}
+			{itemId = 34, count = 2}
 		},
 		outputs = { {itemId = 1013, count = 1} }
 	},
@@ -290,7 +290,7 @@ RecipeConfig.Recipes = {
 		requiresWorkbench = true,
 		inputs = {
 			{itemId = 108, count = 1},
-			{itemId = 28, count = 2}
+			{itemId = 34, count = 2}
 		},
 		outputs = { {itemId = 1023, count = 1} }
 	},
@@ -302,7 +302,7 @@ RecipeConfig.Recipes = {
 		requiresWorkbench = true,
 		inputs = {
 			{itemId = 108, count = 2},
-			{itemId = 28, count = 1}
+			{itemId = 34, count = 1}
 		},
 		outputs = { {itemId = 1043, count = 1} }
 	},
@@ -318,7 +318,7 @@ RecipeConfig.Recipes = {
 		requiresWorkbench = true,
 		inputs = {
 			{itemId = 109, count = 3},  -- 3x Bluesteel Ingot
-			{itemId = 28, count = 2}
+			{itemId = 34, count = 2}
 		},
 		outputs = { {itemId = 1004, count = 1} }
 	},
@@ -330,7 +330,7 @@ RecipeConfig.Recipes = {
 		requiresWorkbench = true,
 		inputs = {
 			{itemId = 109, count = 3},
-			{itemId = 28, count = 2}
+			{itemId = 34, count = 2}
 		},
 		outputs = { {itemId = 1014, count = 1} }
 	},
@@ -342,7 +342,7 @@ RecipeConfig.Recipes = {
 		requiresWorkbench = true,
 		inputs = {
 			{itemId = 109, count = 1},
-			{itemId = 28, count = 2}
+			{itemId = 34, count = 2}
 		},
 		outputs = { {itemId = 1024, count = 1} }
 	},
@@ -354,7 +354,7 @@ RecipeConfig.Recipes = {
 		requiresWorkbench = true,
 		inputs = {
 			{itemId = 109, count = 2},
-			{itemId = 28, count = 1}
+			{itemId = 34, count = 1}
 		},
 		outputs = { {itemId = 1044, count = 1} }
 	},
@@ -564,7 +564,7 @@ RecipeConfig.Recipes = {
 		requiresWorkbench = true,
 		inputs = {
 			{itemId = 12, count = 2},  -- 2x Oak Planks
-			{itemId = 28, count = 4}   -- 4x Sticks
+			{itemId = 34, count = 4}   -- 4x Sticks
 		},
 		outputs = {
 			{itemId = 27, count = 3}  -- 3x Oak Fence (BlockType.OAK_FENCE)
@@ -662,7 +662,7 @@ RecipeConfig.Recipes = {
 		name = "Sticks (Spruce)",
 		category = RecipeConfig.Categories.MATERIALS,
 		inputs = { {itemId = 39, count = 2} },
-		outputs = { {itemId = 28, count = 4} }
+		outputs = { {itemId = 34, count = 4} }
 	},
 
 	sticks_jungle = {
@@ -670,7 +670,7 @@ RecipeConfig.Recipes = {
 		name = "Sticks (Jungle)",
 		category = RecipeConfig.Categories.MATERIALS,
 		inputs = { {itemId = 44, count = 2} },
-		outputs = { {itemId = 28, count = 4} }
+		outputs = { {itemId = 34, count = 4} }
 	},
 
 	sticks_dark_oak = {
@@ -678,7 +678,7 @@ RecipeConfig.Recipes = {
 		name = "Sticks (Dark Oak)",
 		category = RecipeConfig.Categories.MATERIALS,
 		inputs = { {itemId = 49, count = 2} },
-		outputs = { {itemId = 28, count = 4} }
+		outputs = { {itemId = 34, count = 4} }
 	},
 
 	sticks_birch = {
@@ -686,7 +686,7 @@ RecipeConfig.Recipes = {
 		name = "Sticks (Birch)",
 		category = RecipeConfig.Categories.MATERIALS,
 		inputs = { {itemId = 54, count = 2} },
-		outputs = { {itemId = 28, count = 4} }
+		outputs = { {itemId = 34, count = 4} }
 	},
 
 	sticks_acacia = {
@@ -694,7 +694,7 @@ RecipeConfig.Recipes = {
 		name = "Sticks (Acacia)",
 		category = RecipeConfig.Categories.MATERIALS,
 		inputs = { {itemId = 59, count = 2} },
-		outputs = { {itemId = 28, count = 4} }
+		outputs = { {itemId = 34, count = 4} }
 	},
 
 	-- Crafting Table from any planks (4 -> 1)
@@ -884,7 +884,7 @@ RecipeConfig.Recipes = {
 		requiresWorkbench = true,
 		inputs = {
 			{itemId = 39, count = 2},
-			{itemId = 28, count = 4}
+			{itemId = 34, count = 4}
 		},
 		outputs = { {itemId = 27, count = 3} }
 	},
@@ -896,7 +896,7 @@ RecipeConfig.Recipes = {
 		requiresWorkbench = true,
 		inputs = {
 			{itemId = 44, count = 2},
-			{itemId = 28, count = 4}
+			{itemId = 34, count = 4}
 		},
 		outputs = { {itemId = 27, count = 3} }
 	},
@@ -908,7 +908,7 @@ RecipeConfig.Recipes = {
 		requiresWorkbench = true,
 		inputs = {
 			{itemId = 49, count = 2},
-			{itemId = 28, count = 4}
+			{itemId = 34, count = 4}
 		},
 		outputs = { {itemId = 27, count = 3} }
 	},
@@ -920,7 +920,7 @@ RecipeConfig.Recipes = {
 		requiresWorkbench = true,
 		inputs = {
 			{itemId = 54, count = 2},
-			{itemId = 28, count = 4}
+			{itemId = 34, count = 4}
 		},
 		outputs = { {itemId = 27, count = 3} }
 	},
@@ -932,7 +932,7 @@ RecipeConfig.Recipes = {
 		requiresWorkbench = true,
 		inputs = {
 			{itemId = 59, count = 2},
-			{itemId = 28, count = 4}
+			{itemId = 34, count = 4}
 		},
 		outputs = { {itemId = 27, count = 3} }
 	}

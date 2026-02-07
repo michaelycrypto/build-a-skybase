@@ -2,7 +2,7 @@
 	BlockViewportCreator.lua
 	Creates 3D ViewportFrame models of blocks OR 2D ImageLabels for items
 	- Blocks: Rendered as 3D viewports (similar to Minecraft's 3D item rendering)
-	- Tools: Displayed as flat 2D images from ToolConfig
+	- Registered items (tools, armor, etc.): Displayed as flat 2D images via ItemRegistry
 	- Items (saplings, materials, etc.): Displayed as flat 2D images from textures
 ]]
 
@@ -11,8 +11,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local BlockRegistry = require(script.Parent.Parent.World.BlockRegistry)
 local TextureApplicator = require(script.Parent.TextureApplicator)
 local TextureManager = require(script.Parent.TextureManager)
-local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
-local ArmorConfig = require(ReplicatedStorage.Configs.ArmorConfig)
+local ItemRegistry = require(ReplicatedStorage.Configs.ItemRegistry)
+local ItemModelLoader = require(ReplicatedStorage.Shared.ItemModelLoader)
 local BlockEntityLoader = require(ReplicatedStorage.Shared.BlockEntityLoader)
 
 local BlockViewportCreator = {}
@@ -406,38 +406,64 @@ end
 	@return Frame|ImageLabel - The created viewport container or image label
 ]]
 function BlockViewportCreator.CreateBlockViewport(parent, blockId, size, position, anchorPoint, rotationY)
-	-- Check if this is a tool or item with an image asset
-	local toolInfo = ToolConfig.GetToolInfo(blockId)
-	if toolInfo and toolInfo.image then
-		-- Create an ImageLabel for tools
-		local imageLabel = Instance.new("ImageLabel")
-		imageLabel.Name = "ItemImage"
-		imageLabel.Size = size or UDim2.fromScale(1, 1)
-		imageLabel.Position = position or UDim2.fromScale(0.5, 0.5)
-		imageLabel.AnchorPoint = anchorPoint or Vector2.new(0.5, 0.5)  -- Center by default
-		imageLabel.BackgroundTransparency = 1
-		imageLabel.BorderSizePixel = 0
-		imageLabel.Image = toolInfo.image
-		imageLabel.ScaleType = Enum.ScaleType.Fit
-		imageLabel.Parent = parent
-		return imageLabel
+	-- Check if this is a registered item (not a block) - render as flat 2D image
+	local itemDef = ItemRegistry.GetItem(blockId)
+	if itemDef and not BlockRegistry.Blocks[blockId] then
+		-- Get texture from the 3D mesh in Assets.Tools (preferred), fallback to ItemDefinitions texture
+		local textureId = nil
+		local itemName = itemDef.name
+		if itemName then
+			local meshTemplate = ItemModelLoader.GetModelTemplate(itemName, blockId)
+			if meshTemplate and meshTemplate:IsA("MeshPart") then
+				local meshTexture = meshTemplate.TextureID
+				if meshTexture and tostring(meshTexture) ~= "" then
+					textureId = tostring(meshTexture)
+				end
+			end
+		end
+		-- Fallback to ItemDefinitions texture field
+		if not textureId then
+			textureId = itemDef.image
+		end
+
+		if textureId then
+			local imageLabel = Instance.new("ImageLabel")
+			imageLabel.Name = "ItemImage"
+			imageLabel.Size = size or UDim2.fromScale(1, 1)
+			imageLabel.Position = position or UDim2.fromScale(0.5, 0.5)
+			imageLabel.AnchorPoint = anchorPoint or Vector2.new(0.5, 0.5)
+			imageLabel.BackgroundTransparency = 1
+			imageLabel.BorderSizePixel = 0
+			imageLabel.Image = textureId
+			imageLabel.ScaleType = Enum.ScaleType.Fit
+			imageLabel.Parent = parent
+			return imageLabel
+		end
 	end
 
-	-- Check if this is armor
-	local armorInfo = ArmorConfig.GetArmorInfo(blockId)
-	if armorInfo and armorInfo.image then
-		-- Create an ImageLabel for armor
-		local imageLabel = Instance.new("ImageLabel")
-		imageLabel.Name = "ArmorImage"
-		imageLabel.Size = size or UDim2.fromScale(1, 1)
-		imageLabel.Position = position or UDim2.fromScale(0.5, 0.5)
-		imageLabel.AnchorPoint = anchorPoint or Vector2.new(0.5, 0.5)
-		imageLabel.BackgroundTransparency = 1
-		imageLabel.BorderSizePixel = 0
-		imageLabel.Image = armorInfo.image
-		imageLabel.ScaleType = Enum.ScaleType.Fit
-		imageLabel.Parent = parent
-		return imageLabel
+	-- Non-solid BlockRegistry items (saplings, buckets, flowers, etc.) with 3D meshes → render as 2D
+	local blockDef = BlockRegistry.Blocks[blockId]
+	if blockDef and not blockDef.solid then
+		local bItemName = blockDef.name
+		if bItemName then
+			local meshTemplate = ItemModelLoader.GetModelTemplate(bItemName, blockId)
+			if meshTemplate and meshTemplate:IsA("MeshPart") then
+				local meshTexture = meshTemplate.TextureID
+				if meshTexture and tostring(meshTexture) ~= "" then
+					local imageLabel = Instance.new("ImageLabel")
+					imageLabel.Name = "ItemImage"
+					imageLabel.Size = size or UDim2.fromScale(1, 1)
+					imageLabel.Position = position or UDim2.fromScale(0.5, 0.5)
+					imageLabel.AnchorPoint = anchorPoint or Vector2.new(0.5, 0.5)
+					imageLabel.BackgroundTransparency = 1
+					imageLabel.BorderSizePixel = 0
+					imageLabel.Image = tostring(meshTexture)
+					imageLabel.ScaleType = Enum.ScaleType.Fit
+					imageLabel.Parent = parent
+					return imageLabel
+				end
+			end
+		end
 	end
 
 	-- Item-specific image overrides (non-tools)
@@ -583,30 +609,26 @@ function BlockViewportCreator.UpdateBlockViewport(container, blockId)
 		return
 	end
 
-	-- Check if this is a tool or item with an image asset
-	local toolInfo = ToolConfig.GetToolInfo(blockId)
-	if toolInfo and toolInfo.image then
-		-- If container is an ImageLabel, just update the image
+	-- Check if this is a registered item (not a block) - update flat 2D image
+	local itemDef = ItemRegistry.GetItem(blockId)
+	if itemDef and not BlockRegistry.Blocks[blockId] then
 		if container:IsA("ImageLabel") then
-			container.Image = toolInfo.image
+			-- Get texture from 3D mesh (preferred), fallback to ItemDefinitions
+			local textureId = nil
+			local itemName = itemDef.name
+			if itemName then
+				local meshTemplate = ItemModelLoader.GetModelTemplate(itemName, blockId)
+				if meshTemplate and meshTemplate:IsA("MeshPart") then
+					local meshTexture = meshTemplate.TextureID
+					if meshTexture and tostring(meshTexture) ~= "" then
+						textureId = tostring(meshTexture)
+					end
+				end
+			end
+			container.Image = textureId or itemDef.image or ""
 			return
 		end
-		-- Otherwise, we need to replace the viewport with an ImageLabel
-		-- This shouldn't happen in normal use, but handle it gracefully
-		warn("UpdateBlockViewport: Cannot update non-ImageLabel container to tool item")
-		return
-	end
-
-	-- Check if this is armor
-	local armorInfo = ArmorConfig.GetArmorInfo(blockId)
-	if armorInfo and armorInfo.image then
-		-- If container is an ImageLabel, just update the image
-		if container:IsA("ImageLabel") then
-			container.Image = armorInfo.image
-			return
-		end
-		-- Otherwise, we need to replace the viewport with an ImageLabel
-		warn("UpdateBlockViewport: Cannot update non-ImageLabel container to armor item")
+		warn("UpdateBlockViewport: Cannot update non-ImageLabel container to item image")
 		return
 	end
 
@@ -677,6 +699,36 @@ function BlockViewportCreator.ClearCache()
 		model:Destroy()
 	end
 	viewportModelCache = {}
+end
+
+--[[
+	Convenience: Render any item/block into a UI slot container.
+	Clears existing children, creates the appropriate visual (spawn egg icon, 2D image, or 3D viewport).
+	This is the SINGLE SOURCE for all inventory/hotbar/chest/furnace slot rendering.
+
+	@param iconContainer: Frame - The container to render into
+	@param itemId: number - The item/block ID
+	@param SpawnEggConfig: table (optional) - SpawnEggConfig module for spawn egg rendering
+	@param SpawnEggIcon: table (optional) - SpawnEggIcon module for creating spawn egg icons
+]]
+function BlockViewportCreator.RenderItemSlot(iconContainer, itemId, SpawnEggConfig, SpawnEggIcon)
+	-- Clear existing visuals
+	for _, child in ipairs(iconContainer:GetChildren()) do
+		if not child:IsA("UILayout") and not child:IsA("UIPadding") and not child:IsA("UICorner") then
+			child:Destroy()
+		end
+	end
+
+	-- Spawn eggs get special two-layer rendering
+	if SpawnEggConfig and SpawnEggIcon and SpawnEggConfig.IsSpawnEgg(itemId) then
+		local icon = SpawnEggIcon.Create(itemId, UDim2.new(1, -6, 1, -6))
+		icon.Position = UDim2.fromScale(0.5, 0.5)
+		icon.AnchorPoint = Vector2.new(0.5, 0.5)
+		icon.Parent = iconContainer
+	else
+		-- Everything else: items as 2D images (texture from mesh), blocks as 3D viewports
+		BlockViewportCreator.CreateBlockViewport(iconContainer, itemId, UDim2.fromScale(1, 1))
+	end
 end
 
 return BlockViewportCreator

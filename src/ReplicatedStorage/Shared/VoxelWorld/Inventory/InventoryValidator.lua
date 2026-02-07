@@ -6,6 +6,7 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Constants = require(ReplicatedStorage.Shared.VoxelWorld.Core.Constants)
+local ItemDefinitions = require(ReplicatedStorage.Configs.ItemDefinitions)
 local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
 local ArmorConfig = require(ReplicatedStorage.Configs.ArmorConfig)
 local SpawnEggConfig = require(ReplicatedStorage.Configs.SpawnEggConfig)
@@ -48,14 +49,11 @@ local VALID_ITEM_IDS = {
 	[Constants.BlockType.STONE_BRICK_SLAB] = true,
 	[Constants.BlockType.BRICK_SLAB] = true,
 	[Constants.BlockType.OAK_FENCE] = true,
-	[Constants.BlockType.STICK] = true,
 	[Constants.BlockType.COAL_ORE] = true,
 	[Constants.BlockType.IRON_ORE] = true,
-	[Constants.BlockType.COAL] = true,
-	[Constants.BlockType.IRON_INGOT] = true,
 	[Constants.BlockType.FURNACE] = true,
 	[Constants.BlockType.GLASS] = true,
-	[Constants.BlockType.APPLE] = true,
+	-- NOTE: Food, materials, tools, armor, spawn eggs are auto-validated via ItemDefinitions/ToolConfig/ArmorConfig/SpawnEggConfig
 	-- New wood families
 	[Constants.BlockType.SPRUCE_LOG] = true,
 	[Constants.BlockType.SPRUCE_PLANKS] = true,
@@ -89,15 +87,9 @@ local VALID_ITEM_IDS = {
 	[Constants.BlockType.DARK_OAK_LEAVES] = true,
 	[Constants.BlockType.BIRCH_LEAVES] = true,
 	[Constants.BlockType.ACACIA_LEAVES] = true,
-		-- Farming items
-		[Constants.BlockType.FARMLAND] = true,
-		[Constants.BlockType.FARMLAND_WET] = true,
-		[Constants.BlockType.WHEAT_SEEDS] = true,
-		[Constants.BlockType.WHEAT] = true,
-		[Constants.BlockType.POTATO] = true,
-		[Constants.BlockType.CARROT] = true,
-		[Constants.BlockType.BEETROOT_SEEDS] = true,
-		[Constants.BlockType.BEETROOT] = true,
+	-- Farming blocks
+	[Constants.BlockType.FARMLAND] = true,
+	[Constants.BlockType.FARMLAND_WET] = true,
 	-- Crop stages (non-obtainable but need validation for world state)
 	[Constants.BlockType.WHEAT_CROP_0] = true,
 	[Constants.BlockType.WHEAT_CROP_1] = true,
@@ -127,53 +119,12 @@ local VALID_ITEM_IDS = {
 	-- Ores (4-tier progression: Copper → Iron → Steel → Bluesteel)
 	[Constants.BlockType.COPPER_ORE] = true,
 	[Constants.BlockType.BLUESTEEL_ORE] = true,
-	-- Ingots/materials
-	[Constants.BlockType.COPPER_INGOT] = true,
-	[Constants.BlockType.STEEL_INGOT] = true,
-	[Constants.BlockType.BLUESTEEL_INGOT] = true,
-	[Constants.BlockType.BLUESTEEL_DUST] = true,
 	-- Full blocks (9x ingots)
 	[Constants.BlockType.COPPER_BLOCK] = true,
 	[Constants.BlockType.COAL_BLOCK] = true,
 	[Constants.BlockType.IRON_BLOCK] = true,
 	[Constants.BlockType.STEEL_BLOCK] = true,
 	[Constants.BlockType.BLUESTEEL_BLOCK] = true,
-	-- Food Items (348-379)
-	[Constants.BlockType.BREAD] = true,
-	[Constants.BlockType.BAKED_POTATO] = true,
-	[Constants.BlockType.COOKED_BEEF] = true,
-	[Constants.BlockType.COOKED_PORKCHOP] = true,
-	[Constants.BlockType.COOKED_CHICKEN] = true,
-	[Constants.BlockType.COOKED_MUTTON] = true,
-	[Constants.BlockType.COOKED_RABBIT] = true,
-	[Constants.BlockType.COOKED_COD] = true,
-	[Constants.BlockType.COOKED_SALMON] = true,
-	[Constants.BlockType.BEEF] = true,
-	[Constants.BlockType.PORKCHOP] = true,
-	[Constants.BlockType.CHICKEN] = true,
-	[Constants.BlockType.MUTTON] = true,
-	[Constants.BlockType.RABBIT] = true,
-	[Constants.BlockType.COD] = true,
-	[Constants.BlockType.SALMON] = true,
-	[Constants.BlockType.TROPICAL_FISH] = true,
-	[Constants.BlockType.PUFFERFISH] = true,
-	[Constants.BlockType.GOLDEN_APPLE] = true,
-	[Constants.BlockType.ENCHANTED_GOLDEN_APPLE] = true,
-	[Constants.BlockType.GOLDEN_CARROT] = true,
-	[Constants.BlockType.BEETROOT_SOUP] = true,
-	[Constants.BlockType.MUSHROOM_STEW] = true,
-	[Constants.BlockType.RABBIT_STEW] = true,
-	[Constants.BlockType.COOKIE] = true,
-	[Constants.BlockType.MELON_SLICE] = true,
-	[Constants.BlockType.DRIED_KELP] = true,
-	[Constants.BlockType.PUMPKIN_PIE] = true,
-	[Constants.BlockType.ROTTEN_FLESH] = true,
-	[Constants.BlockType.SPIDER_EYE] = true,
-	[Constants.BlockType.POISONOUS_POTATO] = true,
-	[Constants.BlockType.CHORUS_FRUIT] = true,
-	-- Bucket items
-	[Constants.BlockType.BUCKET] = true,
-	[Constants.BlockType.WATER_BUCKET] = true,
 	-- Plants & Vegetation (cross-shaped)
 	[Constants.BlockType.MELON] = true,
 	[Constants.BlockType.PUMPKIN] = true,
@@ -205,7 +156,8 @@ function InventoryValidator:ValidateItemStack(stackData)
     local itemId = tonumber(stackData.itemId or stackData.id) or 0
 	local isTool = ToolConfig.IsTool(itemId)
 	local isArmor = ArmorConfig.IsArmor(itemId)
-	if not VALID_ITEM_IDS[itemId] and not isTool and not isArmor and not SpawnEggConfig.IsSpawnEgg(itemId) then
+	local isDefinedItem = ItemDefinitions.GetById(itemId) ~= nil
+	if not VALID_ITEM_IDS[itemId] and not isTool and not isArmor and not SpawnEggConfig.IsSpawnEgg(itemId) and not isDefinedItem then
 		return false, string.format("Invalid item ID: %d", itemId)
 	end
 
@@ -484,7 +436,8 @@ function InventoryValidator:SanitizeInventoryData(slots, expectedSize)
             local isTool = ToolConfig.IsTool(itemId)
 			local isArmor = ArmorConfig.IsArmor(itemId)
 			local isEgg = SpawnEggConfig.IsSpawnEgg(itemId)
-			if not VALID_ITEM_IDS[itemId] and not isTool and not isArmor and not isEgg then
+			local isDefinedItem = ItemDefinitions.GetById(itemId) ~= nil
+			if not VALID_ITEM_IDS[itemId] and not isTool and not isArmor and not isEgg and not isDefinedItem then
 				itemId = 0
 				count = 0
 				wasModified = true

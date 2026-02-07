@@ -23,6 +23,8 @@ MobRegistry.SpawnCaps = {
 local ConstantsModule = game.ReplicatedStorage.Shared.VoxelWorld.Core.Constants
 local Constants = require(ConstantsModule)
 local BLOCK_SIZE = Constants.BLOCK_SIZE
+local ItemDefinitions = require(game.ReplicatedStorage.Configs.ItemDefinitions)
+local ItemId = ItemDefinitions.Id
 local MinecraftBoneTranslator = require(game.ReplicatedStorage.Shared.Mobs.MinecraftBoneTranslator)
 
 local function studs(pixels)
@@ -65,8 +67,8 @@ MobRegistry.Definitions = {
 			chance = 0.35
 		},
 		drops = {
-			{ itemId = "WOOL_WHITE", min = 1, max = 1, chance = 1.0 },
-			{ itemId = "RAW_MUTTON", min = 1, max = 2, chance = 0.75 }
+			{ itemId = Constants.BlockType.WHITE_WOOL, min = 1, max = 1, chance = 1.0 },
+			{ itemId = ItemId.MUTTON, min = 1, max = 2, chance = 0.75 }
 		},
 		variants = {
 			{ id = "white", weight = 10, woolColor = Color3.fromRGB(241, 241, 241) },
@@ -101,8 +103,8 @@ MobRegistry.Definitions = {
 			chance = 0.4
 		},
 		drops = {
-			{ itemId = "ROTTEN_FLESH", min = 0, max = 2, chance = 1.0 },
-			{ itemId = "IRON_INGOT", min = 1, max = 1, chance = 0.05 }
+			{ itemId = ItemId.ROTTEN_FLESH, min = 0, max = 2, chance = 1.0 },
+			{ itemId = ItemId.IRON_INGOT, min = 1, max = 1, chance = 0.05 }
 		},
 		variants = {
 			{ id = "default", weight = 1, skinColor = Color3.fromRGB(111, 170, 79) }
@@ -171,8 +173,8 @@ MobRegistry.Definitions = {
 			chance = 0.3
 		},
 		drops = {
-			{ itemId = "RAW_BEEF", min = 1, max = 3, chance = 1.0 },
-			{ itemId = "LEATHER", min = 0, max = 2, chance = 1.0 }
+			{ itemId = ItemId.BEEF, min = 1, max = 3, chance = 1.0 },
+			{ itemId = ItemId.LEATHER, min = 0, max = 2, chance = 1.0 }
 		},
 		variants = {
 			-- Classic black and white spotted cow
@@ -218,8 +220,8 @@ MobRegistry.Definitions = {
 			chance = 0.35
 		},
 		drops = {
-			{ itemId = "RAW_CHICKEN", min = 1, max = 1, chance = 1.0 },
-			{ itemId = "FEATHER", min = 0, max = 2, chance = 1.0 }
+			{ itemId = ItemId.CHICKEN, min = 1, max = 1, chance = 1.0 },
+			{ itemId = ItemId.FEATHER, min = 0, max = 2, chance = 1.0 }
 		},
 		variants = {
 			-- White chicken (most common)

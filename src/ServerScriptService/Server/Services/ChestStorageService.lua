@@ -132,16 +132,16 @@ function ChestStorageService:InitializeStarterChest(x, y, z)
 	-- Player opens this FIRST - contains everything needed for early game
 	local blockTypes = {
 		-- Tool crafting materials (craft pickaxe before mining)
-		{id = Constants.BlockType.COPPER_INGOT, count = 3},    -- For copper pickaxe
-		{id = Constants.BlockType.STICK, count = 8},           -- For tools (pickaxe + shovel later)
+		{id = 105, count = 3},    -- Copper Ingot (for copper pickaxe)
+		{id = 34, count = 8},     -- Stick (for tools)
 		
 		-- Farming essentials
-		{id = Constants.BlockType.WHEAT_SEEDS, count = 16},    -- Wheat seeds for first farm
+		{id = 550, count = 16},   -- Wheat Seeds (for first farm)
 		{id = Constants.BlockType.DIRT, count = 32},           -- Dirt blocks for farmland
 		{id = Constants.BlockType.OAK_SAPLING, count = 4},     -- Saplings for sustainable wood
 		
 		-- Smelting supplies
-		{id = Constants.BlockType.COAL, count = 12},           -- Coal for smelting copper ore
+		{id = 32, count = 12},    -- Coal (for smelting copper ore)
 	}
 
 	-- Fill chest slots
@@ -189,8 +189,8 @@ function ChestStorageService:InitializeStoneIslandChest(x, y, z)
 	local blockTypes = {
 		{id = Constants.BlockType.COPPER_ORE, count = 8},    -- Copper ore to smelt (need 6 for tools)
 		{id = Constants.BlockType.IRON_ORE, count = 4},      -- Hint at progression
-		{id = Constants.BlockType.COAL, count = 8},          -- Fuel for smelting
-		{id = Constants.BlockType.WATER_BUCKET, count = 1},  -- Water bucket for irrigating farmland
+		{id = 32, count = 8},                                 -- Coal (fuel for smelting)
+		{id = 383, count = 1},                                -- Water Bucket (for irrigating farmland)
 	}
 
 	-- Fill chest slots

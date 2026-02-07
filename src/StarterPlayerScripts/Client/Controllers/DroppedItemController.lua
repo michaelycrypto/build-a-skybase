@@ -770,11 +770,10 @@ function DroppedItemController:CreateModel(itemId, count)
 	end
 
 	-- Try to use 3D model from Tools folder (unified lookup via ItemRegistry)
-	-- SKIP for cross-shape blocks (wheat, saplings, flowers, etc.) - they render as flat sprites below
 	-- SKIP for blockOnly blocks (Furnace, etc.) - they render as textured cubes below
 	local isBlockOnly = blockInfo and blockInfo.blockOnly == true
 	local blockItemName = ItemRegistry.GetItemName(itemId)
-	if blockItemName and blockItemName ~= "Unknown" and not isCrossShape and not isBlockOnly then
+	if blockItemName and blockItemName ~= "Unknown" and not isBlockOnly then
 		local modelTemplate = ItemModelLoader.GetModelTemplate(blockItemName, itemId)
 		if modelTemplate then
 			-- Use 3D model for block item

@@ -421,32 +421,7 @@ function CraftingPanel:CreateIngredientIcon(input, parent, xOffset, enabled)
 	iconBorder.Parent = iconFrame
 
 	-- Create viewport or image for item
-	local isTool = ToolConfig.IsTool(input.itemId)
-	if isTool then
-		local toolInfo = ToolConfig.GetToolInfo(input.itemId)
-		if toolInfo then
-			local image = Instance.new("ImageLabel")
-			image.Name = "ToolImage"
-			image.Size = UDim2.new(1, -4, 1, -4)
-			image.Position = UDim2.fromScale(0.5, 0.5)
-			image.AnchorPoint = Vector2.new(0.5, 0.5)
-			image.BackgroundTransparency = 1
-			image.Image = toolInfo.image
-			image.ScaleType = Enum.ScaleType.Fit
-			image.Parent = iconFrame
-
-			if not enabled then
-				image.ImageColor3 = Color3.fromRGB(100, 100, 100)
-			end
-		end
-	else
-		-- Block viewport
-		BlockViewportCreator.CreateBlockViewport(
-			iconFrame,
-			input.itemId,
-			UDim2.fromScale(1, 1)
-		)
-	end
+	BlockViewportCreator.CreateBlockViewport(iconFrame, input.itemId, UDim2.fromScale(1, 1))
 
 	-- Count label
 	local countLabel = Instance.new("TextLabel")
@@ -2090,16 +2065,8 @@ function CraftingPanel:CreateIngredientRow(input, _canCraft, layoutOrder)
 	end
 
 	-- Item name
-	local isTool = ToolConfig.IsTool(input.itemId)
-	local itemName = ""
-	if isTool then
-		local toolInfo = ToolConfig.GetToolInfo(input.itemId)
-		itemName = toolInfo and toolInfo.name or "Tool"
-	else
-		local BlockRegistry = require(ReplicatedStorage.Shared.VoxelWorld.World.BlockRegistry)
-		local blockDef = BlockRegistry.Blocks[input.itemId]
-		itemName = blockDef and blockDef.name or "Item"
-	end
+	local ItemRegistry = require(ReplicatedStorage.Configs.ItemRegistry)
+	local itemName = ItemRegistry.GetItemName(input.itemId)
 
 	local nameLabel = Instance.new("TextLabel")
 	nameLabel.Name = "ItemName"

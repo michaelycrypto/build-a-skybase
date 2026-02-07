@@ -40,12 +40,11 @@ function BlockPlacementRules:CanPlace(worldManager, x: number, y: number, z: num
 
 	-- Block must be eligible for placement
 	-- Exception: allow farm items (seeds, carrots, potatoes, beetroot seeds, compost) for redirect planting/soil tilling
-	local BLOCK = Constants.BlockType
 	local isFarmItem = (
-		blockId == BLOCK.WHEAT_SEEDS or
-		blockId == BLOCK.POTATO or
-		blockId == BLOCK.CARROT or
-		blockId == BLOCK.BEETROOT_SEEDS
+		blockId == 550 or  -- Wheat Seeds
+		blockId == 504 or  -- Potato
+		blockId == 503 or  -- Carrot
+		blockId == 551     -- Beetroot Seeds
 	)
 	if not (BlockRegistry.IsPlaceable and BlockRegistry:IsPlaceable(blockId)) and not isFarmItem then
 		return false, "not_placeable"

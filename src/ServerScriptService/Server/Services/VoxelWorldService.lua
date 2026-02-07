@@ -13,6 +13,8 @@ local VoxelWorld = require(ReplicatedStorage.Shared.VoxelWorld)
 local Logger = require(ReplicatedStorage.Shared.Logger)
 local EventManager = require(ReplicatedStorage.Shared.EventManager)
 local Constants = require(ReplicatedStorage.Shared.VoxelWorld.Core.Constants)
+local ItemDefinitions = require(ReplicatedStorage.Configs.ItemDefinitions)
+local ItemId = ItemDefinitions.Id
 local Config = require(ReplicatedStorage.Shared.VoxelWorld.Core.Config)
 local WorldTypes = require(ReplicatedStorage.Shared.VoxelWorld.Core.WorldTypes)
 local ChunkCompressor = require(ReplicatedStorage.Shared.VoxelWorld.Memory.ChunkCompressor)
@@ -1728,7 +1730,7 @@ function VoxelWorldService:HandlePlayerPunch(player, punchData)
 				end
 				-- Only oak leaves drop apples (no generic fallback)
 				if dropService and (blockId == Constants.BlockType.OAK_LEAVES) and (math.random() < appleChance) then
-					dropService:SpawnItem(Constants.BlockType.APPLE, 1, Vector3.new(x, y, z), Vector3.new(0,0,0), true)
+					dropService:SpawnItem(ItemId.APPLE, 1, Vector3.new(x, y, z), Vector3.new(0,0,0), true)
 				end
 			-- Otherwise, default drop path (only if harvestable)
 			elseif canHarvest then
@@ -1736,6 +1738,13 @@ function VoxelWorldService:HandlePlayerPunch(player, punchData)
 			local dropItemId = blockId
 			local dropCount = 1
 			local BLOCK = Constants.BlockType
+			-- Item IDs for crop drops (from ItemDefinitions)
+			local ITEM_WHEAT = ItemId.WHEAT
+			local ITEM_WHEAT_SEEDS = ItemId.WHEAT_SEEDS
+			local ITEM_POTATO = ItemId.POTATO
+			local ITEM_CARROT = ItemId.CARROT
+			local ITEM_BEETROOT = ItemId.BEETROOT
+			local ITEM_BEETROOT_SEEDS = ItemId.BEETROOT_SEEDS
 			local handled = false
 			local function isWheatStage(id)
 				return id == BLOCK.WHEAT_CROP_0 or id == BLOCK.WHEAT_CROP_1 or id == BLOCK.WHEAT_CROP_2 or id == BLOCK.WHEAT_CROP_3
@@ -1755,37 +1764,37 @@ function VoxelWorldService:HandlePlayerPunch(player, punchData)
 				if blockId == BLOCK.WHEAT_CROP_7 then
 					-- Mature: 1 wheat + 1 seeds
 					if dropService then
-						dropService:SpawnItem(BLOCK.WHEAT, 1, Vector3.new(x, y, z), Vector3.new(0,0,0), true)
-						dropService:SpawnItem(BLOCK.WHEAT_SEEDS, 1, Vector3.new(x, y, z), Vector3.new(0,0,0), true)
+						dropService:SpawnItem(ITEM_WHEAT, 1, Vector3.new(x, y, z), Vector3.new(0,0,0), true)
+						dropService:SpawnItem(ITEM_WHEAT_SEEDS, 1, Vector3.new(x, y, z), Vector3.new(0,0,0), true)
 					end
 				else
 					-- Immature: seeds only
 					if dropService then
-						dropService:SpawnItem(BLOCK.WHEAT_SEEDS, 1, Vector3.new(x, y, z), Vector3.new(0,0,0), true)
+						dropService:SpawnItem(ITEM_WHEAT_SEEDS, 1, Vector3.new(x, y, z), Vector3.new(0,0,0), true)
 					end
 				end
 				handled = true
 			elseif isPotatoStage(blockId) then
 				local count = (blockId == BLOCK.POTATO_CROP_3) and math.random(1, 3) or 1
 				if dropService then
-					dropService:SpawnItem(BLOCK.POTATO, count, Vector3.new(x, y, z), Vector3.new(0,0,0), true)
+					dropService:SpawnItem(ITEM_POTATO, count, Vector3.new(x, y, z), Vector3.new(0,0,0), true)
 				end
 				handled = true
 			elseif isCarrotStage(blockId) then
 				local count = (blockId == BLOCK.CARROT_CROP_3) and math.random(1, 3) or 1
 				if dropService then
-					dropService:SpawnItem(BLOCK.CARROT, count, Vector3.new(x, y, z), Vector3.new(0,0,0), true)
+					dropService:SpawnItem(ITEM_CARROT, count, Vector3.new(x, y, z), Vector3.new(0,0,0), true)
 				end
 				handled = true
 			elseif isBeetStage(blockId) then
 				if blockId == BLOCK.BEETROOT_CROP_3 then
 					if dropService then
-						dropService:SpawnItem(BLOCK.BEETROOT, 1, Vector3.new(x, y, z), Vector3.new(0,0,0), true)
-						dropService:SpawnItem(BLOCK.BEETROOT_SEEDS, 1, Vector3.new(x, y, z), Vector3.new(0,0,0), true)
+						dropService:SpawnItem(ITEM_BEETROOT, 1, Vector3.new(x, y, z), Vector3.new(0,0,0), true)
+						dropService:SpawnItem(ITEM_BEETROOT_SEEDS, 1, Vector3.new(x, y, z), Vector3.new(0,0,0), true)
 					end
 				else
 					if dropService then
-						dropService:SpawnItem(BLOCK.BEETROOT_SEEDS, 1, Vector3.new(x, y, z), Vector3.new(0,0,0), true)
+						dropService:SpawnItem(ITEM_BEETROOT_SEEDS, 1, Vector3.new(x, y, z), Vector3.new(0,0,0), true)
 					end
 				end
 				handled = true
@@ -1980,16 +1989,16 @@ function VoxelWorldService:RequestBlockPlace(player, placeData)
 
 	-- 2) Planting: redirect seed/produce items to stage-0 crop if above farmland
 	local function seedToCrop(item)
-		if item == BLOCK.WHEAT_SEEDS then
+		if item == ItemId.WHEAT_SEEDS then
 			return BLOCK.WHEAT_CROP_0
 		end
-		if item == BLOCK.POTATO then
+		if item == ItemId.POTATO then
 			return BLOCK.POTATO_CROP_0
 		end
-		if item == BLOCK.CARROT then
+		if item == ItemId.CARROT then
 			return BLOCK.CARROT_CROP_0
 		end
-		if item == BLOCK.BEETROOT_SEEDS then
+		if item == ItemId.BEETROOT_SEEDS then
 			return BLOCK.BEETROOT_CROP_0
 		end
 		return nil
@@ -3479,23 +3488,23 @@ function VoxelWorldService:HandleBucketPickup(player, data)
 	local hotbarItem = invService:GetHotbarSlot(player, hotbarSlot)
 	-- ItemStack uses :GetItemId() method, not .id property
 	local heldItemId = hotbarItem and hotbarItem:GetItemId() or 0
-	if heldItemId ~= Constants.BlockType.BUCKET then
+	if heldItemId ~= ItemId.BUCKET then
 		self:RejectBlockChange(player, { x = x, y = y, z = z }, "not_holding_bucket")
 		return
 	end
 
 	-- Minecraft-style stacking: Consume 1 empty bucket, add 1 water bucket to inventory
 	-- ConsumeFromHotbar will decrement the stack by 1 (or clear if count was 1)
-	if not invService:ConsumeFromHotbar(player, hotbarSlot, Constants.BlockType.BUCKET) then
+	if not invService:ConsumeFromHotbar(player, hotbarSlot, ItemId.BUCKET) then
 		self:RejectBlockChange(player, { x = x, y = y, z = z }, "consume_failed")
 		return
 	end
 
 	-- Add water bucket to inventory (will stack in existing slot or find empty slot)
 	-- Water buckets don't stack (max 1), so each goes to its own slot
-	if not invService:AddItem(player, Constants.BlockType.WATER_BUCKET, 1) then
+	if not invService:AddItem(player, ItemId.WATER_BUCKET, 1) then
 		-- Failed to add water bucket - give back the empty bucket
-		invService:AddItem(player, Constants.BlockType.BUCKET, 1)
+		invService:AddItem(player, ItemId.BUCKET, 1)
 		self:RejectBlockChange(player, { x = x, y = y, z = z }, "inventory_full")
 		invService:SyncInventoryToClient(player)
 		return
@@ -3586,7 +3595,7 @@ function VoxelWorldService:HandleBucketPlace(player, data)
 	local hotbarItem = invService:GetHotbarSlot(player, hotbarSlot)
 	-- ItemStack uses :GetItemId() method, not .id property
 	local heldItemId = hotbarItem and hotbarItem:GetItemId() or 0
-	if heldItemId ~= Constants.BlockType.WATER_BUCKET then
+	if heldItemId ~= ItemId.WATER_BUCKET then
 		self:RejectBlockChange(player, { x = x, y = y, z = z }, "not_holding_water_bucket")
 		return
 	end
@@ -3618,15 +3627,15 @@ function VoxelWorldService:HandleBucketPlace(player, data)
 	-- Minecraft-style stacking: Consume 1 water bucket, add 1 empty bucket to inventory
 	-- ConsumeFromHotbar will decrement the stack by 1 (or clear if count was 1)
 	-- Note: Water buckets don't stack (max 1), so this always clears the slot
-	if not invService:ConsumeFromHotbar(player, hotbarSlot, Constants.BlockType.WATER_BUCKET) then
+	if not invService:ConsumeFromHotbar(player, hotbarSlot, ItemId.WATER_BUCKET) then
 		self:RejectBlockChange(player, { x = x, y = y, z = z }, "consume_failed")
 		return
 	end
 
 	-- Add empty bucket to inventory (will stack with existing empty buckets)
-	if not invService:AddItem(player, Constants.BlockType.BUCKET, 1) then
+	if not invService:AddItem(player, ItemId.BUCKET, 1) then
 		-- Failed to add empty bucket - give back the water bucket
-		invService:AddItem(player, Constants.BlockType.WATER_BUCKET, 1)
+		invService:AddItem(player, ItemId.WATER_BUCKET, 1)
 		self:RejectBlockChange(player, { x = x, y = y, z = z }, "inventory_full")
 		invService:SyncInventoryToClient(player)
 		return

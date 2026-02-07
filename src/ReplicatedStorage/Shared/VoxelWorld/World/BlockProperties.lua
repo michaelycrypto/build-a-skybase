@@ -464,13 +464,13 @@ BlockProperties.Properties = {
 		resistance = 0.6
 	},
 
-	-- Inventory items (instant break if ever placed)
-	[Constants.BlockType.WHEAT_SEEDS] = { hardness = 0, toolType = nil, minToolTier = nil, resistance = 0 },
-	[Constants.BlockType.WHEAT] = { hardness = 0, toolType = nil, minToolTier = nil, resistance = 0 },
-	[Constants.BlockType.POTATO] = { hardness = 0, toolType = nil, minToolTier = nil, resistance = 0 },
-	[Constants.BlockType.CARROT] = { hardness = 0, toolType = nil, minToolTier = nil, resistance = 0 },
-	[Constants.BlockType.BEETROOT_SEEDS] = { hardness = 0, toolType = nil, minToolTier = nil, resistance = 0 },
-	[Constants.BlockType.BEETROOT] = { hardness = 0, toolType = nil, minToolTier = nil, resistance = 0 },
+	-- Item IDs (from ItemDefinitions, not blocks - instant break if ever placed)
+	[550] = { hardness = 0, toolType = nil, minToolTier = nil, resistance = 0 }, -- Wheat Seeds
+	[418] = { hardness = 0, toolType = nil, minToolTier = nil, resistance = 0 }, -- Wheat
+	[504] = { hardness = 0, toolType = nil, minToolTier = nil, resistance = 0 }, -- Potato
+	[503] = { hardness = 0, toolType = nil, minToolTier = nil, resistance = 0 }, -- Carrot
+	[551] = { hardness = 0, toolType = nil, minToolTier = nil, resistance = 0 }, -- Beetroot Seeds
+	[506] = { hardness = 0, toolType = nil, minToolTier = nil, resistance = 0 }, -- Beetroot
 
 	-- Crop stages (instant break)
 	[Constants.BlockType.WHEAT_CROP_0] = { hardness = 0, toolType = nil, minToolTier = nil, resistance = 0 },
