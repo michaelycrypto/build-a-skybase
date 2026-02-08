@@ -20,6 +20,7 @@ local ItemModelLoader = require(ReplicatedStorage.Shared.ItemModelLoader)
 local BlockEntityLoader = require(ReplicatedStorage.Shared.BlockEntityLoader)
 local ItemPixelSizes = require(ReplicatedStorage.Shared.ItemPixelSizes)
 local SoundManager = require(script.Parent.Parent.Managers.SoundManager)
+local SaplingTypes = require(ReplicatedStorage.Configs.SaplingTypes)
 
 -- Scaling constants for dropped items
 local STUDS_PER_PIXEL = 3 / 16
@@ -412,7 +413,6 @@ function DroppedItemController:CreateModel(itemId, count)
 	model.Name = "DroppedItem"
 
 	local layerCount = GetLayerCount(count)
-	local isCrossShape = blockInfo and blockInfo.crossShape == true
 	local isBlockItem = IsBlockItemId(itemId)
 
 	-- Use a standardized invisible hitbox for non-block (flat) items
@@ -580,60 +580,9 @@ function DroppedItemController:CreateModel(itemId, count)
 					table.insert(visualParts, clone)
 				end
 			end
-		elseif typeof(itemId) == "number" and ToolConfig and ToolConfig.IsTool and ToolConfig.IsTool(itemId) then
-			-- Fallback: Tool without 3D model - render as cross-shaped sprite using item texture
-			local itemDef = ItemRegistry.GetItem(itemId)
-			local base = makeSprite(itemDef and itemDef.image or nil)
-			base.CFrame = hitbox.CFrame * CFrame.new(0, hitbox.Size.Y * 0.5 + 0.025, 0)
-			table.insert(visualParts, base)
-			if layerCount > 1 then
-				for i = 2, layerCount do
-					local off = layerOffsets[i]
-					local clone = base:Clone()
-					clone.CFrame = base.CFrame * CFrame.new(off.x, off.y, off.z)
-					clone.Parent = visualFolder
-					table.insert(visualParts, clone)
-				end
-			end
-		elseif typeof(itemId) == "number" and blockInfo then
-			-- FALLBACK: Block item without 3D model - render as a flat sprite using BlockRegistry texture
-			local textureId
-			if blockInfo.textures and blockInfo.textures.all then
-				textureId = TextureManager:GetTextureId(blockInfo.textures.all)
-			else
-				textureId = TextureManager:GetTextureForBlockFace(itemId, "side")
-			end
-			local base = makeSprite(textureId)
-			base.CFrame = hitbox.CFrame * CFrame.new(0, hitbox.Size.Y * 0.5 + 0.025, 0)
-			table.insert(visualParts, base)
-			if layerCount > 1 then
-				for i = 2, layerCount do
-					local off = layerOffsets[i]
-					local clone = base:Clone()
-					clone.CFrame = base.CFrame * CFrame.new(off.x, off.y, off.z)
-					clone.Parent = visualFolder
-					table.insert(visualParts, clone)
-				end
-			end
 		else
-			-- Fallback for ItemConfig string ids: billboard with item name
-			local bb = Instance.new("BillboardGui")
-			bb.Name = "VisualBillboard"
-			bb.Size = UDim2.fromOffset(64, 64)
-			bb.StudsOffset = Vector3.new(0, hitbox.Size.Y * 0.5 + 0.25, 0)
-			bb.AlwaysOnTop = true
-			bb.Adornee = hitbox
-			bb.Parent = visualFolder
-			local label = Instance.new("TextLabel")
-			label.Name = "ItemName"
-			label.BackgroundTransparency = 1
-			label.Size = UDim2.fromScale(1, 1)
-			label.TextScaled = true
-			local itemName = ItemRegistry.GetItemName(itemId)
-			label.Text = (itemName ~= "Unknown") and itemName or tostring(itemId)
-			label.TextColor3 = Color3.new(1, 1, 1)
-			label.TextStrokeTransparency = 0.5
-			label.Parent = bb
+			-- All non-block items MUST have 3D models
+			error(string.format("[DroppedItemController] Missing 3D model for item '%s' (id=%s) - add mesh to ReplicatedStorage.Assets.Tools", itemName or "Unknown", tostring(itemId)))
 		end
 
 		-- Weld visual Parts (not GUI) to hitbox
@@ -665,8 +614,10 @@ function DroppedItemController:CreateModel(itemId, count)
 	}
 
 	-- Try to use BlockEntity model first (for special blocks like chests, lanterns, etc.)
+	-- Saplings use Assets.Tools models for dropped items, not BlockEntities
 	local entityName = blockInfo and blockInfo.entityName
-	if entityName and BlockEntityLoader.HasEntity(entityName) then
+	local isSapling = SaplingTypes.IsSapling(itemId)
+	if entityName and BlockEntityLoader.HasEntity(entityName) and not isSapling then
 		local hitbox = Instance.new("Part")
 		hitbox.Name = "Hitbox"
 		hitbox.Size = hitboxSize
@@ -1154,23 +1105,14 @@ function DroppedItemController:CreateModel(itemId, count)
 		return model
 	end
 
-	-- Create layered parts - 2D sprites for plants, 3D cubes for blocks
+	-- Create layered textured cubes for blocks
 	for i = 1, layerCount do
 		local part = Instance.new("Part")
 		part.Name = "ItemPart_" .. i
-
-		-- Cross-shaped plants: larger 2D sprite, Regular blocks: 3D cube
-		if isCrossShape then
-			part.Size = Vector3.new(1.0, 1.0, 0.05) -- Larger flat sprite
-			part.Transparency = 1 -- Fully transparent, only texture shows
-			part.CastShadow = false
-		else
-			part.Size = Vector3.new(0.9, 0.9, 0.9) -- 3D cube (increased from 0.75 to prevent tunneling)
-			part.Transparency = (blockInfo and blockInfo.transparent) and 0.8 or 0
-			part.CastShadow = true
-		end
-
-	part.Material = blockInfo and blockInfo.material or Enum.Material.Plastic
+		part.Size = Vector3.new(0.9, 0.9, 0.9) -- 3D cube (increased from 0.75 to prevent tunneling)
+		part.Transparency = (blockInfo and blockInfo.transparent) and 0.8 or 0
+		part.CastShadow = true
+		part.Material = blockInfo and blockInfo.material or Enum.Material.Plastic
 		part.Color = blockInfo and blockInfo.color or Color3.new(0.8, 0.8, 0.8)
 
 		local offset = layerOffsets[i]
@@ -1191,52 +1133,25 @@ function DroppedItemController:CreateModel(itemId, count)
 
 		part.Parent = model
 
-		-- Apply textures based on block type
-		if isCrossShape then
-			-- 2D sprite: Apply texture to front and back faces only
-			local textureId
-			if blockInfo and blockInfo.textures then
-				textureId = TextureManager:GetTextureId(blockInfo.textures.all)
-			end
+		-- Apply textures to all 6 faces
+		local faces = {
+			{normalId = Enum.NormalId.Top, faceName = "top"},
+			{normalId = Enum.NormalId.Bottom, faceName = "bottom"},
+			{normalId = Enum.NormalId.Right, faceName = "side"},
+			{normalId = Enum.NormalId.Left, faceName = "side"},
+			{normalId = Enum.NormalId.Front, faceName = "side"},
+			{normalId = Enum.NormalId.Back, faceName = "side"},
+		}
 
+		for _, faceInfo in ipairs(faces) do
+			local textureId = TextureManager:GetTextureForBlockFace(itemId, faceInfo.faceName)
 			if textureId then
-				-- Front face
-				local frontTexture = Instance.new("Texture")
-				frontTexture.Face = Enum.NormalId.Front
-				frontTexture.Texture = textureId
-				frontTexture.StudsPerTileU = 1.0
-				frontTexture.StudsPerTileV = 1.0
-				frontTexture.Parent = part
-
-				-- Back face (same texture)
-				local backTexture = Instance.new("Texture")
-				backTexture.Face = Enum.NormalId.Back
-				backTexture.Texture = textureId
-				backTexture.StudsPerTileU = 1.0
-				backTexture.StudsPerTileV = 1.0
-				backTexture.Parent = part
-			end
-		else
-			-- 3D cube: Apply textures to all 6 faces
-			local faces = {
-				{normalId = Enum.NormalId.Top, faceName = "top"},
-				{normalId = Enum.NormalId.Bottom, faceName = "bottom"},
-				{normalId = Enum.NormalId.Right, faceName = "side"},
-				{normalId = Enum.NormalId.Left, faceName = "side"},
-				{normalId = Enum.NormalId.Front, faceName = "side"},
-				{normalId = Enum.NormalId.Back, faceName = "side"},
-			}
-
-			for _, faceInfo in ipairs(faces) do
-				local textureId = TextureManager:GetTextureForBlockFace(itemId, faceInfo.faceName)
-				if textureId then
-					local texture = Instance.new("Texture")
-					texture.Face = faceInfo.normalId
-					texture.Texture = textureId
-					texture.StudsPerTileU = 0.9 -- Updated to match new part size
-					texture.StudsPerTileV = 0.9 -- Updated to match new part size
-					texture.Parent = part
-				end
+				local texture = Instance.new("Texture")
+				texture.Face = faceInfo.normalId
+				texture.Texture = textureId
+				texture.StudsPerTileU = 0.9 -- Updated to match new part size
+				texture.StudsPerTileV = 0.9 -- Updated to match new part size
+				texture.Parent = part
 			end
 		end
 	end

@@ -1200,7 +1200,12 @@ function LoadingScreen:CompleteAllAssetLoading(totalLoaded, totalFailed, onCompl
 
 	-- Allow heavy initialization to run while the loading screen is still visible
 	if onBeforeFadeOut then
-		pcall(onBeforeFadeOut)
+		local success, err = pcall(onBeforeFadeOut)
+		if not success then
+			warn("❌ [LoadingScreen] onBeforeFadeOut callback failed:", err)
+			-- Re-throw to ensure the error is visible in output
+			error("[LoadingScreen] Client initialization failed: " .. tostring(err))
+		end
 	end
 
 	-- Prime worlds data while the loading screen is still covering the UI.

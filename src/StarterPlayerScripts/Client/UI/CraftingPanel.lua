@@ -1,11 +1,11 @@
 --[[
 	CraftingPanel.lua
 	Crafting UI component with recipe grid and detail panel
-	
+
 	Layout matches SmithingUI pattern:
 	- Recipe grid at top (scrollable)
 	- Recipe details below (ingredients, craft controls)
-	
+
 	Features:
 	- Displays available recipes as scrollable grid
 	- Click recipe to select and show details
@@ -38,18 +38,18 @@ local CONFIG = {
 	GRID_SPACING = 5,
 	GRID_COLUMNS = 9,
 	GRID_ROWS_VISIBLE = 2,
-	
+
 	-- Detail section
 	DETAIL_HEIGHT = 200,
 	INGREDIENT_SIZE = 48,
 	INGREDIENT_SPACING = 8,
 	BUTTON_HEIGHT = 44,
-	
+
 	-- Border/corner styling
 	CORNER_RADIUS = 6,
 	SLOT_CORNER_RADIUS = 4,
 	BORDER_THICKNESS = 2,
-	
+
 	-- Colors (consistent with inventory)
 	PANEL_BG = Color3.fromRGB(58, 58, 58),
 	SLOT_BG = Color3.fromRGB(31, 31, 31),
@@ -64,7 +64,7 @@ local CONFIG = {
 	CRAFT_BTN = Color3.fromRGB(80, 180, 80),
 	CRAFT_BTN_HOVER = Color3.fromRGB(90, 200, 90),
 	CRAFT_BTN_DISABLED = Color3.fromRGB(60, 60, 60),
-	
+
 	-- Background
 	BG_IMAGE = "rbxassetid://82824299358542",
 	BG_IMAGE_TRANSPARENCY = 0.6,
@@ -76,21 +76,21 @@ local CONFIG = {
 
 function CraftingPanel.new(inventoryManager, voxelInventoryPanel, parentFrame, options)
 	local self = setmetatable({}, CraftingPanel)
-	
+
 	self.inventoryManager = inventoryManager
 	self.voxelInventoryPanel = voxelInventoryPanel
 	self.parentFrame = parentFrame
-	
+
 	self.allRecipes = RecipeConfig:GetAllRecipes()
 	self.recipeSlots = {}
 	self.selectedRecipe = nil
 	self.selectedSlot = nil
 	self.craftQuantity = 1
-	
+
 	-- Filter mode
 	self.filterMode = "inventory"
 	self.showWorkbenchRecipes = false
-	
+
 	return self
 end
 
@@ -101,13 +101,13 @@ end
 function CraftingPanel:Initialize()
 	self:CreateUI()
 	self:RefreshRecipes()
-	
+
 	-- Listen for inventory changes
 	self.inventoryManager:OnInventoryChanged(function()
 		self:RefreshRecipes()
 		self:RefreshDetailPanel()
 	end)
-	
+
 	self.inventoryManager:OnHotbarChanged(function()
 		self:RefreshRecipes()
 		self:RefreshDetailPanel()
@@ -140,15 +140,15 @@ function CraftingPanel:CreateUI()
 	container.BackgroundTransparency = 1
 	container.Parent = self.parentFrame
 	self.container = container
-	
+
 	-- Calculate heights (border is drawn inside, so GRID_CELL_SIZE is the full visual size)
 	local slotSize = CONFIG.GRID_CELL_SIZE
 	local gridHeight = slotSize * CONFIG.GRID_ROWS_VISIBLE + CONFIG.GRID_SPACING * (CONFIG.GRID_ROWS_VISIBLE - 1)
 	local labelHeight = 14 + 4 -- Label height + spacing
-	
+
 	-- Recipe section (top)
 	self:CreateRecipeSection(container, labelHeight, gridHeight)
-	
+
 	-- Detail section (bottom)
 	self:CreateDetailSection(container, labelHeight + gridHeight + 20)
 end
@@ -166,7 +166,7 @@ function CraftingPanel:CreateRecipeSection(parent, yOffset, gridHeight)
 	label.Font = BOLD_FONT
 	label.TextXAlignment = Enum.TextXAlignment.Left
 	label.Parent = parent
-	
+
 	-- Scroll frame for recipe grid
 	local scrollFrame = Instance.new("ScrollingFrame")
 	scrollFrame.Name = "RecipeScroll"
@@ -181,7 +181,7 @@ function CraftingPanel:CreateRecipeSection(parent, yOffset, gridHeight)
 	scrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
 	scrollFrame.Parent = parent
 	self.scrollFrame = scrollFrame
-	
+
 	-- Grid container
 	local grid = Instance.new("Frame")
 	grid.Name = "RecipeGrid"
@@ -190,7 +190,7 @@ function CraftingPanel:CreateRecipeSection(parent, yOffset, gridHeight)
 	grid.BackgroundTransparency = 1
 	grid.Parent = scrollFrame
 	self.recipeGrid = grid
-	
+
 	-- Grid layout
 	local layout = Instance.new("UIGridLayout")
 	layout.CellSize = UDim2.fromOffset(CONFIG.GRID_CELL_SIZE, CONFIG.GRID_CELL_SIZE)
@@ -198,7 +198,7 @@ function CraftingPanel:CreateRecipeSection(parent, yOffset, gridHeight)
 	layout.HorizontalAlignment = Enum.HorizontalAlignment.Left
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
 	layout.Parent = grid
-	
+
 	local padding = Instance.new("UIPadding")
 	padding.PaddingTop = UDim.new(0, 2)
 	padding.PaddingBottom = UDim.new(0, 2)
@@ -215,23 +215,23 @@ function CraftingPanel:CreateDetailSection(parent, yOffset)
 	detail.BackgroundTransparency = CONFIG.SLOT_BG_TRANSPARENCY
 	detail.Parent = parent
 	self.detailFrame = detail
-	
+
 	local corner = Instance.new("UICorner")
 	corner.CornerRadius = UDim.new(0, CONFIG.CORNER_RADIUS)
 	corner.Parent = detail
-	
+
 	local border = Instance.new("UIStroke")
 	border.Color = CONFIG.SLOT_BORDER
 	border.Thickness = CONFIG.BORDER_THICKNESS
 	border.Parent = detail
-	
+
 	local padding = Instance.new("UIPadding")
 	padding.PaddingTop = UDim.new(0, 16)
 	padding.PaddingBottom = UDim.new(0, 16)
 	padding.PaddingLeft = UDim.new(0, 16)
 	padding.PaddingRight = UDim.new(0, 16)
 	padding.Parent = detail
-	
+
 	-- Placeholder text
 	local placeholder = Instance.new("TextLabel")
 	placeholder.Name = "Placeholder"
@@ -243,7 +243,7 @@ function CraftingPanel:CreateDetailSection(parent, yOffset)
 	placeholder.Font = BOLD_FONT
 	placeholder.Parent = detail
 	self.placeholderLabel = placeholder
-	
+
 	-- Recipe name
 	local recipeName = Instance.new("TextLabel")
 	recipeName.Name = "RecipeName"
@@ -258,7 +258,7 @@ function CraftingPanel:CreateDetailSection(parent, yOffset)
 	recipeName.Parent = detail
 	FontBinder.apply(recipeName, CUSTOM_FONT_NAME)
 	self.recipeNameLabel = recipeName
-	
+
 	-- Ingredients label
 	local ingredientsLabel = Instance.new("TextLabel")
 	ingredientsLabel.Name = "IngredientsLabel"
@@ -273,7 +273,7 @@ function CraftingPanel:CreateDetailSection(parent, yOffset)
 	ingredientsLabel.Visible = false
 	ingredientsLabel.Parent = detail
 	self.ingredientsLabel = ingredientsLabel
-	
+
 	-- Ingredients container
 	local ingredients = Instance.new("Frame")
 	ingredients.Name = "Ingredients"
@@ -283,13 +283,13 @@ function CraftingPanel:CreateDetailSection(parent, yOffset)
 	ingredients.Visible = false
 	ingredients.Parent = detail
 	self.ingredientsFrame = ingredients
-	
+
 	local ingredientLayout = Instance.new("UIListLayout")
 	ingredientLayout.FillDirection = Enum.FillDirection.Horizontal
 	ingredientLayout.Padding = UDim.new(0, CONFIG.INGREDIENT_SPACING)
 	ingredientLayout.VerticalAlignment = Enum.VerticalAlignment.Center
 	ingredientLayout.Parent = ingredients
-	
+
 	-- Controls container (bottom)
 	local controls = Instance.new("Frame")
 	controls.Name = "Controls"
@@ -299,7 +299,7 @@ function CraftingPanel:CreateDetailSection(parent, yOffset)
 	controls.Visible = false
 	controls.Parent = detail
 	self.controlsFrame = controls
-	
+
 	-- Create control buttons
 	self:CreateControlButtons(controls)
 end
@@ -311,11 +311,11 @@ function CraftingPanel:CreateControlButtons(parent)
 	layout.Padding = UDim.new(0, 10)
 	layout.VerticalAlignment = Enum.VerticalAlignment.Center
 	layout.Parent = parent
-	
+
 	-- Minus button
 	local minusBtn = self:CreateControlButton(parent, "Minus", "−", 1)
 	self.minusBtn = minusBtn
-	
+
 	-- Quantity display
 	local qtyBox = Instance.new("TextBox")
 	qtyBox.Name = "Quantity"
@@ -332,25 +332,25 @@ function CraftingPanel:CreateControlButtons(parent)
 	qtyBox.ClearTextOnFocus = false
 	qtyBox.Parent = parent
 	self.qtyBox = qtyBox
-	
+
 	local qtyCorner = Instance.new("UICorner")
 	qtyCorner.CornerRadius = UDim.new(0, CONFIG.CORNER_RADIUS)
 	qtyCorner.Parent = qtyBox
-	
+
 	local qtyBorder = Instance.new("UIStroke")
 	qtyBorder.Color = CONFIG.SLOT_BORDER
 	qtyBorder.Thickness = CONFIG.BORDER_THICKNESS
 	qtyBorder.Parent = qtyBox
-	
+
 	-- Plus button
 	local plusBtn = self:CreateControlButton(parent, "Plus", "+", 3)
 	self.plusBtn = plusBtn
-	
+
 	-- Max button
 	local maxBtn = self:CreateControlButton(parent, "Max", "Max", 4)
 	maxBtn.Size = UDim2.fromOffset(70, CONFIG.BUTTON_HEIGHT)
 	self.maxBtn = maxBtn
-	
+
 	-- Craft button (takes remaining space)
 	local craftBtn = Instance.new("TextButton")
 	craftBtn.Name = "Craft"
@@ -365,16 +365,16 @@ function CraftingPanel:CreateControlButtons(parent)
 	craftBtn.AutoButtonColor = false
 	craftBtn.Parent = parent
 	self.craftBtn = craftBtn
-	
+
 	local craftCorner = Instance.new("UICorner")
 	craftCorner.CornerRadius = UDim.new(0, CONFIG.CORNER_RADIUS)
 	craftCorner.Parent = craftBtn
-	
+
 	local craftBorder = Instance.new("UIStroke")
 	craftBorder.Color = CONFIG.SLOT_BORDER
 	craftBorder.Thickness = CONFIG.BORDER_THICKNESS
 	craftBorder.Parent = craftBtn
-	
+
 	-- Connect button events
 	self:SetupControlEvents()
 end
@@ -393,28 +393,28 @@ function CraftingPanel:CreateControlButton(parent, name, text, order)
 	btn.Font = BOLD_FONT
 	btn.AutoButtonColor = false
 	btn.Parent = parent
-	
+
 	local corner = Instance.new("UICorner")
 	corner.CornerRadius = UDim.new(0, CONFIG.CORNER_RADIUS)
 	corner.Parent = btn
-	
+
 	local border = Instance.new("UIStroke")
 	border.Color = CONFIG.SLOT_BORDER
 	border.Thickness = CONFIG.BORDER_THICKNESS
 	border.Parent = btn
-	
+
 	-- Hover effect
 	btn.MouseEnter:Connect(function()
 		if btn.Active ~= false then
 			btn.BackgroundColor3 = CONFIG.SLOT_HOVER
 		end
 	end)
-	
+
 	btn.MouseLeave:Connect(function()
 		btn.BackgroundColor3 = CONFIG.SLOT_BG
 		btn.BackgroundTransparency = CONFIG.SLOT_BG_TRANSPARENCY
 	end)
-	
+
 	return btn
 end
 
@@ -426,7 +426,7 @@ function CraftingPanel:SetupControlEvents()
 			self:RefreshDetailPanel()
 		end
 	end)
-	
+
 	-- Plus
 	self.plusBtn.MouseButton1Click:Connect(function()
 		local maxCraft = self:GetMaxCraftable()
@@ -435,7 +435,7 @@ function CraftingPanel:SetupControlEvents()
 			self:RefreshDetailPanel()
 		end
 	end)
-	
+
 	-- Max
 	self.maxBtn.MouseButton1Click:Connect(function()
 		local maxCraft = self:GetMaxCraftable()
@@ -444,7 +444,7 @@ function CraftingPanel:SetupControlEvents()
 			self:RefreshDetailPanel()
 		end
 	end)
-	
+
 	-- Quantity box
 	self.qtyBox.FocusLost:Connect(function()
 		local num = tonumber(self.qtyBox.Text) or 1
@@ -452,19 +452,19 @@ function CraftingPanel:SetupControlEvents()
 		self.craftQuantity = math.clamp(math.floor(num), 1, math.max(1, maxCraft))
 		self:RefreshDetailPanel()
 	end)
-	
+
 	-- Craft
 	self.craftBtn.MouseButton1Click:Connect(function()
 		self:DoCraft()
 	end)
-	
+
 	-- Craft button hover
 	self.craftBtn.MouseEnter:Connect(function()
 		if self:GetMaxCraftable() > 0 and self.craftQuantity > 0 then
 			self.craftBtn.BackgroundColor3 = CONFIG.CRAFT_BTN_HOVER
 		end
 	end)
-	
+
 	self.craftBtn.MouseLeave:Connect(function()
 		self:RefreshDetailPanel()
 	end)
@@ -480,7 +480,7 @@ function CraftingPanel:RefreshRecipes()
 		slot:Destroy()
 	end
 	self.recipeSlots = {}
-	
+
 	-- Group recipes by output
 	local recipeGroups = {}
 	for _, recipe in ipairs(self.allRecipes) do
@@ -489,11 +489,11 @@ function CraftingPanel:RefreshRecipes()
 		if not self.showWorkbenchRecipes then
 			include = not (recipe.requiresWorkbench == true)
 		end
-		
+
 		if include then
 			local output = recipe.outputs[1]
 			local key = output.itemId .. "_" .. output.count
-			
+
 			if not recipeGroups[key] then
 				recipeGroups[key] = {
 					output = output,
@@ -505,7 +505,7 @@ function CraftingPanel:RefreshRecipes()
 			table.insert(recipeGroups[key].recipes, recipe)
 		end
 	end
-	
+
 	-- Create slots for craftable recipes
 	local order = 1
 	for _, group in pairs(recipeGroups) do
@@ -513,7 +513,7 @@ function CraftingPanel:RefreshRecipes()
 		local canCraft = false
 		local bestRecipe = nil
 		local maxCount = 0
-		
+
 		for _, recipe in ipairs(group.recipes) do
 			if CraftingSystem:CanCraft(recipe, self.inventoryManager) then
 				canCraft = true
@@ -524,7 +524,7 @@ function CraftingPanel:RefreshRecipes()
 				end
 			end
 		end
-		
+
 		if canCraft and bestRecipe then
 			local slot = self:CreateRecipeSlot(group, bestRecipe, order)
 			slot.Parent = self.recipeGrid
@@ -532,7 +532,7 @@ function CraftingPanel:RefreshRecipes()
 			order = order + 1
 		end
 	end
-	
+
 	-- Update selection state
 	if self.selectedSlot and not self.selectedSlot.Parent then
 		self.selectedRecipe = nil
@@ -543,7 +543,7 @@ end
 
 function CraftingPanel:CreateRecipeSlot(group, recipe, order)
 	local output = group.output
-	
+
 	local slot = Instance.new("TextButton")
 	slot.Name = "Recipe_" .. output.itemId
 	slot.LayoutOrder = order
@@ -553,11 +553,11 @@ function CraftingPanel:CreateRecipeSlot(group, recipe, order)
 	slot.BorderSizePixel = 0
 	slot.Text = ""
 	slot.AutoButtonColor = false
-	
+
 	local corner = Instance.new("UICorner")
 	corner.CornerRadius = UDim.new(0, CONFIG.SLOT_CORNER_RADIUS)
 	corner.Parent = slot
-	
+
 	-- Background image
 	local bgImage = Instance.new("ImageLabel")
 	bgImage.Size = UDim2.fromScale(1, 1)
@@ -567,7 +567,7 @@ function CraftingPanel:CreateRecipeSlot(group, recipe, order)
 	bgImage.ScaleType = Enum.ScaleType.Fit
 	bgImage.ZIndex = 1
 	bgImage.Parent = slot
-	
+
 	-- Border (drawn inside the slot)
 	local border = Instance.new("UIStroke")
 	border.Name = "Border"
@@ -575,38 +575,38 @@ function CraftingPanel:CreateRecipeSlot(group, recipe, order)
 	border.Thickness = CONFIG.BORDER_THICKNESS
 	border.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	border.Parent = slot
-	
+
 	-- Icon
 	local iconContainer = Instance.new("Frame")
 	iconContainer.Size = UDim2.fromScale(1, 1)
 	iconContainer.BackgroundTransparency = 1
 	iconContainer.ZIndex = 2
 	iconContainer.Parent = slot
-	
+
 	BlockViewportCreator.CreateBlockViewport(iconContainer, output.itemId, UDim2.fromScale(0.85, 0.85))
-	
+
 	-- Store data
 	slot:SetAttribute("RecipeGroup", group.displayName)
-	
+
 	-- Hover effect
 	slot.MouseEnter:Connect(function()
 		if self.selectedSlot ~= slot then
 			slot.BackgroundColor3 = CONFIG.SLOT_HOVER
 		end
 	end)
-	
+
 	slot.MouseLeave:Connect(function()
 		if self.selectedSlot ~= slot then
 			slot.BackgroundColor3 = CONFIG.SLOT_BG
 			slot.BackgroundTransparency = CONFIG.SLOT_BG_TRANSPARENCY
 		end
 	end)
-	
+
 	-- Click to select
 	slot.MouseButton1Click:Connect(function()
 		self:SelectRecipe(slot, group, recipe)
 	end)
-	
+
 	return slot
 end
 
@@ -618,17 +618,17 @@ function CraftingPanel:SelectRecipe(slot, group, recipe)
 		local oldBorder = self.selectedSlot:FindFirstChild("Border")
 		if oldBorder then oldBorder.Thickness = CONFIG.BORDER_THICKNESS end
 	end
-	
+
 	-- Select new
 	self.selectedSlot = slot
 	self.selectedRecipe = recipe
 	self.selectedGroup = group
 	self.craftQuantity = 1
-	
+
 	slot.BackgroundColor3 = CONFIG.SLOT_SELECTED
 	local border = slot:FindFirstChild("Border")
 	if border then border.Thickness = CONFIG.BORDER_THICKNESS + 1 end
-	
+
 	self:RefreshDetailPanel()
 end
 
@@ -646,23 +646,23 @@ function CraftingPanel:RefreshDetailPanel()
 		self.controlsFrame.Visible = false
 		return
 	end
-	
+
 	-- Hide placeholder, show content
 	self.placeholderLabel.Visible = false
 	self.recipeNameLabel.Visible = true
 	self.ingredientsLabel.Visible = true
 	self.ingredientsFrame.Visible = true
 	self.controlsFrame.Visible = true
-	
+
 	local recipe = self.selectedRecipe
 	local output = recipe.outputs[1]
-	
+
 	-- Recipe name
 	self.recipeNameLabel.Text = self.selectedGroup.displayName
-	
+
 	-- Refresh ingredients
 	self:RefreshIngredients(recipe)
-	
+
 	-- Refresh controls
 	self:RefreshControls()
 end
@@ -674,21 +674,21 @@ function CraftingPanel:RefreshIngredients(recipe)
 			child:Destroy()
 		end
 	end
-	
+
 	-- Create ingredient displays
 	for _, input in ipairs(recipe.inputs) do
 		local ingredientFrame = Instance.new("Frame")
 		ingredientFrame.Size = UDim2.fromOffset(CONFIG.INGREDIENT_SIZE + 60, CONFIG.INGREDIENT_SIZE)
 		ingredientFrame.BackgroundTransparency = 1
 		ingredientFrame.Parent = self.ingredientsFrame
-		
+
 		-- Icon
 		local iconFrame = Instance.new("Frame")
 		iconFrame.Size = UDim2.fromOffset(CONFIG.INGREDIENT_SIZE, CONFIG.INGREDIENT_SIZE)
 		iconFrame.BackgroundColor3 = CONFIG.SLOT_BG
 		iconFrame.BackgroundTransparency = CONFIG.SLOT_BG_TRANSPARENCY
 		iconFrame.Parent = ingredientFrame
-		
+
 		-- Background image
 		local bgImage = Instance.new("ImageLabel")
 		bgImage.Size = UDim2.fromScale(1, 1)
@@ -698,18 +698,18 @@ function CraftingPanel:RefreshIngredients(recipe)
 		bgImage.ScaleType = Enum.ScaleType.Fit
 		bgImage.ZIndex = 1
 		bgImage.Parent = iconFrame
-		
+
 		local iconCorner = Instance.new("UICorner")
 		iconCorner.CornerRadius = UDim.new(0, CONFIG.SLOT_CORNER_RADIUS)
 		iconCorner.Parent = iconFrame
-		
+
 		local iconBorder = Instance.new("UIStroke")
 		iconBorder.Color = CONFIG.SLOT_BORDER
 		iconBorder.Thickness = CONFIG.BORDER_THICKNESS
 		iconBorder.Parent = iconFrame
-		
+
 		BlockViewportCreator.CreateBlockViewport(iconFrame, input.itemId, UDim2.fromScale(0.8, 0.8))
-		
+
 		-- Count
 		local countLabel = Instance.new("TextLabel")
 		countLabel.Size = UDim2.fromOffset(50, CONFIG.INGREDIENT_SIZE)
@@ -728,22 +728,22 @@ end
 function CraftingPanel:RefreshControls()
 	local maxCraft = self:GetMaxCraftable()
 	local canCraft = maxCraft > 0 and self.craftQuantity > 0
-	
+
 	-- Clamp quantity
 	if maxCraft > 0 then
 		self.craftQuantity = math.clamp(self.craftQuantity, 1, maxCraft)
 	else
 		self.craftQuantity = 0
 	end
-	
+
 	-- Update quantity display
 	self.qtyBox.Text = tostring(self.craftQuantity)
-	
+
 	-- Update button states
 	self.minusBtn.Active = self.craftQuantity > 1
 	self.plusBtn.Active = self.craftQuantity < maxCraft
 	self.maxBtn.Active = maxCraft > 1 and self.craftQuantity < maxCraft
-	
+
 	-- Update craft button
 	self.craftBtn.Text = canCraft and string.format("Craft ×%d", self.craftQuantity) or "Craft"
 	self.craftBtn.BackgroundColor3 = canCraft and CONFIG.CRAFT_BTN or CONFIG.CRAFT_BTN_DISABLED
@@ -751,20 +751,20 @@ end
 
 function CraftingPanel:GetMaxCraftable()
 	if not self.selectedRecipe then return 0 end
-	
+
 	local materialsMax = CraftingSystem:GetMaxCraftCount(self.selectedRecipe, self.inventoryManager)
 	if materialsMax <= 0 then return 0 end
-	
+
 	-- Check inventory space
 	local output = self.selectedRecipe.outputs[1]
 	local spaceMax = self:GetMaxBySpace(output.itemId, output.count, materialsMax)
-	
+
 	return math.min(materialsMax, spaceMax)
 end
 
 function CraftingPanel:GetMaxBySpace(itemId, perCraft, upperBound)
 	if upperBound <= 0 then return 0 end
-	
+
 	local lo, hi = 0, upperBound
 	while lo < hi do
 		local mid = math.floor((lo + hi + 1) / 2)
@@ -783,36 +783,36 @@ end
 
 function CraftingPanel:DoCraft()
 	if not self.selectedRecipe then return end
-	
+
 	local maxCraft = self:GetMaxCraftable()
 	if maxCraft <= 0 or self.craftQuantity <= 0 then return end
-	
+
 	local quantity = math.min(self.craftQuantity, maxCraft)
 	local recipe = self.selectedRecipe
-	
+
 	-- Optimistic update: consume materials
 	for _ = 1, quantity do
 		CraftingSystem:ConsumeMaterials(recipe, self.inventoryManager)
 	end
-	
+
 	-- Optimistic update: add outputs
 	for _, output in ipairs(recipe.outputs) do
 		local total = output.count * quantity
 		self.inventoryManager:AddItem(output.itemId, total)
 	end
-	
+
 	-- Update displays
 	if self.voxelInventoryPanel.RefreshAllSlots then
 		self.voxelInventoryPanel:RefreshAllSlots()
 	end
-	
+
 	-- Send to server
 	EventManager:SendToServer("CraftRecipeBatch", {
 		recipeId = recipe.id,
 		count = quantity,
 		toCursor = false
 	})
-	
+
 	-- Refresh
 	self:RefreshRecipes()
 	self:RefreshDetailPanel()

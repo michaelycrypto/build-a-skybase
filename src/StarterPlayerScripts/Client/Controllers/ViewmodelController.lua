@@ -22,6 +22,7 @@ local ItemModelLoader = require(ReplicatedStorage.Shared.ItemModelLoader)
 local BlockEntityLoader = require(ReplicatedStorage.Shared.BlockEntityLoader)
 local ItemRegistry = require(ReplicatedStorage.Configs.ItemRegistry)
 local ItemPixelSizes = require(ReplicatedStorage.Shared.ItemPixelSizes)
+local SaplingTypes = require(ReplicatedStorage.Configs.SaplingTypes)
 
 local player = Players.LocalPlayer
 
@@ -105,14 +106,13 @@ local function shouldShow()
     return isFirstPerson
 end
 
+-- Build viewmodel for any item (blocks, materials, food, etc.)
 local function buildBlockModel(itemId)
 	local def = BlockRegistry.Blocks[itemId]
-	if not def then
-		return nil
-	end
-
-	-- Try to use BlockEntity model first (for chests, lanterns, etc.)
-	if def.entityName and BlockEntityLoader.HasEntity(def.entityName) then
+	
+	-- For block items, try BlockEntity first (but NOT for saplings - they use Assets.Tools)
+	local isSapling = SaplingTypes.IsSapling(itemId)
+	if def and def.entityName and BlockEntityLoader.HasEntity(def.entityName) and not isSapling then
 		local entity = BlockEntityLoader.CreateHeldEntity(def.entityName, 0.7)
 		if entity then
 			if entity:IsA("Model") then
@@ -136,14 +136,16 @@ local function buildBlockModel(itemId)
 		end
 	end
 
-	-- Try to use 3D model from Tools folder (unified lookup)
-	-- SKIP for blockOnly blocks (Furnace, etc.) - they use textured cubes
+	-- Try to use 3D model from Tools folder (all items: blocks, materials, food, etc.)
+	-- SKIP for blockOnly blocks (Furnace, etc.) - they use textured cubes below
 	local itemName = ItemRegistry.GetItemName(itemId)
-	if itemName and itemName ~= "Unknown" and not def.blockOnly then
+	local skipModelLookup = def and def.blockOnly
+	
+	if itemName and itemName ~= "Unknown" and not skipModelLookup then
 		local modelTemplate = ItemModelLoader.GetModelTemplate(itemName, itemId)
 		if modelTemplate then
 			local part = modelTemplate:Clone()
-			part.Name = "Block3DModel"
+			part.Name = "Item3DModel"
 			part.Anchored = true
 			part.CanCollide = false
 			part.Massless = true
@@ -171,6 +173,11 @@ local function buildBlockModel(itemId)
 
 			return part
 		end
+	end
+	
+	-- If no def, this is a non-block item without a 3D model
+	if not def then
+		return nil
 	end
 
     -- Specialized shapes for more accurate preview
@@ -263,55 +270,10 @@ local function buildBlockModel(itemId)
     end
 end
 
-local function buildFlatItem(itemId)
-	-- Get texture from ItemRegistry (unified lookup)
-	local itemDef = ItemRegistry.GetItem(itemId)
-	local image = itemDef and itemDef.image
-	if not image then
-		return nil
-	end
-    local p = Instance.new("Part")
-	p.Name = "ItemCard"
-	p.Size = Vector3.new(1.2, 1.2, 0.05)
-	p.Anchored = true
-	p.CanCollide = false
-	p.Massless = true
-	p.CastShadow = false
-    p.Transparency = 1
-	-- Front
-	local s1 = Instance.new("SurfaceGui")
-	s1.Face = Enum.NormalId.Front
-	s1.LightInfluence = 1
-	s1.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-	s1.PixelsPerStud = 64
-    s1.AlwaysOnTop = true
-	local il1 = Instance.new("ImageLabel")
-	il1.BackgroundTransparency = 1
-	il1.Size = UDim2.fromScale(1, 1)
-	il1.Image = image
-	il1.Parent = s1
-	s1.Parent = p
-	-- Back
-	local s2 = Instance.new("SurfaceGui")
-	s2.Face = Enum.NormalId.Back
-	s2.LightInfluence = 1
-	s2.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-	s2.PixelsPerStud = 64
-    s2.AlwaysOnTop = true
-	local il2 = Instance.new("ImageLabel")
-	il2.BackgroundTransparency = 1
-	il2.Size = UDim2.fromScale(1, 1)
-	il2.Image = image
-	il2.Parent = s2
-	s2.Parent = p
-	return p
-end
-
-
 local function createBowViewmodelMesh(assetName, itemId)
 	local mesh = ItemModelLoader.GetModelTemplate(assetName, itemId)
 	if not mesh then
-		return nil
+		error(string.format("[ViewmodelController] Missing bow animation mesh '%s' (id=%s) - add mesh to ReplicatedStorage.Assets.Tools", assetName, tostring(itemId)))
 	end
 
 	local p = mesh:Clone()
@@ -352,11 +314,18 @@ local function createAllBowViewmodelParts(itemId)
 		return
 	end
 
-	-- Create all 4 bow states
+	-- Create all 4 bow states (all MUST exist)
 	bowViewmodelParts.idle = createBowViewmodelMesh("Bow", itemId)
 	bowViewmodelParts[0] = createBowViewmodelMesh("Bow_pulling_0", itemId)
 	bowViewmodelParts[1] = createBowViewmodelMesh("Bow_pulling_1", itemId)
 	bowViewmodelParts[2] = createBowViewmodelMesh("Bow_pulling_2", itemId)
+
+	-- Verify all bow states were created
+	if not bowViewmodelParts.idle then
+		warn(string.format("[ViewmodelController] Failed to create bow viewmodel for item id=%s - missing Bow mesh", tostring(itemId)))
+		destroyBowViewmodelParts()
+		return
+	end
 
 	-- Parent all to camera
 	for _, part in pairs(bowViewmodelParts) do
@@ -366,10 +335,8 @@ local function createAllBowViewmodelParts(itemId)
 	end
 
 	-- Show idle by default
-	if bowViewmodelParts.idle then
-		bowViewmodelParts.idle.Transparency = 0
-		currentInstance = bowViewmodelParts.idle
-	end
+	bowViewmodelParts.idle.Transparency = 0
+	currentInstance = bowViewmodelParts.idle
 	currentBowVMStage = "idle"
 	isBowViewmodelActive = true
 end
@@ -419,12 +386,12 @@ local function buildToolMesh(itemId)
 	-- Get item name for model lookup
 	local itemName = ItemRegistry.GetItemName(itemId)
 	if not itemName or itemName == "Unknown" then
-		return nil
+		error(string.format("[ViewmodelController] Unknown item name for tool id=%s - item not defined in ItemDefinitions", tostring(itemId)))
 	end
 
 	local mesh = ItemModelLoader.GetModelTemplate(itemName, itemId)
 	if not mesh then
-		return nil
+		error(string.format("[ViewmodelController] Missing 3D model for tool '%s' (id=%s) - add mesh to ReplicatedStorage.Assets.Tools", itemName, tostring(itemId)))
 	end
 
 	local p = mesh:Clone()
@@ -454,60 +421,6 @@ local function buildToolMesh(itemId)
 	scaleMeshToPixels(p, itemName)
 
 	return p
-end
-
--- Fallback viewmodel for block items without 3D models: flat sprite from block texture
-local function buildFlatBlockItem(itemId)
-    local def = BlockRegistry.Blocks[itemId]
-    if not def then
-    	return nil
-    end
-
-    -- Use flat sprite with block texture
-    if not def.textures then
-    	return nil
-    end
-    local textureName = def.textures.all or def.textures.side or def.textures.top or def.textures.lower
-    if not textureName then
-    	return nil
-    end
-    local textureId = TextureManager:GetTextureId(textureName)
-    if not textureId then
-    	return nil
-    end
-    local p = Instance.new("Part")
-    p.Name = "ItemCard"
-    p.Size = Vector3.new(1.2, 1.2, 0.05)
-    p.Anchored = true
-    p.CanCollide = false
-    p.Massless = true
-    p.CastShadow = false
-    p.Transparency = 1
-    local s1 = Instance.new("SurfaceGui")
-    s1.Face = Enum.NormalId.Front
-    s1.LightInfluence = 1
-    s1.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-    s1.PixelsPerStud = 64
-    s1.AlwaysOnTop = true
-    local il1 = Instance.new("ImageLabel")
-    il1.BackgroundTransparency = 1
-    il1.Size = UDim2.fromScale(1, 1)
-    il1.Image = textureId
-    il1.Parent = s1
-    s1.Parent = p
-    local s2 = Instance.new("SurfaceGui")
-    s2.Face = Enum.NormalId.Back
-    s2.LightInfluence = 1
-    s2.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-    s2.PixelsPerStud = 64
-    s2.AlwaysOnTop = true
-    local il2 = Instance.new("ImageLabel")
-    il2.BackgroundTransparency = 1
-    il2.Size = UDim2.fromScale(1, 1)
-    il2.Image = textureId
-    il2.Parent = s2
-    s2.Parent = p
-    return p
 end
 
 local function isBowEquipped()
@@ -571,15 +484,19 @@ local function rebuild()
 			end
 			return
 		else
-			-- Non-bow tool
+			-- Non-bow tool - MUST have 3D model
 			newInst = buildToolMesh(currentItemId)
+			if not newInst then
+				local itemName = ItemRegistry.GetItemName(currentItemId)
+				error(string.format("[ViewmodelController] Failed to build tool viewmodel for '%s' (id=%s) - add mesh to ReplicatedStorage.Assets.Tools", itemName or "Unknown", tostring(currentItemId)))
+			end
 		end
     elseif holdingItem then
-        -- Always try 3D model first (covers tools, armor, food, materials, saplings, etc.)
+        -- All items MUST have 3D models (block entities, textured cubes, or Assets.Tools meshes)
         newInst = buildBlockModel(currentItemId)
         if not newInst then
-            -- Fallback for items without 3D models (flat sprite)
-            newInst = buildFlatBlockItem(currentItemId) or buildFlatItem(currentItemId)
+            local itemName = ItemRegistry.GetItemName(currentItemId)
+            error(string.format("[ViewmodelController] Missing 3D model for item '%s' (id=%s) - add mesh to ReplicatedStorage.Assets.Tools", itemName or "Unknown", tostring(currentItemId)))
         end
     else
         -- Empty hand -> show arm

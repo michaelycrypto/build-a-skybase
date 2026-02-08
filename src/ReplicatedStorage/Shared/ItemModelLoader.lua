@@ -38,6 +38,9 @@ local function getToolsFolder()
 		local toolsFolder = assets:FindFirstChild("Tools")
 		if toolsFolder then
 			toolsFolderCache = toolsFolder
+			if DEBUG_MODEL_LOADER then
+				print("[ItemModelLoader] Using folder: ReplicatedStorage.Assets.Tools")
+			end
 			return toolsFolder
 		end
 	end
@@ -46,22 +49,45 @@ local function getToolsFolder()
 	local folder = ReplicatedStorage:FindFirstChild("Tools")
 	if folder then
 		toolsFolderCache = folder
+		if DEBUG_MODEL_LOADER then
+			print("[ItemModelLoader] Using folder: ReplicatedStorage.Tools (legacy)")
+		end
 		return folder
 	end
 
+	warn("[ItemModelLoader] No Tools folder found! Check ReplicatedStorage.Assets.Tools exists")
 	return nil
 end
 
 local function findMeshPartInInstance(instance)
-	if not instance then return nil end
+	if not instance then
+		if DEBUG_MODEL_LOADER then
+			warn("[ItemModelLoader] findMeshPartInInstance: instance is nil")
+		end
+		return nil
+	end
 
 	-- If it's a MeshPart directly, return it
 	if instance:IsA("MeshPart") then
+		if DEBUG_MODEL_LOADER then
+			print(string.format("[ItemModelLoader] ✅ Instance '%s' is a MeshPart", instance.Name))
+		end
 		return instance
 	end
 
 	-- Otherwise, search recursively for a MeshPart
-	return instance:FindFirstChildWhichIsA("MeshPart", true)
+	local meshPart = instance:FindFirstChildWhichIsA("MeshPart", true)
+	if meshPart then
+		if DEBUG_MODEL_LOADER then
+			print(string.format("[ItemModelLoader] ✅ Found MeshPart '%s' inside '%s' (%s)", meshPart.Name, instance.Name, instance.ClassName))
+		end
+		return meshPart
+	else
+		if DEBUG_MODEL_LOADER then
+			warn(string.format("[ItemModelLoader] ❌ No MeshPart found inside '%s' (%s) - check model structure", instance.Name, instance.ClassName))
+		end
+		return nil
+	end
 end
 
 ----------------------------------------------------------------
@@ -76,17 +102,27 @@ end
 ]]
 function ItemModelLoader.GetModelTemplate(itemName, itemId)
 	local folder = getToolsFolder()
-	if not folder then return nil end
+	if not folder then
+		if DEBUG_MODEL_LOADER then
+			warn(string.format("[ItemModelLoader] No Tools folder found for item '%s' (id=%s)", tostring(itemName), tostring(itemId)))
+		end
+		return nil
+	end
 
 	-- Try by item name first (most common)
 	if itemName then
 		local model = folder:FindFirstChild(itemName)
 		if model then
 			if DEBUG_MODEL_LOADER then
-				print(string.format("[ItemModelLoader] FOUND model for name='%s' (id=%s)", 
-					tostring(itemName), tostring(itemId)))
+				print(string.format("[ItemModelLoader] ✅ FOUND model for name='%s' (id=%s) in %s", 
+					tostring(itemName), tostring(itemId), folder:GetFullName()))
 			end
 			return findMeshPartInInstance(model)
+		else
+			if DEBUG_MODEL_LOADER then
+				print(string.format("[ItemModelLoader] ❌ NO MODEL for name='%s' (id=%s) in %s", 
+					tostring(itemName), tostring(itemId), folder:GetFullName()))
+			end
 		end
 	end
 

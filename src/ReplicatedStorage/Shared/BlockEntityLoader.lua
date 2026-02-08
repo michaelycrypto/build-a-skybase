@@ -6,22 +6,26 @@
 	like beds, chests, doors, signs, etc. that cannot be represented as simple cubes.
 
 	Entity models are looked up by:
-	1. Entity name (e.g., "chest", "bed_red", "door_oak")
-	2. Block ID as fallback
+	1. Entity name in Assets.BlockEntities (e.g., "Chest", "Anvil")
+	2. Fallback to Assets.Tools for items that are also blocks (e.g., saplings)
 
 	Models can be:
 	- A MeshPart directly
 	- A Model containing multiple parts (for complex entities)
 
 	Returns the entity template if found, nil otherwise.
+	
+	NOTE: For saplings, world placement uses BlockEntities (via entityName),
+	while held/dropped items use Assets.Tools (via ItemModelLoader).
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local BlockEntityLoader = {}
 
--- Cache for BlockEntities folder reference
+-- Cache for folder references
 local entitiesFolderCache = nil
+local toolsFolderCache = nil
 
 ----------------------------------------------------------------
 -- Helper Functions
@@ -73,6 +77,31 @@ local function getEntitiesFolder()
 	return nil
 end
 
+local function getToolsFolder()
+	if toolsFolderCache then
+		return toolsFolderCache
+	end
+
+	-- Primary: ReplicatedStorage.Assets.Tools
+	local assets = ReplicatedStorage:FindFirstChild("Assets")
+	if assets then
+		local toolsFolder = assets:FindFirstChild("Tools")
+		if toolsFolder then
+			toolsFolderCache = toolsFolder
+			return toolsFolder
+		end
+	end
+
+	-- Fallback: ReplicatedStorage.Tools (legacy)
+	local folder = ReplicatedStorage:FindFirstChild("Tools")
+	if folder then
+		toolsFolderCache = folder
+		return folder
+	end
+
+	return nil
+end
+
 local function findPrimaryMeshPart(instance)
 	if not instance then return nil end
 
@@ -98,32 +127,48 @@ end
 
 --[[
 	Get the raw entity template (Model, MeshPart, or Folder)
-	@param entityName: string - The entity name (e.g., "Chest", "Anvil")
+	@param entityName: string - The entity name (e.g., "Chest", "Anvil", "Oak Sapling")
 	@return Instance | nil - The entity template if found, nil otherwise
 	
-	NOTE: Only looks up by entityName. Block ID fallback removed to prevent
-	accidental matches (e.g., a model named "76" matching wheat crops).
+	Lookup order:
+	1. Assets.BlockEntities (primary - for world placement)
+	2. Assets.Tools (fallback - for saplings that share models)
+	
+	This allows saplings to use the same model from Assets.Tools for world placement
+	if no dedicated BlockEntities model exists.
 ]]
 function BlockEntityLoader.GetEntityTemplate(entityName, _blockId)
-	local folder = getEntitiesFolder()
-	if not folder then 
-		if DEBUG_ENTITY_LOADER then
-			warn("[BlockEntityLoader] GetEntityTemplate: No folder found for", entityName)
-		end
-		return nil 
+	if not entityName then
+		return nil
 	end
 
-	-- Only look up by entity name (no blockId fallback)
-	if entityName then
-		local entity = folder:FindFirstChild(entityName)
+	-- First, try BlockEntities folder (primary for world placement)
+	local entitiesFolder = getEntitiesFolder()
+	if entitiesFolder then
+		local entity = entitiesFolder:FindFirstChild(entityName)
 		if DEBUG_ENTITY_LOADER then
-			print("[BlockEntityLoader] Looking for entity '" .. tostring(entityName) .. "':", entity and "FOUND" or "NOT FOUND")
+			print("[BlockEntityLoader] Looking for entity '" .. tostring(entityName) .. "' in BlockEntities:", entity and "FOUND" or "NOT FOUND")
 		end
 		if entity then
 			return entity
 		end
 	end
 
+	-- Fallback: try Tools folder (for saplings that share models between held/world)
+	local toolsFolder = getToolsFolder()
+	if toolsFolder then
+		local entity = toolsFolder:FindFirstChild(entityName)
+		if DEBUG_ENTITY_LOADER then
+			print("[BlockEntityLoader] Looking for entity '" .. tostring(entityName) .. "' in Tools (fallback):", entity and "FOUND" or "NOT FOUND")
+		end
+		if entity then
+			return entity
+		end
+	end
+
+	if DEBUG_ENTITY_LOADER then
+		warn("[BlockEntityLoader] GetEntityTemplate: No entity found for", entityName)
+	end
 	return nil
 end
 

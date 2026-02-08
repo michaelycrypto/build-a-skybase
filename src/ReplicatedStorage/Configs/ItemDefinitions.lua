@@ -13,13 +13,18 @@
 	- ARMOR: Protection gear - provides defense
 	- ARROW: Ammunition - consumed by ranged weapons
 	- FOOD: Consumables - restore hunger
-	- MATERIAL: Crafting ingredients - no direct use
+	- MATERIAL: Crafting ingredients - includes saplings, seeds (can place blocks via placesBlock field)
 	- DYE: Coloring items - apply to blocks/items
 	- MOB_EGG: Spawn eggs - spawn entities
 	- BLOCK: Placeable items - world interaction
 
+	PLACEABLE ITEMS:
+	- Items with 'placesBlock' field can be placed in world as blocks
+	- Example: Saplings (item id 16) places Oak Sapling block (block id 16)
+	- Block properties defined in BlockRegistry, item properties here
+
 	ID RANGES:
-	  1-99:     Core blocks (dirt, stone, wood, etc.)
+	  1-99:     Core blocks (dirt, stone, wood, etc.) + Saplings (16, 40, 45, 50, 55, 60)
 	  100-199:  Ores, ingots, materials
 	  200-299:  Food items
 	  1001-1099: Tools (pickaxes, axes, shovels)
@@ -295,6 +300,14 @@ ItemDefinitions.Materials = {
 	BEETROOT_SEEDS =  { id = 551, name = "Beetroot Seeds",  category = "material", texture = "rbxassetid://139096196695198" },
 	MELON_SEEDS =     { id = 552, name = "Melon Seeds",     category = "material", texture = "rbxassetid://139096196695198" },
 	PUMPKIN_SEEDS =   { id = 553, name = "Pumpkin Seeds",   category = "material", texture = "rbxassetid://139096196695198" },
+
+	-- Saplings (placeable items that grow into trees)
+	OAK_SAPLING =      { id = 16,  name = "Oak Sapling",      category = "material", texture = "rbxassetid://139096196695198", placesBlock = 16 },
+	SPRUCE_SAPLING =   { id = 40,  name = "Spruce Sapling",   category = "material", texture = "rbxassetid://139096196695198", placesBlock = 40 },
+	JUNGLE_SAPLING =   { id = 45,  name = "Jungle Sapling",   category = "material", texture = "rbxassetid://139096196695198", placesBlock = 45 },
+	DARK_OAK_SAPLING = { id = 50,  name = "Dark Oak Sapling", category = "material", texture = "rbxassetid://139096196695198", placesBlock = 50 },
+	BIRCH_SAPLING =    { id = 55,  name = "Birch Sapling",    category = "material", texture = "rbxassetid://139096196695198", placesBlock = 55 },
+	ACACIA_SAPLING =   { id = 60,  name = "Acacia Sapling",   category = "material", texture = "rbxassetid://139096196695198", placesBlock = 60 },
 
 	-- Gems & Misc
 	DIAMOND =         { id = 417, name = "Diamond",         category = "material", texture = "rbxassetid://139096196695198", color = Color3.fromRGB(80, 220, 220) },

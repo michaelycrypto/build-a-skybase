@@ -15,6 +15,7 @@ local TextureManager = require(ReplicatedStorage.Shared.VoxelWorld.Rendering.Tex
 local ItemModelLoader = require(ReplicatedStorage.Shared.ItemModelLoader)
 local BlockEntityLoader = require(ReplicatedStorage.Shared.BlockEntityLoader)
 local ItemPixelSizes = require(ReplicatedStorage.Shared.ItemPixelSizes)
+local SaplingTypes = require(ReplicatedStorage.Configs.SaplingTypes)
 
 local HeldItemRenderer = {}
 
@@ -60,6 +61,12 @@ local function isPlaceableBlock(itemId)
 end
 
 local function hasBlockEntity(itemId)
+	-- Saplings use Assets.Tools models for held items, not BlockEntities
+	-- (BlockEntities is only for world placement rendering)
+	if SaplingTypes.IsSapling(itemId) then
+		return false
+	end
+	
 	local def = BlockRegistry.Blocks[itemId]
 	if not def or not def.entityName then
 		return false
@@ -203,31 +210,26 @@ function HeldItemRenderer.AttachItem(character, itemId)
 		part = createBlockPart(itemId)
 		grip = BLOCK_GRIP
 	else
-		-- Try 3D model from Assets.Tools (covers tools, armor, food, materials, etc.)
+		-- All non-block items MUST have 3D models in Assets.Tools
 		local itemName = ItemRegistry.GetItemName(itemId)
 		if itemName and itemName ~= "Unknown" then
 			part = createItemPart(itemId, itemName)
-		end
+			
+			if not part then
+				error(string.format("[HeldItemRenderer] Missing 3D model for item '%s' (id=%s) in Assets.Tools - add mesh to ReplicatedStorage.Assets.Tools", itemName, tostring(itemId)))
+			end
 
-		-- Select grip based on item type
-		if part then
-			if itemName and itemName:lower():find("bow") then
+			-- Select grip based on item type
+			if itemName:lower():find("bow") then
 				grip = BOW_GRIP
-			elseif itemName and isTool(itemName) then
+			elseif isTool(itemName) then
 				grip = TOOL_GRIP
 			else
 				grip = ITEM_GRIP
 				part.Size = part.Size * ITEM_SCALE
 			end
 		else
-			-- Fallback: textured cube ONLY for actual solid blocks without 3D models
-			-- Non-solid items (food, materials, saplings) should not render as cubes
-			local blockDef = BlockRegistry.Blocks[itemId]
-			if blockDef and blockDef.solid and blockDef.textures then
-				part = createBlockPart(itemId)
-				grip = BLOCK_GRIP
-			end
-			-- Items without 3D models and without solid block rendering simply won't show
+			error(string.format("[HeldItemRenderer] Unknown item name for id=%s - item not defined in ItemDefinitions", tostring(itemId)))
 		end
 	end
 

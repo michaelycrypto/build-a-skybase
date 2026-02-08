@@ -24,6 +24,7 @@ local BlockPlacementRules = require(ReplicatedStorage.Shared.VoxelWorld.World.Bl
 local ToolConfig = require(ReplicatedStorage.Configs.ToolConfig)
 local CombatConfig = require(ReplicatedStorage.Configs.CombatConfig)
 local SaplingConfig = require(ReplicatedStorage.Configs.SaplingConfig)
+local SaplingTypes = require(ReplicatedStorage.Configs.SaplingTypes)
 
 local VoxelWorldService = {
 	Name = "VoxelWorldService"
@@ -1576,40 +1577,14 @@ function VoxelWorldService:HandlePlayerPunch(player, punchData)
         -- Spawn dropped items
 		if dropService then
             -- Special-case leaves (all variants): drop saplings/apples by chance, not the leaf block itself
-            local isLeaf = (
-                blockId == Constants.BlockType.LEAVES or
-                blockId == Constants.BlockType.OAK_LEAVES or
-                blockId == Constants.BlockType.SPRUCE_LEAVES or
-                blockId == Constants.BlockType.JUNGLE_LEAVES or
-                blockId == Constants.BlockType.DARK_OAK_LEAVES or
-                blockId == Constants.BlockType.BIRCH_LEAVES or
-                blockId == Constants.BlockType.ACACIA_LEAVES
-            )
+            local isLeaf = SaplingTypes.IsLeaf(blockId)
 
 			if isLeaf then
 				local saplingChance = (SaplingConfig.LEAF_DECAY and SaplingConfig.LEAF_DECAY.SAPLING_DROP_CHANCE) or 0.05
 				local appleChance = (SaplingConfig.LEAF_DECAY and SaplingConfig.LEAF_DECAY.APPLE_DROP_CHANCE) or 0.005
 
-				-- Map leaf → sapling
-				local saplingId
-				if blockId == Constants.BlockType.OAK_LEAVES then
-					saplingId = Constants.BlockType.OAK_SAPLING
-				end
-				if blockId == Constants.BlockType.SPRUCE_LEAVES then
-					saplingId = Constants.BlockType.SPRUCE_SAPLING
-				end
-				if blockId == Constants.BlockType.JUNGLE_LEAVES then
-					saplingId = Constants.BlockType.JUNGLE_SAPLING
-				end
-				if blockId == Constants.BlockType.DARK_OAK_LEAVES then
-					saplingId = Constants.BlockType.DARK_OAK_SAPLING
-				end
-				if blockId == Constants.BlockType.BIRCH_LEAVES then
-					saplingId = Constants.BlockType.BIRCH_SAPLING
-				end
-				if blockId == Constants.BlockType.ACACIA_LEAVES then
-					saplingId = Constants.BlockType.ACACIA_SAPLING
-				end
+				-- Map leaf → sapling using SaplingTypes
+				local saplingId = SaplingTypes.LEAVES_TO_SAPLING[blockId]
 
 				-- If leaf was the legacy generic kind, infer species from nearby variant leaves first, then nearest trunk
 				if (not saplingId) and blockId == Constants.BlockType.LEAVES then
@@ -1617,28 +1592,7 @@ function VoxelWorldService:HandlePlayerPunch(player, punchData)
 					-- Try species encoded in metadata (bits 4-6) first
 					local meta = self.worldManager and self.worldManager:GetBlockMetadata(x, y, z) or 0
 					local code = bit32.rshift(bit32.band(meta, 0x70), 4)
-					local function codeToSapling(c)
-						if c == 0 then
-							return Constants.BlockType.OAK_SAPLING
-						end
-						if c == 1 then
-							return Constants.BlockType.SPRUCE_SAPLING
-						end
-						if c == 2 then
-							return Constants.BlockType.JUNGLE_SAPLING
-						end
-						if c == 3 then
-							return Constants.BlockType.DARK_OAK_SAPLING
-						end
-						if c == 4 then
-							return Constants.BlockType.BIRCH_SAPLING
-						end
-						if c == 5 then
-							return Constants.BlockType.ACACIA_SAPLING
-						end
-						return nil
-					end
-					local fromCode = codeToSapling(code)
+					local fromCode = SaplingTypes.GetSaplingFromSpeciesCode(code)
 					if fromCode then
 						saplingId = fromCode
 					end
@@ -1649,7 +1603,7 @@ function VoxelWorldService:HandlePlayerPunch(player, punchData)
 						local cz = math.floor(z / Constants.CHUNK_SIZE_Z)
 						local hint = self.Deps.SaplingService:GetChunkSpecies(cx, cz)
 						if hint ~= nil then
-							local hinted = codeToSapling(hint)
+							local hinted = SaplingTypes.GetSaplingFromSpeciesCode(hint)
 							if hinted then
 								saplingId = hinted
 							end
@@ -1662,23 +1616,11 @@ function VoxelWorldService:HandlePlayerPunch(player, punchData)
 						for dx = -radius, radius do
 							for dz = -radius, radius do
 								local nid = self.worldManager and self.worldManager:GetBlock(x + dx, y + dy, z + dz)
-								if nid == Constants.BlockType.OAK_LEAVES then
-									inferred = Constants.BlockType.OAK_SAPLING break
-								end
-								if nid == Constants.BlockType.SPRUCE_LEAVES then
-									inferred = Constants.BlockType.SPRUCE_SAPLING break
-								end
-								if nid == Constants.BlockType.JUNGLE_LEAVES then
-									inferred = Constants.BlockType.JUNGLE_SAPLING break
-								end
-								if nid == Constants.BlockType.DARK_OAK_LEAVES then
-									inferred = Constants.BlockType.DARK_OAK_SAPLING break
-								end
-								if nid == Constants.BlockType.BIRCH_LEAVES then
-									inferred = Constants.BlockType.BIRCH_SAPLING break
-								end
-								if nid == Constants.BlockType.ACACIA_LEAVES then
-									inferred = Constants.BlockType.ACACIA_SAPLING break
+								-- Check if it's a typed leaf (not legacy LEAVES)
+								local leafSapling = SaplingTypes.LEAVES_TO_SAPLING[nid]
+								if leafSapling and nid ~= Constants.BlockType.LEAVES then
+									inferred = leafSapling
+									break
 								end
 							end
 							if inferred then
@@ -1689,27 +1631,15 @@ function VoxelWorldService:HandlePlayerPunch(player, punchData)
 							saplingId = inferred
 						else
 							local best
-							for dy = -radius, radius do
+							for dy2 = -radius, radius do
 								for dx = -radius, radius do
 									for dz = -radius, radius do
-										local bid = self.worldManager and self.worldManager:GetBlock(x + dx, y + dy, z + dz)
-										if bid == Constants.BlockType.WOOD then
-											best = Constants.BlockType.OAK_SAPLING break
-										end
-										if bid == Constants.BlockType.SPRUCE_LOG then
-											best = Constants.BlockType.SPRUCE_SAPLING break
-										end
-										if bid == Constants.BlockType.JUNGLE_LOG then
-											best = Constants.BlockType.JUNGLE_SAPLING break
-										end
-										if bid == Constants.BlockType.DARK_OAK_LOG then
-											best = Constants.BlockType.DARK_OAK_SAPLING break
-										end
-										if bid == Constants.BlockType.BIRCH_LOG then
-											best = Constants.BlockType.BIRCH_SAPLING break
-										end
-										if bid == Constants.BlockType.ACACIA_LOG then
-											best = Constants.BlockType.ACACIA_SAPLING break
+										local bid = self.worldManager and self.worldManager:GetBlock(x + dx, y + dy2, z + dz)
+										-- Check if it's a log type
+										local logSapling = SaplingTypes.LOG_TO_SAPLING[bid]
+										if logSapling then
+											best = logSapling
+											break
 										end
 									end
 									if best then

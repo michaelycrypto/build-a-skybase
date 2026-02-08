@@ -578,7 +578,7 @@ function BlockViewportCreator.CreateBlockViewport(parent, blockId, size, positio
 	-- Parent and center by bounding box so visuals are consistent for all shapes
 	blockModel.Parent = viewport
 	centerViewportInstance(blockModel)
-	
+
 	-- Apply Y-axis rotation if specified (for adjusting model facing direction)
 	if rotationY and rotationY ~= 0 then
 		if blockModel:IsA("Model") then

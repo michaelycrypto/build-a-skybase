@@ -1,9 +1,30 @@
 --[[
 	SaplingConfig.lua
 	Basic configuration for sapling growth mechanics (Minecraft-like, simplified)
+	
+	Uses centralized SaplingTypes for leaf/sapling block lists.
 ]]
 
 local Constants = require(game.ReplicatedStorage.Shared.VoxelWorld.Core.Constants)
+local SaplingTypes = require(game.ReplicatedStorage.Configs.SaplingTypes)
+
+-- Build REPLACEABLE_BLOCKS from SaplingTypes + static blocks
+local REPLACEABLE_BLOCKS = {
+	[Constants.BlockType.AIR] = true,
+	[Constants.BlockType.TALL_GRASS] = true,
+	[Constants.BlockType.FLOWER] = true,
+	[Constants.BlockType.LEAVES] = true, -- Legacy leaves
+}
+
+-- Add all leaf types from SaplingTypes
+for leavesId in pairs(SaplingTypes.LEAF_SET) do
+	REPLACEABLE_BLOCKS[leavesId] = true
+end
+
+-- Add all sapling types from SaplingTypes
+for saplingId in pairs(SaplingTypes.ALL_SAPLINGS) do
+	REPLACEABLE_BLOCKS[saplingId] = true
+end
 
 local SaplingConfig = {
 	-- How often the service attempts growth checks (seconds)
@@ -20,26 +41,8 @@ local SaplingConfig = {
 	REQUIRE_SKY_VISIBLE = true,
 
 	-- Blocks that can be replaced by tree generation (for space checks)
-	REPLACEABLE_BLOCKS = {
-		[Constants.BlockType.AIR] = true,
-		[Constants.BlockType.TALL_GRASS] = true,
-		[Constants.BlockType.FLOWER] = true,
-		[Constants.BlockType.LEAVES] = true,
-		[Constants.BlockType.OAK_LEAVES] = true,
-		[Constants.BlockType.SPRUCE_LEAVES] = true,
-		[Constants.BlockType.JUNGLE_LEAVES] = true,
-		[Constants.BlockType.DARK_OAK_LEAVES] = true,
-		[Constants.BlockType.BIRCH_LEAVES] = true,
-		[Constants.BlockType.ACACIA_LEAVES] = true,
-		[Constants.BlockType.OAK_SAPLING] = true,
-		[Constants.BlockType.SPRUCE_SAPLING] = true,
-		[Constants.BlockType.JUNGLE_SAPLING] = true,
-		[Constants.BlockType.DARK_OAK_SAPLING] = true,
-		[Constants.BlockType.BIRCH_SAPLING] = true,
-		[Constants.BlockType.ACACIA_SAPLING] = true,
-	}
-
-	,
+	-- Auto-generated from SaplingTypes
+	REPLACEABLE_BLOCKS = REPLACEABLE_BLOCKS,
 
 	-- Leaf decay settings (simplified)
 	LEAF_DECAY = {

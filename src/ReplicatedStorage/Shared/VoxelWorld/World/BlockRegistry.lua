@@ -20,6 +20,7 @@
 ]]
 
 local Constants = require(script.Parent.Parent.Core.Constants)
+local SaplingTypes = require(game.ReplicatedStorage.Configs.SaplingTypes)
 
 local BlockRegistry = {}
 
@@ -262,7 +263,8 @@ BlockRegistry.Blocks = {
 			all = "oak_sapling"
 		},
 		crossShape = true,
-		groundAligned = true
+		groundAligned = true,
+		entityName = "Oak Sapling" -- 3D model from Assets.BlockEntities for world placement
 	},
 
 	-- Staircase blocks
@@ -1705,7 +1707,8 @@ BlockRegistry.Blocks = {
 			all = "spruce_sapling"
 		},
 		crossShape = true,
-		groundAligned = true
+		groundAligned = true,
+		entityName = "Spruce Sapling" -- 3D model from Assets.BlockEntities for world placement
 	},
 
 	[Constants.BlockType.SPRUCE_STAIRS] = {
@@ -1765,7 +1768,8 @@ BlockRegistry.Blocks = {
 			all = "jungle_sapling"
 		},
 		crossShape = true,
-		groundAligned = true
+		groundAligned = true,
+		entityName = "Jungle Sapling" -- 3D model from Assets.BlockEntities for world placement
 	},
 
 	[Constants.BlockType.JUNGLE_STAIRS] = {
@@ -1825,7 +1829,8 @@ BlockRegistry.Blocks = {
 			all = "dark_oak_sapling"
 		},
 		crossShape = true,
-		groundAligned = true
+		groundAligned = true,
+		entityName = "Dark Oak Sapling" -- 3D model from Assets.BlockEntities for world placement
 	},
 
 	[Constants.BlockType.DARK_OAK_STAIRS] = {
@@ -1885,7 +1890,8 @@ BlockRegistry.Blocks = {
 			all = "birch_sapling"
 		},
 		crossShape = true,
-		groundAligned = true
+		groundAligned = true,
+		entityName = "Birch Sapling" -- 3D model from Assets.BlockEntities for world placement
 	},
 
 	[Constants.BlockType.BIRCH_STAIRS] = {
@@ -1945,7 +1951,8 @@ BlockRegistry.Blocks = {
 			all = "acacia_sapling"
 		},
 		crossShape = true,
-		groundAligned = true
+		groundAligned = true,
+		entityName = "Acacia Sapling" -- 3D model from Assets.BlockEntities for world placement
 	},
 
 	[Constants.BlockType.ACACIA_STAIRS] = {
@@ -3613,15 +3620,8 @@ function BlockRegistry:IsPlaceable(blockId: number): boolean
     -- Cross-shaped visuals are placeable only for actual plants/saplings (not items)
     if block.crossShape == true then
         local t = Constants.BlockType
-        if blockId == t.TALL_GRASS
-            or blockId == t.FLOWER
-            or blockId == t.OAK_SAPLING
-            or blockId == t.SPRUCE_SAPLING
-            or blockId == t.JUNGLE_SAPLING
-            or blockId == t.DARK_OAK_SAPLING
-            or blockId == t.BIRCH_SAPLING
-            or blockId == t.ACACIA_SAPLING
-        then
+        -- Tall grass, flowers, and all saplings are placeable
+        if blockId == t.TALL_GRASS or blockId == t.FLOWER or SaplingTypes.IsSapling(blockId) then
             return true
         end
 

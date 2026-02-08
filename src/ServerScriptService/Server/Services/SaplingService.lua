@@ -1,6 +1,8 @@
 --[[
 	SaplingService.lua
-	Straightforward Minecraft-like sapling growth for voxel world (Oak only for now)
+	Minecraft-like sapling growth and leaf decay for voxel world
+	
+	Uses centralized SaplingTypes for all wood family mappings.
 ]]
 
 local _Players = game:GetService("Players")
@@ -9,6 +11,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local BaseService = require(script.Parent.BaseService)
 local Constants = require(game.ReplicatedStorage.Shared.VoxelWorld.Core.Constants)
 local SaplingConfig = require(game.ReplicatedStorage.Configs.SaplingConfig)
+local SaplingTypes = require(game.ReplicatedStorage.Configs.SaplingTypes)
 local Logger = require(ReplicatedStorage.Shared.Logger)
 local GameConfig = require(ReplicatedStorage.Configs.GameConfig)
 
@@ -16,6 +19,17 @@ local SaplingService = setmetatable({}, BaseService)
 SaplingService.__index = SaplingService
 
 local BLOCK = Constants.BlockType
+
+-- Import lookup tables from centralized SaplingTypes
+local ALL_SAPLINGS = SaplingTypes.ALL_SAPLINGS
+local SAPLING_TO_LOG = SaplingTypes.SAPLING_TO_LOG
+local LOG_TO_SAPLING = SaplingTypes.LOG_TO_SAPLING
+local LOG_ANCHORS = SaplingTypes.LOG_SET  -- Renamed for clarity
+local LEAF_SET = SaplingTypes.LEAF_SET
+local LOG_TO_LEAVES = SaplingTypes.LOG_TO_LEAVES
+local LEAVES_TO_SAPLING = SaplingTypes.LEAVES_TO_SAPLING
+local LEAF_TO_SPECIES_CODE = SaplingTypes.LEAF_TO_SPECIES_CODE
+local SPECIES_CODE_TO_SAPLING = SaplingTypes.SPECIES_CODE_TO_SAPLING
 
 -- Standardize and gate module-local prints through Logger at DEBUG level
 local _logger = Logger:CreateContext("SaplingService")
@@ -76,72 +90,6 @@ local function setLeafDistance(meta, dist)
     return bit32.bor(base, math.clamp(dist or 7, 0, 7))
 end
 
--- Wood families support (logs/saplings)
-local ALL_SAPLINGS = {
-    [BLOCK.OAK_SAPLING] = true,
-    [BLOCK.SPRUCE_SAPLING] = true,
-    [BLOCK.JUNGLE_SAPLING] = true,
-    [BLOCK.DARK_OAK_SAPLING] = true,
-    [BLOCK.BIRCH_SAPLING] = true,
-    [BLOCK.ACACIA_SAPLING] = true,
-}
-
-local SAPLING_TO_LOG = {
-    [BLOCK.OAK_SAPLING] = BLOCK.WOOD,
-    [BLOCK.SPRUCE_SAPLING] = BLOCK.SPRUCE_LOG,
-    [BLOCK.JUNGLE_SAPLING] = BLOCK.JUNGLE_LOG,
-    [BLOCK.DARK_OAK_SAPLING] = BLOCK.DARK_OAK_LOG,
-    [BLOCK.BIRCH_SAPLING] = BLOCK.BIRCH_LOG,
-    [BLOCK.ACACIA_SAPLING] = BLOCK.ACACIA_LOG,
-}
-
-local LOG_TO_SAPLING = {
-    [BLOCK.WOOD] = BLOCK.OAK_SAPLING,
-    [BLOCK.SPRUCE_LOG] = BLOCK.SPRUCE_SAPLING,
-    [BLOCK.JUNGLE_LOG] = BLOCK.JUNGLE_SAPLING,
-    [BLOCK.DARK_OAK_LOG] = BLOCK.DARK_OAK_SAPLING,
-    [BLOCK.BIRCH_LOG] = BLOCK.BIRCH_SAPLING,
-    [BLOCK.ACACIA_LOG] = BLOCK.ACACIA_SAPLING,
-}
-
-local LOG_ANCHORS = {
-    [BLOCK.WOOD] = true,
-    [BLOCK.SPRUCE_LOG] = true,
-    [BLOCK.JUNGLE_LOG] = true,
-    [BLOCK.DARK_OAK_LOG] = true,
-    [BLOCK.BIRCH_LOG] = true,
-    [BLOCK.ACACIA_LOG] = true,
-}
-
-local LEAF_SET = {
-    [BLOCK.LEAVES] = true,
-    [BLOCK.OAK_LEAVES] = true,
-    [BLOCK.SPRUCE_LEAVES] = true,
-    [BLOCK.JUNGLE_LEAVES] = true,
-    [BLOCK.DARK_OAK_LEAVES] = true,
-    [BLOCK.BIRCH_LEAVES] = true,
-    [BLOCK.ACACIA_LEAVES] = true,
-}
-
-local LOG_TO_LEAVES = {
-    [BLOCK.WOOD] = BLOCK.OAK_LEAVES,
-    [BLOCK.SPRUCE_LOG] = BLOCK.SPRUCE_LEAVES,
-    [BLOCK.JUNGLE_LOG] = BLOCK.JUNGLE_LEAVES,
-    [BLOCK.DARK_OAK_LOG] = BLOCK.DARK_OAK_LEAVES,
-    [BLOCK.BIRCH_LOG] = BLOCK.BIRCH_LEAVES,
-    [BLOCK.ACACIA_LOG] = BLOCK.ACACIA_LEAVES,
-}
-
-local LEAVES_TO_SAPLING = {
-    [BLOCK.LEAVES] = BLOCK.OAK_SAPLING,
-    [BLOCK.OAK_LEAVES] = BLOCK.OAK_SAPLING,
-    [BLOCK.SPRUCE_LEAVES] = BLOCK.SPRUCE_SAPLING,
-    [BLOCK.JUNGLE_LEAVES] = BLOCK.JUNGLE_SAPLING,
-    [BLOCK.DARK_OAK_LEAVES] = BLOCK.DARK_OAK_SAPLING,
-    [BLOCK.BIRCH_LEAVES] = BLOCK.BIRCH_SAPLING,
-    [BLOCK.ACACIA_LEAVES] = BLOCK.ACACIA_SAPLING,
-}
-
 -- Encode leaf species in metadata bits 4-6 (0..7) to survive log removal/server restarts
 local function getLeafSpecies(meta)
     local v = bit32.band(meta or 0, 0x70) -- bits 4-6
@@ -155,26 +103,8 @@ local function setLeafSpecies(meta, speciesCode)
     return bit32.bor(cleared, coded)
 end
 
-local LEAF_TO_SPECIES_CODE = {
-    [BLOCK.OAK_LEAVES] = 0,
-    [BLOCK.SPRUCE_LEAVES] = 1,
-    [BLOCK.JUNGLE_LEAVES] = 2,
-    [BLOCK.DARK_OAK_LEAVES] = 3,
-    [BLOCK.BIRCH_LEAVES] = 4,
-    [BLOCK.ACACIA_LEAVES] = 5,
-}
-
-local SPECIES_CODE_TO_SAPLING = {
-    [0] = BLOCK.OAK_SAPLING,
-    [1] = BLOCK.SPRUCE_SAPLING,
-    [2] = BLOCK.JUNGLE_SAPLING,
-    [3] = BLOCK.DARK_OAK_SAPLING,
-    [4] = BLOCK.BIRCH_SAPLING,
-    [5] = BLOCK.ACACIA_SAPLING,
-}
-
 function SaplingService:_isLeaf(blockId)
-    return LEAF_SET[blockId] == true
+    return SaplingTypes.IsLeaf(blockId)
 end
 
 -- Schedule unsupported leaf for gradual decay (placed after helpers to use keyFor)
@@ -992,66 +922,6 @@ function SaplingService:_canPlaceOakAt(vm, x, y, z)
 	end
 
 	return true
-end
-
-function SaplingService:_placeOakAt(vm, x, y, z)
-	local vws = self.Deps and self.Deps.VoxelWorldService
-	if not vws then
-		return
-	end
-
-	-- Replace sapling block (at y-1) with trunk base
-	vws:SetBlock(x, y - 1, z, BLOCK.WOOD)
-
-	-- Trunk (5 blocks)
-	for dy = 0, 4 do
-		vws:SetBlock(x, y + dy, z, BLOCK.WOOD)
-	end
-
-	local function place(dx, dy, dz, skipTrunk)
-		if skipTrunk and dx == 0 and dz == 0 then
-			return
-		end
-		local leafId = LOG_TO_LEAVES[BLOCK.WOOD] or BLOCK.LEAVES
-		vws:SetBlock(x + dx, y + dy, z + dz, leafId)
-		-- Stamp species bits for persistence
-		local meta = vm:GetBlockMetadata(x + dx, y + dy, z + dz) or 0
-		local code = LEAF_TO_SPECIES_CODE[leafId]
-		if code then
-			vm:SetBlockMetadata(x + dx, y + dy, z + dz, setLeafSpecies(meta, code))
-		end
-	end
-
-	-- Layer y+3: 5x5 minus corners, skip center
-	for dx = -2, 2 do
-		for dz = -2, 2 do
-			if not (math.abs(dx) == 2 and math.abs(dz) == 2) then
-				place(dx, 3, dz, true)
-			end
-		end
-	end
-
-	-- Layer y+4: 5x5 minus corners, skip center
-	for dx = -2, 2 do
-		for dz = -2, 2 do
-			if not (math.abs(dx) == 2 and math.abs(dz) == 2) then
-				place(dx, 4, dz, true)
-			end
-		end
-	end
-
-	-- Layer y+5: 3x3 (includes center)
-	for dx = -1, 1 do
-		for dz = -1, 1 do
-			place(dx, 5, dz, false)
-		end
-	end
-
-	-- Initialize leaf distances around the new tree to ensure decay metadata is valid
-	local vm2 = vws and vws.worldManager
-	if vm2 then
-		SaplingService._recomputeLeafDistances(self, vm2, x, y + 3, z, (SaplingConfig.LEAF_DECAY and SaplingConfig.LEAF_DECAY.RADIUS) or 6)
-	end
 end
 
 -- Generic placement for small trees, using specified logId for trunk

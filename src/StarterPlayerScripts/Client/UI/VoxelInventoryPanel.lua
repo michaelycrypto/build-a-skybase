@@ -1,11 +1,11 @@
 --[[
 	VoxelInventoryPanel.lua
 	Minecraft-style inventory panel with tabbed navigation
-	
+
 	Layout: Single-column with horizontal tabs (Inventory, Crafting)
 	- Inventory tab: Armor slots + viewmodel, 3x9 grid, 1x9 hotbar
 	- Crafting tab: Recipe grid with detail panel
-	
+
 	Mechanics:
 	- Left Click: Pick up/place entire stack, or swap stacks
 	- Right Click: Pick up half stack / Place one item
@@ -62,7 +62,7 @@ local CONFIG = {
 	-- Grid dimensions
 	COLUMNS = 9,
 	ROWS = 3,
-	
+
 	-- Panel dimensions
 	PANEL_WIDTH = 564,
 	HEADER_HEIGHT = 54,
@@ -70,28 +70,28 @@ local CONFIG = {
 	CONTENT_PADDING = 10,
 	SECTION_SPACING = 6,
 	SHADOW_HEIGHT = 10,
-	
+
 	-- Slot dimensions (border is drawn inside, so SLOT_SIZE is the full visual size)
 	SLOT_SIZE = 56,
 	SLOT_SPACING = 5,
 	SLOT_CORNER_RADIUS = 4,
 	SLOT_BORDER_THICKNESS = 2,
-	
+
 	-- Label dimensions
 	LABEL_HEIGHT = 14,
 	LABEL_SPACING = 4,
-	
+
 	-- Tab styling
 	TAB_ICON_SIZE = 24,
 	TAB_TEXT_SIZE = 16,
 	TAB_PADDING = 12,
 	TAB_SPACING = 6,
-	
+
 	-- Armor section
 	ARMOR_VIEWMODEL_HEIGHT = 120,
 	EQUIPMENT_SLOT_SIZE = 56,
 	EQUIPMENT_SPACING = 5,
-	
+
 	-- Colors (consistent with other UIs)
 	PANEL_BG = Color3.fromRGB(58, 58, 58),
 	SHADOW_COLOR = Color3.fromRGB(43, 43, 43),
@@ -104,7 +104,7 @@ local CONFIG = {
 	TEXT_MUTED = Color3.fromRGB(140, 140, 140),
 	TAB_ACTIVE = Color3.fromRGB(255, 255, 255),
 	TAB_INACTIVE = Color3.fromRGB(185, 185, 195),
-	
+
 	-- Background texture
 	BG_IMAGE = "rbxassetid://82824299358542",
 	BG_IMAGE_TRANSPARENCY = 0.6,
@@ -122,23 +122,23 @@ end
 
 local function GetItemDisplayName(itemId)
 	if not itemId or itemId == 0 then return nil end
-	
+
 	local registryName = ItemRegistry.GetItemName(itemId)
 	if registryName and registryName ~= "Unknown" then
 		return registryName
 	end
-	
+
 	if SpawnEggConfig.IsSpawnEgg(itemId) then
 		local eggInfo = SpawnEggConfig.GetEggInfo(itemId)
 		return eggInfo and eggInfo.name or "Spawn Egg"
 	end
-	
+
 	local blockDef = BlockRegistry.Blocks[itemId]
 	return blockDef and blockDef.name or "Item"
 end
 
 local function IsShiftHeld()
-	return UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) 
+	return UserInputService:IsKeyDown(Enum.KeyCode.LeftShift)
 		or UserInputService:IsKeyDown(Enum.KeyCode.RightShift)
 end
 
@@ -148,7 +148,7 @@ end
 
 function VoxelInventoryPanel.new(inventoryManager)
 	local self = setmetatable({}, VoxelInventoryPanel)
-	
+
 	self.inventoryManager = inventoryManager
 	self.hotbar = inventoryManager.hotbar
 	self.isOpen = false
@@ -157,33 +157,33 @@ function VoxelInventoryPanel.new(inventoryManager)
 	self.overlayRelease = nil
 	self.pendingCloseMode = "gameplay"
 	self.hoverEnabled = false -- Controls whether hover effects are active
-	
+
 	-- UI references
 	self.gui = nil
 	self.panel = nil
 	self.bodyFrame = nil
 	self.titleLabel = nil
 	self.hoverItemLabel = nil
-	
+
 	-- Tab state
 	self.tabButtons = {}
 	self.activeTab = "inventory"
 	self.inventoryTabFrame = nil
 	self.craftingTabFrame = nil
-	
+
 	-- Slot frames
 	self.inventorySlotFrames = {}
 	self.equipmentSlotFrames = {}
 	self.hotbarSlotFrames = {}
-	
+
 	-- Armor viewmodel
 	self.armorViewmodel = nil
 	self.updateArmorViewmodel = nil
-	
+
 	-- Cursor state (Minecraft drag-and-drop)
 	self.cursorStack = ItemStack.new(0, 0)
 	self.cursorFrame = nil
-	
+
 	-- Equipped armor (synced from server)
 	self.equippedArmor = {
 		helmet = nil,
@@ -191,11 +191,11 @@ function VoxelInventoryPanel.new(inventoryManager)
 		leggings = nil,
 		boots = nil
 	}
-	
+
 	-- Event connections
 	self.connections = {}
 	self.renderConnection = nil
-	
+
 	return self
 end
 
@@ -205,11 +205,11 @@ end
 
 function VoxelInventoryPanel:_acquireOverlay()
 	if self.overlayRelease then return end
-	
+
 	local release = InputService:BeginOverlay("VoxelInventoryPanel", {
 		showIcon = true,
 	})
-	
+
 	if release then
 		self.overlayRelease = release
 	end
@@ -217,7 +217,7 @@ end
 
 function VoxelInventoryPanel:_releaseOverlay()
 	if not self.overlayRelease then return end
-	
+
 	local release = self.overlayRelease
 	self.overlayRelease = nil
 	release()
@@ -236,7 +236,7 @@ function VoxelInventoryPanel:Initialize()
 	self.gui.IgnoreGuiInset = false
 	self.gui.Enabled = false
 	self.gui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
-	
+
 	-- Add responsive scaling
 	local uiScale = Instance.new("UIScale")
 	uiScale.Name = "ResponsiveScale"
@@ -244,7 +244,7 @@ function VoxelInventoryPanel:Initialize()
 	uiScale:SetAttribute("min_scale", 0.6)
 	uiScale.Parent = self.gui
 	CollectionService:AddTag(uiScale, "scale_component")
-	
+
 	-- Create cursor GUI (always on top)
 	-- NOTE: Cursor GUI does NOT have UIScale - mouse coordinates are absolute pixels
 	self.cursorGui = Instance.new("ScreenGui")
@@ -253,28 +253,28 @@ function VoxelInventoryPanel:Initialize()
 	self.cursorGui.DisplayOrder = 999
 	self.cursorGui.IgnoreGuiInset = true  -- Cursor needs to ignore inset for proper positioning
 	self.cursorGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
-	
+
 	-- Create hover item label
 	self:CreateHoverItemLabel()
-	
+
 	-- Create main panel
 	self:CreatePanel()
-	
+
 	-- Create cursor frame for dragging
 	self:CreateCursorFrame()
-	
+
 	-- Setup input handling
 	self:SetupInputHandling()
-	
+
 	-- Setup inventory sync
 	self:SetupInventorySync()
-	
+
 	-- Setup armor event listeners
 	self:SetupArmorEventListeners()
-	
+
 	-- Initial refresh
 	self:RefreshAllSlots()
-	
+
 	-- Register with UIVisibilityManager
 	UIVisibilityManager:RegisterComponent("voxelInventory", self, {
 		showMethod = "Show",
@@ -293,26 +293,26 @@ function VoxelInventoryPanel:CreatePanel()
 	local slotSize = CONFIG.SLOT_SIZE
 	local inventoryGridHeight = slotSize * CONFIG.ROWS + CONFIG.SLOT_SPACING * (CONFIG.ROWS - 1)
 	local hotbarHeight = slotSize
-	
+
 	-- Section heights (each section has label + spacing + content)
 	local armorSectionHeight = CONFIG.LABEL_HEIGHT + CONFIG.LABEL_SPACING + CONFIG.ARMOR_VIEWMODEL_HEIGHT
 	local inventorySectionHeight = CONFIG.LABEL_HEIGHT + CONFIG.LABEL_SPACING + inventoryGridHeight
 	local hotbarSectionHeight = CONFIG.LABEL_HEIGHT + CONFIG.LABEL_SPACING + hotbarHeight
-	
+
 	-- Body = padding + armor + spacing + inventory + spacing + hotbar + padding
-	local bodyContentHeight = CONFIG.CONTENT_PADDING 
-		+ armorSectionHeight 
-		+ CONFIG.SECTION_SPACING 
-		+ inventorySectionHeight 
-		+ CONFIG.SECTION_SPACING 
-		+ hotbarSectionHeight 
+	local bodyContentHeight = CONFIG.CONTENT_PADDING
+		+ armorSectionHeight
+		+ CONFIG.SECTION_SPACING
+		+ inventorySectionHeight
+		+ CONFIG.SECTION_SPACING
+		+ hotbarSectionHeight
 		+ CONFIG.CONTENT_PADDING
-	
+
 	local totalHeight = CONFIG.HEADER_HEIGHT + CONFIG.TAB_ROW_HEIGHT + bodyContentHeight + CONFIG.SHADOW_HEIGHT
-	
+
 	-- Store the original panel height for animations
 	self.originalPanelHeight = totalHeight
-	
+
 	-- Main panel container
 	self.panel = Instance.new("Frame")
 	self.panel.Name = "InventoryPanel"
@@ -321,16 +321,16 @@ function VoxelInventoryPanel:CreatePanel()
 	self.panel.AnchorPoint = Vector2.new(0.5, 0.5)
 	self.panel.BackgroundTransparency = 1
 	self.panel.Parent = self.gui
-	
+
 	-- Header
 	self:CreateHeader()
-	
+
 	-- Tab row
 	self:CreateTabRow()
-	
+
 	-- Body (main content area)
 	self:CreateBody(bodyContentHeight)
-	
+
 	-- Set default tab
 	self:SetActiveTab("inventory")
 end
@@ -342,7 +342,7 @@ function VoxelInventoryPanel:CreateHeader()
 	header.Position = UDim2.fromScale(0, 0)
 	header.BackgroundTransparency = 1
 	header.Parent = self.panel
-	
+
 	-- Title
 	local title = Instance.new("TextLabel")
 	title.Name = "Title"
@@ -357,14 +357,14 @@ function VoxelInventoryPanel:CreateHeader()
 	title.Parent = header
 	FontBinder.apply(title, CUSTOM_FONT_NAME)
 	self.titleLabel = title
-	
+
 	-- Close button
 	local closeIcon = IconManager:CreateIcon(header, "UI", "X", {
 		size = UDim2.fromOffset(44, 44),
 		position = UDim2.fromScale(1, 0.5),
 		anchorPoint = Vector2.new(1, 0.5)
 	})
-	
+
 	local closeBtn = Instance.new("ImageButton")
 	closeBtn.Name = "CloseButton"
 	closeBtn.Size = UDim2.fromOffset(44, 44)
@@ -377,7 +377,7 @@ function VoxelInventoryPanel:CreateHeader()
 		closeIcon:Destroy()
 	end
 	closeBtn.Parent = header
-	
+
 	local rotateInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 	closeBtn.MouseEnter:Connect(function()
 		TweenService:Create(closeBtn, rotateInfo, { Rotation = 90 }):Play()
@@ -397,14 +397,14 @@ function VoxelInventoryPanel:CreateTabRow()
 	tabRow.Position = UDim2.fromOffset(0, CONFIG.HEADER_HEIGHT)
 	tabRow.BackgroundTransparency = 1
 	tabRow.Parent = self.panel
-	
+
 	local layout = Instance.new("UIListLayout")
 	layout.FillDirection = Enum.FillDirection.Horizontal
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
 	layout.Padding = UDim.new(0, CONFIG.TAB_SPACING)
 	layout.VerticalAlignment = Enum.VerticalAlignment.Center
 	layout.Parent = tabRow
-	
+
 	-- Create tabs (Inventory first, Crafting second)
 	self:CreateTab(tabRow, "inventory", 1, "Clothing", "Backpack", "Inventory")
 	self:CreateTab(tabRow, "crafting", 2, "Tools", "Hammer", "Crafting")
@@ -419,21 +419,21 @@ function VoxelInventoryPanel:CreateTab(parent, tabId, order, iconCategory, iconN
 	tab.Text = ""
 	tab.AutoButtonColor = false
 	tab.Parent = parent
-	
+
 	-- Content layout
 	local content = Instance.new("Frame")
 	content.Name = "Content"
 	content.Size = UDim2.fromScale(1, 1)
 	content.BackgroundTransparency = 1
 	content.Parent = tab
-	
+
 	local contentLayout = Instance.new("UIListLayout")
 	contentLayout.FillDirection = Enum.FillDirection.Horizontal
 	contentLayout.Padding = UDim.new(0, CONFIG.TAB_SPACING)
 	contentLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 	contentLayout.VerticalAlignment = Enum.VerticalAlignment.Center
 	contentLayout.Parent = content
-	
+
 	-- Icon
 	local icon = IconManager:CreateIcon(content, iconCategory, iconName, {
 		size = UDim2.fromOffset(CONFIG.TAB_ICON_SIZE, CONFIG.TAB_ICON_SIZE)
@@ -446,7 +446,7 @@ function VoxelInventoryPanel:CreateTab(parent, tabId, order, iconCategory, iconN
 			icon.ImageColor3 = CONFIG.TAB_INACTIVE
 		end
 	end
-	
+
 	-- Label
 	local label = Instance.new("TextLabel")
 	label.Name = "Label"
@@ -458,7 +458,7 @@ function VoxelInventoryPanel:CreateTab(parent, tabId, order, iconCategory, iconN
 	label.Font = Enum.Font.GothamBold
 	label.AutomaticSize = Enum.AutomaticSize.XY
 	label.Parent = content
-	
+
 	-- Active indicator
 	local indicator = Instance.new("Frame")
 	indicator.Name = "Indicator"
@@ -468,7 +468,7 @@ function VoxelInventoryPanel:CreateTab(parent, tabId, order, iconCategory, iconN
 	indicator.BackgroundTransparency = 1
 	indicator.BorderSizePixel = 0
 	indicator.Parent = tab
-	
+
 	-- Store reference
 	self.tabButtons[tabId] = {
 		button = tab,
@@ -477,12 +477,12 @@ function VoxelInventoryPanel:CreateTab(parent, tabId, order, iconCategory, iconN
 		indicator = indicator,
 		isImageIcon = isImageIcon
 	}
-	
+
 	-- Click handler
 	tab.MouseButton1Click:Connect(function()
 		self:SetActiveTab(tabId)
 	end)
-	
+
 	-- Hover effects
 	tab.MouseEnter:Connect(function()
 		if self.activeTab ~= tabId then
@@ -490,7 +490,7 @@ function VoxelInventoryPanel:CreateTab(parent, tabId, order, iconCategory, iconN
 			label.TextColor3 = Color3.fromRGB(220, 220, 220)
 		end
 	end)
-	
+
 	tab.MouseLeave:Connect(function()
 		if self.activeTab ~= tabId then
 			if isImageIcon and icon then icon.ImageColor3 = CONFIG.TAB_INACTIVE end
@@ -501,7 +501,7 @@ end
 
 function VoxelInventoryPanel:CreateBody(contentHeight)
 	local bodyY = CONFIG.HEADER_HEIGHT + CONFIG.TAB_ROW_HEIGHT
-	
+
 	-- Body container (holds panel + shadow)
 	local bodyContainer = Instance.new("Frame")
 	bodyContainer.Name = "BodyContainer"
@@ -509,7 +509,7 @@ function VoxelInventoryPanel:CreateBody(contentHeight)
 	bodyContainer.Position = UDim2.fromOffset(0, bodyY)
 	bodyContainer.BackgroundTransparency = 1
 	bodyContainer.Parent = self.panel
-	
+
 	-- Shadow (behind body, at bottom)
 	local shadow = Instance.new("Frame")
 	shadow.Name = "Shadow"
@@ -519,11 +519,11 @@ function VoxelInventoryPanel:CreateBody(contentHeight)
 	shadow.BorderSizePixel = 0
 	shadow.ZIndex = 0
 	shadow.Parent = bodyContainer
-	
+
 	local shadowCorner = Instance.new("UICorner")
 	shadowCorner.CornerRadius = UDim.new(0, 8)
 	shadowCorner.Parent = shadow
-	
+
 	-- Body frame with background (on top of shadow)
 	local body = Instance.new("Frame")
 	body.Name = "Body"
@@ -534,28 +534,28 @@ function VoxelInventoryPanel:CreateBody(contentHeight)
 	body.ZIndex = 1
 	body.Parent = bodyContainer
 	self.bodyFrame = body
-	
+
 	local corner = Instance.new("UICorner")
 	corner.CornerRadius = UDim.new(0, 8)
 	corner.Parent = body
-	
+
 	local border = Instance.new("UIStroke")
 	border.Color = CONFIG.BORDER_COLOR
 	border.Thickness = 3
 	border.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	border.Parent = body
-	
+
 	-- Content area (positioned with padding offset, sized to fit content)
 	local contentWidth = CONFIG.PANEL_WIDTH - CONFIG.CONTENT_PADDING * 2
 	local contentInnerHeight = contentHeight - CONFIG.CONTENT_PADDING * 2
-	
+
 	local contentArea = Instance.new("Frame")
 	contentArea.Name = "ContentArea"
 	contentArea.Size = UDim2.fromOffset(contentWidth, contentInnerHeight)
 	contentArea.Position = UDim2.fromOffset(CONFIG.CONTENT_PADDING, CONFIG.CONTENT_PADDING)
 	contentArea.BackgroundTransparency = 1
 	contentArea.Parent = body
-	
+
 	-- Create tab content
 	self:CreateInventoryTab(contentArea)
 	self:CreateCraftingTab(contentArea)
@@ -572,20 +572,20 @@ function VoxelInventoryPanel:CreateInventoryTab(parent)
 	tab.BackgroundTransparency = 1
 	tab.Parent = parent
 	self.inventoryTabFrame = tab
-	
+
 	local layout = Instance.new("UIListLayout")
 	layout.FillDirection = Enum.FillDirection.Vertical
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
 	layout.Padding = UDim.new(0, CONFIG.SECTION_SPACING)
 	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 	layout.Parent = tab
-	
+
 	-- Armor section
 	self:CreateArmorSection(tab)
-	
+
 	-- Inventory grid section
 	self:CreateInventorySection(tab)
-	
+
 	-- Hotbar section
 	self:CreateHotbarSection(tab)
 end
@@ -593,14 +593,14 @@ end
 function VoxelInventoryPanel:CreateArmorSection(parent)
 	local slotSize = CONFIG.EQUIPMENT_SLOT_SIZE
 	local sectionHeight = CONFIG.LABEL_HEIGHT + CONFIG.LABEL_SPACING + CONFIG.ARMOR_VIEWMODEL_HEIGHT
-	
+
 	local section = Instance.new("Frame")
 	section.Name = "ArmorSection"
 	section.LayoutOrder = 1
 	section.Size = UDim2.new(1, 0, 0, sectionHeight)
 	section.BackgroundTransparency = 1
 	section.Parent = parent
-	
+
 	-- Label
 	local label = Instance.new("TextLabel")
 	label.Name = "Label"
@@ -612,10 +612,10 @@ function VoxelInventoryPanel:CreateArmorSection(parent)
 	label.Font = BOLD_FONT
 	label.TextXAlignment = Enum.TextXAlignment.Left
 	label.Parent = section
-	
+
 	-- Content Y offset (after label)
 	local contentY = CONFIG.LABEL_HEIGHT + CONFIG.LABEL_SPACING
-	
+
 	-- Calculate layout (section width = PANEL_WIDTH - CONTENT_PADDING*2 = 450px)
 	local armorSlotsWidth = slotSize * 4 + CONFIG.EQUIPMENT_SPACING * 3
 	local viewmodelSize = CONFIG.ARMOR_VIEWMODEL_HEIGHT -- Square viewmodel
@@ -623,7 +623,7 @@ function VoxelInventoryPanel:CreateArmorSection(parent)
 	local totalWidth = viewmodelSize + gap + armorSlotsWidth
 	local sectionWidth = CONFIG.PANEL_WIDTH - CONFIG.CONTENT_PADDING * 2
 	local startX = (sectionWidth - totalWidth) / 2
-	
+
 	-- Viewmodel container (square aspect ratio for better character display)
 	local viewmodelContainer = Instance.new("Frame")
 	viewmodelContainer.Name = "Viewmodel"
@@ -632,17 +632,17 @@ function VoxelInventoryPanel:CreateArmorSection(parent)
 	viewmodelContainer.BackgroundColor3 = CONFIG.SLOT_BG
 	viewmodelContainer.BackgroundTransparency = CONFIG.SLOT_BG_TRANSPARENCY
 	viewmodelContainer.Parent = section
-	
+
 	local vmCorner = Instance.new("UICorner")
 	vmCorner.CornerRadius = UDim.new(0, CONFIG.SLOT_CORNER_RADIUS)
 	vmCorner.Parent = viewmodelContainer
-	
+
 	local vmBorder = Instance.new("UIStroke")
 	vmBorder.Color = CONFIG.SLOT_BORDER
 	vmBorder.Thickness = CONFIG.SLOT_BORDER_THICKNESS
 	vmBorder.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	vmBorder.Parent = viewmodelContainer
-	
+
 	-- Background image
 	local bgImage = Instance.new("ImageLabel")
 	bgImage.Size = UDim2.fromScale(1, 1)
@@ -652,10 +652,10 @@ function VoxelInventoryPanel:CreateArmorSection(parent)
 	bgImage.ScaleType = Enum.ScaleType.Fit
 	bgImage.ZIndex = 0
 	bgImage.Parent = viewmodelContainer
-	
+
 	-- Create viewport preview
 	self:CreateArmorViewmodel(viewmodelContainer)
-	
+
 	-- Armor slots container
 	local slotsContainer = Instance.new("Frame")
 	slotsContainer.Name = "ArmorSlots"
@@ -663,13 +663,13 @@ function VoxelInventoryPanel:CreateArmorSection(parent)
 	slotsContainer.Position = UDim2.fromOffset(startX + viewmodelSize + gap, contentY + (CONFIG.ARMOR_VIEWMODEL_HEIGHT - slotSize) / 2)
 	slotsContainer.BackgroundTransparency = 1
 	slotsContainer.Parent = section
-	
+
 	local slotsLayout = Instance.new("UIListLayout")
 	slotsLayout.FillDirection = Enum.FillDirection.Horizontal
 	slotsLayout.Padding = UDim.new(0, CONFIG.EQUIPMENT_SPACING)
 	slotsLayout.VerticalAlignment = Enum.VerticalAlignment.Center
 	slotsLayout.Parent = slotsContainer
-	
+
 	-- Create armor slots
 	local equipmentTypes = {"Head", "Chest", "Leggings", "Boots"}
 	for i, equipType in ipairs(equipmentTypes) do
@@ -679,7 +679,7 @@ end
 
 function VoxelInventoryPanel:CreateArmorViewmodel(container)
 	local player = Players.LocalPlayer
-	
+
 	self.armorViewmodel = ViewportPreview.new({
 		parent = container,
 		name = "ArmorViewmodel",
@@ -692,52 +692,52 @@ function VoxelInventoryPanel:CreateArmorViewmodel(container)
 		paddingScale = 1.4,
 		cameraPitch = math.rad(10),
 	})
-	
+
 	self.updateArmorViewmodel = function()
 		if not self.armorViewmodel or not self.armorViewmodel._world then return end
-		
+
 		local rig = CharacterRigBuilder.BuildCharacterRig(player)
 		if not rig then return end
-		
+
 		if not self.armorViewmodel or not self.armorViewmodel._world then
 			rig:Destroy()
 			return
 		end
-		
+
 		self:ClearArmorHeldItem()
 		self.armorViewmodel:SetModel(rig)
-		
+
 		local model = self.armorViewmodel._model
 		if model then
 			local rootPart = model:FindFirstChild("HumanoidRootPart")
 			if rootPart then
 				model.PrimaryPart = rootPart
-				
+
 				-- Remove accessories
 				for _, child in ipairs(model:GetChildren()) do
 					if child:IsA("Accessory") then child:Destroy() end
 				end
-				
+
 				CharacterRigBuilder.ApplyMinecraftScale(model)
 				CharacterRigBuilder.ApplyIdlePose(model)
 				CharacterRigBuilder.ApplyArmorVisuals(model, self.equippedArmor)
-				
+
 				self.armorViewmodel:_refit()
 				self:RefreshArmorHeldItem()
 			end
 		end
-		
+
 		self.armorViewmodel:SetMouseTracking(true)
 	end
-	
+
 	task.spawn(self.updateArmorViewmodel)
-	
+
 	-- Refresh on character respawn
 	local conn = player.CharacterAdded:Connect(function()
 		task.spawn(self.updateArmorViewmodel)
 	end)
 	table.insert(self.connections, conn)
-	
+
 	-- Setup held item listeners
 	self:SetupArmorViewmodelListeners()
 end
@@ -749,13 +749,13 @@ function VoxelInventoryPanel:SetupArmorViewmodelListeners()
 		GameState:OnPropertyChanged("voxelWorld.selectedBlock", function() self:RefreshArmorHeldItem() end),
 		GameState:OnPropertyChanged("voxelWorld.isHoldingItem", function() self:RefreshArmorHeldItem() end),
 	}
-	
+
 	for _, disconnect in ipairs(listeners) do
 		if disconnect then
 			table.insert(self.connections, { Disconnect = disconnect })
 		end
 	end
-	
+
 	-- Scale listener
 	local scaleDisconnect = UIScaler:RegisterScaleListener(function()
 		if self.armorViewmodel and self.armorViewmodel._refit then
@@ -771,14 +771,14 @@ function VoxelInventoryPanel:CreateInventorySection(parent)
 	local slotSize = CONFIG.SLOT_SIZE
 	local inventoryGridHeight = slotSize * CONFIG.ROWS + CONFIG.SLOT_SPACING * (CONFIG.ROWS - 1)
 	local sectionHeight = CONFIG.LABEL_HEIGHT + CONFIG.LABEL_SPACING + inventoryGridHeight
-	
+
 	local section = Instance.new("Frame")
 	section.Name = "InventorySection"
 	section.LayoutOrder = 2
 	section.Size = UDim2.new(1, 0, 0, sectionHeight)
 	section.BackgroundTransparency = 1
 	section.Parent = parent
-	
+
 	-- Label
 	local label = Instance.new("TextLabel")
 	label.Name = "Label"
@@ -790,20 +790,20 @@ function VoxelInventoryPanel:CreateInventorySection(parent)
 	label.Font = BOLD_FONT
 	label.TextXAlignment = Enum.TextXAlignment.Left
 	label.Parent = section
-	
+
 	-- Content Y offset (after label)
 	local contentY = CONFIG.LABEL_HEIGHT + CONFIG.LABEL_SPACING
-	
+
 	-- Grid container (centered)
 	local gridWidth = slotSize * CONFIG.COLUMNS + CONFIG.SLOT_SPACING * (CONFIG.COLUMNS - 1)
-	
+
 	local grid = Instance.new("Frame")
 	grid.Name = "Grid"
 	grid.Size = UDim2.fromOffset(gridWidth, inventoryGridHeight)
 	grid.Position = UDim2.new(0.5, -gridWidth/2, 0, contentY)
 	grid.BackgroundTransparency = 1
 	grid.Parent = section
-	
+
 	-- Create inventory slots (3x9 grid)
 	for row = 0, CONFIG.ROWS - 1 do
 		for col = 0, CONFIG.COLUMNS - 1 do
@@ -819,14 +819,14 @@ function VoxelInventoryPanel:CreateHotbarSection(parent)
 	local slotSize = CONFIG.SLOT_SIZE
 	local hotbarHeight = slotSize
 	local sectionHeight = CONFIG.LABEL_HEIGHT + CONFIG.LABEL_SPACING + hotbarHeight
-	
+
 	local section = Instance.new("Frame")
 	section.Name = "HotbarSection"
 	section.LayoutOrder = 3
 	section.Size = UDim2.new(1, 0, 0, sectionHeight)
 	section.BackgroundTransparency = 1
 	section.Parent = parent
-	
+
 	-- Label
 	local label = Instance.new("TextLabel")
 	label.Name = "Label"
@@ -838,20 +838,20 @@ function VoxelInventoryPanel:CreateHotbarSection(parent)
 	label.Font = BOLD_FONT
 	label.TextXAlignment = Enum.TextXAlignment.Left
 	label.Parent = section
-	
+
 	-- Content Y offset (after label)
 	local contentY = CONFIG.LABEL_HEIGHT + CONFIG.LABEL_SPACING
-	
+
 	-- Hotbar container (centered)
 	local gridWidth = slotSize * CONFIG.COLUMNS + CONFIG.SLOT_SPACING * (CONFIG.COLUMNS - 1)
-	
+
 	local hotbar = Instance.new("Frame")
 	hotbar.Name = "Hotbar"
 	hotbar.Size = UDim2.fromOffset(gridWidth, hotbarHeight)
 	hotbar.Position = UDim2.new(0.5, -gridWidth/2, 0, contentY)
 	hotbar.BackgroundTransparency = 1
 	hotbar.Parent = section
-	
+
 	-- Create hotbar slots (1x9)
 	for col = 0, CONFIG.COLUMNS - 1 do
 		local x = col * (slotSize + CONFIG.SLOT_SPACING)
@@ -871,7 +871,7 @@ function VoxelInventoryPanel:CreateCraftingTab(parent)
 	tab.Visible = false
 	tab.Parent = parent
 	self.craftingTabFrame = tab
-	
+
 	-- Initialize CraftingPanel
 	local CraftingPanel = require(script.Parent.CraftingPanel)
 	self.craftingPanel = CraftingPanel.new(self.inventoryManager, self, tab)
@@ -884,19 +884,19 @@ end
 
 function VoxelInventoryPanel:SetActiveTab(tabId)
 	self.activeTab = tabId
-	
+
 	-- Update tab visuals
 	for id, tabData in pairs(self.tabButtons) do
 		local isActive = id == tabId
 		local color = isActive and CONFIG.TAB_ACTIVE or CONFIG.TAB_INACTIVE
-		
+
 		if tabData.isImageIcon and tabData.icon then
 			tabData.icon.ImageColor3 = color
 		end
 		tabData.label.TextColor3 = color
 		tabData.indicator.BackgroundTransparency = isActive and 0 or 1
 	end
-	
+
 	-- Show/hide content
 	if self.inventoryTabFrame then
 		self.inventoryTabFrame.Visible = tabId == "inventory"
@@ -928,11 +928,11 @@ function VoxelInventoryPanel:CreateSlotBase(name, parent, x, y)
 	slot.Text = ""
 	slot.AutoButtonColor = false
 	slot.Parent = parent
-	
+
 	local corner = Instance.new("UICorner")
 	corner.CornerRadius = UDim.new(0, CONFIG.SLOT_CORNER_RADIUS)
 	corner.Parent = slot
-	
+
 	local bgImage = Instance.new("ImageLabel")
 	bgImage.Name = "BgImage"
 	bgImage.Size = UDim2.fromScale(1, 1)
@@ -942,7 +942,7 @@ function VoxelInventoryPanel:CreateSlotBase(name, parent, x, y)
 	bgImage.ScaleType = Enum.ScaleType.Fit
 	bgImage.ZIndex = 1
 	bgImage.Parent = slot
-	
+
 	-- Border stroke (draws inside the element)
 	local border = Instance.new("UIStroke")
 	border.Name = "Border"
@@ -950,7 +950,7 @@ function VoxelInventoryPanel:CreateSlotBase(name, parent, x, y)
 	border.Thickness = CONFIG.SLOT_BORDER_THICKNESS
 	border.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	border.Parent = slot
-	
+
 	local hoverBorder = Instance.new("UIStroke")
 	hoverBorder.Name = "HoverBorder"
 	hoverBorder.Color = CONFIG.TEXT_PRIMARY
@@ -959,14 +959,14 @@ function VoxelInventoryPanel:CreateSlotBase(name, parent, x, y)
 	hoverBorder.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	hoverBorder.ZIndex = 2
 	hoverBorder.Parent = slot
-	
+
 	local iconContainer = Instance.new("Frame")
 	iconContainer.Name = "IconContainer"
 	iconContainer.Size = UDim2.fromScale(1, 1)
 	iconContainer.BackgroundTransparency = 1
 	iconContainer.ZIndex = 3
 	iconContainer.Parent = slot
-	
+
 	local countLabel = Instance.new("TextLabel")
 	countLabel.Name = "CountLabel"
 	countLabel.Size = UDim2.fromOffset(40, 20)
@@ -981,7 +981,7 @@ function VoxelInventoryPanel:CreateSlotBase(name, parent, x, y)
 	countLabel.TextXAlignment = Enum.TextXAlignment.Right
 	countLabel.ZIndex = 5
 	countLabel.Parent = slot
-	
+
 	return {
 		frame = slot,
 		iconContainer = iconContainer,
@@ -995,7 +995,7 @@ end
 function VoxelInventoryPanel:CreateInventorySlot(index, parent, x, y)
 	local slotData = self:CreateSlotBase("InventorySlot" .. index, parent, x, y)
 	self.inventorySlotFrames[index] = slotData
-	
+
 	-- Hover effects
 	slotData.frame.MouseEnter:Connect(function()
 		if not self.hoverEnabled then return end
@@ -1005,18 +1005,18 @@ function VoxelInventoryPanel:CreateInventorySlot(index, parent, x, y)
 			self:ShowHoverItemName(stack:GetItemId())
 		end
 	end)
-	
+
 	slotData.frame.MouseLeave:Connect(function()
 		if not self.hoverEnabled then return end
 		slotData.hoverBorder.Transparency = 1
 		self:HideHoverItemName()
 	end)
-	
+
 	-- Click handlers
 	slotData.frame.MouseButton1Click:Connect(function()
 		self:HandleInventorySlotClick(index, false)
 	end)
-	
+
 	slotData.frame.MouseButton2Click:Connect(function()
 		self:HandleInventorySlotClick(index, true)
 	end)
@@ -1025,7 +1025,7 @@ end
 function VoxelInventoryPanel:CreateHotbarSlot(index, parent, x, y)
 	local slotData = self:CreateSlotBase("HotbarSlot" .. index, parent, x, y)
 	self.hotbarSlotFrames[index] = slotData
-	
+
 	-- Selection indicator
 	local selectIndicator = Instance.new("Frame")
 	selectIndicator.Name = "SelectIndicator"
@@ -1036,21 +1036,21 @@ function VoxelInventoryPanel:CreateHotbarSlot(index, parent, x, y)
 	selectIndicator.BorderSizePixel = 0
 	selectIndicator.ZIndex = 0
 	selectIndicator.Parent = slotData.frame
-	
+
 	local selectBorder = Instance.new("UIStroke")
 	selectBorder.Name = "SelectBorder"
 	selectBorder.Color = CONFIG.TEXT_PRIMARY
 	selectBorder.Thickness = 3
 	selectBorder.Transparency = 1
 	selectBorder.Parent = selectIndicator
-	
+
 	local selectCorner = Instance.new("UICorner")
 	selectCorner.CornerRadius = UDim.new(0, 6)
 	selectCorner.Parent = selectIndicator
-	
+
 	slotData.selectIndicator = selectIndicator
 	slotData.selectBorder = selectBorder
-	
+
 	-- Hover effects
 	slotData.frame.MouseEnter:Connect(function()
 		if not self.hoverEnabled then return end
@@ -1060,18 +1060,18 @@ function VoxelInventoryPanel:CreateHotbarSlot(index, parent, x, y)
 			self:ShowHoverItemName(stack:GetItemId())
 		end
 	end)
-	
+
 	slotData.frame.MouseLeave:Connect(function()
 		if not self.hoverEnabled then return end
 		slotData.hoverBorder.Transparency = 1
 		self:HideHoverItemName()
 	end)
-	
+
 	-- Click handlers
 	slotData.frame.MouseButton1Click:Connect(function()
 		self:HandleHotbarSlotClick(index, false)
 	end)
-	
+
 	slotData.frame.MouseButton2Click:Connect(function()
 		self:HandleHotbarSlotClick(index, true)
 	end)
@@ -1082,7 +1082,7 @@ function VoxelInventoryPanel:CreateEquipmentSlot(index, equipType, parent)
 	slotData.frame.LayoutOrder = index
 	slotData.equipType = equipType
 	self.equipmentSlotFrames[equipType] = slotData
-	
+
 	-- Placeholder icon
 	local placeholderIcon = self:GetEquipmentPlaceholderIcon(equipType)
 	if placeholderIcon then
@@ -1099,7 +1099,7 @@ function VoxelInventoryPanel:CreateEquipmentSlot(index, equipType, parent)
 		placeholder.Parent = slotData.frame
 		slotData.placeholder = placeholder
 	end
-	
+
 	-- Hover effects
 	slotData.frame.MouseEnter:Connect(function()
 		if not self.hoverEnabled then return end
@@ -1109,13 +1109,13 @@ function VoxelInventoryPanel:CreateEquipmentSlot(index, equipType, parent)
 			self:ShowHoverItemName(itemId)
 		end
 	end)
-	
+
 	slotData.frame.MouseLeave:Connect(function()
 		if not self.hoverEnabled then return end
 		slotData.hoverBorder.Transparency = 1
 		self:HideHoverItemName()
 	end)
-	
+
 	-- Click handler
 	slotData.frame.MouseButton1Click:Connect(function()
 		self:HandleEquipmentSlotClick(equipType)
@@ -1125,7 +1125,7 @@ end
 function VoxelInventoryPanel:GetEquipmentPlaceholderIcon(equipType)
 	local iconMap = {
 		Head = "Helmet",
-		Chest = "Chestplate", 
+		Chest = "Chestplate",
 		Leggings = "Leggings",
 		Boots = "Boots"
 	}
@@ -1150,7 +1150,7 @@ function VoxelInventoryPanel:HandleInventorySlotClick(index, isRightClick)
 		self:QuickTransferFromInventory(index)
 		return
 	end
-	
+
 	local slotStack = self.inventoryManager:GetInventorySlot(index)
 	self:HandleSlotInteraction(slotStack, function(newStack)
 		self.inventoryManager:SetInventorySlot(index, newStack)
@@ -1164,7 +1164,7 @@ function VoxelInventoryPanel:HandleHotbarSlotClick(index, isRightClick)
 		self:QuickTransferFromHotbar(index)
 		return
 	end
-	
+
 	local slotStack = self.hotbar:GetSlot(index)
 	self:HandleSlotInteraction(slotStack, function(newStack)
 		-- Use inventoryManager to set hotbar slot so it tracks changes for server sync
@@ -1177,39 +1177,39 @@ end
 function VoxelInventoryPanel:HandleEquipmentSlotClick(equipType)
 	local cursorItemId = self.cursorStack:IsEmpty() and 0 or self.cursorStack:GetItemId()
 	local cursorCount = self.cursorStack:IsEmpty() and 0 or self.cursorStack:GetCount()
-	
+
 	-- Send to server for authoritative handling
 	EventManager:SendToServer("ArmorSlotClick", {
 		slot = equipType,
 		cursorItemId = cursorItemId,
 		cursorCount = cursorCount
 	})
-	
+
 	-- Sync inventory to server after armor equip
 	if self.cursorStack:IsEmpty() then
 		self:SendInventoryUpdateToServer()
 	end
-	
+
 	playInventoryPopSound()
 end
 
 function VoxelInventoryPanel:HandleSlotInteraction(slotStack, setSlotFunc, isRightClick)
 	local cursorEmpty = self.cursorStack:IsEmpty()
 	local slotEmpty = slotStack:IsEmpty()
-	
+
 	if cursorEmpty and slotEmpty then
 		return -- Nothing to do
 	end
-	
+
 	if isRightClick then
 		self:HandleRightClick(slotStack, setSlotFunc, cursorEmpty, slotEmpty)
 	else
 		self:HandleLeftClick(slotStack, setSlotFunc, cursorEmpty, slotEmpty)
 	end
-	
+
 	self:UpdateCursorDisplay()
 	playInventoryPopSound()
-	
+
 	-- Sync to server when action is complete (cursor not holding mid-transaction)
 	if self.cursorStack:IsEmpty() then
 		self.inventoryManager:SendUpdateToServer()
@@ -1282,7 +1282,7 @@ end
 function VoxelInventoryPanel:QuickTransferFromInventory(index)
 	local stack = self.inventoryManager:GetInventorySlot(index)
 	if stack:IsEmpty() then return end
-	
+
 	-- Try to merge with existing hotbar stacks first
 	for i = 1, 9 do
 		local hotbarStack = self.hotbar:GetSlot(i)
@@ -1303,7 +1303,7 @@ function VoxelInventoryPanel:QuickTransferFromInventory(index)
 			return
 		end
 	end
-	
+
 	-- Try empty slot
 	for i = 1, 9 do
 		if self.hotbar:GetSlot(i):IsEmpty() then
@@ -1322,7 +1322,7 @@ end
 function VoxelInventoryPanel:QuickTransferFromHotbar(index)
 	local stack = self.hotbar:GetSlot(index)
 	if stack:IsEmpty() then return end
-	
+
 	-- Try to merge with existing inventory stacks first
 	for i = 1, 27 do
 		local invStack = self.inventoryManager:GetInventorySlot(i)
@@ -1343,7 +1343,7 @@ function VoxelInventoryPanel:QuickTransferFromHotbar(index)
 			return
 		end
 	end
-	
+
 	-- Try empty slot
 	for i = 1, 27 do
 		if self.inventoryManager:GetInventorySlot(i):IsEmpty() then
@@ -1366,14 +1366,14 @@ end
 function VoxelInventoryPanel:UpdateSlotDisplay(slotData, stack)
 	-- Clear existing viewport reference
 	slotData.viewport = nil
-	
+
 	-- Clear icon container (preserving UI layout components)
 	for _, child in ipairs(slotData.iconContainer:GetChildren()) do
 		if not child:IsA("UILayout") and not child:IsA("UIPadding") and not child:IsA("UICorner") then
 			child:Destroy()
 		end
 	end
-	
+
 	if stack:IsEmpty() then
 		slotData.countLabel.Text = ""
 		if slotData.placeholder then
@@ -1381,17 +1381,17 @@ function VoxelInventoryPanel:UpdateSlotDisplay(slotData, stack)
 		end
 		return
 	end
-	
+
 	if slotData.placeholder then
 		slotData.placeholder.Visible = false
 	end
-	
+
 	local itemId = stack:GetItemId()
 	local count = stack:GetCount()
-	
+
 	-- Create item icon using the unified helper
 	BlockViewportCreator.RenderItemSlot(slotData.iconContainer, itemId, SpawnEggConfig, SpawnEggIcon)
-	
+
 	-- Update count
 	slotData.countLabel.Text = count > 1 and tostring(count) or ""
 end
@@ -1405,14 +1405,14 @@ function VoxelInventoryPanel:RefreshAllSlots()
 			self:UpdateSlotDisplay(slotData, stack)
 		end
 	end
-	
+
 	-- Hotbar slots
 	for i = 1, 9 do
 		local slotData = self.hotbarSlotFrames[i]
 		if slotData then
 			local stack = self.hotbar:GetSlot(i)
 			self:UpdateSlotDisplay(slotData, stack)
-			
+
 			-- Update selection indicator
 			local selectedIndex = self.hotbar.selectedSlot
 			if slotData.selectBorder then
@@ -1420,7 +1420,7 @@ function VoxelInventoryPanel:RefreshAllSlots()
 			end
 		end
 	end
-	
+
 	-- Equipment slots
 	self:RefreshEquipmentSlots()
 end
@@ -1432,7 +1432,7 @@ function VoxelInventoryPanel:RefreshEquipmentSlots()
 		Leggings = "leggings",
 		Boots = "boots"
 	}
-	
+
 	for equipType, armorKey in pairs(slotMap) do
 		local slotData = self.equipmentSlotFrames[equipType]
 		if slotData then
@@ -1444,7 +1444,7 @@ function VoxelInventoryPanel:RefreshEquipmentSlots()
 			end
 		end
 	end
-	
+
 	-- Also refresh viewmodel armor visuals
 	self:RefreshViewmodelArmor()
 end
@@ -1452,7 +1452,7 @@ end
 -- Refresh only the armor visuals on the viewmodel (more efficient than full rebuild)
 function VoxelInventoryPanel:RefreshViewmodelArmor()
 	if not self.armorViewmodel or not self.armorViewmodel._model then return end
-	
+
 	local clonedModel = self.armorViewmodel._model
 	if clonedModel then
 		CharacterRigBuilder.ClearArmorVisuals(clonedModel)
@@ -1483,7 +1483,7 @@ function VoxelInventoryPanel:UpdateHotbarSlotDisplay(slotIndex)
 	if slotData then
 		local stack = self.hotbar:GetSlot(slotIndex)
 		self:UpdateSlotDisplay(slotData, stack)
-		
+
 		local selectedIndex = self.hotbar.selectedSlot
 		if slotData.selectBorder then
 			slotData.selectBorder.Transparency = (slotIndex == selectedIndex) and 0 or 1
@@ -1504,13 +1504,13 @@ function VoxelInventoryPanel:CreateCursorFrame()
 	cursor.ZIndex = 100
 	cursor.Visible = false
 	cursor.Parent = self.cursorGui
-	
+
 	local iconContainer = Instance.new("Frame")
 	iconContainer.Name = "IconContainer"
 	iconContainer.Size = UDim2.fromScale(1, 1)
 	iconContainer.BackgroundTransparency = 1
 	iconContainer.Parent = cursor
-	
+
 	local countLabel = Instance.new("TextLabel")
 	countLabel.Name = "CountLabel"
 	countLabel.Size = UDim2.fromOffset(40, 20)
@@ -1525,7 +1525,7 @@ function VoxelInventoryPanel:CreateCursorFrame()
 	countLabel.TextXAlignment = Enum.TextXAlignment.Right
 	countLabel.ZIndex = 101
 	countLabel.Parent = cursor
-	
+
 	self.cursorFrame = cursor
 	self.cursorIconContainer = iconContainer
 	self.cursorCountLabel = countLabel
@@ -1533,33 +1533,33 @@ end
 
 function VoxelInventoryPanel:UpdateCursorDisplay()
 	if not self.cursorFrame then return end
-	
+
 	-- Clear existing (preserving UI layout components)
 	for _, child in ipairs(self.cursorIconContainer:GetChildren()) do
 		if not child:IsA("UILayout") and not child:IsA("UIPadding") and not child:IsA("UICorner") then
 			child:Destroy()
 		end
 	end
-	
+
 	if self.cursorStack:IsEmpty() then
 		self.cursorFrame.Visible = false
 		return
 	end
-	
+
 	self.cursorFrame.Visible = true
-	
+
 	local itemId = self.cursorStack:GetItemId()
 	local count = self.cursorStack:GetCount()
-	
+
 	-- Create icon using the unified helper
 	BlockViewportCreator.RenderItemSlot(self.cursorIconContainer, itemId, SpawnEggConfig, SpawnEggIcon)
-	
+
 	self.cursorCountLabel.Text = count > 1 and tostring(count) or ""
 end
 
 function VoxelInventoryPanel:UpdateCursorPosition()
 	if not self.cursorFrame or not self.cursorFrame.Visible then return end
-	
+
 	local mousePos = UserInputService:GetMouseLocation()
 	-- GetMouseLocation returns absolute screen coordinates
 	-- Our cursor GUI has IgnoreGuiInset=true so it covers the full screen
@@ -1592,13 +1592,13 @@ function VoxelInventoryPanel:CreateHoverItemLabel()
 	label.Visible = false
 	label.ZIndex = 50
 	label.Parent = self.gui
-	
+
 	self.hoverItemLabel = label
 end
 
 function VoxelInventoryPanel:ShowHoverItemName(itemId)
 	if not self.hoverItemLabel then return end
-	
+
 	local name = GetItemDisplayName(itemId)
 	if name then
 		self.hoverItemLabel.Text = name
@@ -1621,21 +1621,21 @@ function VoxelInventoryPanel:ResetAllHoverStates()
 			slotData.hoverBorder.Transparency = 1
 		end
 	end
-	
+
 	-- Reset hotbar slot hover states
 	for _, slotData in pairs(self.hotbarSlotFrames) do
 		if slotData.hoverBorder then
 			slotData.hoverBorder.Transparency = 1
 		end
 	end
-	
+
 	-- Reset equipment slot hover states
 	for _, slotData in pairs(self.equipmentSlotFrames) do
 		if slotData.hoverBorder then
 			slotData.hoverBorder.Transparency = 1
 		end
 	end
-	
+
 	-- Hide hover item label
 	self:HideHoverItemName()
 end
@@ -1652,19 +1652,19 @@ end
 
 function VoxelInventoryPanel:RefreshArmorHeldItem()
 	if not self.armorViewmodel then return end
-	
+
 	local rigModel = self.armorViewmodel._model
 	if not rigModel then return end
-	
+
 	self:ClearArmorHeldItem()
-	
+
 	-- Check for tool
 	local toolId = GameState:Get("voxelWorld.selectedToolItemId")
 	if toolId and ToolConfig.IsTool(toolId) then
 		HeldItemRenderer.AttachItem(rigModel, toolId)
 		return
 	end
-	
+
 	-- Check for block
 	local selectedBlock = GameState:Get("voxelWorld.selectedBlock")
 	local blockId = selectedBlock and selectedBlock.id
@@ -1686,20 +1686,20 @@ function VoxelInventoryPanel:SetupInputHandling()
 		end
 	end)
 	table.insert(self.connections, escapeConn)
-	
+
 	-- Drop item when clicking outside inventory
 	local dropConn = InputService.InputBegan:Connect(function(input, _processed)
 		if not self.isOpen then return end
 		if input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
-		
+
 		-- Check if clicked outside inventory panel
 		local mouse = Players.LocalPlayer:GetMouse()
 		local panelPos = self.panel.AbsolutePosition
 		local panelSize = self.panel.AbsoluteSize
-		
+
 		local isOutside = mouse.X < panelPos.X or mouse.X > (panelPos.X + panelSize.X) or
 		                  mouse.Y < panelPos.Y or mouse.Y > (panelPos.Y + panelSize.Y)
-		
+
 		if isOutside and not self.cursorStack:IsEmpty() then
 			-- Drop cursor item
 			pcall(function()
@@ -1732,7 +1732,7 @@ function VoxelInventoryPanel:SetupInventorySync()
 			self:UpdateInventorySlotDisplay(slotIndex)
 		end
 	end)
-	
+
 	self.inventoryManager:OnHotbarChanged(function(slotIndex)
 		if self.isOpen and slotIndex then
 			self:UpdateHotbarSlotDisplay(slotIndex)
@@ -1763,7 +1763,7 @@ function VoxelInventoryPanel:SetupArmorEventListeners()
 	if armorSyncConn then
 		table.insert(self.connections, armorSyncConn)
 	end
-	
+
 	-- Listen for armor slot click result (server-authoritative)
 	local armorSlotResultConn = EventManager:RegisterEvent("ArmorSlotResult", function(data)
 		if data then
@@ -1775,13 +1775,13 @@ function VoxelInventoryPanel:SetupArmorEventListeners()
 					boots = data.equippedArmor.boots
 				}
 			end
-			
+
 			if data.newCursorItemId and data.newCursorItemId > 0 then
 				self.cursorStack = ItemStack.new(data.newCursorItemId, data.newCursorCount or 1)
 			else
 				self.cursorStack = ItemStack.new(0, 0)
 			end
-			
+
 			self:RefreshEquipmentSlots()
 			self:UpdateCursorDisplay()
 			if self.updateArmorViewmodel then
@@ -1792,7 +1792,7 @@ function VoxelInventoryPanel:SetupArmorEventListeners()
 	if armorSlotResultConn then
 		table.insert(self.connections, armorSlotResultConn)
 	end
-	
+
 	-- Listen for individual armor equip events
 	local armorEquippedConn = EventManager:RegisterEvent("ArmorEquipped", function(data)
 		if data and data.slot and data.itemId then
@@ -1806,7 +1806,7 @@ function VoxelInventoryPanel:SetupArmorEventListeners()
 	if armorEquippedConn then
 		table.insert(self.connections, armorEquippedConn)
 	end
-	
+
 	-- Listen for armor unequip events
 	local armorUnequippedConn = EventManager:RegisterEvent("ArmorUnequipped", function(data)
 		if data and data.slot then
@@ -1820,7 +1820,7 @@ function VoxelInventoryPanel:SetupArmorEventListeners()
 	if armorUnequippedConn then
 		table.insert(self.connections, armorUnequippedConn)
 	end
-	
+
 	-- Request current armor state from server after a delay
 	task.delay(2, function()
 		EventManager:SendToServer("RequestArmorSync")
@@ -1832,14 +1832,14 @@ end
 --------------------------------------------------------------------------------
 
 function VoxelInventoryPanel:Open()
-	if self.isOpen or self.isAnimating then 
-		return 
+	if self.isOpen or self.isAnimating then
+		return
 	end
-	
+
 	self.isOpen = true
 	self.isAnimating = true
 	self.gui.Enabled = true
-	
+
 	-- Use UIVisibilityManager to coordinate all UI (handles backdrop, cursor, etc.)
 	local success, err = pcall(function()
 		UIVisibilityManager:SetMode("inventory")
@@ -1847,14 +1847,14 @@ function VoxelInventoryPanel:Open()
 	if not success then
 		warn("[VoxelInventoryPanel] UIVisibilityManager:SetMode failed:", err)
 	end
-	
+
 	-- Reset crafting panel state
 	if self.craftingPanel and self.craftingPanel.OnPanelOpen then
 		pcall(function()
 			self.craftingPanel:OnPanelOpen()
 		end)
 	end
-	
+
 	-- Refresh slots
 	local refreshSuccess, refreshErr = pcall(function()
 		self:RefreshAllSlots()
@@ -1862,31 +1862,31 @@ function VoxelInventoryPanel:Open()
 	if not refreshSuccess then
 		warn("[VoxelInventoryPanel] RefreshAllSlots failed:", refreshErr)
 	end
-	
+
 	-- Enable viewmodel tracking
 	if self.armorViewmodel then
 		self.armorViewmodel:SetMouseTracking(true)
 	end
-	
+
 	-- Start cursor tracking
 	self.renderConnection = RunService.RenderStepped:Connect(function()
 		if self.isOpen then
 			self:UpdateCursorPosition()
 		end
 	end)
-	
+
 	-- Animate in
 	local finalHeight = self.originalPanelHeight
 	local startHeight = CONFIG.HEADER_HEIGHT
-	
+
 	self.panel.Size = UDim2.fromOffset(CONFIG.PANEL_WIDTH, startHeight)
 	self.panel.Position = UDim2.new(0.5, 0, 0, 60 + startHeight / 2)
-	
+
 	local tween = TweenService:Create(self.panel, TweenInfo.new(0.2, Enum.EasingStyle.Cubic, Enum.EasingDirection.Out), {
 		Size = UDim2.fromOffset(CONFIG.PANEL_WIDTH, finalHeight),
 		Position = UDim2.new(0.5, 0, 0.5, 0)
 	})
-	
+
 	tween:Play()
 	tween.Completed:Connect(function()
 		self.isAnimating = false
@@ -1897,28 +1897,28 @@ end
 
 function VoxelInventoryPanel:Close(nextMode)
 	if not self.isOpen or self.isAnimating then return end
-	
+
 	self.isOpen = false
 	self.isAnimating = true
 	self.pendingCloseMode = nextMode or "gameplay"
-	
+
 	-- Disable hover effects immediately
 	self.hoverEnabled = false
-	
+
 	-- Reset all hover effects and labels
 	self:ResetAllHoverStates()
-	
+
 	-- Disable viewmodel tracking
 	if self.armorViewmodel then
 		self.armorViewmodel:SetMouseTracking(false)
 	end
-	
+
 	-- Stop cursor tracking
 	if self.renderConnection then
 		self.renderConnection:Disconnect()
 		self.renderConnection = nil
 	end
-	
+
 	-- Return cursor items to inventory
 	if not self.cursorStack:IsEmpty() then
 		for i = 1, 27 do
@@ -1929,7 +1929,7 @@ function VoxelInventoryPanel:Close(nextMode)
 				break
 			end
 		end
-		
+
 		-- Drop if no space
 		if not self.cursorStack:IsEmpty() then
 			EventManager:SendToServer("RequestDropItem", {
@@ -1940,38 +1940,38 @@ function VoxelInventoryPanel:Close(nextMode)
 			self:UpdateCursorDisplay()
 		end
 	end
-	
+
 	-- Sync inventory changes to server
 	if self.inventoryManager and self.inventoryManager.SendUpdateToServer then
 		self.inventoryManager:SendUpdateToServer()
 	end
-	
+
 	-- Animate out
 	local startHeight = CONFIG.HEADER_HEIGHT
-	
+
 	local tween = TweenService:Create(self.panel, TweenInfo.new(0.2, Enum.EasingStyle.Cubic, Enum.EasingDirection.In), {
 		Size = UDim2.fromOffset(CONFIG.PANEL_WIDTH, startHeight),
 		Position = UDim2.new(0.5, 0, 0, 60 + startHeight / 2)
 	})
-	
+
 	tween:Play()
 	tween.Completed:Connect(function()
 		self.isAnimating = false
 		self.gui.Enabled = false
-		
+
 		if self.isWorkbenchMode then
 			self:SetWorkbenchMode(false)
 		end
-		
+
 		UIVisibilityManager:SetMode(self.pendingCloseMode or "gameplay")
 	end)
 end
 
 function VoxelInventoryPanel:Toggle()
-	if self.isAnimating then 
-		return 
+	if self.isAnimating then
+		return
 	end
-	
+
 	if self.isOpen then
 		self:Close()
 	else
@@ -2012,15 +2012,15 @@ end
 
 function VoxelInventoryPanel:SetWorkbenchMode(enabled)
 	self.isWorkbenchMode = enabled and true or false
-	
+
 	if self.craftingPanel and self.craftingPanel.SetMode then
 		self.craftingPanel:SetMode(self.isWorkbenchMode and "workbench" or "inventory")
 	end
-	
+
 	if self.titleLabel then
 		self.titleLabel.Text = self.isWorkbenchMode and "WORKBENCH" or "INVENTORY"
 	end
-	
+
 	if self.isWorkbenchMode then
 		self:SetActiveTab("crafting")
 	end
@@ -2039,23 +2039,23 @@ function VoxelInventoryPanel:Cleanup()
 		end
 	end
 	self.connections = {}
-	
+
 	if self.renderConnection then
 		self.renderConnection:Disconnect()
 		self.renderConnection = nil
 	end
-	
+
 	self:ClearArmorHeldItem()
-	
+
 	if self.armorViewmodel then
 		self.armorViewmodel:Destroy()
 		self.armorViewmodel = nil
 	end
-	
+
 	if self.gui then
 		self.gui:Destroy()
 	end
-	
+
 	if self.cursorGui then
 		self.cursorGui:Destroy()
 	end
