@@ -448,7 +448,7 @@ Break it to get:
 		},
 		objective = {
 			type = "collect_item",
-			itemId = 71, -- WHEAT
+			itemId = 418, -- WHEAT (from ItemDefinitions.Materials.WHEAT)
 			count = 4,
 		},
 		reward = {
@@ -561,7 +561,7 @@ TutorialConfig.Settings = {
 	persistProgress = true,
 
 	-- Tutorial special actions
-	instantGrowCropsOnPlant = false, -- Disabled; using tutorialBoost multiplier instead
+	instantGrowCropsOnPlant = true, -- Instantly grow crops when planted during tutorial
 }
 
 return TutorialConfig

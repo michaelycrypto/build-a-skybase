@@ -218,10 +218,6 @@ elseif IS_WORLD then
 		dependencies = {},
 		mixins = {}
 	})
-	Injector:Bind("TutorialService", script.Parent.Parent.Services.TutorialService, {
-		dependencies = {"PlayerService", "PlayerDataStoreService", "WorldOwnershipService", "CropService"},
-		mixins = {}
-	})
 	Injector:Bind("VoxelWorldService", script.Parent.Parent.Services.VoxelWorldService, {
 		dependencies = {"PlayerInventoryService", "WorldOwnershipService", "DamageService"},
 		mixins = {}
@@ -236,6 +232,11 @@ elseif IS_WORLD then
 	})
 	Injector:Bind("CropService", script.Parent.Parent.Services.CropService, {
 		dependencies = {"VoxelWorldService", "WorldOwnershipService"},
+		mixins = {}
+	})
+	-- TutorialService needs CropService for instant crop growth on setup_farm completion
+	Injector:Bind("TutorialService", script.Parent.Parent.Services.TutorialService, {
+		dependencies = {"PlayerService", "PlayerDataStoreService", "WorldOwnershipService", "CropService", "PlayerInventoryService"},
 		mixins = {}
 	})
 	Injector:Bind("FarmlandService", script.Parent.Parent.Services.FarmlandService, {

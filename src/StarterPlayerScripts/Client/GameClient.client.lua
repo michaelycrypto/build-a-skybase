@@ -972,6 +972,20 @@ local function completeInitialization(_preloadedEmoteManager)
 	NPCController:Initialize()
 	Client.npcController = NPCController
 
+	-- Initialize NPC Waypoint Manager (diamond markers above hub NPCs)
+	local NPCWaypointManager = require(script.Parent.Managers.NPCWaypointManager)
+	local npcWaypointSuccess, npcWaypointError = pcall(function()
+		NPCWaypointManager:Initialize({
+			EventManager = EventManager,
+			GameState = GameState,
+		})
+	end)
+	if npcWaypointSuccess then
+		Client.managers.NPCWaypointManager = NPCWaypointManager
+	else
+		warn("NPCWaypointManager initialization failed:", npcWaypointError)
+	end
+
 	-- Initialize NPC Trade UI (shop/merchant interface)
 	local NPCTradeUI = require(script.Parent.UI.NPCTradeUI)
 	local npcTradeUI = NPCTradeUI.new(inventoryManager)

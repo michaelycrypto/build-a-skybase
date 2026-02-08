@@ -2,7 +2,7 @@
 	ChestStorageService.lua
 	Server-side management of chest inventories
 	Each chest is identified by its world position (x,y,z)
-	
+
 	IMPORTANT: When adding items to chests, use ItemDefinitions IDs, not BlockType IDs
 	- Items (tools, materials, food, saplings, seeds) → Use ItemDefinitions IDs
 	- Blocks (dirt, stone, planks) → Use BlockType IDs
@@ -139,12 +139,12 @@ function ChestStorageService:InitializeStarterChest(x, y, z)
 		-- Tool crafting materials (craft pickaxe before mining)
 		{id = 105, count = 3},    -- Copper Ingot (for copper pickaxe)
 		{id = 34, count = 8},     -- Stick (for tools)
-		
+
 		-- Farming essentials
-		{id = 550, count = 16},   -- Wheat Seeds (for first farm)
+		{id = 550, count = 4},    -- Wheat Seeds (for first farm - exactly 4 for tutorial)
 		{id = Constants.BlockType.DIRT, count = 32},           -- Dirt blocks for farmland
 		{id = 16, count = 4},     -- Oak Sapling (item, not block - placeable material)
-		
+
 		-- Smelting supplies
 		{id = 32, count = 12},    -- Coal (for smelting copper ore)
 	}

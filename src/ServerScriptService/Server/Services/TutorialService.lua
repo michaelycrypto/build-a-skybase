@@ -321,8 +321,8 @@ function TutorialService:CompleteStep(player, stepId)
 		stepId = stepId
 	})
 
-	-- Special action: Instantly grow crops when start_farm completes
-	if stepId == "start_farm" and TutorialConfig.Settings.instantGrowCropsOnPlant then
+	-- Special action: Instantly grow crops when setup_farm completes
+	if stepId == "setup_farm" and TutorialConfig.Settings.instantGrowCropsOnPlant then
 		local cropService = self.Deps and self.Deps.CropService
 		if cropService and cropService.InstantGrowAllCrops then
 			local grownCount = cropService:InstantGrowAllCrops()
@@ -346,6 +346,31 @@ function TutorialService:CompleteStep(player, stepId)
 			player = player.Name,
 			nextStep = nextStep.id
 		})
+		
+		-- Auto-complete steps with no objective (e.g., tutorial_complete)
+		-- These are "celebration" steps that grant rewards immediately
+		if not nextStep.objective then
+			self._logger.Info("Next step has no objective, auto-completing", {
+				player = player.Name,
+				stepId = nextStep.id
+			})
+			-- Save current progress first, then complete the next step
+			self:_saveTutorialData(player, data)
+			-- Notify client of current step completion
+			if self._eventManager then
+				self._eventManager:FireEvent("TutorialStepCompleted", player, {
+					completedStep = stepId,
+					nextStep = nextStep,
+					reward = step.reward,
+					tutorialComplete = false,
+				})
+			end
+			-- Recursively complete the no-objective step (grants its reward)
+			task.defer(function()
+				self:CompleteStep(player, nextStep.id)
+			end)
+			return true
+		end
 	else
 		-- Tutorial complete!
 		data.completed = true
