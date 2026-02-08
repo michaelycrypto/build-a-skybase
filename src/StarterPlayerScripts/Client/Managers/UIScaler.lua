@@ -90,8 +90,9 @@ local function notify_scale_listeners()
 end
 
 local function rescale_all()
-	local top_inset, bottom_inset = GuiService:GetGuiInset()
-	actual_viewport_size = camera.ViewportSize - top_inset - bottom_inset
+	-- Use full viewport size without subtracting insets
+	-- UIs with IgnoreGuiInset=false already account for the top bar
+	actual_viewport_size = camera.ViewportSize
 
 	for scale_component, base_resolution in scale_component_to_base_resolution do
 		rescale(scale_component, base_resolution)

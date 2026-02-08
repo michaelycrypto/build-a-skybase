@@ -1511,18 +1511,25 @@ function DroppedItemController:OnItemPickedUp(data)
 	end
 	if SoundManager and SoundManager.PlaySFX then
 		SoundManager:PlaySFX("inventoryPop")
-		return
+	else
+		-- Fallback: reuse Roblox sound instance to prevent lag from creating new ones
+		if not pickupSound or not pickupSound.Parent then
+			pickupSound = Instance.new("Sound")
+			pickupSound.SoundId = "rbxassetid://116766040641694"
+			pickupSound.Volume = 0.65
+			pickupSound.PlaybackSpeed = 1
+			pickupSound.Parent = game:GetService("SoundService")
+		end
+		pickupSound:Play()
 	end
 
-	-- Fallback: reuse Roblox sound instance to prevent lag from creating new ones
-	if not pickupSound or not pickupSound.Parent then
-		pickupSound = Instance.new("Sound")
-		pickupSound.SoundId = "rbxassetid://116766040641694"
-		pickupSound.Volume = 0.65
-		pickupSound.PlaybackSpeed = 1
-		pickupSound.Parent = game:GetService("SoundService")
+	-- Show item notification
+	local ok, ItemNotificationManager = pcall(function()
+		return require(script.Parent.Parent.Managers.ItemNotificationManager)
+	end)
+	if ok and ItemNotificationManager and ItemNotificationManager.ShowItemAcquired then
+		ItemNotificationManager:ShowItemAcquired(data.itemId, data.count, true)
 	end
-	pickupSound:Play()
 end
 
 return DroppedItemController

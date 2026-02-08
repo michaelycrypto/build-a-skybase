@@ -316,44 +316,41 @@ end
 
 function VoxelHotbar:UpdateSlotDisplay(index)
 	local slotFrame = self.slotFrames[index]
-	if not slotFrame then
+	if not slotFrame or not slotFrame.iconContainer then
 		return
 	end
 
 	local stack = self.slots[index]
-	local currentItemId = slotFrame.currentItemId  -- Store in table, not as attribute
 
 	if stack and not stack:IsEmpty() then
 		local itemId = stack:GetItemId()
 
-		-- Only recreate viewport/image if item type changed (huge performance win)
-		if currentItemId ~= itemId then
-			-- Clear ALL existing visuals (ViewportContainer, ToolImage, ImageLabel, etc.)
-			for _, child in ipairs(slotFrame.iconContainer:GetChildren()) do
-				if not child:IsA("UILayout") and not child:IsA("UIPadding") and not child:IsA("UICorner") then
-					child:Destroy()
-				end
+		-- Always clear and recreate visuals to ensure consistency
+		-- Clear ALL existing visuals (ViewportContainer, ToolImage, ImageLabel, etc.)
+		for _, child in ipairs(slotFrame.iconContainer:GetChildren()) do
+			if not child:IsA("UILayout") and not child:IsA("UIPadding") and not child:IsA("UICorner") then
+				child:Destroy()
 			end
+		end
 
-			if SpawnEggConfig.IsSpawnEgg(itemId) then
-				-- Spawn egg (two-layer icon)
-				local icon = SpawnEggIcon.Create(itemId, UDim2.new(1, -8, 1, -8))
+		if SpawnEggConfig.IsSpawnEgg(itemId) then
+			-- Spawn egg (two-layer icon)
+			local icon = SpawnEggIcon.Create(itemId, UDim2.new(1, -8, 1, -8))
+			if icon then
 				icon.Position = UDim2.fromScale(0.5, 0.5)
 				icon.AnchorPoint = Vector2.new(0.5, 0.5)
 				icon.Parent = slotFrame.iconContainer
-			else
-				-- All items and blocks → BlockViewportCreator handles everything:
-				-- ItemDefinitions items (tools, armor, food) → 2D image from rbxassetid
-				-- Solid blocks → 3D viewport
-				-- Non-solid blocks (saplings, etc.) → 3D viewport with texture resolution
-				BlockViewportCreator.CreateBlockViewport(
-					slotFrame.iconContainer,
-					itemId,
-					UDim2.fromScale(1, 1)
-				)
 			end
-
-			slotFrame.currentItemId = itemId  -- Store in table
+		else
+			-- All items and blocks → BlockViewportCreator handles everything:
+			-- ItemDefinitions items (tools, armor, food) → 2D image from rbxassetid
+			-- Solid blocks → 3D viewport
+			-- Non-solid blocks (saplings, etc.) → 3D viewport with texture resolution
+			BlockViewportCreator.CreateBlockViewport(
+				slotFrame.iconContainer,
+				itemId,
+				UDim2.fromScale(1, 1)
+			)
 		end
 
 		-- Always update count (cheap operation)
@@ -369,7 +366,6 @@ function VoxelHotbar:UpdateSlotDisplay(index)
 				child:Destroy()
 			end
 		end
-		slotFrame.currentItemId = nil
 		slotFrame.countLabel.Text = ""
 	end
 end

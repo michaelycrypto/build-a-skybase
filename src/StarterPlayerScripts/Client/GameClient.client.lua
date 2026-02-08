@@ -753,6 +753,19 @@ local function completeInitialization(_preloadedEmoteManager)
 		end
 	end
 
+	-- Initialize ItemNotificationManager (after UIScaler, before inventory systems)
+	local ItemNotificationManager = require(script.Parent.Managers.ItemNotificationManager)
+	if ItemNotificationManager.Initialize then
+		local success, err = pcall(function()
+			ItemNotificationManager:Initialize()
+		end)
+		if not success then
+			warn("ItemNotificationManager initialization failed:", err)
+		else
+			Client.managers.ItemNotificationManager = ItemNotificationManager
+		end
+	end
+
 	-- Initialize remaining managers
 	local UIManager = require(script.Parent.Managers.UIManager)
 	if UIManager.Initialize then
@@ -793,19 +806,29 @@ local function completeInitialization(_preloadedEmoteManager)
 	local ClientInventoryManager = require(script.Parent.Managers.ClientInventoryManager)
 
 	-- Create hotbar first
+	print("[GameClient] Creating VoxelHotbar...")
 	local hotbar = VoxelHotbar.new()
 	hotbar:Initialize()
 	Client.voxelHotbar = hotbar
+	print("[GameClient] VoxelHotbar initialized")
 
 	-- Create centralized inventory manager
+	print("[GameClient] Creating ClientInventoryManager...")
 	local inventoryManager = ClientInventoryManager.new(hotbar)
 	inventoryManager:Initialize()
 	Client.inventoryManager = inventoryManager
+	print("[GameClient] ClientInventoryManager initialized")
 
 	-- Create inventory panel using the manager
-	local inventory = VoxelInventoryPanel.new(inventoryManager)
-	inventory:Initialize()
-	Client.voxelInventory = inventory
+	local inventory = nil
+	local inventorySuccess, inventoryError = pcall(function()
+		inventory = VoxelInventoryPanel.new(inventoryManager)
+		inventory:Initialize()
+		Client.voxelInventory = inventory
+	end)
+	if not inventorySuccess then
+		warn("VoxelInventoryPanel failed to initialize:", inventoryError)
+	end
 
 	-- NOTE: ActionBar inventory reference is set after ActionBar initialization
 
@@ -845,11 +868,7 @@ local function completeInitialization(_preloadedEmoteManager)
 
 	inventoryManager:OnHotbarChanged(function(slotIndex)
 		if Client.voxelInventory and Client.voxelInventory.isOpen then
-			-- Update the specific hotbar slot display
-			local slotFrame = Client.voxelInventory.hotbarSlotFrames[slotIndex]
-			if slotFrame and slotFrame.frame then
-				Client.voxelInventory:UpdateHotbarSlotDisplay(slotIndex, slotFrame.frame, slotFrame.iconContainer, slotFrame.countLabel, slotFrame.selectionBorder)
-			end
+			Client.voxelInventory:UpdateHotbarSlotDisplay(slotIndex)
 		end
 		-- Tutorial: track item added to hotbar
 		if Client.managers.TutorialManager then

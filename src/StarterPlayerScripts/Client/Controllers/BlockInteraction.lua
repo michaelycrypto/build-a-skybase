@@ -235,6 +235,46 @@ local function _computeAimRay()
     end
 end
 
+-- Workspace raycast from current aim (crosshair or direct) for interactables (NPC/minion).
+-- Returns hit Instance or nil. Excludes local character so player doesn't block the ray.
+-- Used so mobile/crosshair mode can target NPCs and minions without relying on mouse.Target.
+local function _getAimWorkspaceHit()
+	local origin, direction = _computeAimRay()
+	if not origin or not direction then
+		return nil
+	end
+	local character = player.Character
+	if not character then
+		return nil
+	end
+	local rayParams = RaycastParams.new()
+	rayParams.FilterDescendantsInstances = { character }
+	rayParams.FilterType = Enum.RaycastFilterType.Exclude
+	local maxDistance = 100
+	local result = workspace:Raycast(origin, direction.Unit * maxDistance, rayParams)
+	if not result then
+		return nil
+	end
+	-- Optional: enforce same reach as block interaction (consistent with server)
+	local bs = Constants.BLOCK_SIZE
+	local maxReach = 4.5 * bs + 2
+	local head = character:FindFirstChild("Head")
+	if head and (result.Position - head.Position).Magnitude > maxReach then
+		return nil
+	end
+	return result.Instance
+end
+
+-- Resolve the current "target" for interactables (minion/NPC): crosshair mode uses
+-- workspace raycast from center; direct mode uses mouse.Target.
+local function _getInteractableTarget()
+	local targetingMode = GameState:Get("camera.targetingMode") or "crosshair"
+	if targetingMode == "crosshair" then
+		return _getAimWorkspaceHit()
+	end
+	return mouse and mouse.Target
+end
+
 -- Create selection box for visual feedback
 local function createSelectionBox()
 	local box = Instance.new("SelectionBox")
@@ -714,9 +754,9 @@ local function interactOrPlace()
 		return
 	end
 
-	-- Try interacting with a minion mob model under mouse
+	-- Try interacting with minion or NPC under crosshair/mouse (prioritized over blocks)
 	do
-		local target = mouse and mouse.Target
+		local target = _getInteractableTarget()
 		if target then
 			local model = target:FindFirstAncestorOfClass("Model")
 			if model then
@@ -724,33 +764,19 @@ local function interactOrPlace()
 				if entityId then
 					local now = os.clock()
 					if (now - lastMinionOpenRequestAt) < MINION_OPEN_DEBOUNCE then
-						print("[BlockInteraction] Minion open request debounced (entity path)")
 						return true
 					end
 					lastMinionOpenRequestAt = now
-					print("[BlockInteraction] RequestOpenMinionByEntity entityId=", tostring(entityId))
 					EventManager:SendToServer("RequestOpenMinionByEntity", { entityId = tostring(entityId) })
 					return true
 				end
-			end
-		end
-	end
-
-	-- Try interacting with an NPC model under mouse
-	do
-		local target = mouse and mouse.Target
-		if target then
-			local model = target:FindFirstAncestorOfClass("Model")
-			if model then
 				local npcId = model:GetAttribute("NPCId")
 				if npcId then
 					local now = os.clock()
 					if (now - lastMinionOpenRequestAt) < MINION_OPEN_DEBOUNCE then
-						print("[BlockInteraction] NPC interact request debounced")
 						return true
 					end
 					lastMinionOpenRequestAt = now
-					print("[BlockInteraction] RequestNPCInteract npcId=", tostring(npcId))
 					EventManager:SendToServer("RequestNPCInteract", { npcId = tostring(npcId) })
 					return true
 				end
@@ -1375,12 +1401,14 @@ function BlockInteraction:Initialize(voxelWorldHandle)
 			}
 			activeTouches[input] = touchData
 
-			-- Start hold timer (triggers break action after threshold)
+			-- Start hold timer (triggers break action after threshold; right side only)
 			task.delay(HOLD_TIME_THRESHOLD, function()
 				if activeTouches[input] and not activeTouches[input].moved then
-					-- Still holding and haven't moved = HOLD action (break blocks)
-					activeTouches[input].holdTriggered = true
-					startBreaking()
+					local vp = camera and camera.ViewportSize
+					if vp and activeTouches[input].startPos.X >= vp.X * 0.4 then
+						activeTouches[input].holdTriggered = true
+						startBreaking()
+					end
 				end
 			end)
 		end
@@ -1446,10 +1474,13 @@ function BlockInteraction:Initialize(voxelWorldHandle)
 					-- Was a hold action (breaking) - stop it
 					stopBreaking()
 				elseif not touchData.moved then
-					-- Tap = interact/place
-					-- Update input position to final tap position for accurate targeting
-					lastInputPosition = touchData.startPos
-					interactOrPlace()
+					-- Tap = interact/place (only on right side to match "tap anywhere on right side" design)
+					local viewportSize = camera and camera.ViewportSize or Vector2.new(0, 0)
+					local rightSideX = viewportSize.X * 0.4
+					if touchData.startPos.X >= rightSideX then
+						lastInputPosition = touchData.startPos
+						interactOrPlace()
+					end
 				end
 
 				-- Clean up touch data
@@ -1493,9 +1524,9 @@ function BlockInteraction:Initialize(voxelWorldHandle)
 
 		-- First person: Handle block placement and interaction (Minecraft-style)
 		if inputState == Enum.UserInputState.Begin then
-		-- Try minion mob model interaction in first-person
+		-- Try minion or NPC under crosshair/mouse (same as interactOrPlace)
 		do
-			local target = mouse and mouse.Target
+			local target = _getInteractableTarget()
 			if target then
 				local model = target:FindFirstAncestorOfClass("Model")
 				if model then
@@ -1503,32 +1534,19 @@ function BlockInteraction:Initialize(voxelWorldHandle)
 					if entityId then
 						local now = os.clock()
 						if (now - lastMinionOpenRequestAt) < MINION_OPEN_DEBOUNCE then
-							print("[BlockInteraction] Minion open request debounced (entity path FP)")
 							return Enum.ContextActionResult.Sink
 						end
 						lastMinionOpenRequestAt = now
-						print("[BlockInteraction] RequestOpenMinionByEntity (FP) entityId=", tostring(entityId))
 						EventManager:SendToServer("RequestOpenMinionByEntity", { entityId = tostring(entityId) })
 						return Enum.ContextActionResult.Sink
 					end
-				end
-			end
-		end
-		-- Try NPC model interaction in first-person
-		do
-			local target = mouse and mouse.Target
-			if target then
-				local model = target:FindFirstAncestorOfClass("Model")
-				if model then
 					local npcId = model:GetAttribute("NPCId")
 					if npcId then
 						local now = os.clock()
 						if (now - lastMinionOpenRequestAt) < MINION_OPEN_DEBOUNCE then
-							print("[BlockInteraction] NPC interact request debounced (FP)")
 							return Enum.ContextActionResult.Sink
 						end
 						lastMinionOpenRequestAt = now
-						print("[BlockInteraction] RequestNPCInteract (FP) npcId=", tostring(npcId))
 						EventManager:SendToServer("RequestNPCInteract", { npcId = tostring(npcId) })
 						return Enum.ContextActionResult.Sink
 					end

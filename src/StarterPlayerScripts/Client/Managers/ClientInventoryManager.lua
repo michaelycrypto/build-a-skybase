@@ -305,6 +305,24 @@ function ClientInventoryManager:RegisterServerEvents()
 
 		if didGainItems(oldStack, stack) then
 			playInventoryPop()
+			
+			-- Show item notification (with dedup check)
+			local ok, ItemNotificationManager = pcall(function()
+				return require(script.Parent.ItemNotificationManager)
+			end)
+			if ok and ItemNotificationManager and ItemNotificationManager.CheckAndNotify then
+				local newItemId = stack:GetItemId()
+				local oldItemId, oldCount = getStackInfo(oldStack)
+				local newCount = stack:GetCount()
+				local gainedCount = newCount
+				
+				-- If same item, calculate difference
+				if oldItemId == newItemId then
+					gainedCount = newCount - oldCount
+				end
+				
+				ItemNotificationManager:CheckAndNotify(newItemId, gainedCount)
+			end
 		end
 	end)
 
@@ -325,6 +343,24 @@ function ClientInventoryManager:RegisterServerEvents()
 
 		if didGainItems(oldStack, newStack) then
 			playInventoryPop()
+			
+			-- Show item notification (with dedup check)
+			local ok, ItemNotificationManager = pcall(function()
+				return require(script.Parent.ItemNotificationManager)
+			end)
+			if ok and ItemNotificationManager and ItemNotificationManager.CheckAndNotify then
+				local newItemId = newStack:GetItemId()
+				local oldItemId, oldCount = getStackInfo(oldStack)
+				local newCount = newStack:GetCount()
+				local gainedCount = newCount
+				
+				-- If same item, calculate difference
+				if oldItemId == newItemId then
+					gainedCount = newCount - oldCount
+				end
+				
+				ItemNotificationManager:CheckAndNotify(newItemId, gainedCount)
+			end
 		end
 	end)
 end

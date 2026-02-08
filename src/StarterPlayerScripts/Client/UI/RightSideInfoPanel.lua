@@ -559,7 +559,7 @@ function RightSideInfoPanel:UpdateWorldDisplay()
 	local localPlayer = Players.LocalPlayer
 	if localPlayer.UserId == worldData.ownerId then
 		worldLabel.TextColor3 = Color3.fromRGB(120, 255, 120)
-		worldLabel.Text = "(You)"
+		worldLabel.Text = "Your Island"
 	else
 		worldLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 		worldLabel.Text = displayText
