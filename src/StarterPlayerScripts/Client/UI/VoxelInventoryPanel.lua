@@ -241,7 +241,7 @@ function VoxelInventoryPanel:Initialize()
 	local uiScale = Instance.new("UIScale")
 	uiScale.Name = "ResponsiveScale"
 	uiScale:SetAttribute("base_resolution", Vector2.new(1920, 1080))
-	uiScale:SetAttribute("min_scale", 0.85)
+	uiScale:SetAttribute("min_scale", 0.75)
 	uiScale.Parent = self.gui
 	CollectionService:AddTag(uiScale, "scale_component")
 
